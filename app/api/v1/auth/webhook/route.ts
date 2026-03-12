@@ -3,7 +3,7 @@ import { Webhook } from "svix";
 import { prisma } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
-  const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
+  const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET?.trim();
   if (!WEBHOOK_SECRET) {
     return NextResponse.json(
       { error: { message: "Webhook secret not configured" } },
@@ -23,7 +23,16 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.text();
-  const wh = new Webhook(WEBHOOK_SECRET);
+  let wh: Webhook;
+  try {
+    wh = new Webhook(WEBHOOK_SECRET);
+  } catch (err) {
+    console.error("Invalid CLERK_WEBHOOK_SECRET (check for extra spaces or wrong value):", err);
+    return NextResponse.json(
+      { error: { message: "Webhook secret is invalid. In Vercel, re-copy the Signing Secret from Clerk (no spaces)." } },
+      { status: 500 }
+    );
+  }
 
   let event: { type: string; data: { id?: string; first_name?: string; last_name?: string; email_addresses?: { email_address: string }[] } };
   try {
@@ -50,13 +59,19 @@ export async function POST(req: NextRequest) {
     const name = [first_name, last_name].filter(Boolean).join(" ") || "User";
     const email =
       email_addresses?.[0]?.email_address ?? `user-${id}@placeholder.local`;
-    await prisma.user.create({
-      data: {
-        clerkId: id,
-        name,
-        email,
-      },
-    });
+    try {
+      await prisma.user.upsert({
+        where: { clerkId: id },
+        create: { clerkId: id, name, email },
+        update: { name, email },
+      });
+    } catch (err) {
+      console.error("Webhook user.created DB error:", err);
+      return NextResponse.json(
+        { error: { message: "Database error syncing user" } },
+        { status: 500 }
+      );
+    }
     return NextResponse.json({ received: true });
   }
 
@@ -71,10 +86,18 @@ export async function POST(req: NextRequest) {
     const name = [first_name, last_name].filter(Boolean).join(" ") || "User";
     const email =
       email_addresses?.[0]?.email_address ?? `user-${id}@placeholder.local`;
-    await prisma.user.update({
-      where: { clerkId: id },
-      data: { name, email },
-    });
+    try {
+      await prisma.user.update({
+        where: { clerkId: id },
+        data: { name, email },
+      });
+    } catch (err) {
+      console.error("Webhook user.updated DB error:", err);
+      return NextResponse.json(
+        { error: { message: "Database error updating user" } },
+        { status: 500 }
+      );
+    }
     return NextResponse.json({ received: true });
   }
 
