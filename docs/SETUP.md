@@ -383,6 +383,50 @@ To enable **Send email** on follow-up drafts:
 
 ---
 
+# Optional: Property lookup (RentCast + MLS)
+
+## RentCast (by address)
+
+[RentCast](https://rentcast.io) provides property data by address – 50 free API calls/month. Works for any US address.
+
+1. Sign up at [app.rentcast.io](https://app.rentcast.io) → get your API key from the API dashboard.
+2. Add to `.env.local` and Vercel: `RENTCAST_API_KEY=your_key`
+3. On the Add property form, enter a full address (e.g. `123 Main St, Palm Desert, CA 92260`) and click **By address**.
+
+## MLS (by MLS number)
+
+To **auto-populate property by MLS number** on the Add property form:
+
+1. Obtain API access from your MLS provider (RESO, Bridge, Trestle, etc.)
+2. Add to `.env.local` and Vercel:
+   - `MLS_LOOKUP_API_URL` – Your MLS provider’s property lookup endpoint (e.g. `https://api.example.com/property`)
+   - `MLS_LOOKUP_API_KEY` – API key for that service
+3. Your API should accept `?mls=12345678` and return JSON: `{ address1, address2?, city, state, zip, listingPrice? }`
+
+Without these env vars, the Lookup button shows "MLS lookup is not configured" – you can still add properties manually.
+
+### Flexmls (Coachella Valley, CA)
+
+**Flexmls** in Coachella Valley uses the **Spark Platform** (sparkplatform.com). To integrate:
+
+1. **Get API access**
+   - Contact your MLS (CDAR – California Desert Association of Realtors) or your broker
+   - Request Spark API access – you’ll need OAuth 2 credentials (Client ID, Client Secret)
+   - Docs: [sparkplatform.com/docs](https://sparkplatform.com/docs), [How to Set Up API Access](https://sparkplatform.com/docs/overview/set_up_access)
+
+2. **Spark specifics**
+   - Listings search: `GET /listings` with `_filter=ListingKey Eq 'MLS_NUMBER'` (field names may vary by board)
+   - OAuth 2 is required – a simple Bearer API key is not enough
+   - You may need a proxy or server-side token flow
+
+3. **KeyPilot integration**
+   - Option A: Use a **bridge service** – a small service that has Spark OAuth set up and exposes a simple `?mls=XXX` endpoint; point `MLS_LOOKUP_API_URL` at it
+   - Option B: Add a **Flexmls/Spark adapter** – implement OAuth token refresh and Spark Listings API in `lib/mls-lookup.ts` (requires `SPARK_CLIENT_ID`, `SPARK_CLIENT_SECRET`, `SPARK_REFRESH_TOKEN` or similar)
+
+Until that’s set up, continue adding properties manually or via the generic `MLS_LOOKUP_API_URL` if your MLS provides a simpler REST API.
+
+---
+
 # Troubleshooting
 
 | Problem | What to check |
@@ -393,6 +437,7 @@ To enable **Send email** on follow-up drafts:
 | **`prisma db push` fails with "prepared statement already exists"** | Use **Session** mode (port 5432) for `DIRECT_URL`, not Transaction (6543). `prisma.config.ts` prefers `DIRECT_URL` for schema ops. If it still fails, run `npm run db:push:direct`. See [Supabase Prisma troubleshooting](https://supabase.com/docs/guides/database/prisma/prisma-troubleshooting). |
 | **Redirect loop on sign-in** | Clerk domain added? `NEXT_PUBLIC_APP_URL` matches your Vercel URL? |
 | **Webhook not firing** | Endpoint is `https://your-domain.vercel.app/api/v1/auth/webhook`. Check Clerk → Webhooks → Recent deliveries for errors. |
+| **Webhook returns 500 "Base64Coder"** | `CLERK_WEBHOOK_SECRET` is malformed. **Fix:** Clerk → Webhooks → endpoint → Signing secret → **Regenerate** → copy. Vercel → env vars → replace `CLERK_WEBHOOK_SECRET` (no spaces) → Redeploy. |
 
 ---
 

@@ -16,10 +16,16 @@ describe("CreatePropertySchema", () => {
   it("accepts full input with optional fields", () => {
     const result = CreatePropertySchema.safeParse({
       ...valid,
+      mlsNumber: "12345678",
       address2: "Apt 4",
       listingPrice: 495000,
       notes: "Corner lot",
     });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts mlsNumber", () => {
+    const result = CreatePropertySchema.safeParse({ ...valid, mlsNumber: "MLS-12345" });
     expect(result.success).toBe(true);
   });
 

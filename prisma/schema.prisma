@@ -27,6 +27,7 @@ model User {
 
 model Property {
   id              String    @id @default(uuid())
+  mlsNumber       String?   @unique
   address1        String
   address2        String?
   city            String

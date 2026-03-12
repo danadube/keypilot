@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const CreatePropertySchema = z.object({
+  mlsNumber: z.string().optional().nullable(),
   address1: z.string().min(1, "Address is required"),
   address2: z.string().optional().nullable(),
   city: z.string().min(1, "City is required"),
@@ -11,6 +12,7 @@ export const CreatePropertySchema = z.object({
 });
 
 export const UpdatePropertySchema = z.object({
+  mlsNumber: z.string().optional().nullable(),
   address1: z.string().min(1).optional(),
   address2: z.string().optional().nullable(),
   city: z.string().min(1).optional(),

@@ -20,6 +20,10 @@ export function NewPropertyForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [mlsNumber, setMlsNumber] = useState("");
+  const [addressLookup, setAddressLookup] = useState("");
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
   const [address1, setAddress1] = useState("");
   const [address2, setAddress2] = useState("");
   const [city, setCity] = useState("");
@@ -27,6 +31,45 @@ export function NewPropertyForm() {
   const [zip, setZip] = useState("");
   const [listingPrice, setListingPrice] = useState("");
   const [notes, setNotes] = useState("");
+
+  const runLookup = async (url: string) => {
+    setLookupError(null);
+    setLookupLoading(true);
+    try {
+      const res = await fetch(url);
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+      const d = json.data;
+      setAddress1(d.address1);
+      setAddress2(d.address2 || "");
+      setCity(d.city);
+      setState(d.state);
+      setZip(d.zip);
+      setListingPrice(d.listingPrice ? String(d.listingPrice) : "");
+    } catch (err) {
+      setLookupError(err instanceof Error ? err.message : "Lookup failed");
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
+  const handleMlsLookup = async () => {
+    const mls = mlsNumber.trim();
+    if (!mls) {
+      setLookupError("Enter an MLS number");
+      return;
+    }
+    await runLookup(`/api/v1/properties/lookup?mls=${encodeURIComponent(mls)}`);
+  };
+
+  const handleAddressLookup = async () => {
+    const addr = addressLookup.trim();
+    if (!addr) {
+      setLookupError("Enter a full address");
+      return;
+    }
+    await runLookup(`/api/v1/properties/lookup?address=${encodeURIComponent(addr)}`);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +87,7 @@ export function NewPropertyForm() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          mlsNumber: mlsNumber.trim() || null,
           address1: address1.trim(),
           address2: address2.trim() || null,
           city: city.trim(),
@@ -86,6 +130,51 @@ export function NewPropertyForm() {
                 {error}
               </div>
             )}
+
+            <div className="space-y-4 rounded-lg border border-dashed p-4">
+              <p className="text-sm font-medium text-muted-foreground">
+                Look up by address or MLS number
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Address (e.g. 123 Main St, Palm Desert, CA 92260)"
+                  value={addressLookup}
+                  onChange={(e) => {
+                    setAddressLookup(e.target.value);
+                    setLookupError(null);
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleAddressLookup}
+                  disabled={lookupLoading}
+                >
+                  {lookupLoading ? "Looking up…" : "By address"}
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="MLS # (e.g. 12345678)"
+                  value={mlsNumber}
+                  onChange={(e) => {
+                    setMlsNumber(e.target.value);
+                    setLookupError(null);
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleMlsLookup}
+                  disabled={lookupLoading}
+                >
+                  {lookupLoading ? "Looking up…" : "By MLS #"}
+                </Button>
+              </div>
+              {lookupError && (
+                <p className="text-sm text-destructive">{lookupError}</p>
+              )}
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="address1">Street address *</Label>

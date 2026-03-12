@@ -20,8 +20,21 @@ export default function RootLayout({
     console.error("Missing or invalid NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY");
   }
 
+  const signInUrl =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") + "/sign-in" ||
+    "/sign-in";
+  const signUpUrl =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") + "/sign-up" ||
+    "/sign-up";
+
   return (
-    <ClerkProvider publishableKey={publishableKey}>
+    <ClerkProvider
+      publishableKey={publishableKey}
+      signInUrl={signInUrl}
+      signUpUrl={signUpUrl}
+      afterSignInUrl="/"
+      afterSignUpUrl="/"
+    >
       <html lang="en">
         <body className={`${inter.className} antialiased`}>
           {children}

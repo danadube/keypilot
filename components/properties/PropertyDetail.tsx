@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,7 @@ import { ErrorMessage } from "@/components/shared/ErrorMessage";
 
 type Property = {
   id: string;
+  mlsNumber?: string | null;
   address1: string;
   address2?: string | null;
   city: string;
@@ -30,7 +31,7 @@ export function PropertyDetail({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = () => {
+  const loadData = useCallback(() => {
     setError(null);
     setLoading(true);
     fetch(`/api/v1/properties/${id}`)
@@ -41,11 +42,11 @@ export function PropertyDetail({ id }: { id: string }) {
       })
       .catch(() => setError("Failed to load"))
       .finally(() => setLoading(false));
-  };
+  }, [id]);
 
   useEffect(() => {
     loadData();
-  }, [id]);
+  }, [loadData]);
 
   if (loading) return <PageLoading message="Loading property…" />;
   if (error || !property)
@@ -84,6 +85,11 @@ export function PropertyDetail({ id }: { id: string }) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
+          {property.mlsNumber && (
+            <p>
+              <span className="font-medium">MLS #:</span> {property.mlsNumber}
+            </p>
+          )}
           <p>
             <span className="font-medium">Listing price:</span>{" "}
             {formatPrice(property.listingPrice)}

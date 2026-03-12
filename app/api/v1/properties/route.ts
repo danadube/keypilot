@@ -26,9 +26,11 @@ export async function POST(req: NextRequest) {
     const user = await getCurrentUser();
     const body = await req.json();
     const parsed = CreatePropertySchema.parse(body);
+    const mls = parsed.mlsNumber?.trim() || null;
     const property = await prisma.property.create({
       data: {
         ...parsed,
+        mlsNumber: mls,
         createdByUserId: user.id,
       },
     });

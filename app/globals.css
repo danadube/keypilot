@@ -55,8 +55,49 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Design system: CSS vars are applied by BrandProvider via inline style.
+   When using Brand* components, wrap with <BrandProvider brand="keypilot">.
+   Tokens: --brand-primary, --brand-bg, --brand-text, --font-heading, etc. */
+
+/* 8-point grid layout utilities (use inside BrandProvider) */
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .container-md {
+    width: 100%;
+    max-width: 768px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--space-md, 24px);
+    padding-right: var(--space-md, 24px);
+  }
+
+  .container-lg {
+    width: 100%;
+    max-width: 1024px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--space-2xl, 48px);
+    padding-right: var(--space-2xl, 48px);
+  }
+
+  .stack-sm {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm, 16px);
+  }
+
+  .stack-md {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md, 24px);
+  }
+
+  .stack-lg {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg, 32px);
   }
 }
