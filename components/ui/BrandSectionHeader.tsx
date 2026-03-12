@@ -31,10 +31,11 @@ export const BrandSectionHeader = React.forwardRef<
       >
         {eyebrow && (
           <p
-            className="text-sm font-medium uppercase tracking-wider text-[var(--brand-text-muted)]"
+            className="font-semibold uppercase tracking-widest text-[var(--brand-primary)]"
             style={{
               fontFamily: "var(--font-body)",
-              fontSize: "var(--text-small-size)",
+              fontSize: "var(--text-caption-size)",
+              letterSpacing: "0.08em",
             }}
           >
             {eyebrow}
@@ -44,9 +45,9 @@ export const BrandSectionHeader = React.forwardRef<
           className="font-semibold text-[var(--brand-text)]"
           style={{
             fontFamily: "var(--font-heading)",
-            fontSize: "var(--text-h2-size)",
-            lineHeight: "var(--text-h2-line)",
-            fontWeight: "var(--text-h2-weight)",
+            fontSize: "var(--text-h3-size)",
+            lineHeight: "var(--text-h3-line)",
+            fontWeight: "var(--text-h3-weight)",
           }}
         >
           {title}

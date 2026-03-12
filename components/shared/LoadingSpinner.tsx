@@ -3,7 +3,9 @@ import { cn } from "@/lib/utils";
 export function LoadingSpinner({ className }: { className?: string }) {
   return (
     <svg
-      className={cn("h-6 w-6 animate-spin text-muted-foreground", className)}
+      width={24}
+      height={24}
+      className={cn("h-6 w-6 shrink-0 animate-spin text-muted-foreground", className)}
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"

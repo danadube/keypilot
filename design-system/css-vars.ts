@@ -1,7 +1,38 @@
 import type { BrandTheme } from "./tokens";
 
+/** Convert hex (#RRGGBB) to HSL string "H S% L%" for hsl(var(--x)) usage. */
+function hexToHsl(hex: string): string {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return "0 0% 50%";
+  let r = parseInt(result[1], 16) / 255;
+  let g = parseInt(result[2], 16) / 255;
+  let b = parseInt(result[3], 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        break;
+      case g:
+        h = ((b - r) / d + 2) / 6;
+        break;
+      case b:
+        h = ((r - g) / d + 4) / 6;
+        break;
+    }
+  }
+  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+}
+
 /**
  * Maps a BrandTheme to CSS custom properties for use in styles.
+ * Also maps to shadcn/Tailwind vars so existing components (Button, Card, etc.) pick up brand colors.
  */
 export function themeToCssVars(theme: BrandTheme): Record<string, string> {
   const vars: Record<string, string> = {
@@ -74,6 +105,28 @@ export function themeToCssVars(theme: BrandTheme): Record<string, string> {
   if (theme.typography.h1.letterSpacing) vars["--text-h1-spacing"] = theme.typography.h1.letterSpacing;
   if (theme.typography.h2.letterSpacing) vars["--text-h2-spacing"] = theme.typography.h2.letterSpacing;
   if (theme.typography.body.letterSpacing) vars["--text-body-spacing"] = theme.typography.body.letterSpacing;
+
+  // Shadcn/Tailwind var mapping (expects HSL format "H S% L%")
+  vars["--primary"] = hexToHsl(theme.colors.primary);
+  vars["--primary-foreground"] = hexToHsl(theme.colors.primaryForeground);
+  vars["--background"] = hexToHsl(theme.colors.background);
+  vars["--foreground"] = hexToHsl(theme.colors.text);
+  vars["--card"] = hexToHsl(theme.colors.surface);
+  vars["--card-foreground"] = hexToHsl(theme.colors.text);
+  vars["--popover"] = hexToHsl(theme.colors.surface);
+  vars["--popover-foreground"] = hexToHsl(theme.colors.text);
+  vars["--secondary"] = hexToHsl(theme.colors.secondary);
+  vars["--secondary-foreground"] = hexToHsl(theme.colors.text);
+  vars["--muted"] = hexToHsl(theme.colors.surfaceAlt);
+  vars["--muted-foreground"] = hexToHsl(theme.colors.textMuted);
+  vars["--accent"] = hexToHsl(theme.colors.surfaceAlt);
+  vars["--accent-foreground"] = hexToHsl(theme.colors.text);
+  vars["--destructive"] = hexToHsl(theme.colors.danger);
+  vars["--destructive-foreground"] = hexToHsl(theme.colors.dangerForeground);
+  vars["--border"] = hexToHsl(theme.colors.border);
+  vars["--input"] = hexToHsl(theme.colors.border);
+  vars["--ring"] = hexToHsl(theme.colors.primary);
+  vars["--radius"] = theme.radius.md;
 
   return vars;
 }

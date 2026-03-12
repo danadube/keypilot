@@ -29,7 +29,17 @@ export function BrandProvider({ brand = defaultBrandKey, children }: BrandProvid
 
   return (
     <BrandContext.Provider value={value}>
-      <div style={style} className="design-system-root">
+      <div
+        style={{
+          ...style,
+          background: "hsl(var(--background))",
+          color: "hsl(var(--foreground))",
+          fontFamily: "var(--font-body)",
+          minHeight: "100vh",
+          width: "100%",
+        }}
+        className="design-system-root"
+      >
         {children}
       </div>
     </BrandContext.Provider>

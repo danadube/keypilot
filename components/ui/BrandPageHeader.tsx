@@ -23,7 +23,7 @@ export function BrandPageHeader({
   return (
     <header
       className={cn(
-        "space-y-[var(--space-sm)]",
+        "space-y-[var(--space-sm)] pb-[var(--space-md)] border-b border-[var(--brand-border)]",
         align === "center" && "text-center",
         className
       )}
@@ -36,12 +36,12 @@ export function BrandPageHeader({
       <div className={cn("flex flex-col gap-[var(--space-sm)] sm:flex-row sm:items-start sm:justify-between", align === "center" && "sm:flex-col sm:items-center")}>
         <div className="min-w-0 flex-1">
           <h1
-            className="font-semibold text-[var(--brand-text)]"
+            className="font-bold text-[var(--brand-text)] tracking-tight"
             style={{
               fontFamily: "var(--font-heading)",
-              fontSize: "var(--text-h2-size)",
-              lineHeight: "var(--text-h2-line)",
-              fontWeight: "var(--text-h2-weight)",
+              fontSize: "var(--text-h1-size)",
+              lineHeight: "var(--text-h1-line)",
+              fontWeight: "var(--text-h1-weight)",
             }}
           >
             {title}

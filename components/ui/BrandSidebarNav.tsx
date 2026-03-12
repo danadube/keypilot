@@ -14,7 +14,7 @@ export interface BrandSidebarNavItem {
 
 export interface BrandSidebarNavProps {
   items: BrandSidebarNavItem[];
-  title?: string;
+  title?: React.ReactNode;
   footer?: React.ReactNode;
   className?: string;
 }
@@ -28,14 +28,14 @@ export const BrandSidebarNav: React.FC<BrandSidebarNavProps> = ({
   return (
     <aside
       className={cn(
-        "flex flex-col border-r border-[var(--brand-border)] bg-[var(--brand-surface)]",
+        "flex flex-col border-r border-[var(--brand-border)] bg-[var(--brand-surface-alt)] shadow-[var(--shadow-sm)]",
         className
       )}
     >
       {title && (
         <div className="border-b border-[var(--brand-border)] px-[var(--space-md)] py-[var(--space-sm)]">
-          <p
-            className="font-semibold text-[var(--brand-text)]"
+          <div
+            className="font-semibold text-[var(--brand-text)] [&_a]:text-[var(--brand-text)] [&_a]:hover:text-[var(--brand-primary)]"
             style={{
               fontFamily: "var(--font-heading)",
               fontSize: "var(--text-small-size)",
@@ -43,7 +43,7 @@ export const BrandSidebarNav: React.FC<BrandSidebarNavProps> = ({
             }}
           >
             {title}
-          </p>
+          </div>
         </div>
       )}
       <nav className="flex-1 overflow-auto px-[var(--space-xs)] py-[var(--space-sm)]">
@@ -69,8 +69,8 @@ export const BrandSidebarNav: React.FC<BrandSidebarNavProps> = ({
             );
             const baseClasses = cn(
               "flex items-center gap-[var(--space-sm)] rounded-[var(--radius-md)] px-[var(--space-sm)] py-[var(--space-xs)] text-[var(--brand-text-muted)] transition-colors",
-              "hover:bg-[var(--brand-surface-alt)] hover:text-[var(--brand-text)]",
-              item.active && "bg-[var(--brand-surface-alt)] font-medium text-[var(--brand-primary)]"
+              "hover:bg-[var(--brand-surface)] hover:text-[var(--brand-text)]",
+              item.active && "bg-[var(--brand-primary)]/10 font-medium text-[var(--brand-primary)] border-l-2 border-l-[var(--brand-primary)] -ml-[2px] pl-[calc(var(--space-sm)+2px)]"
             );
             return (
               <li key={i}>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { BrandProvider } from "@/design-system/brand-context";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -37,7 +38,9 @@ export default function RootLayout({
     >
       <html lang="en">
         <body className={`${inter.className} antialiased`}>
-          {children}
+          <BrandProvider brand="keypilot">
+            {children}
+          </BrandProvider>
         </body>
       </html>
     </ClerkProvider>

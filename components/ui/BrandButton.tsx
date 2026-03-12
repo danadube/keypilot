@@ -4,7 +4,7 @@ import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cn } from "@/lib/utils";
 
-type BrandButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+type BrandButtonVariant = "primary" | "secondary" | "accent" | "success" | "ghost" | "danger";
 type BrandButtonSize = "sm" | "md" | "lg";
 
 export interface BrandButtonProps
@@ -25,6 +25,10 @@ const variantClasses: Record<BrandButtonVariant, string> = {
     "bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)] hover:bg-[var(--brand-primary-hover)] active:bg-[var(--brand-primary-active)] shadow-[var(--shadow-sm)]",
   secondary:
     "bg-[var(--brand-surface)] text-[var(--brand-text)] border border-[var(--brand-border)] hover:bg-[var(--brand-surface-alt)]",
+  accent:
+    "bg-[var(--brand-accent)] text-white hover:opacity-90 active:opacity-80 shadow-[var(--shadow-sm)]",
+  success:
+    "bg-[var(--brand-secondary)] text-white hover:opacity-90 active:opacity-80 shadow-[var(--shadow-sm)]",
   ghost:
     "bg-transparent text-[var(--brand-text)] hover:bg-[var(--brand-surface-alt)]",
   danger:

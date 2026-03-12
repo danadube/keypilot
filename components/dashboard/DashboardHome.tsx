@@ -2,15 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Building2, Calendar, Users } from "lucide-react";
+import { BrandButton } from "@/components/ui/BrandButton";
+import { BrandCard } from "@/components/ui/BrandCard";
+import { BrandBadge } from "@/components/ui/BrandBadge";
+import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
+import { BrandStatCard } from "@/components/ui/BrandStatCard";
+import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
+import { BrandSectionHeader } from "@/components/ui/BrandSectionHeader";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 
@@ -78,116 +77,124 @@ export function DashboardHome() {
       minute: "2-digit",
     });
 
-  const statusVariant = (
+  const statusTone = (
     s: string
-  ): "default" | "secondary" | "outline" | "destructive" => {
+  ): "default" | "success" | "accent" | "danger" => {
     if (s === "ACTIVE" || s === "SCHEDULED") return "default";
-    if (s === "COMPLETED") return "secondary";
-    if (s === "CANCELLED") return "destructive";
-    return "outline";
+    if (s === "COMPLETED") return "success";
+    if (s === "CANCELLED") return "danger";
+    return "default";
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <div className="flex gap-2">
-          <Button asChild>
-            <Link href="/properties/new">Add property</Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/open-houses/new">New open house</Link>
-          </Button>
+    <div className="stack-lg">
+      <BrandPageHeader
+        title="Dashboard"
+        actions={
+          <>
+            <BrandButton asChild>
+              <Link href="/properties/new">Add property</Link>
+            </BrandButton>
+            <BrandButton variant="accent" asChild>
+              <Link href="/open-houses/new">New open house</Link>
+            </BrandButton>
+          </>
+        }
+      />
+
+      <div className="grid gap-[var(--space-md)] sm:grid-cols-2 md:grid-cols-3">
+        <div className="flex flex-col gap-[var(--space-sm)]">
+          <BrandStatCard
+            title="Properties"
+            value={stats.propertiesCount}
+            accent="primary"
+            icon={<Building2 className="h-5 w-5" />}
+          />
+          <BrandButton variant="ghost" size="sm" className="text-[var(--brand-primary)] hover:text-[var(--brand-primary-hover)]" asChild>
+            <Link href="/properties">View all</Link>
+          </BrandButton>
+        </div>
+        <div className="flex flex-col gap-[var(--space-sm)]">
+          <BrandStatCard
+            title="Open houses"
+            value={stats.openHousesCount}
+            accent="accent"
+            icon={<Calendar className="h-5 w-5" />}
+          />
+          <BrandButton variant="ghost" size="sm" className="text-[var(--brand-accent)] hover:opacity-80" asChild>
+            <Link href="/open-houses">View all</Link>
+          </BrandButton>
+        </div>
+        <div className="flex flex-col gap-[var(--space-sm)]">
+          <BrandStatCard
+            title="Contacts"
+            value={stats.contactsCount}
+            accent="secondary"
+            icon={<Users className="h-5 w-5" />}
+          />
+          <BrandButton variant="ghost" size="sm" className="text-[var(--brand-secondary)] hover:opacity-80" asChild>
+            <Link href="/contacts">View all</Link>
+          </BrandButton>
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Properties
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold">{stats.propertiesCount}</p>
-            <Button variant="link" className="h-auto p-0" asChild>
-              <Link href="/properties">View all</Link>
-            </Button>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Open houses
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold">{stats.openHousesCount}</p>
-            <Button variant="link" className="h-auto p-0" asChild>
-              <Link href="/open-houses">View all</Link>
-            </Button>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Contacts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold">{stats.contactsCount}</p>
-            <Button variant="link" className="h-auto p-0" asChild>
-              <Link href="/contacts">View all</Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent open houses</CardTitle>
-          <CardDescription>
-            Your latest open house events
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {stats.recentOpenHouses.length === 0 ? (
-            <p className="py-8 text-center text-muted-foreground">
-              No open houses yet. Create one to get started.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {stats.recentOpenHouses.map((oh) => (
-                <div
-                  key={oh.id}
-                  className="flex flex-wrap items-center justify-between gap-4 rounded-lg border p-4"
-                >
-                  <div>
-                    <p className="font-medium">{oh.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {oh.property.address1}, {oh.property.city},{" "}
-                      {oh.property.state}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {formatDate(oh.startAt)} · {formatTime(oh.startAt)} ·{" "}
-                      {oh._count.visitors} visitors
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={statusVariant(oh.status)}>{oh.status}</Badge>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/open-houses/${oh.id}`}>View</Link>
-                    </Button>
-                  </div>
+      <BrandCard elevated padded>
+        <BrandSectionHeader
+          title="Recent open houses"
+          description="Your latest open house events"
+        />
+        {stats.recentOpenHouses.length === 0 ? (
+          <BrandEmptyState
+            title="No open houses yet"
+            description="Create one to get started"
+            action={
+              <BrandButton variant="accent" asChild>
+                <Link href="/open-houses/new">Create open house</Link>
+              </BrandButton>
+            }
+          />
+        ) : (
+          <div className="stack-md mt-[var(--space-md)]">
+            {stats.recentOpenHouses.map((oh) => (
+              <div
+                key={oh.id}
+                className="flex flex-wrap items-center justify-between gap-[var(--space-md)] rounded-[var(--radius-md)] border border-[var(--brand-border)] p-[var(--space-md)]"
+              >
+                <div>
+                  <p
+                    className="font-medium text-[var(--brand-text)]"
+                    style={{ fontSize: "var(--text-body-size)" }}
+                  >
+                    {oh.title}
+                  </p>
+                  <p
+                    className="text-[var(--brand-text-muted)]"
+                    style={{ fontSize: "var(--text-small-size)" }}
+                  >
+                    {oh.property.address1}, {oh.property.city}, {oh.property.state}
+                  </p>
+                  <p
+                    className="text-[var(--brand-text-muted)]"
+                    style={{ fontSize: "var(--text-small-size)" }}
+                  >
+                    {formatDate(oh.startAt)} · {formatTime(oh.startAt)} ·{" "}
+                    {oh._count.visitors} visitors
+                  </p>
                 </div>
-              ))}
-            </div>
-          )}
-          <Button className="mt-4" variant="outline" asChild>
-            <Link href="/open-houses">All open houses</Link>
-          </Button>
-        </CardContent>
-      </Card>
+                <div className="flex items-center gap-[var(--space-sm)]">
+                  <BrandBadge tone={statusTone(oh.status)}>{oh.status}</BrandBadge>
+                  <BrandButton variant="secondary" size="sm" asChild>
+                    <Link href={`/open-houses/${oh.id}`}>View</Link>
+                  </BrandButton>
+                </div>
+              </div>
+            ))}
+            <BrandButton variant="accent" asChild>
+              <Link href="/open-houses">All open houses</Link>
+            </BrandButton>
+          </div>
+        )}
+      </BrandCard>
     </div>
   );
 }
