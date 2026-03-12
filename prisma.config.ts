@@ -11,6 +11,7 @@ export default defineConfig({
   },
   engine: "classic",
   datasource: {
-    url: env("DATABASE_URL"),
+    // Use dummy URL for prisma generate when DATABASE_URL isn't set (e.g. Vercel install phase)
+    url: process.env.DATABASE_URL || "postgresql://localhost:5432/dummy",
   },
 });

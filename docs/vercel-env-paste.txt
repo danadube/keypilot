@@ -1,0 +1,6 @@
+DATABASE_URL=postgresql://postgres.kmqdomhgfklsslbziflg:Genhos%217381@aws-1-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+DIRECT_URL=postgresql://postgres.kmqdomhgfklsslbziflg:Genhos%217381@aws-1-us-east-1.pooler.supabase.com:5432/postgres
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_c3VyZS10b3J0b2lzZS03NC5jbGVyay5hY2NvdW50cy5kZXYk
+CLERK_SECRET_KEY=sk_test_MPEPmNaRhgToXOiAEQmYqtFCN9rFWYH28b9x0NzYoe
+CLERK_WEBHOOK_SECRET=whsec_placeholder
+NEXT_PUBLIC_APP_URL=https://keypilot.vercel.app

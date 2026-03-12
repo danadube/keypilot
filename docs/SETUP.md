@@ -1,218 +1,392 @@
-# KeyPilot Setup Guide
+# KeyPilot – Step-by-Step Setup Guide
 
-This guide walks you through setting up KeyPilot: creating a GitHub repository, connecting to Vercel for deployment, and configuring Supabase for the database.
-
----
-
-## Table of Contents
-
-1. [GitHub Repository](#1-github-repository)
-2. [Supabase Database](#2-supabase-database)
-3. [Clerk Authentication](#3-clerk-authentication)
-4. [Vercel Deployment](#4-vercel-deployment)
-5. [Environment Variables Checklist](#5-environment-variables-checklist)
+Follow these steps in order. Each section ends with a "✓ Checkpoint" so you know you’re on the right track.
 
 ---
 
-## 1. GitHub Repository
+## Overview
 
-### Create a new repository
+You will set up:
 
-1. Go to [GitHub](https://github.com) and sign in.
-2. Click the **+** icon in the top-right → **New repository**.
-3. Fill in the details:
-   - **Repository name:** `KeyPilot` (or `keypilot`)
-   - **Description:** `Modular real estate operations SaaS platform – Open House Lead Capture`
-   - **Visibility:** Private (recommended) or Public
-   - **Do not** initialize with a README (you already have one)
-   - Add `.gitignore` template: **Node** (optional; project already has one)
-4. Click **Create repository**.
+1. **Supabase** – PostgreSQL database
+2. **Clerk** – Authentication (sign-in, users)
+3. **Vercel** – Hosting and deployment
+4. **Clerk Webhook** – Syncs Clerk users to your database
 
-### Push your local project
-
-```bash
-# From the KeyPilot project directory
-cd /Users/danadube/Documents/-CODE_PROJECTS/KeyPilot
-
-# Initialize git (if not already done)
-git init
-
-# Add all files
-git add .
-
-# First commit
-git commit -m "Phase A: Initial scaffold - Next.js, Prisma, Clerk, API routes, page shells"
-
-# Add GitHub as remote (replace YOUR_USERNAME with your GitHub username)
-git remote add origin https://github.com/YOUR_USERNAME/KeyPilot.git
-
-# Push to main
-git branch -M main
-git push -u origin main
-```
-
-### Optional: Repository settings
-
-- **About:** Edit and add a URL and topics (e.g. `nextjs`, `real-estate`, `saas`).
-- **Settings → General → Features:** Enable Issues and Discussions if you use them.
-- **Branches:** Add branch protection for `main` if needed.
+**Time:** ~20–30 minutes  
+**Prerequisites:** GitHub repo with KeyPilot code (already done)
 
 ---
 
-## 2. Supabase Database
+# Step 1: Supabase (Database)
 
-### Create a Supabase project
+### 1.1 Create account / sign in
 
-1. Go to [Supabase](https://supabase.com) and sign in (or create an account).
-2. Click **New Project**.
-3. Fill in:
-   - **Name:** `keypilot` (or your choice)
-   - **Database Password:** Generate a strong password and store it securely
-   - **Region:** Choose closest to your users
-4. Click **Create new project** and wait for setup.
+1. Open **[supabase.com](https://supabase.com)**
+2. Click **Start your project** (or **Sign in** if you have an account)
+3. Sign in with GitHub (recommended for integration with Vercel)
 
-### Get your connection strings
+---
 
-1. In the Supabase dashboard, go to **Project Settings** (gear icon) → **Database**.
-2. Copy these values:
+### 1.2 Create a new project
 
-   | Variable | Where to find |
-   |----------|---------------|
-   | `DATABASE_URL` | **Connection string** → **URI** (use "Transaction pooler" for serverless) |
-   | `DIRECT_URL` | **Connection string** → **URI** (use "Session pooler" or "Direct connection") |
+1. On the Supabase dashboard, click **"New Project"** (green button, top-right or center).
+2. A form appears with fields:
+   - **Name:** Type `keypilot` (lowercase, no spaces).
+   - **Database Password:** Click **"Generate a password"** — a random password appears. Click **Copy** and save it in Notes or a password manager. You cannot view it again.
+   - **Region:** Use the dropdown. Choose the region closest to you (e.g. "East US (North Virginia)" or "West EU (Ireland)").
+3. Click **"Create new project"** at the bottom.
+4. Wait 1–2 minutes. A loading spinner or progress bar indicates setup. Do not close the tab.
 
-3. For Vercel/serverless, use the **Transaction pooler** URL for `DATABASE_URL` (port 6543) and the **Session/Direct** URL for `DIRECT_URL` (port 5432).
+**✓ Checkpoint:** You see a dashboard with a sidebar: Table Editor, SQL Editor, API, etc.
 
-   Example format:
+---
+
+### 1.3 Get connection strings
+
+**Use the Connect button (easiest):**
+1. Stay on your project’s **home page** (the main dashboard after opening the project).
+2. Look for a **Connect** button — it’s usually at the **top** of the page or in a prominent card.
+3. Click **Connect**. A panel opens showing connection methods (URI, Transaction, Session, etc.).
+4. *If you don’t see Connect:* Go directly to `https://supabase.com/dashboard/project/YOUR-PROJECT-REF/settings/database` — replace `YOUR-PROJECT-REF` with the ID from your project URL (e.g. `abcdefghijklmnop`).
+
+**Choose Transaction mode (for DATABASE_URL):**
+7. In the Connection string section, you may see a **dropdown** or **tabs**. Select **URI** (not JDBC, DotNet, or Go).
+8. Look for a **mode selector**: it may say "Transaction" / "Session" / "Direct", or "Supavisor" with "Transaction" vs "Session".
+9. Select **Transaction** (or "Transaction mode" / "Pooler transaction"). This uses port **6543**.
+10. A connection string appears in a code block. It will contain `[YOUR-PASSWORD]` as a placeholder.
+11. Click the **Copy** button (icon of two overlapping squares) next to the string.
+12. Paste into a text editor. The string looks like: `postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres`
+13. Replace `[YOUR-PASSWORD]` with the database password you copied in Step 1.2.
+14. Add `?pgbouncer=true` at the very end (e.g. `...postgres?pgbouncer=true`).
+15. This final string is your **`DATABASE_URL`** — save it.
+
+**Choose Session mode (for DIRECT_URL):**
+16. Switch the mode selector to **Session** (or "Session mode" / "Pooler session" / "Direct").
+17. Click **Copy** again.
+18. Paste into your editor. It will use port **5432** (not 6543). Do **not** add `?pgbouncer=true`.
+19. Replace `[YOUR-PASSWORD]` with your database password.
+20. This is your **`DIRECT_URL`** — save it.
+
+**✓ Checkpoint:** You have two URLs: one ending with `:6543/postgres?pgbouncer=true` (DATABASE_URL) and one ending with `:5432/postgres` (DIRECT_URL).
+
+---
+
+### 1.4 Create tables in the database
+
+**Prepare your project:**
+1. Open Terminal (Mac) or Command Prompt / PowerShell (Windows).
+2. Navigate to your KeyPilot folder:  
+   `cd /Users/danadube/Documents/-CODE_PROJECTS/KeyPilot`
+3. If `.env.local` doesn’t exist, create it:  
+   `touch .env.local`
+4. Open `.env.local` in your editor (VS Code, Cursor, etc.).
+5. Add or replace with these lines (use your real values from Steps 1.3 and 2.3):
+
+   ```env
+   DATABASE_URL="postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true"
+   DIRECT_URL="postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:5432/postgres"
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_
+   CLERK_SECRET_KEY=sk_test_
+   CLERK_WEBHOOK_SECRET=whsec_
+   NEXT_PUBLIC_APP_URL=http://localhost:3000
    ```
-   DATABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true
-   DIRECT_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
+
+6. Run in your terminal:  
+   `npx prisma db push`
+
+7. You should see: `Your database is now in sync with your schema.`
+
+**✓ Checkpoint:** In Supabase → **Table Editor**, you see tables like `users`, `properties`, `contacts`, `open_houses`, etc.
+
+---
+
+# Step 2: Clerk (Authentication)
+
+### 2.1 Create account / sign in
+
+1. Open **[clerk.com](https://clerk.com)**
+2. Click **Start building for free** or **Sign in**
+3. Sign in with GitHub (recommended)
+
+---
+
+### 2.2 Create an application
+
+1. In the Clerk dashboard, click **Add application** (or **Create application**)
+2. **Application name:** `KeyPilot`
+3. Choose sign-in options (at least one required):
+   - **Email** – recommended, enable it
+   - **Google**, **GitHub**, etc. – optional
+4. Click **Create application**
+5. You’ll be taken to the application dashboard
+
+**✓ Checkpoint:** You’re in the KeyPilot application in Clerk.
+
+---
+
+### 2.3 Get API keys
+
+**Navigate to API Keys:**
+1. In the **left sidebar**, look for **"Configure"** (or "Configuration"). Click it.
+2. In the submenu, click **"API Keys"**.  
+   - *Alternate path:* Some Clerk layouts have **"API Keys"** directly in the sidebar—click it.
+3. You should land on a page titled something like "API Keys" or "Keys".
+4. You’ll see two keys:
+   - **Publishable key** – a long string starting with `pk_test_` (dev) or `pk_live_` (prod). Safe to expose in frontend.
+   - **Secret key** – a long string starting with `sk_test_` or `sk_live_`. Never expose publicly.
+5. Each key has a **Copy** button (clipboard icon). Click **Copy** for each and paste into a secure note:
+   - Publishable key → `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+   - Secret key → `CLERK_SECRET_KEY`
+4. Update your `.env.local` with these values
+
+**✓ Checkpoint:** `.env.local` contains valid `pk_test_` and `sk_test_` (or `pk_live_` / `sk_live_`) values.
+
+---
+
+### 2.4 Configure paths (for sign-in / sign-up URLs)
+
+1. In Clerk sidebar, go to **Customization** → **Paths** (or **Configure** → **Paths**)
+2. Set:
+   - **Sign-in URL:** `/sign-in`
+   - **Sign-up URL:** `/sign-up`
+   - **After sign-in URL:** `/`
+   - **After sign-up URL:** `/`
+3. Save if there’s a **Save** button
+
+**✓ Checkpoint:** Paths are set to match your Next.js routes.
+
+---
+
+### 2.5 Test Clerk locally (optional)
+
+1. Ensure `.env.local` has valid Clerk keys
+2. Run:
+
+   ```bash
+   npm run dev
    ```
 
-### Run migrations
+3. Open [http://localhost:3000](http://localhost:3000)
+4. Go to `/sign-in` – you should see the Clerk sign-in form
+5. Create a test user (email + password)
 
-```bash
-# Install dependencies (if not already done)
-npm install
-
-# Push the Prisma schema to Supabase
-npx prisma db push
-
-# Or, for versioned migrations (recommended for production)
-npx prisma migrate dev --name init
-```
+**Note:** Until the webhook is configured, signing in will show “User not found” in the app because the user isn’t in your database yet. That’s expected. The webhook will fix this once Vercel is deployed.
 
 ---
 
-## 3. Clerk Authentication
+# Step 3: Vercel (Hosting)
 
-### Create a Clerk application
+### 3.1 Sign in and import the project
 
-1. Go to [Clerk](https://clerk.com) and sign in (or create an account).
-2. Click **Add application**.
-3. Choose **Email** (and optionally **Google** or other providers).
-4. Name it `KeyPilot` and create it.
+**Sign in:**
+1. Open **[vercel.com](https://vercel.com)** in your browser.
+2. In the top-right, click **"Log in"** or **"Sign up"**.
+3. Choose **"Continue with GitHub"** (not Email or GitLab).
+4. If prompted, authorize Vercel to access your GitHub account. Click **"Authorize Vercel"** or similar.
 
-### Get API keys
+**Import the repo:**
+5. You’ll land on the Vercel dashboard (a grid of projects, or an empty state).
+6. Click the **"Add New…"** button (top-right). A dropdown opens.
+7. Click **"Project"** (not "Storage" or "Edge Config").
+8. You’ll see **"Import Git Repository"** with a list of your GitHub repos.
+9. Type **"keypilot"** in the search box if it’s not visible, or scroll to find **danadube/keypilot**.
+10. Next to the repo, click **"Import"** (blue button).
 
-1. In the Clerk dashboard, go to **API Keys**.
-2. Copy:
-   - **Publishable key** → `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
-   - **Secret key** → `CLERK_SECRET_KEY`
-
-### Configure webhook (syncs users to your DB)
-
-1. In Clerk, go to **Webhooks** → **Add Endpoint**.
-2. **Endpoint URL:**  
-   - Local: `https://your-ngrok-url.ngrok.io/api/v1/auth/webhook` (or similar tunnel)  
-   - Production: `https://your-app.vercel.app/api/v1/auth/webhook`
-3. Subscribe to: **User created**, **User updated**.
-4. Copy the **Signing secret** → `CLERK_WEBHOOK_SECRET` (starts with `whsec_`).
-
-> **Note:** For local webhook testing, use [ngrok](https://ngrok.com) or [localtunnel](https://localtunnel.github.io/www/).
+**✓ Checkpoint:** You see the project configuration screen (Framework preset, Root Directory, Build settings).
 
 ---
 
-## 4. Vercel Deployment
+### 3.2 Configure build settings
 
-### Connect your GitHub repo
+1. **Framework Preset:** Next.js (should be auto-detected)
+2. **Root Directory:** leave as `.` (project root)
+3. **Build and Output Settings:** defaults are fine
 
-1. Go to [Vercel](https://vercel.com) and sign in with GitHub.
-2. Click **Add New** → **Project**.
-3. Import your **KeyPilot** (or `keypilot`) repository.
-4. Vercel will detect Next.js automatically. Click **Deploy** (you can adjust settings later).
-
-### Configure environment variables
-
-1. In your Vercel project, go to **Settings** → **Environment Variables**.
-2. Add these for **Production**, **Preview**, and **Development**:
-
-   | Name | Value | Notes |
-   |-----|-------|-------|
-   | `DATABASE_URL` | From Supabase (Transaction pooler) | Pooled connection |
-   | `DIRECT_URL` | From Supabase (Direct) | For migrations |
-   | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | From Clerk | Publishable key |
-   | `CLERK_SECRET_KEY` | From Clerk | Secret key |
-   | `CLERK_WEBHOOK_SECRET` | From Clerk webhook | Signing secret |
-   | `NEXT_PUBLIC_APP_URL` | `https://your-project.vercel.app` | Your Vercel URL |
-
-3. **Important:** Set `NEXT_PUBLIC_APP_URL` to your actual Vercel domain (e.g. `https://keypilot-xxx.vercel.app`).
-
-### Update Clerk and Webhook URLs
-
-1. **Clerk Dashboard → Paths:**  
-   - Sign-in: `/sign-in`  
-   - Sign-up: `/sign-up`  
-   - After sign-in: `/`
-
-2. **Clerk Dashboard → Domains:**  
-   Add your Vercel domain (e.g. `keypilot-xxx.vercel.app`).
-
-3. **Clerk Webhook:**  
-   - Use production URL: `https://your-app.vercel.app/api/v1/auth/webhook`
-
-### Redeploy
-
-After adding environment variables, go to **Deployments** → **⋮** on the latest deployment → **Redeploy**.
+**Do not deploy yet.** Add environment variables first.
 
 ---
 
-## 5. Environment Variables Checklist
+### 3.3 Add environment variables
 
-### Local (.env.local)
+**Open the env vars section:**
+1. On the project configuration page, scroll down to **"Environment Variables"**.
+2. Click to **expand** it if it’s collapsed (click the row or a down arrow).
+3. You’ll see an empty table or "No environment variables" plus an **"Add"** or **"Add New"** button.
 
-Create `.env.local` in the project root:
+**Add each variable:**
+4. Click **"Add"** (or "Add New" / the **+** icon).
+5. A form appears with: **Name**, **Value**, and **Environments** (checkboxes).
+6. Add these one by one:
+
+   | Name | Value | Environments |
+   |------|-------|--------------|
+   | `DATABASE_URL` | Your Supabase URI (port 6543, `?pgbouncer=true`) | Production, Preview, Development |
+   | `DIRECT_URL` | Your Supabase direct URI (port 5432) | Production, Preview, Development |
+   | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Your Clerk publishable key (`pk_test_` or `pk_live_`) | Production, Preview, Development |
+   | `CLERK_SECRET_KEY` | Your Clerk secret key (`sk_test_` or `sk_live_`) | Production, Preview, Development |
+   | `CLERK_WEBHOOK_SECRET` | Leave empty for now – you’ll add it in Step 4 | Production, Preview, Development |
+   | `NEXT_PUBLIC_APP_URL` | Use a placeholder for now, e.g. `https://keypilot.vercel.app` – we’ll fix it after deploy | Production, Preview, Development |
+
+7. For each variable:
+   - In **Name**, type the exact variable name (e.g. `DATABASE_URL`).
+   - In **Value**, paste your actual value (no quotes needed).
+   - Under **Environments**, check **Production**, **Preview**, and **Development** (all three).
+   - Click **"Add"** or the checkmark (✓) to save.
+   - Repeat for the next variable.
+8. When all 6 variables are added, scroll to the bottom and click **"Deploy"** (large button).
+
+**✓ Checkpoint:** Build starts. You’ll get a URL like `https://keypilot-xxx.vercel.app` when it finishes.
+
+---
+
+### 3.4 Update NEXT_PUBLIC_APP_URL
+
+1. Wait for the first deployment to finish
+2. Copy your deployment URL (e.g. `https://keypilot-xyz123.vercel.app`)
+3. In Vercel: **Settings** → **Environment Variables**
+4. Find `NEXT_PUBLIC_APP_URL` and edit it
+5. Set the value to your actual deployment URL
+6. Redeploy: **Deployments** → three dots on the latest → **Redeploy**
+
+**✓ Checkpoint:** `NEXT_PUBLIC_APP_URL` matches your live Vercel URL.
+
+---
+
+# Step 4: Clerk Webhook (Sync users to database)
+
+### 4.1 Create the webhook in Clerk
+
+**Navigate to Webhooks:**
+1. Go to **[dashboard.clerk.com](https://dashboard.clerk.com)** and ensure you’re in your KeyPilot application.
+2. In the left sidebar, click **"Webhooks"** (may be under "Configure" → "Webhooks").
+3. Click **"Add Endpoint"** (or "+ Add endpoint").
+4. A form appears. In **"Endpoint URL"**, paste:
+   - Example: `https://keypilot-xyz123.vercel.app/api/v1/auth/webhook`
+5. Under **"Subscribe to events"** or **"Events"**, check the boxes for:
+   - **user.created**
+   - **user.updated**  
+   (You may need to click "Select events" or expand a list first.)
+6. Click **"Create"** or **"Add endpoint"**.
+7. After creation, the page shows the new endpoint. Find **"Signing secret"** – it starts with `whsec_`.
+8. Click **"Reveal"** if it’s hidden, then click **"Copy"** to copy it. Save it somewhere safe.
+
+**✓ Checkpoint:** You have a webhook URL and a signing secret (`whsec_...`).
+
+---
+
+### 4.2 Add CLERK_WEBHOOK_SECRET to Vercel
+
+1. Go to **Vercel** → your KeyPilot project
+2. **Settings** → **Environment Variables**
+3. Find `CLERK_WEBHOOK_SECRET`
+4. If it’s empty, edit it and paste the signing secret
+5. If it doesn’t exist, add:
+   - **Name:** `CLERK_WEBHOOK_SECRET`
+   - **Value:** `whsec_...` (from Clerk)
+   - **Environments:** Production, Preview, Development
+6. Save
+7. Go to **Deployments** → three dots on the latest → **Redeploy**
+
+**✓ Checkpoint:** Webhook secret is in Vercel and a redeploy has completed.
+
+---
+
+### 4.3 Add your Vercel domain to Clerk
+
+1. In Clerk, go to **Configure** → **Domains** (or **Paths and Domains**)
+2. Under **Allowed redirect URLs** or **Authorized domains**, add:
+   - `https://keypilot-xxx.vercel.app` (or your real Vercel URL)
+   - `https://keypilot-xxx.vercel.app/*` (if needed)
+3. Save
+
+**✓ Checkpoint:** Clerk knows about your production domain.
+
+---
+
+# Step 5: Verify everything
+
+### 5.1 Test production deployment
+
+1. Open your Vercel URL: `https://keypilot-xxx.vercel.app`
+2. You should see the KeyPilot dashboard (or a redirect to sign-in)
+3. Click **Sign Up** (or go to `/sign-up`)
+4. Create a new account with an email and password
+5. After signing up, you should be redirected to the dashboard
+
+**✓ Checkpoint:** You can sign up, sign in, and see the dashboard.
+
+---
+
+### 5.2 Confirm user sync to database
+
+1. In **Supabase** → **Table Editor** → open the `users` table
+2. You should see a row for the user you just created
+
+**✓ Checkpoint:** The `users` table has your new user.
+
+---
+
+### 5.3 Test local development
+
+1. Ensure `.env.local` has all variables (including `CLERK_WEBHOOK_SECRET` if you’re testing webhooks locally with a tunnel)
+2. Run:
+
+   ```bash
+   npm run dev
+   ```
+
+3. Open [http://localhost:3000](http://localhost:3000)
+4. Sign in with the account you created – it should work if the webhook ran in production
+
+**✓ Checkpoint:** Local dev works with the same credentials.
+
+---
+
+# Environment variables summary
+
+### Required for local development (.env.local)
 
 ```env
-DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true
-DIRECT_URL=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
-CLERK_WEBHOOK_SECRET=whsec_...
+DATABASE_URL="postgresql://postgres.[ref]:[PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true"
+DIRECT_URL="postgresql://postgres.[ref]:[PASSWORD]@aws-0-[region].pooler.supabase.com:5432/postgres"
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_xxxxx
+CLERK_SECRET_KEY=sk_test_xxxxx
+CLERK_WEBHOOK_SECRET=whsec_xxxxx
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-### Vercel (Settings → Environment Variables)
+### Required for Vercel (production)
 
-Same variables as above, with `NEXT_PUBLIC_APP_URL` set to your production URL.
+| Variable | Where to get it |
+|----------|-----------------|
+| `DATABASE_URL` | Supabase → Settings → Database → URI (Transaction, port 6543, `?pgbouncer=true`) |
+| `DIRECT_URL` | Supabase → Settings → Database → URI (Session, port 5432) |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk → API Keys → Publishable key |
+| `CLERK_SECRET_KEY` | Clerk → API Keys → Secret key |
+| `CLERK_WEBHOOK_SECRET` | Clerk → Webhooks → Endpoint → Signing secret |
+| `NEXT_PUBLIC_APP_URL` | Your Vercel deployment URL (e.g. `https://keypilot-xxx.vercel.app`) |
 
 ---
 
-## Quick Start Summary
+# Troubleshooting
+
+| Problem | What to check |
+|---------|----------------|
+| **Vercel build fails** | All 6 env vars set? `postinstall` runs `prisma generate` – no DB needed for that. |
+| **"User not found" after sign-in** | Clerk webhook URL correct? `CLERK_WEBHOOK_SECRET` set in Vercel? Try signing up again after fixing. |
+| **Database connection error** | `DATABASE_URL` uses port 6543 and `?pgbouncer=true`. `DIRECT_URL` uses port 5432. Password correct and URL-encoded? |
+| **Redirect loop on sign-in** | Clerk domain added? `NEXT_PUBLIC_APP_URL` matches your Vercel URL? |
+| **Webhook not firing** | Endpoint is `https://your-domain.vercel.app/api/v1/auth/webhook`. Check Clerk → Webhooks → Recent deliveries for errors. |
+
+---
+
+# Quick reference
 
 | Step | Action |
 |------|--------|
-| 1 | Create GitHub repo → push code |
-| 2 | Create Supabase project → get `DATABASE_URL` + `DIRECT_URL` → run `npx prisma db push` |
-| 3 | Create Clerk app → get keys → create webhook |
-| 4 | Import repo in Vercel → add env vars → deploy |
-| 5 | Update Clerk domains and webhook URL to production |
-
----
-
-## Troubleshooting
-
-- **Database connection errors:** Ensure `DIRECT_URL` uses port 5432 and `DATABASE_URL` uses 6543 with `?pgbouncer=true` for serverless.
-- **Clerk "User not found":** Make sure the Clerk webhook is firing and hitting `/api/v1/auth/webhook`; check that `CLERK_WEBHOOK_SECRET` is correct.
-- **Vercel build fails:** Confirm all env vars are set and that `npx prisma generate` runs (it’s in `postinstall`).
-- **Redirect loop:** Check Clerk path and domain settings and that `NEXT_PUBLIC_APP_URL` matches your app URL.
+| 1 | Supabase: create project → get `DATABASE_URL` & `DIRECT_URL` → `npx prisma db push` |
+| 2 | Clerk: create app → get API keys → configure paths |
+| 3 | Vercel: import repo → add env vars → deploy |
+| 4 | Clerk: create webhook → add `CLERK_WEBHOOK_SECRET` to Vercel → redeploy |
+| 5 | Verify: sign up, check `users` table in Supabase |
