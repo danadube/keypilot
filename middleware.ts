@@ -1,5 +1,8 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
+// Use Node.js runtime to avoid Edge middleware failures on Vercel
+export const runtime = "nodejs";
+
 const isPublicRoute = createRouteMatcher([
   "/oh/(.*)",
   "/api/v1/visitor-signin",
