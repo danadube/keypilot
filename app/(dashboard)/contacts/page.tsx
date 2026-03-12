@@ -1,8 +1,5 @@
+import { ContactsList } from "@/components/contacts/ContactsList";
+
 export default function ContactsPage() {
-  return (
-    <div>
-      <h1>Contacts</h1>
-      {/* TODO: implement */}
-    </div>
-  );
+  return <ContactsList />;
 }

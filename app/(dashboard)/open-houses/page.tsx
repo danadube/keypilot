@@ -1,8 +1,5 @@
+import { OpenHousesList } from "@/components/open-houses/OpenHousesList";
+
 export default function OpenHousesPage() {
-  return (
-    <div>
-      <h1>Open Houses</h1>
-      {/* TODO: implement */}
-    </div>
-  );
+  return <OpenHousesList />;
 }

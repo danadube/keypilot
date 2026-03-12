@@ -369,6 +369,20 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 ---
 
+# Optional: Resend (Email sending)
+
+To enable **Send email** on follow-up drafts:
+
+1. Sign up at [resend.com](https://resend.com)
+2. Get your API key from **API Keys**
+3. Add to `.env.local` and Vercel:
+   - `RESEND_API_KEY=re_xxxxx`
+   - `RESEND_FROM_EMAIL=you@yourdomain.com` (optional; defaults to `onboarding@resend.dev` for testing)
+
+**Note:** Production emails require a verified domain in Resend.
+
+---
+
 # Troubleshooting
 
 | Problem | What to check |
@@ -376,6 +390,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 | **Vercel build fails** | All 6 env vars set? `postinstall` runs `prisma generate` – no DB needed for that. |
 | **"User not found" after sign-in** | Clerk webhook URL correct? `CLERK_WEBHOOK_SECRET` set in Vercel? Try signing up again after fixing. |
 | **Database connection error** | `DATABASE_URL` uses port 6543 and `?pgbouncer=true`. `DIRECT_URL` uses port 5432. Password correct and URL-encoded? |
+| **`prisma db push` fails with "prepared statement already exists"** | Use **Session** mode (port 5432) for `DIRECT_URL`, not Transaction (6543). `prisma.config.ts` prefers `DIRECT_URL` for schema ops. If it still fails, run `npm run db:push:direct`. See [Supabase Prisma troubleshooting](https://supabase.com/docs/guides/database/prisma/prisma-troubleshooting). |
 | **Redirect loop on sign-in** | Clerk domain added? `NEXT_PUBLIC_APP_URL` matches your Vercel URL? |
 | **Webhook not firing** | Endpoint is `https://your-domain.vercel.app/api/v1/auth/webhook`. Check Clerk → Webhooks → Recent deliveries for errors. |
 

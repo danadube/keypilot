@@ -14,7 +14,7 @@ A modular real estate operations SaaS platform for agents. Phase 1 focuses on **
 
 ```bash
 npm install
-cp .env.local.example .env.local   # Then fill in your secrets
+cp .env.example .env.local        # Then fill in your secrets
 npx prisma db push                  # Create database tables
 npm run dev
 ```

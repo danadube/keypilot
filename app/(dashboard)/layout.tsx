@@ -42,11 +42,13 @@ export default function DashboardLayout({
           </Link>
         </nav>
       </aside>
-      <main className="flex-1 p-6">
+      <main className="min-h-0 flex-1 overflow-auto p-6">
         <header className="mb-6 flex justify-end">
           <UserButton afterSignOutUrl="/" />
         </header>
-        {children}
+        <div className="min-h-[50vh]">
+          {children}
+        </div>
       </main>
     </div>
   );

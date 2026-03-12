@@ -1,8 +1,5 @@
+import { SettingsPageContent } from "@/components/settings/SettingsPage";
+
 export default function SettingsPage() {
-  return (
-    <div>
-      <h1>Settings</h1>
-      {/* TODO: implement */}
-    </div>
-  );
+  return <SettingsPageContent />;
 }

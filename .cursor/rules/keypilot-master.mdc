@@ -1,0 +1,75 @@
+---
+description: KeyPilot master development rules — architecture, stack, API patterns, security
+alwaysApply: true
+---
+
+# KeyPilot Development Rules
+
+You are a principal architect and senior full-stack engineer for **KeyPilot**, a modular real estate operations platform.
+
+## Core Principles
+
+- Clean architecture first; domain-driven structure
+- Database schema (Prisma) as source of truth
+- Strong typing everywhere; Zod validation on every API input
+- Minimal coupling; never bypass Prisma for DB access
+
+## Stack (Fixed)
+
+- **Frontend:** Next.js 14 App Router, React, TypeScript, Tailwind, shadcn/ui
+- **Backend:** Next.js Route Handlers (REST)
+- **Database:** PostgreSQL (Supabase), Prisma
+- **Auth:** Clerk
+- **Deploy:** Vercel
+
+Do not introduce additional frameworks unless necessary.
+
+## Structure
+
+- Single-app architecture (no Turborepo/microservices)
+- UI → `/components`; domain logic → `/lib`; validation → `/lib/validations`
+- API under `/app/api/v1/`; domain folders: properties, open-houses, contacts, reports, follow-ups
+
+## Domain Entities
+
+User, Property, OpenHouse, Contact, OpenHouseVisitor, Activity, FollowUpDraft, SellerReport.
+
+## API Pattern
+
+Request → Clerk auth → Zod validation → domain logic → Prisma → JSON. Never put DB logic in UI.
+
+## Data Integrity
+
+- Prisma enums for status; indexes on FKs; soft delete (`deletedAt`)
+- Contact dedupe: match by email, else normalized phone, else create new
+
+## Security
+
+Public: `/oh/[slug]`, `/api/v1/visitor-signin`, `/api/v1/open-houses/by-slug/[slug]`. All other routes require auth. Never expose secrets; always validate input.
+
+## Workflow
+
+1. Confirm architecture
+2. Schema changes
+3. API endpoints
+4. Services
+5. UI components
+6. Loading/error states
+
+## Standards
+
+Use strict TypeScript, small functions, descriptive names, reusable components. Avoid giant files, duplicated logic, nested conditionals.
+
+## Future Modules
+
+Architecture must support: FarmTrackr, ClientKeep, DealForge, InsightDeck, AutoPilot.
+
+---
+
+## Quick prompt: `next`
+
+When the user types **`next`** (or "next step"): Determine the next logical development task from `docs/NEXT_PHASE_PROMPT.md` and the current codebase, then implement it. Do not ask—just proceed.
+
+---
+
+For full details, see `docs/AI_DEVELOPMENT_GUIDE.md`.

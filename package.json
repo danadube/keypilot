@@ -8,32 +8,43 @@
     "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint",
-    "db:push": "prisma db push"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "db:push": "prisma db push",
+    "db:push:direct": "node scripts/db-push-direct.cjs"
   },
   "dependencies": {
     "@clerk/nextjs": "^5.7.5",
     "@prisma/client": "^6.19.2",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-slot": "^1.2.4",
     "@react-pdf/renderer": "^4.3.2",
     "class-variance-authority": "^0.7.1",
+    "lucide-react": "^0.577.0",
     "nanoid": "^5.1.6",
     "next": "14.2.35",
     "prisma": "^6.19.2",
     "qrcode": "^1.5.4",
     "react": "^18",
     "react-dom": "^18",
+    "resend": "^6.9.3",
     "svix": "^1.87.0",
     "tailwind-merge": "^3.5.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
+    "jest": "^30.3.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
+    "ts-jest": "^29.4.6",
     "typescript": "^5"
   }
 }
