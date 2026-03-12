@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  clerkId   String   @unique
+  name      String
+  email     String   @unique
+  role      String   @default("agent")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  properties    Property[]
+  openHouses    OpenHouse[]
+  sellerReports SellerReport[]
+
+  @@index([clerkId])
+  @@map("users")
+}
+
+model Property {
+  id              String    @id @default(uuid())
+  address1        String
+  address2        String?
+  city            String
+  state           String
+  zip             String
+  listingPrice    Decimal?  @db.Decimal(12, 2)
+  notes           String?
+  createdByUserId String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  createdByUser User        @relation(fields: [createdByUserId], references: [id])
+  openHouses    OpenHouse[]
+  activities    Activity[]
+
+  @@index([createdByUserId, deletedAt])
+  @@index([city, state])
+  @@index([zip])
+  @@map("properties")
+}
+
+model Contact {
+  id               String    @id @default(uuid())
+  firstName        String
+  lastName         String
+  email            String?
+  phone            String?
+  hasAgent         Boolean?
+  timeline         String?
+  notes            String?
+  source           String    @default("Open House")
+  googleResourceName String? @unique
+  googleEtag       String?
+  externalSource   String?
+  externalSourceId String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+
+  openHouseVisits OpenHouseVisitor[]
+  activities      Activity[]
+  followUpDrafts  FollowUpDraft[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([source, createdAt, deletedAt])
+  @@map("contacts")
+}
+
+model OpenHouse {
+  id         String          @id @default(uuid())
+  propertyId String
+  hostUserId String
+  title      String
+  startAt    DateTime
+  endAt      DateTime
+  notes      String?
+  qrSlug     String          @unique
+  status     OpenHouseStatus @default(SCHEDULED)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  deletedAt DateTime?
+
+  property      Property           @relation(fields: [propertyId], references: [id])
+  hostUser      User               @relation(fields: [hostUserId], references: [id])
+  visitors      OpenHouseVisitor[]
+  activities    Activity[]
+  drafts        FollowUpDraft[]
+  sellerReports SellerReport[]
+
+  @@index([hostUserId, status, startAt])
+  @@index([propertyId])
+  @@map("open_houses")
+}
+
+enum OpenHouseStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model OpenHouseVisitor {
+  id              String      @id @default(uuid())
+  openHouseId     String
+  contactId       String
+  signInMethod    SignInMethod
+  submittedAt     DateTime
+  rawResponseJson Json?
+  createdAt       DateTime    @default(now())
+
+  openHouse OpenHouse @relation(fields: [openHouseId], references: [id])
+  contact   Contact   @relation(fields: [contactId], references: [id])
+
+  @@index([openHouseId])
+  @@index([contactId])
+  @@map("open_house_visitors")
+}
+
+enum SignInMethod {
+  TABLET
+  QR
+  MANUAL
+}
+
+model Activity {
+  id           String       @id @default(uuid())
+  contactId    String?
+  propertyId   String?
+  openHouseId  String?
+  activityType ActivityType
+  body         String
+  occurredAt   DateTime
+  createdAt    DateTime     @default(now())
+
+  contact   Contact?   @relation(fields: [contactId], references: [id])
+  property  Property?  @relation(fields: [propertyId], references: [id])
+  openHouse OpenHouse? @relation(fields: [openHouseId], references: [id])
+
+  @@index([contactId])
+  @@index([propertyId])
+  @@index([openHouseId])
+  @@index([occurredAt])
+  @@map("activities")
+}
+
+enum ActivityType {
+  OPEN_HOUSE_CREATED
+  VISITOR_SIGNED_IN
+  FOLLOW_UP_DRAFT_CREATED
+  SELLER_REPORT_GENERATED
+}
+
+model FollowUpDraft {
+  id          String         @id @default(uuid())
+  contactId   String
+  openHouseId String
+  subject     String
+  body        String         @db.Text
+  status      FollowUpStatus @default(DRAFT)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  deletedAt   DateTime?
+
+  contact   Contact   @relation(fields: [contactId], references: [id])
+  openHouse OpenHouse @relation(fields: [openHouseId], references: [id])
+
+  @@index([contactId])
+  @@index([openHouseId])
+  @@index([status])
+  @@map("follow_up_drafts")
+}
+
+enum FollowUpStatus {
+  DRAFT
+  REVIEWED
+  SENT_MANUAL
+  ARCHIVED
+}
+
+model SellerReport {
+  id                String   @id @default(uuid())
+  openHouseId       String
+  generatedByUserId String
+  reportJson        Json
+  createdAt         DateTime @default(now())
+
+  openHouse       OpenHouse @relation(fields: [openHouseId], references: [id])
+  generatedByUser User      @relation(fields: [generatedByUserId], references: [id])
+
+  @@index([openHouseId])
+  @@index([generatedByUserId])
+  @@map("seller_reports")
+}
