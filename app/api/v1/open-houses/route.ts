@@ -44,7 +44,14 @@ export async function POST(req: NextRequest) {
     }
     const openHouse = await prisma.openHouse.create({
       data: {
-        ...parsed,
+        propertyId: parsed.propertyId,
+        title: parsed.title,
+        startAt: parsed.startAt,
+        endAt: parsed.endAt,
+        notes: parsed.notes?.trim() || null,
+        agentName: parsed.agentName?.trim() || null,
+        agentEmail: parsed.agentEmail?.trim() || null,
+        agentPhone: parsed.agentPhone?.trim() || null,
         hostUserId: user.id,
         qrSlug,
       },

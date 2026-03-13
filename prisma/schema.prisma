@@ -44,6 +44,7 @@ model Property {
   state           String
   zip             String
   listingPrice    Decimal?  @db.Decimal(12, 2)
+  imageUrl        String?
   notes           String?
   createdByUserId String
   createdAt       DateTime  @default(now())
@@ -106,18 +107,21 @@ enum ContactStatus {
 }
 
 model OpenHouse {
-  id         String          @id @default(uuid())
-  propertyId String
-  hostUserId String
-  title      String
-  startAt    DateTime
-  endAt      DateTime
-  notes      String?
-  qrSlug     String          @unique
-  status     OpenHouseStatus @default(SCHEDULED)
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
-  deletedAt DateTime?
+  id           String          @id @default(uuid())
+  propertyId   String
+  hostUserId   String
+  title        String
+  startAt      DateTime
+  endAt        DateTime
+  agentName    String?
+  agentEmail   String?
+  agentPhone   String?
+  notes        String?
+  qrSlug       String          @unique
+  status       OpenHouseStatus @default(SCHEDULED)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  deletedAt    DateTime?
 
   property      Property           @relation(fields: [propertyId], references: [id])
   hostUser      User               @relation(fields: [hostUserId], references: [id])

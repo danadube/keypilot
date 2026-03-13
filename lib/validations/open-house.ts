@@ -6,6 +6,9 @@ export const CreateOpenHouseSchema = z
     title: z.string().min(1, "Title is required"),
     startAt: z.coerce.date(),
     endAt: z.coerce.date(),
+    agentName: z.string().optional().nullable(),
+    agentEmail: z.string().optional().nullable(),
+    agentPhone: z.string().optional().nullable(),
     notes: z.string().optional().nullable(),
   })
   .refine((data) => data.endAt > data.startAt, {
@@ -19,6 +22,9 @@ export const UpdateOpenHouseSchema = z
     title: z.string().min(1).optional(),
     startAt: z.coerce.date().optional(),
     endAt: z.coerce.date().optional(),
+    agentName: z.string().optional().nullable(),
+    agentEmail: z.string().optional().nullable(),
+    agentPhone: z.string().optional().nullable(),
     notes: z.string().optional().nullable(),
   })
   .refine(

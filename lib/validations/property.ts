@@ -19,6 +19,7 @@ export const UpdatePropertySchema = z.object({
   state: z.string().min(1).optional(),
   zip: z.string().min(1).optional(),
   listingPrice: z.number().positive().optional().nullable(),
+  imageUrl: z.string().url().optional().nullable(),
   notes: z.string().optional().nullable(),
 });
 
