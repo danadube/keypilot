@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { apiErrorFromCaught } from "@/lib/api-response";
 
 async function canAccessContact(contactId: string, userId: string): Promise<boolean> {
   const openHouses = await prisma.openHouse.findMany({
@@ -41,10 +42,6 @@ export async function GET(
 
     return NextResponse.json({ data: activities });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json(
-      { error: { message } },
-      { status: err instanceof Error && message === "Unauthorized" ? 401 : 500 }
-    );
+    return apiErrorFromCaught(err);
   }
 }

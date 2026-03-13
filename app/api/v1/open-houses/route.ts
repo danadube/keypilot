@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { CreateOpenHouseSchema } from "@/lib/validations/open-house";
 import { generateQrSlug } from "@/lib/slugify";
 import { ActivityType } from "@prisma/client";
+import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
 export async function GET(req: NextRequest) {
   try {
@@ -24,11 +25,7 @@ export async function GET(req: NextRequest) {
     });
     return NextResponse.json({ data: openHouses });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Unauthorized";
-    return NextResponse.json(
-      { error: { message } },
-      { status: e instanceof Error && e.message === "Unauthorized" ? 401 : 500 }
-    );
+    return apiErrorFromCaught(e);
   }
 }
 
@@ -61,23 +58,15 @@ export async function POST(req: NextRequest) {
     await prisma.activity.create({
       data: {
         activityType: ActivityType.OPEN_HOUSE_CREATED,
-        body: `Open house created for ${address}`,
+        body: `Showing created for ${address}`,
         occurredAt: new Date(),
         openHouseId: openHouse.id,
       },
     });
     return NextResponse.json({ data: openHouse });
   } catch (e) {
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return NextResponse.json({ error: { message: "Unauthorized" } }, { status: 401 });
-    }
     const zod = (e as { errors?: unknown[] })?.errors;
-    const message = zod?.length
-      ? "Validation failed"
-      : e instanceof Error ? e.message : "Failed to create open house";
-    return NextResponse.json(
-      { error: { message } },
-      { status: zod?.length ? 400 : 500 }
-    );
+    if (zod?.length) return apiError("Validation failed", 400);
+    return apiErrorFromCaught(e);
   }
 }

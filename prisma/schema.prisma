@@ -8,18 +8,28 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model User {
-  id        String   @id @default(uuid())
-  clerkId   String   @unique
-  name      String
-  email     String   @unique
-  role      String   @default("agent")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum ProductTier {
+  OPEN_HOUSE
+  FULL_CRM
+}
 
-  properties    Property[]
-  openHouses    OpenHouse[]
-  sellerReports SellerReport[]
+model User {
+  id          String      @id @default(uuid())
+  clerkId     String      @unique
+  name        String
+  email       String      @unique
+  role        String      @default("agent")
+  productTier ProductTier  @default(OPEN_HOUSE)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  properties        Property[]
+  openHouses        OpenHouse[]
+  sellerReports     SellerReport[]
+  assignedContacts  Contact[]
+  tags              Tag[]
+  followUpReminders FollowUpReminder[]
+  deals             Deal[]
 
   @@index([clerkId])
   @@map("users")
@@ -43,6 +53,7 @@ model Property {
   createdByUser User        @relation(fields: [createdByUserId], references: [id])
   openHouses    OpenHouse[]
   activities    Activity[]
+  deals         Deal[]
 
   @@index([createdByUserId, deletedAt])
   @@index([city, state])
@@ -51,7 +62,7 @@ model Property {
 }
 
 model Contact {
-  id               String    @id @default(uuid())
+  id               String         @id @default(uuid())
   firstName        String
   lastName         String
   email            String?
@@ -59,23 +70,39 @@ model Contact {
   hasAgent         Boolean?
   timeline         String?
   notes            String?
-  source           String    @default("Open House")
-  googleResourceName String? @unique
+  source           String         @default("ShowingsHQ")
+  status           ContactStatus? @default(LEAD)
+  assignedToUserId String?
+  googleResourceName String?      @unique
   googleEtag       String?
   externalSource   String?
   externalSourceId String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
   deletedAt        DateTime?
 
-  openHouseVisits OpenHouseVisitor[]
-  activities      Activity[]
-  followUpDrafts  FollowUpDraft[]
+  assignedToUser   User?          @relation(fields: [assignedToUserId], references: [id])
+  openHouseVisits  OpenHouseVisitor[]
+  activities       Activity[]
+  followUpDrafts   FollowUpDraft[]
+  contactTags      ContactTag[]
+  followUpReminders FollowUpReminder[]
+  deals            Deal[]
 
   @@index([email])
   @@index([phone])
   @@index([source, createdAt, deletedAt])
+  @@index([status])
+  @@index([assignedToUserId])
   @@map("contacts")
+}
+
+enum ContactStatus {
+  LEAD
+  CONTACTED
+  NURTURING
+  READY
+  LOST
 }
 
 model OpenHouse {
@@ -160,6 +187,10 @@ enum ActivityType {
   OPEN_HOUSE_CREATED
   VISITOR_SIGNED_IN
   FOLLOW_UP_DRAFT_CREATED
+  EMAIL_SENT
+  NOTE_ADDED
+  CALL_LOGGED
+  EMAIL_LOGGED
   SELLER_REPORT_GENERATED
 }
 
@@ -188,6 +219,91 @@ enum FollowUpStatus {
   REVIEWED
   SENT_MANUAL
   ARCHIVED
+}
+
+model Tag {
+  id        String   @id @default(uuid())
+  name      String
+  userId    String
+  createdAt DateTime @default(now())
+
+  user         User          @relation(fields: [userId], references: [id])
+  contactTags  ContactTag[]
+
+  @@unique([name, userId])
+  @@index([userId])
+  @@map("tags")
+}
+
+model ContactTag {
+  id        String   @id @default(uuid())
+  contactId String
+  tagId     String
+  createdAt DateTime @default(now())
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  tag    Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, tagId])
+  @@index([contactId])
+  @@index([tagId])
+  @@map("contact_tags")
+}
+
+model FollowUpReminder {
+  id        String              @id @default(uuid())
+  contactId String
+  userId    String
+  dueAt     DateTime
+  body      String              @db.Text
+  status    ReminderStatus      @default(PENDING)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  user   User    @relation(fields: [userId], references: [id])
+
+  @@index([contactId])
+  @@index([userId])
+  @@index([dueAt, status])
+  @@map("follow_up_reminders")
+}
+
+enum ReminderStatus {
+  PENDING
+  DONE
+  DISMISSED
+}
+
+model Deal {
+  id         String     @id @default(uuid())
+  contactId  String
+  propertyId String
+  userId     String
+  status     DealStatus @default(INTERESTED)
+  notes      String?    @db.Text
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  contact  Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([contactId])
+  @@index([propertyId])
+  @@index([status])
+  @@map("deals")
+}
+
+enum DealStatus {
+  INTERESTED
+  SHOWING
+  OFFER
+  NEGOTIATION
+  UNDER_CONTRACT
+  CLOSED
+  LOST
 }
 
 model SellerReport {

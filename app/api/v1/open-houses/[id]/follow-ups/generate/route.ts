@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { generateFollowUpDraft } from "@/lib/follow-up-template";
 import { ActivityType } from "@prisma/client";
+import { apiErrorFromCaught } from "@/lib/api-response";
 
 export async function POST(
   req: NextRequest,
@@ -82,10 +83,6 @@ export async function POST(
 
     return NextResponse.json({ data: { count } });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json(
-      { error: { message } },
-      { status: err instanceof Error && message === "Unauthorized" ? 401 : 500 }
-    );
+    return apiErrorFromCaught(err);
   }
 }

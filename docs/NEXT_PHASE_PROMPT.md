@@ -33,8 +33,17 @@ Possible next steps:
 
 1. ~~**PDF export**~~ ✅ Done – Download PDF button on seller report page
 2. ~~**Email integration**~~ ✅ Done – Send button on follow-ups (Resend)
-3. ~~**Testing**~~ ✅ Done – Jest + 18 tests (slugify, visitor, property validations)
+3. ~~**Testing**~~ ✅ Done – Jest + 51 tests (unit + integration)
 4. ~~**Refinements**~~ ✅ Done – LoadingSpinner, PageLoading, ErrorMessage with retry
+5. ~~**Phase 2 ClientKeep**~~ ✅ Done – status, assign-to-me, notes, activity labels, status filter
+
+---
+
+**Next options (need input):**
+
+- ~~**Phase 2 future**~~ ✅ Done – ContactTag, FollowUpReminder, log call/email
+- **Phase 3**: DealForge (transaction pipeline)
+- **Polish**: E2E tests, accessibility audit, performance tuning
 
 ---
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { UpdateFollowUpDraftSchema } from "@/lib/validations/follow-up-draft";
+import { apiErrorFromCaught } from "@/lib/api-response";
 
 export async function GET(
   _req: NextRequest,
@@ -35,11 +36,7 @@ export async function GET(
 
     return NextResponse.json({ data: draft });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Failed to fetch draft";
-    return NextResponse.json(
-      { error: { message: msg } },
-      { status: msg === "Unauthorized" ? 401 : 500 }
-    );
+    return apiErrorFromCaught(e);
   }
 }
 
@@ -84,10 +81,6 @@ export async function PUT(
     });
     return NextResponse.json({ data: updated });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Failed to update draft";
-    return NextResponse.json(
-      { error: { message: msg } },
-      { status: msg === "Unauthorized" ? 401 : 500 }
-    );
+    return apiErrorFromCaught(e);
   }
 }

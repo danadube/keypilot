@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { UpdateOpenHouseSchema } from "@/lib/validations/open-house";
 import { generateQrCodeDataUrl } from "@/lib/qr";
 import { OpenHouseStatus } from "@prisma/client";
+import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
 export async function GET(
   _req: NextRequest,
@@ -67,11 +68,7 @@ export async function GET(
       },
     });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Unauthorized";
-    return NextResponse.json(
-      { error: { message } },
-      { status: e instanceof Error && e.message === "Unauthorized" ? 401 : 500 }
-    );
+    return apiErrorFromCaught(e);
   }
 }
 
@@ -104,17 +101,9 @@ export async function PUT(
     });
     return NextResponse.json({ data: openHouse });
   } catch (e) {
-    if (e instanceof Error && e.message === "Unauthorized") {
-      return NextResponse.json({ error: { message: "Unauthorized" } }, { status: 401 });
-    }
     const zod = (e as { errors?: unknown[] })?.errors;
-    const message = zod?.length
-      ? "Validation failed"
-      : e instanceof Error ? e.message : "Failed to update open house";
-    return NextResponse.json(
-      { error: { message } },
-      { status: zod?.length ? 400 : 500 }
-    );
+    if (zod?.length) return apiError("Validation failed", 400);
+    return apiErrorFromCaught(e);
   }
 }
 
@@ -154,10 +143,6 @@ export async function DELETE(
     }
     return NextResponse.json({ data: { deleted: true } });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "Unauthorized";
-    return NextResponse.json(
-      { error: { message } },
-      { status: e instanceof Error && e.message === "Unauthorized" ? 401 : 500 }
-    );
+    return apiErrorFromCaught(e);
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Resend } from "resend";
+import { apiErrorFromCaught } from "@/lib/api-response";
 
 export async function POST(
   _req: NextRequest,
@@ -78,12 +79,18 @@ export async function POST(
       data: { status: "SENT_MANUAL" },
     });
 
+    await prisma.activity.create({
+      data: {
+        contactId: draft.contactId,
+        openHouseId: draft.openHouseId,
+        activityType: "EMAIL_SENT",
+        body: `Follow-up email sent: "${draft.subject}"`,
+        occurredAt: new Date(),
+      },
+    });
+
     return NextResponse.json({ data: { sent: true } });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : "Failed to send";
-    return NextResponse.json(
-      { error: { message: msg } },
-      { status: msg === "Unauthorized" ? 401 : 500 }
-    );
+    return apiErrorFromCaught(e);
   }
 }

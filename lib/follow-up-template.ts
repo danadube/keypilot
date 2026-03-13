@@ -11,7 +11,7 @@ export function generateFollowUpDraft(params: {
   const subject = `Thanks for visiting ${propertyAddress}!`;
   const body = `Hi ${contactFirstName},
 
-Thank you for stopping by the open house at ${propertyAddress}. It was great meeting you!
+Thank you for stopping by the showing at ${propertyAddress}. It was great meeting you!
 
 If you have any questions about the property or would like to schedule a private showing, please don't hesitate to reach out. I'd be happy to help you explore your options.
 

@@ -82,9 +82,9 @@ export function OpenHousesList() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Open Houses</h1>
+        <h1 className="text-2xl font-semibold">Showings</h1>
         <Button asChild>
-          <Link href="/open-houses/new">New Open House</Link>
+          <Link href="/open-houses/new">New Showing</Link>
         </Button>
       </div>
 
@@ -92,13 +92,13 @@ export function OpenHousesList() {
         <CardHeader>
           <CardTitle>Upcoming & Recent</CardTitle>
           <CardDescription>
-            Create and manage your open house events
+            Create and manage your showing events
           </CardDescription>
         </CardHeader>
         <CardContent>
           {openHouses.length === 0 ? (
             <p className="text-muted-foreground py-8 text-center">
-              No open houses yet. Create one to get started.
+              No showings yet. Create one to get started.
             </p>
           ) : (
             <Table>

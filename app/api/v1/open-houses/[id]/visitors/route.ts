@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { apiErrorFromCaught } from "@/lib/api-response";
 
 export async function GET(
   req: NextRequest,
@@ -38,10 +39,6 @@ export async function GET(
 
     return NextResponse.json({ data: visitors });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json(
-      { error: { message } },
-      { status: err instanceof Error && message === "Unauthorized" ? 401 : 500 }
-    );
+    return apiErrorFromCaught(err);
   }
 }

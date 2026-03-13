@@ -51,7 +51,7 @@ export async function findOrCreateContact(params: {
       notes: notes?.trim() || null,
       hasAgent: hasAgent ?? null,
       timeline: timeline?.trim() || null,
-      source: "Open House",
+      source: "ShowingsHQ",
     },
   });
   return { contact, wasCreated: true };

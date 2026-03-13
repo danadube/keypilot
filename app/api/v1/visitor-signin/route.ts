@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         propertyId: openHouse.propertyId,
         openHouseId: openHouse.id,
         activityType: "VISITOR_SIGNED_IN" as const,
-        body: `Visited open house at ${openHouse.property.address1}`,
+        body: `Visited showing at ${openHouse.property.address1}`,
         occurredAt: new Date(),
       },
     });

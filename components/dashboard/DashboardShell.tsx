@@ -7,11 +7,12 @@ import Link from "next/link";
 import { Home, Building2, Calendar, Users, Settings } from "lucide-react";
 import { BrandSidebarNav } from "@/components/ui/BrandSidebarNav";
 import { BrandTopbar } from "@/components/ui/BrandTopbar";
+import { ProductTierProvider } from "@/components/ProductTierProvider";
 
 const navItems = [
   { label: "Dashboard", href: "/", icon: <Home className="h-5 w-5" /> },
   { label: "Properties", href: "/properties", icon: <Building2 className="h-5 w-5" /> },
-  { label: "Open Houses", href: "/open-houses", icon: <Calendar className="h-5 w-5" /> },
+  { label: "Showings", href: "/open-houses", icon: <Calendar className="h-5 w-5" /> },
   { label: "Contacts", href: "/contacts", icon: <Users className="h-5 w-5" /> },
   { label: "Settings", href: "/settings", icon: <Settings className="h-5 w-5" /> },
 ];
@@ -41,7 +42,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="min-w-0 flex-1 flex flex-col">
         <BrandTopbar right={<UserButton afterSignOutUrl="/" />} />
         <main className="min-h-0 flex-1 overflow-auto p-[var(--space-lg)]">
-          <div className="min-h-[50vh]">{children}</div>
+          <ProductTierProvider>
+            <div className="min-h-[50vh]">{children}</div>
+          </ProductTierProvider>
         </main>
       </div>
     </div>

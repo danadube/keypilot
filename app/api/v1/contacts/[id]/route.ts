@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { hasCrmAccess } from "@/lib/product-tier";
 import { UpdateContactSchema } from "@/lib/validations/contact";
+import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
 async function getContactIfOwned(contactId: string, userId: string) {
   const openHouses = await prisma.openHouse.findMany({
@@ -21,6 +23,14 @@ async function getContactIfOwned(contactId: string, userId: string) {
 
   return prisma.contact.findFirst({
     where: { id: contactId, deletedAt: null },
+    include: {
+      contactTags: { include: { tag: true } },
+      followUpReminders: {
+        where: { userId, status: "PENDING" },
+        orderBy: { dueAt: "asc" },
+        take: 10,
+      },
+    },
   });
 }
 
@@ -41,11 +51,7 @@ export async function GET(
 
     return NextResponse.json({ data: contact });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json(
-      { error: { message } },
-      { status: err instanceof Error && message === "Unauthorized" ? 401 : 500 }
-    );
+    return apiErrorFromCaught(err);
   }
 }
 
@@ -74,17 +80,28 @@ export async function PUT(
       );
     }
 
+    const data = { ...parsed.data };
+    const updatingCrmFields =
+      data.status !== undefined || data.assignedToUserId !== undefined;
+    if (updatingCrmFields && !hasCrmAccess(user.productTier)) {
+      return apiError("CRM features require Full CRM tier", 403);
+    }
+    if (data.assignedToUserId !== undefined && data.assignedToUserId !== null) {
+      if (data.assignedToUserId !== user.id) {
+        return NextResponse.json(
+          { error: { message: "Can only assign contacts to yourself" } },
+          { status: 400 }
+        );
+      }
+    }
+
     const updated = await prisma.contact.update({
       where: { id: params.id },
-      data: parsed.data,
+      data,
     });
 
     return NextResponse.json({ data: updated });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json(
-      { error: { message } },
-      { status: err instanceof Error && message === "Unauthorized" ? 401 : 500 }
-    );
+    return apiErrorFromCaught(err);
   }
 }
