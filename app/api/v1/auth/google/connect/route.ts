@@ -4,7 +4,7 @@ import { getGoogleOAuth2Client, getScopesForService } from "@/lib/oauth/google";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_SERVICES = ["google_calendar"] as const;
+const ALLOWED_SERVICES = ["google_calendar", "gmail"] as const;
 
 /** GET /api/v1/auth/google/connect?service=google_calendar - Initiate OAuth */
 export async function GET(req: NextRequest) {
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     }
 
     const oauth2 = getGoogleOAuth2Client();
-    const scopes = getScopesForService(service as "google_calendar");
+    const scopes = getScopesForService(service as "google_calendar" | "gmail");
     const state = Buffer.from(JSON.stringify({ service, nonce: crypto.randomUUID() })).toString("base64url");
     const redirectUrl = oauth2.generateAuthUrl({
       access_type: "offline",

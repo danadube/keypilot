@@ -161,11 +161,13 @@ function buildCalendarEvents(
 }
 
 type CalendarData = { events: { id: string; title: string; startAt: string; type: string; meta?: string }[]; hasCalendarConnection: boolean };
+type EmailData = { emails: { id: string; sender: string; subject: string; snippet: string; receivedAt: string; classification?: string; href?: string }[]; hasGmailConnection: boolean };
 
 export function HomePage() {
   const { isLoaded } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [calendarData, setCalendarData] = useState<CalendarData | null>(null);
+  const [emailData, setEmailData] = useState<EmailData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date>(() => {
@@ -183,14 +185,20 @@ export function HomePage() {
     Promise.all([
       fetch("/api/v1/dashboard/stats").then((r) => r.json()),
       fetch(`/api/v1/calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`).then((r) => r.json()),
+      fetch("/api/v1/emails/priority").then((r) => r.json()),
     ])
-      .then(([statsJson, calendarJson]) => {
+      .then(([statsJson, calendarJson, emailJson]) => {
         if (statsJson?.error) throw new Error(statsJson.error.message);
         setStats(statsJson.data ?? null);
         setCalendarData(
           calendarJson?.data
             ? { events: calendarJson.data.events ?? [], hasCalendarConnection: calendarJson.data.hasCalendarConnection ?? false }
             : { events: [], hasCalendarConnection: false }
+        );
+        setEmailData(
+          emailJson?.data
+            ? { emails: emailJson.data.emails ?? [], hasGmailConnection: emailJson.data.hasGmailConnection ?? false }
+            : { emails: [], hasGmailConnection: false }
         );
       })
       .catch((err) => {
@@ -263,12 +271,37 @@ export function HomePage() {
     { id: "4", title: "Send listing docs to buyer", source: "follow_up", meta: "Requested Tue", href: "/task-pilot" },
   ];
 
-  // Mock data for Priority Emails (Gmail integration)
-  const mockPriorityEmails: PriorityEmail[] = [
-    { id: "1", sender: "Sarah Chen", subject: "Re: 456 Elm - inspection schedule", aiSummary: "Buyer requesting flexible inspection window next week.", status: "needs_reply", date: "Today 9:12 AM", href: "#" },
-    { id: "2", sender: "Mike Torres", subject: "Closing docs signed", aiSummary: "All closing documents have been executed. Settlement next Friday.", status: "informational", date: "Today 8:45 AM", href: "#" },
-    { id: "3", sender: "Jennifer Walsh", subject: "Open house feedback", aiSummary: "Two serious buyers interested. Waiting on pre-approval from one.", status: "waiting", date: "Yesterday 4:30 PM", href: "#" },
-  ];
+  /** Format receivedAt to relative date for display */
+  const formatEmailDate = (iso: string) => {
+    const d = new Date(iso);
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    if (diffDays === 1) return "Yesterday";
+    if (diffDays < 7) return d.toLocaleDateString("en-US", { weekday: "short" });
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
+
+  const priorityEmailsForUi: PriorityEmail[] = emailData?.hasGmailConnection && emailData.emails.length > 0
+    ? emailData.emails.slice(0, 10).map((e) => ({
+        id: e.id,
+        sender: e.sender,
+        subject: e.subject,
+        aiSummary: e.snippet || undefined,
+        status: (e.classification as PriorityEmail["status"]) ?? "informational",
+        date: formatEmailDate(e.receivedAt),
+        href: e.href,
+      }))
+    : [
+        { id: "1", sender: "Sarah Chen", subject: "Re: 456 Elm - inspection schedule", aiSummary: "Buyer requesting flexible inspection window next week.", status: "needs_reply", date: "Today 9:12 AM", href: "#" },
+        { id: "2", sender: "Mike Torres", subject: "Closing docs signed", aiSummary: "All closing documents have been executed. Settlement next Friday.", status: "informational", date: "Today 8:45 AM", href: "#" },
+        { id: "3", sender: "Jennifer Walsh", subject: "Open house feedback", aiSummary: "Two serious buyers interested. Waiting on pre-approval from one.", status: "waiting", date: "Yesterday 4:30 PM", href: "#" },
+      ];
 
   return (
     <div className="flex flex-col gap-[var(--space-xl)]">
@@ -428,7 +461,7 @@ export function HomePage() {
         />
         <BrandCard elevated padded>
           <div className="space-y-2">
-            {mockPriorityEmails.map((email) => (
+            {priorityEmailsForUi.map((email) => (
               <PriorityEmailCard key={email.id} email={email} />
             ))}
           </div>

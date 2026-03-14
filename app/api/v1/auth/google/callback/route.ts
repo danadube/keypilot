@@ -42,11 +42,14 @@ export async function GET(req: NextRequest) {
     }
 
     const service = payload.service;
-    if (service !== "google_calendar") {
+    const GOOGLE_SERVICES = ["google_calendar", "gmail"] as const;
+    if (!GOOGLE_SERVICES.includes(service as (typeof GOOGLE_SERVICES)[number])) {
       return NextResponse.redirect(
         new URL("/settings/connections?error=invalid_service", req.url)
       );
     }
+
+    const prismaService = service === "gmail" ? "GMAIL" : "GOOGLE_CALENDAR";
 
     const oauth2 = getGoogleOAuth2Client();
     const { tokens } = await oauth2.getToken(code);
@@ -70,7 +73,7 @@ export async function GET(req: NextRequest) {
       where: {
         userId: user.id,
         provider: "GOOGLE",
-        service: "GOOGLE_CALENDAR",
+        service: prismaService,
         accountEmail,
       },
     });
@@ -92,7 +95,7 @@ export async function GET(req: NextRequest) {
         data: {
           userId: user.id,
           provider: "GOOGLE",
-          service: "GOOGLE_CALENDAR",
+          service: prismaService,
           accountEmail,
           status: "CONNECTED",
           accessToken: tokens.access_token,
@@ -103,7 +106,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const res = NextResponse.redirect(new URL("/settings/connections?connected=google_calendar", req.url));
+    const res = NextResponse.redirect(new URL(`/settings/connections?connected=${service}`, req.url));
     res.cookies.delete("google_oauth_state");
     return res;
   } catch (e) {

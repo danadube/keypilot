@@ -87,9 +87,10 @@ export function ConnectionsPageContent() {
   }, []);
 
   const handleConnect = (provider: ConnectionProvider, service?: string) => {
-    if (provider === "google" && (service === "google_calendar" || !service)) {
+    if (provider === "google") {
+      const svc = service === "gmail" ? "gmail" : service === "google_calendar" ? "google_calendar" : "google_calendar";
       setActionId(service ?? provider);
-      window.location.href = "/api/v1/auth/google/connect?service=google_calendar";
+      window.location.href = `/api/v1/auth/google/connect?service=${svc}`;
       return;
     }
     setActionId(provider);
