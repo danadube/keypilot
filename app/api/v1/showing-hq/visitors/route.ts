@@ -61,6 +61,7 @@ export async function GET(req: NextRequest) {
       data: {
         visitors: visitors.map((v) => ({
           id: v.id,
+          leadStatus: v.leadStatus,
           signInMethod: v.signInMethod,
           submittedAt: v.submittedAt,
           contact: v.contact,

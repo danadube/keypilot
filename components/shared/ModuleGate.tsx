@@ -32,10 +32,11 @@ export function ModuleGate({
   if (!hasModuleAccess(moduleId)) {
     return (
       <UpgradeCard
-        moduleName={config?.name ?? fallbackName ?? moduleId}
+        moduleName={config?.displayName ?? config?.name ?? fallbackName ?? moduleId}
         headline={config?.headline ?? ""}
         description={config?.description ?? valueProposition ?? ""}
         moduleId={moduleId}
+        ctaLabel={config?.ctaLabel}
         backHref={backHref}
       />
     );

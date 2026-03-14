@@ -29,14 +29,16 @@ export default function UpgradeModulePage() {
     );
   }
 
+  const ctaLabel = config.ctaLabel ?? "Upgrade to unlock";
+
   return (
     <div className="flex flex-col gap-[var(--space-xl)]">
       <BrandPageHeader
-        title={config.name}
+        title={config.displayName ?? config.name}
         description={config.description}
         actions={
           <BrandButton variant="primary" asChild>
-            <Link href="/settings/modules">Upgrade to unlock</Link>
+            <Link href="/settings/modules">{ctaLabel}</Link>
           </BrandButton>
         }
       />
@@ -68,6 +70,22 @@ export default function UpgradeModulePage() {
             >
               {config.description}
             </p>
+            {config.recommendedFor && (
+              <div className="mb-6 rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface-alt)] p-4">
+                <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--brand-primary)]">
+                  Works with ShowingHQ
+                </h3>
+                <p
+                  className="text-[var(--brand-text-muted)]"
+                  style={{
+                    fontSize: "var(--text-body-size)",
+                    lineHeight: "var(--text-body-line)",
+                  }}
+                >
+                  {config.recommendedFor}
+                </p>
+              </div>
+            )}
             <h3 className="mb-3 font-semibold text-[var(--brand-text)]">
               Benefits
             </h3>
@@ -91,7 +109,7 @@ export default function UpgradeModulePage() {
             </ul>
             <div className="mt-8 flex flex-wrap gap-3">
               <BrandButton variant="primary" asChild>
-                <Link href="/settings/modules">Upgrade to unlock</Link>
+                <Link href="/settings/modules">{ctaLabel}</Link>
               </BrandButton>
               <BrandButton variant="secondary" asChild>
                 <Link href="/showing-hq">← Back to ShowingHQ</Link>

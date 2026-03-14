@@ -22,3 +22,18 @@ export const VisitorSignInSchema = z
   );
 
 export type VisitorSignInInput = z.infer<typeof VisitorSignInSchema>;
+
+export const VisitorLeadStatusEnum = z.enum([
+  "NEW",
+  "INTERESTED",
+  "HOT_BUYER",
+  "SELLER_LEAD",
+  "NEIGHBOR",
+  "ARCHIVED",
+]);
+
+export const UpdateVisitorSchema = z.object({
+  leadStatus: VisitorLeadStatusEnum.optional(),
+});
+
+export type UpdateVisitorInput = z.infer<typeof UpdateVisitorSchema>;

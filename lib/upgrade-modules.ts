@@ -8,15 +8,25 @@ import { UPGRADE_MODULES } from "./module-access";
 
 export interface UpgradeModuleConfig {
   moduleId: ModuleId;
+  /** Display name for UI */
+  displayName: string;
+  /** Deprecated: use displayName */
   name: string;
   headline: string;
   description: string;
   benefits: string[];
+  /** Module-specific CTA (e.g. "Add ClientKeep") */
+  ctaLabel: string;
+  /** "Works with ShowingHQ" / "Why upgrade" copy */
+  recommendedFor?: string;
+  /** Optional monthly price placeholder — no billing yet */
+  monthlyPrice?: string;
 }
 
 export const UPGRADE_MODULE_CONFIGS: Record<string, UpgradeModuleConfig> = {
   "client-keep": {
     moduleId: "client-keep",
+    displayName: "ClientKeep",
     name: "ClientKeep",
     headline: "Turn visitors into clients",
     description:
@@ -27,9 +37,13 @@ export const UPGRADE_MODULE_CONFIGS: Record<string, UpgradeModuleConfig> = {
       "Link visitor sign-ins to contact records",
       "Never lose a lead from an open house",
     ],
+    ctaLabel: "Add ClientKeep",
+    recommendedFor:
+      "Every visitor captured in ShowingHQ becomes easier to manage through your sales pipeline.",
   },
   "farm-trackr": {
     moduleId: "farm-trackr",
+    displayName: "FarmTrackr",
     name: "FarmTrackr",
     headline: "Farm the neighborhood automatically",
     description:
@@ -40,9 +54,13 @@ export const UPGRADE_MODULE_CONFIGS: Record<string, UpgradeModuleConfig> = {
       "Track contacts by farm area",
       "Campaign history and performance metrics",
     ],
+    ctaLabel: "Unlock FarmTrackr",
+    recommendedFor:
+      "Turn showing and open house activity into neighborhood farming opportunities.",
   },
   "seller-pulse": {
     moduleId: "seller-pulse",
+    displayName: "SellerPulse",
     name: "SellerPulse",
     headline: "Impress your sellers",
     description:
@@ -53,9 +71,13 @@ export const UPGRADE_MODULE_CONFIGS: Record<string, UpgradeModuleConfig> = {
       "Listing performance insights",
       "Ready-to-share PDF reports",
     ],
+    ctaLabel: "Add SellerPulse",
+    recommendedFor:
+      "Use real showing and visitor activity to create better seller updates and reports.",
   },
   "market-pilot": {
     moduleId: "market-pilot",
+    displayName: "MarketPilot",
     name: "MarketPilot",
     headline: "Automate your marketing",
     description:
@@ -66,6 +88,9 @@ export const UPGRADE_MODULE_CONFIGS: Record<string, UpgradeModuleConfig> = {
       "Campaign analytics",
       "Integrated with ShowingHQ visitors",
     ],
+    ctaLabel: "Add MarketPilot",
+    recommendedFor:
+      "Turn captured leads into structured marketing and follow-up campaigns.",
   },
 };
 

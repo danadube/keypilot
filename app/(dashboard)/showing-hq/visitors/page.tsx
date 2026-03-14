@@ -17,11 +17,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { LeadStatusBadge } from "@/components/shared/LeadStatusBadge";
 import { Users, Search } from "lucide-react";
 
 type Visitor = {
   id: string;
+  leadStatus: string | null;
   signInMethod: string;
   submittedAt: string;
   contact: {
@@ -30,7 +31,7 @@ type Visitor = {
     lastName: string;
     email: string | null;
     phone: string | null;
-    status: string | null;
+    notes: string | null;
   };
   openHouse: {
     id: string;
@@ -175,7 +176,10 @@ export default function ShowingHQVisitorsPage() {
                     Sign-in
                   </th>
                   <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
-                    Status
+                    Lead status
+                  </th>
+                  <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
+                    Notes
                   </th>
                   <th className="pb-3 w-[80px]"></th>
                 </tr>
@@ -202,20 +206,33 @@ export default function ShowingHQVisitorsPage() {
                       {formatDateTime(v.submittedAt)}
                     </td>
                     <td className="py-3">
-                      {v.contact.status ? (
-                        <Badge variant="outline" className="text-xs">
-                          {v.contact.status}
-                        </Badge>
-                      ) : (
-                        <span className="text-[var(--brand-text-muted)]">—</span>
-                      )}
+                      <LeadStatusBadge status={v.leadStatus} />
+                    </td>
+                    <td className="py-3 max-w-[160px]">
+                      <span
+                        className="block truncate text-[var(--brand-text-muted)]"
+                        title={v.contact.notes ?? undefined}
+                      >
+                        {v.contact.notes
+                          ? v.contact.notes.length > 60
+                            ? `${v.contact.notes.slice(0, 60)}…`
+                            : v.contact.notes
+                          : "—"}
+                      </span>
                     </td>
                     <td className="py-3">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/contacts/${v.contact.id}`}>
-                          View contact
-                        </Link>
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/showing-hq/visitors/${v.id}`}>
+                            View profile
+                          </Link>
+                        </Button>
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/contacts/${v.contact.id}`}>
+                            Contact
+                          </Link>
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -11,6 +11,7 @@ export interface UpgradeCardProps {
   headline: string;
   description: string;
   moduleId: string;
+  ctaLabel?: string;
   backHref?: string;
 }
 
@@ -23,6 +24,7 @@ export function UpgradeCard({
   headline,
   description,
   moduleId,
+  ctaLabel = "Upgrade to unlock",
   backHref = "/",
 }: UpgradeCardProps) {
   return (
@@ -68,7 +70,7 @@ export function UpgradeCard({
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <BrandButton variant="primary" asChild>
-              <Link href={`/upgrade/${moduleId}`}>Upgrade to unlock</Link>
+              <Link href={`/upgrade/${moduleId}`}>{ctaLabel}</Link>
             </BrandButton>
             <BrandButton variant="secondary" asChild>
               <Link href={backHref}>← Back to platform</Link>

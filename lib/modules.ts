@@ -109,6 +109,7 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
       { label: "Showings", href: "/open-houses", icon: Calendar, section: "SHOWINGS" },
       { label: "Open Houses", href: "/open-houses/sign-in", icon: QrCode, section: "SHOWINGS" },
       { label: "Visitors", href: "/showing-hq/visitors", icon: Users, section: "SHOWINGS" },
+      { label: "Follow-ups", href: "/showing-hq/follow-ups", icon: CheckSquare, section: "ACTIVITY" },
       { label: "Activity", href: "/showing-hq/activity", icon: BarChart3, section: "ACTIVITY" },
       { label: "Templates", href: "/showing-hq/templates", icon: FileText, section: "ACTIVITY" },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },

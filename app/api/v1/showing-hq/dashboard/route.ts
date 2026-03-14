@@ -28,6 +28,7 @@ export async function GET() {
       followUpDrafts,
       totalVisitorsCount,
       openHousesCount,
+      followUpTasksCount,
       contactsFromVisitorsCount,
     ] = await Promise.all([
       prisma.openHouse.findMany({
@@ -92,7 +93,14 @@ export async function GET() {
       prisma.openHouse.count({
         where: { hostUserId: user.id, deletedAt: null },
       }),
-      (async () => {
+      prisma.followUpDraft.count({
+        where: {
+          openHouse: { hostUserId: user.id, deletedAt: null },
+          deletedAt: null,
+          status: { in: ["DRAFT", "REVIEWED"] },
+        },
+      }),
+      (async (): Promise<number> => {
         const ohIds = await prisma.openHouse.findMany({
           where: { hostUserId: user.id, deletedAt: null },
           select: { id: true },
@@ -114,6 +122,7 @@ export async function GET() {
 
     const recentVisitors = recentVisitorsData.map((v) => ({
       id: v.id,
+      leadStatus: v.leadStatus,
       signInMethod: v.signInMethod,
       submittedAt: v.submittedAt,
       contact: v.contact,
@@ -135,6 +144,7 @@ export async function GET() {
           totalVisitors: totalVisitorsCount,
           totalShowings: openHousesCount,
           contactsCaptured: contactsFromVisitorsCount,
+          followUpTasks: followUpTasksCount,
         },
       },
     });

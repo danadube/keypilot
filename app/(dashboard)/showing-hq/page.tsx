@@ -10,6 +10,7 @@ import { BrandButton } from "@/components/ui/BrandButton";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Badge } from "@/components/ui/badge";
+import { LeadStatusBadge } from "@/components/shared/LeadStatusBadge";
 import { Button } from "@/components/ui/button";
 import {
   Users,
@@ -18,6 +19,9 @@ import {
   CheckSquare,
   QrCode,
 } from "lucide-react";
+import { CurrentPlanCard } from "@/components/shared/CurrentPlanCard";
+import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
+import { SHOWINGHQ_PLAN } from "@/lib/current-plan";
 
 type DashboardData = {
   todaysShowings: {
@@ -38,6 +42,7 @@ type DashboardData = {
   }[];
   recentVisitors: {
     id: string;
+    leadStatus: string | null;
     submittedAt: string;
     contact: {
       id: string;
@@ -59,6 +64,7 @@ type DashboardData = {
     totalVisitors: number;
     totalShowings: number;
     contactsCaptured: number;
+    followUpTasks?: number;
   };
 };
 
@@ -81,7 +87,7 @@ export default function ShowingHQOverviewPage() {
   if (loading) return <PageLoading message="Loading dashboard..." />;
   if (error) return <ErrorMessage message={error} onRetry={() => window.location.reload()} />;
 
-  const stats = data?.stats ?? { totalVisitors: 0, totalShowings: 0, contactsCaptured: 0 };
+  const stats = data?.stats ?? { totalVisitors: 0, totalShowings: 0, contactsCaptured: 0, followUpTasks: 0 };
   const todaysShowings = data?.todaysShowings ?? [];
   const upcoming = data?.upcomingOpenHouses ?? [];
   const recentVisitors = data?.recentVisitors ?? [];
@@ -114,10 +120,13 @@ export default function ShowingHQOverviewPage() {
         }
       />
 
+      {/* Current plan */}
+      <CurrentPlanCard plan={SHOWINGHQ_PLAN} compact />
+
       {/* Stats row */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <BrandStatCard
-          title="Total Visitors"
+          title="Visitors Captured"
           value={stats.totalVisitors}
           icon={<Users className="h-5 w-5" />}
           accent="primary"
@@ -129,14 +138,14 @@ export default function ShowingHQOverviewPage() {
           accent="secondary"
         />
         <BrandStatCard
-          title="Contacts Captured"
+          title="Contacts Created"
           value={stats.contactsCaptured}
           icon={<UserPlus className="h-5 w-5" />}
           accent="accent"
         />
         <BrandStatCard
-          title="Follow-up Tasks"
-          value={followUpTasks.length}
+          title="Follow-ups Generated"
+          value={stats.followUpTasks ?? followUpTasks.length}
           icon={<CheckSquare className="h-5 w-5" />}
         />
       </div>
@@ -150,9 +159,17 @@ export default function ShowingHQOverviewPage() {
           />
           <div className="mt-4">
             {todaysShowings.length === 0 ? (
-              <p className="py-8 text-center text-[var(--brand-text-muted)]">
-                No showings today. Schedule one to get started.
-              </p>
+              <BrandEmptyState
+                compact
+                icon={<Calendar className="h-6 w-6 text-[var(--brand-text-muted)]" />}
+                title="No showings today"
+                description="Schedule an open house to get started."
+                action={
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/open-houses/new">Create showing</Link>
+                  </Button>
+                }
+              />
             ) : (
               <ul className="space-y-3">
                 {todaysShowings.map((oh) => (
@@ -171,18 +188,20 @@ export default function ShowingHQOverviewPage() {
                         {oh.status}
                       </Badge>
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/open-houses/${oh.id}`}>View</Link>
+                        <Link href={`/showing-hq/open-houses/${oh.id}`}>View</Link>
                       </Button>
                     </div>
                   </li>
                 ))}
               </ul>
             )}
-            <div className="mt-4">
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/open-houses/new">Create showing</Link>
-              </Button>
-            </div>
+            {todaysShowings.length > 0 && (
+              <div className="mt-4">
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/open-houses/new">Create showing</Link>
+                </Button>
+              </div>
+            )}
           </div>
         </BrandCard>
 
@@ -211,7 +230,7 @@ export default function ShowingHQOverviewPage() {
                       </p>
                     </div>
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/open-houses/${oh.id}`}>View</Link>
+                      <Link href={`/showing-hq/open-houses/${oh.id}`}>View</Link>
                     </Button>
                   </li>
                 ))}
@@ -252,15 +271,16 @@ export default function ShowingHQOverviewPage() {
                       <p className="text-sm text-[var(--brand-text-muted)]">
                         {v.openHouse.title} · {formatDateTime(v.submittedAt)}
                       </p>
-                      {v.contact.status && (
-                        <Badge variant="outline" className="mt-1 text-xs">
-                          {v.contact.status}
-                        </Badge>
-                      )}
+                      <LeadStatusBadge status={v.leadStatus} className="mt-1" />
                     </div>
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/contacts/${v.contact.id}`}>View contact</Link>
-                    </Button>
+                    <div className="flex gap-2 shrink-0">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/showing-hq/visitors/${v.id}`}>View profile</Link>
+                      </Button>
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/contacts/${v.contact.id}`}>Contact</Link>
+                      </Button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -281,9 +301,17 @@ export default function ShowingHQOverviewPage() {
           />
           <div className="mt-4">
             {followUpTasks.length === 0 ? (
-              <p className="py-8 text-center text-[var(--brand-text-muted)]">
-                No pending follow-up tasks.
-              </p>
+              <BrandEmptyState
+                compact
+                icon={<CheckSquare className="h-6 w-6 text-[var(--brand-text-muted)]" />}
+                title="No pending tasks"
+                description="Follow-up drafts will appear here when generated from open houses."
+                action={
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/showing-hq/follow-ups">View follow-ups</Link>
+                  </Button>
+                }
+              />
             ) : (
               <ul className="space-y-3">
                 {followUpTasks.map((t) => (
@@ -301,12 +329,17 @@ export default function ShowingHQOverviewPage() {
                       </Badge>
                     </div>
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/open-houses/${t.openHouse.id}`}>View</Link>
+                      <Link href={`/open-houses/${t.openHouse.id}/follow-ups`}>View</Link>
                     </Button>
                   </li>
                 ))}
               </ul>
             )}
+            <div className="mt-4">
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/showing-hq/follow-ups">View all follow-ups</Link>
+              </Button>
+            </div>
           </div>
         </BrandCard>
       </div>
