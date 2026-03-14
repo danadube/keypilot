@@ -23,7 +23,7 @@ export function BrandPageHeader({
   return (
     <header
       className={cn(
-        "space-y-[var(--space-sm)] pb-[var(--space-md)] border-b border-[var(--brand-border)]",
+        "space-y-[var(--space-sm)] pb-6 mb-6 border-b border-[var(--brand-border)]",
         align === "center" && "text-center",
         className
       )}
@@ -33,7 +33,7 @@ export function BrandPageHeader({
           {breadcrumbs}
         </nav>
       )}
-      <div className={cn("flex flex-col gap-[var(--space-sm)] sm:flex-row sm:items-start sm:justify-between", align === "center" && "sm:flex-col sm:items-center")}>
+      <div className={cn("flex flex-col gap-[var(--space-sm)] sm:flex-row sm:items-center sm:justify-between sm:gap-[var(--space-md)]", align === "center" && "sm:flex-col sm:items-center")}>
         <div className="min-w-0 flex-1">
           <h1
             className="font-bold text-[var(--brand-text)] tracking-tight"
@@ -53,7 +53,7 @@ export function BrandPageHeader({
           )}
         </div>
         {actions && (
-          <div className="flex shrink-0 flex-wrap gap-[var(--space-sm)]">{actions}</div>
+          <div className="flex shrink-0 flex-wrap items-center gap-[var(--space-sm)]">{actions}</div>
         )}
       </div>
     </header>

@@ -162,7 +162,7 @@ export function SignInFormFields({
         />
       </div>
       <Button type="submit" className="w-full" size={compact ? "default" : "lg"} disabled={submitting}>
-        {submitting ? "Signing in..." : "Sign in"}
+        {submitting ? "Checking in..." : signInMethod === "TABLET" ? "Check In" : "Sign in"}
       </Button>
     </form>
   );

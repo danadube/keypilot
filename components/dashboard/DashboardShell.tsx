@@ -1,49 +1,63 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
-import { Home, Building2, Calendar, Users, Settings } from "lucide-react";
-import { BrandSidebarNav } from "@/components/ui/BrandSidebarNav";
-import { BrandTopbar } from "@/components/ui/BrandTopbar";
+import Image from "next/image";
 import { ProductTierProvider } from "@/components/ProductTierProvider";
+import { TopModuleNav } from "@/components/layout/TopModuleNav";
+import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
 
-const navItems = [
-  { label: "Dashboard", href: "/", icon: <Home className="h-5 w-5" /> },
-  { label: "Properties", href: "/properties", icon: <Building2 className="h-5 w-5" /> },
-  { label: "Showings", href: "/open-houses", icon: <Calendar className="h-5 w-5" /> },
-  { label: "Contacts", href: "/contacts", icon: <Users className="h-5 w-5" /> },
-  { label: "Settings", href: "/settings", icon: <Settings className="h-5 w-5" /> },
-];
+const SIDEBAR_WIDTH = 240;
+const HEADER_HEIGHT = 64;
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-
-  const items = navItems.map((item) => ({
-    ...item,
-    active:
-      pathname === item.href ||
-      (item.href !== "/" && pathname.startsWith(item.href + "/")) ||
-      (item.href !== "/" && pathname === item.href),
-  }));
-
   return (
-    <div className="flex min-h-screen">
-      <BrandSidebarNav
-        title={
-          <Link href="/" className="font-semibold text-[var(--brand-text)] hover:text-[var(--brand-primary)] transition-colors">
-            KeyPilot
+    <div className="flex min-h-screen flex-col">
+      {/* Header: grid-aligned with sidebar — brand (240px) | module nav | global controls */}
+      <header
+        className="sticky top-0 z-20 flex shrink-0 items-center border-b border-[var(--brand-border)] bg-[var(--brand-surface)]"
+        style={{ height: HEADER_HEIGHT }}
+      >
+        {/* Left: KeyPilot brand area — same width as sidebar, platform anchor */}
+        <div
+          className="flex shrink-0 items-center border-r border-[var(--brand-border)] px-6"
+          style={{ width: SIDEBAR_WIDTH }}
+        >
+          <Link
+            href="/"
+            className="flex items-center transition-opacity hover:opacity-90"
+          >
+            <Image
+              src="/KeyPilot-logo.png?v=4"
+              alt="KeyPilot - The Real Estate Operations Platform"
+              width={160}
+              height={48}
+              className="h-10 w-auto object-contain"
+              priority
+            />
           </Link>
-        }
-        items={items}
-        className="w-64 shrink-0"
-      />
-      <div className="min-w-0 flex-1 flex flex-col">
-        <BrandTopbar right={<UserButton afterSignOutUrl="/" />} />
-        <main className="min-h-0 flex-1 overflow-auto p-[var(--space-lg)]">
+        </div>
+
+        {/* Middle: Module navigation — separation from brand anchor */}
+        <div className="flex min-w-0 flex-1 items-center pl-14 pr-6">
+          <TopModuleNav />
+        </div>
+
+        {/* Right: Global controls */}
+        <div className="flex shrink-0 items-center gap-3 pr-4">
+          <UserButton afterSignOutUrl="/" />
+        </div>
+      </header>
+
+      {/* Main area: Sidebar (240px) + Content */}
+      <div className="flex min-h-0 flex-1">
+        <ModuleSidebar />
+        <main className="min-h-0 flex-1 overflow-auto bg-[var(--brand-bg)] p-8 md:p-10">
           <ProductTierProvider>
-            <div className="min-h-[50vh]">{children}</div>
+            <div className="mx-auto min-h-[50vh]" style={{ maxWidth: 1280 }}>
+              {children}
+            </div>
           </ProductTierProvider>
         </main>
       </div>

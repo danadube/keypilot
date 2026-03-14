@@ -1,0 +1,49 @@
+---
+description: KeyPilot app shell and UI design standards — header, sidebar, modules, page layout
+alwaysApply: false
+globs: ["components/**/*.tsx", "app/**/layout.tsx", "app/**/page.tsx", "lib/modules.ts"]
+---
+
+# KeyPilot App Shell & UI Design
+
+## Module List (8 modules, order)
+
+PropertyVault, ShowingHQ, ClientKeep, FarmTrackr, TaskPilot, MarketPilot, SellerPulse, Insight.
+
+## Header Architecture
+
+- **Sidebar width:** 240px
+- **Header height:** 64px
+- **Left brand area:** 240px, right border, generous padding, KeyPilot logo as platform anchor
+- **Middle:** Module nav (workspace tabs), left padding so it doesn't crowd the logo
+- **Right:** Global controls (profile, notifications)
+
+## Module Tabs
+
+- Premium workspace-tab feel, not plain links
+- Horizontal spacing between items
+- Active: semibold, darker color, bottom border or pill highlight
+- Subtle transition on hover
+
+## Sidebar
+
+- 240px width, contextual to selected module
+- Grouped sections with labels (e.g. OVERVIEW, SHOWINGS, VISITORS, SYSTEM)
+- Strong active state, better hover, consistent icon sizing
+- Premium SaaS left rail feel
+
+## Main Content
+
+- Max width: 1200px–1280px
+- Clear page title, subtitle where relevant
+- Generous but controlled spacing, consistent card alignment
+
+## Design Language
+
+- Clean, light interface; subtle borders; soft radius; restrained shadows
+- Strong spacing discipline; limited accent color; strong typography hierarchy
+- No clutter; no generic dashboard-template feel
+
+## FarmTrackr
+
+First-class module. Sidebar: Overview, Farms, Farm Lists, Routes/Areas, Mailing Plans, Campaign History, Contacts in Farms, Performance, Templates, Settings.

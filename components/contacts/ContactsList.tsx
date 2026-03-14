@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { useProductTier } from "@/components/ProductTierProvider";
@@ -96,10 +97,11 @@ export function ContactsList() {
     );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Contacts</h1>
-      </div>
+    <div className="flex flex-col gap-[var(--space-lg)]">
+      <BrandPageHeader
+        title="Contacts"
+        description="Leads from open house sign-ins"
+      />
 
       <Card>
         <CardHeader>

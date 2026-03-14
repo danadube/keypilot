@@ -19,6 +19,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { BrandButton } from "@/components/ui/BrandButton";
+import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 
@@ -80,13 +82,16 @@ export function OpenHousesList() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Showings</h1>
-        <Button asChild>
-          <Link href="/open-houses/new">New Showing</Link>
-        </Button>
-      </div>
+    <div className="flex flex-col gap-[var(--space-lg)]">
+      <BrandPageHeader
+        title="Showings"
+        description="Create and manage your showing events"
+        actions={
+          <BrandButton asChild>
+            <Link href="/open-houses/new">New Showing</Link>
+          </BrandButton>
+        }
+      />
 
       <Card>
         <CardHeader>

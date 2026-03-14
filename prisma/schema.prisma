@@ -30,6 +30,7 @@ model User {
   tags              Tag[]
   followUpReminders FollowUpReminder[]
   deals             Deal[]
+  connections       Connection[]
 
   @@index([clerkId])
   @@map("users")
@@ -323,4 +324,46 @@ model SellerReport {
   @@index([openHouseId])
   @@index([generatedByUserId])
   @@map("seller_reports")
+}
+
+model Connection {
+  id           String             @id @default(uuid())
+  userId       String
+  provider     ConnectionProvider
+  service      ConnectionService
+  status       ConnectionStatus   @default(DISCONNECTED)
+  lastSyncAt   DateTime?
+  connectedAt  DateTime?
+  errorMessage String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider, service])
+  @@index([userId])
+  @@map("connections")
+}
+
+enum ConnectionProvider {
+  GOOGLE
+  MICROSOFT
+  APPLE
+}
+
+enum ConnectionService {
+  GMAIL
+  GOOGLE_CALENDAR
+  OUTLOOK_MAIL
+  OUTLOOK_CALENDAR
+  APPLE_MAIL
+  APPLE_CALENDAR
+  APPLE_CONTACTS
+}
+
+enum ConnectionStatus {
+  DISCONNECTED
+  CONNECTED
+  PENDING
+  ERROR
 }

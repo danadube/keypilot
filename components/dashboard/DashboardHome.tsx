@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import { Building2, Calendar, Users } from "lucide-react";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { BrandCard } from "@/components/ui/BrandCard";
@@ -12,6 +13,10 @@ import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
 import { BrandSectionHeader } from "@/components/ui/BrandSectionHeader";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
+
+const RETRY_DELAY_MS = 500;
+const MAX_RETRIES = 2;
+const AUTH_WAIT_MS = 2500; // If Clerk isLoaded stays false, try loading anyway
 
 type Stats = {
   propertiesCount: number;
@@ -28,26 +33,58 @@ type Stats = {
 };
 
 export function DashboardHome() {
+  const { isLoaded } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = () => {
+  const loadData = (retryCount = 0) => {
     setError(null);
     setLoading(true);
     fetch("/api/v1/dashboard/stats")
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) setError(json.error.message);
-        else setStats(json.data);
+      .then(async (res) => {
+        const json = await res.json();
+        if (!res.ok) {
+          throw new Error(json?.error?.message ?? `Request failed (${res.status})`);
+        }
+        return json;
       })
-      .catch(() => setError("Failed to load dashboard"))
-      .finally(() => setLoading(false));
+      .then((json) => {
+        if (json.error) {
+          if (retryCount < MAX_RETRIES) {
+            setTimeout(() => loadData(retryCount + 1), RETRY_DELAY_MS);
+          } else {
+            setError(json.error.message);
+            setLoading(false);
+          }
+        } else if (json.data) {
+          setStats(json.data);
+          setLoading(false);
+        } else {
+          setError("Invalid response from server");
+          setLoading(false);
+        }
+      })
+      .catch(() => {
+        if (retryCount < MAX_RETRIES) {
+          setTimeout(() => loadData(retryCount + 1), RETRY_DELAY_MS);
+        } else {
+          setError("Failed to load dashboard");
+          setLoading(false);
+        }
+      });
   };
 
-  useEffect(() => loadData(), []);
+  useEffect(() => {
+    if (!isLoaded) {
+      // Fallback: Clerk sometimes delays isLoaded; try loading after delay
+      const t = setTimeout(() => loadData(), AUTH_WAIT_MS);
+      return () => clearTimeout(t);
+    }
+    loadData();
+  }, [isLoaded]);
 
-  if (loading) return <PageLoading message="Loading dashboard..." />;
+  if (loading && !stats) return <PageLoading message="Loading dashboard..." />;
   if (error) {
     const isUserNotFound = error.toLowerCase().includes("user not found");
     return (
@@ -61,7 +98,14 @@ export function DashboardHome() {
       />
     );
   }
-  if (!stats) return null;
+  if (!stats) {
+    return (
+      <ErrorMessage
+        message="Unable to load dashboard"
+        onRetry={() => loadData()}
+      />
+    );
+  }
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("en-US", {
@@ -87,7 +131,7 @@ export function DashboardHome() {
   };
 
   return (
-    <div className="stack-lg">
+    <div className="flex flex-col gap-[var(--space-lg)]">
       <BrandPageHeader
         title="Dashboard"
         actions={
@@ -102,7 +146,7 @@ export function DashboardHome() {
         }
       />
 
-      <div className="grid gap-[var(--space-md)] sm:grid-cols-2 md:grid-cols-3">
+      <div className="grid gap-[var(--space-md)] sm:grid-cols-2 md:grid-cols-3 -mt-[var(--space-sm)]">
         <div className="flex flex-col gap-[var(--space-sm)]">
           <BrandStatCard
             title="Properties"
@@ -138,7 +182,7 @@ export function DashboardHome() {
         </div>
       </div>
 
-      <BrandCard elevated padded>
+      <BrandCard elevated padded className="mt-[var(--space-sm)]">
         <BrandSectionHeader
           title="Recent open houses"
           description="Your latest open house events"

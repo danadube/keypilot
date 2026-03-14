@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { BrandButton } from "@/components/ui/BrandButton";
+import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
 import {
   Card,
   CardContent,
@@ -65,19 +67,22 @@ export function PropertiesList() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Properties</h1>
-        <Button asChild>
-          <Link href="/properties/new">Add property</Link>
-        </Button>
-      </div>
+    <div className="flex flex-col gap-[var(--space-lg)]">
+      <BrandPageHeader
+        title="Properties"
+        description="Manage listings for open house events"
+        actions={
+          <BrandButton asChild>
+            <Link href="/properties/new">Add property</Link>
+          </BrandButton>
+        }
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>Your properties</CardTitle>
           <CardDescription>
-            Manage listings for open house events
+            Add and manage property records for open house events
           </CardDescription>
         </CardHeader>
         <CardContent>

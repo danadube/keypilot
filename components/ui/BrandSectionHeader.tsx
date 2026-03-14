@@ -23,7 +23,7 @@ export const BrandSectionHeader = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "space-y-[var(--space-sm)]",
+          "space-y-[var(--space-xs)] pb-6 border-b border-[var(--brand-border)]",
           align === "center" && "text-center",
           className
         )}

@@ -52,8 +52,8 @@ export function BrandStatCard({
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-surface)] p-[var(--space-md)] shadow-[var(--shadow-sm)]",
-        "transition-shadow hover:shadow-[var(--shadow-md)]",
+        "rounded-[var(--radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-surface)] p-6 shadow-[0_1px_3px_0_rgb(0_0_0_/0.06)]",
+        "transition-shadow hover:shadow-[0_2px_6px_-1px_rgb(0_0_0_/0.08),0_2px_4px_-2px_rgb(0_0_0_/0.04)]",
         accentBorderClasses[accent],
         className
       )}

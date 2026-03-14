@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { ChevronLeft } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { SignInFormFields } from "@/components/oh/SignInFormFields";
@@ -17,6 +18,7 @@ import { SignInFormFields } from "@/components/oh/SignInFormFields";
 type SignInData = {
   id: string;
   title: string;
+  status?: string;
   startAt: string;
   endAt: string;
   qrSlug: string;
@@ -29,6 +31,30 @@ type SignInData = {
     zip: string;
   };
 };
+
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatTime(d: string) {
+  return new Date(d).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function statusBadge(status?: string) {
+  if (!status) return null;
+  const variant =
+    status === "ACTIVE" ? "default" : status === "SCHEDULED" ? "secondary" : "outline";
+  const label = status === "ACTIVE" ? "Live" : status === "SCHEDULED" ? "Scheduled" : status;
+  return <Badge variant={variant}>{label}</Badge>;
+}
 
 export function SignInDisplay({ openHouseId }: { openHouseId: string }) {
   const [data, setData] = useState<SignInData | null>(null);
@@ -75,7 +101,10 @@ export function SignInDisplay({ openHouseId }: { openHouseId: string }) {
     );
   }
 
-  const signInUrl = typeof window !== "undefined" ? `${window.location.origin}/oh/${data.qrSlug}` : "";
+  const signInUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/oh/${data.qrSlug}`
+      : "";
   const openHouseForForm = {
     id: data.id,
     title: data.title,
@@ -85,45 +114,93 @@ export function SignInDisplay({ openHouseId }: { openHouseId: string }) {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-6">
-      <div className="absolute top-4 left-4">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={`/open-houses/${openHouseId}`}>← Back to details</Link>
-        </Button>
+    <div className="mx-auto flex min-h-screen max-w-6xl flex-col py-8 px-6">
+      {/* Back navigation */}
+      <div className="mb-8">
+        <Link
+          href={`/open-houses/${openHouseId}`}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--brand-text-muted)] transition-colors hover:text-[var(--brand-text)]"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back to open house details
+        </Link>
       </div>
 
-      <div className="grid w-full max-w-5xl gap-8 lg:grid-cols-2">
-        {/* QR Code – sign in on phone */}
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-xl">Scan to sign in on your phone</CardTitle>
-            <CardDescription>
-              Point your camera at the QR code to open the sign-in page
+      {/* Page header */}
+      <header className="mb-10">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold text-[var(--brand-text)]">
+              Open House Sign-In
+            </h1>
+            <p className="mt-1 text-[var(--brand-text-muted)]">
+              {data.property.address1}
+              {data.property.address2 ? `, ${data.property.address2}` : ""}
+            </p>
+            <p className="text-sm text-[var(--brand-text-muted)]">
+              {data.property.city}, {data.property.state} {data.property.zip}
+            </p>
+            <p className="mt-2 text-sm text-[var(--brand-text-muted)]">
+              {formatDate(data.startAt)} · {formatTime(data.startAt)}
+              {" – "}
+              {formatTime(data.endAt)}
+            </p>
+          </div>
+          <div>{statusBadge(data.status)}</div>
+        </div>
+      </header>
+
+      {/* Two-column layout: QR (slightly dominant) | Form */}
+      <div className="grid w-full gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+        {/* QR Code card */}
+        <Card className="overflow-hidden border-[var(--brand-border)] bg-[var(--brand-surface)] shadow-[var(--shadow-sm)]">
+          <CardHeader className="pb-4 text-center">
+            <CardTitle
+              className="text-lg font-semibold"
+              style={{ color: "var(--brand-text)" }}
+            >
+              Scan to sign in on your phone
+            </CardTitle>
+            <CardDescription className="mt-1.5 text-sm">
+              Visitors can point their camera at the QR code to open the sign-in
+              page instantly
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center space-y-4">
+          <CardContent className="flex flex-col items-center gap-6 pb-8">
             {data.qrCodeDataUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={data.qrCodeDataUrl}
-                alt="QR Code for sign-in"
-                width={240}
-                height={240}
-                className="rounded-lg border"
-              />
+              <div className="flex items-center justify-center rounded-xl border border-[var(--brand-border)] bg-white p-5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={data.qrCodeDataUrl}
+                  alt="QR Code for visitor sign-in"
+                  width={280}
+                  height={280}
+                  className="h-auto w-auto"
+                />
+              </div>
             )}
-            <p className="break-all text-center text-xs text-muted-foreground">
-              {signInUrl}
-            </p>
+            <div className="w-full max-w-sm">
+              <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-[var(--brand-text-muted)]">
+                Short link
+              </p>
+              <p className="break-all text-center font-mono text-sm text-[var(--brand-text-muted)]">
+                {signInUrl}
+              </p>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Form – sign in directly on tablet */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">Or sign in here</CardTitle>
-            <CardDescription>
-              {data.title} – {data.property.address1}, {data.property.city}, {data.property.state}
+        {/* Sign-in form card */}
+        <Card className="overflow-hidden border-[var(--brand-border)] bg-[var(--brand-surface)] shadow-[var(--shadow-sm)]">
+          <CardHeader className="pb-4">
+            <CardTitle
+              className="text-lg font-semibold"
+              style={{ color: "var(--brand-text)" }}
+            >
+              Check in here
+            </CardTitle>
+            <CardDescription className="mt-1.5">
+              Sign in directly on this tablet
             </CardDescription>
           </CardHeader>
           <CardContent>
