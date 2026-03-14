@@ -74,11 +74,6 @@ export default function ShowingHQOpenHouseDetailPage() {
       day: "numeric",
       year: "numeric",
     });
-  const formatTime = (d: string) =>
-    new Date(d).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
   const formatDateTime = (d: string) =>
     new Date(d).toLocaleString("en-US", {
       month: "short",

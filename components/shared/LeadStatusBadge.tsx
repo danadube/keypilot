@@ -11,10 +11,7 @@ const LABELS: Record<string, string> = {
   ARCHIVED: "Archived",
 };
 
-const VARIANTS: Record<
-  string,
-  { bg: string; border: string; text: string }
-> = {
+const VARIANTS: Record<string, string> = {
   NEW: "bg-sky-500/15 border-sky-500/40 text-sky-700 dark:text-sky-300",
   INTERESTED: "bg-amber-500/15 border-amber-500/40 text-amber-700 dark:text-amber-300",
   HOT_BUYER: "bg-rose-500/15 border-rose-500/40 text-rose-700 dark:text-rose-300",

@@ -9,7 +9,6 @@ import { BrandSectionHeader } from "@/components/ui/BrandSectionHeader";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
-import { LeadStatusBadge } from "@/components/shared/LeadStatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
