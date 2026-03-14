@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Home page with calendar, priority emails, AI to-do.
+ * Multi-source design: Calendar, Priority Emails, and AI To-Do will aggregate
+ * from multiple connected accounts (enabledForCalendar, enabledForPriorityInbox,
+ * enabledForAi). Data fetching will accept connectionIds to filter enabled sources.
+ */
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
@@ -42,7 +48,7 @@ type Stats = {
   }[];
 };
 
-type CalendarEventType = "showing" | "open_house" | "task" | "campaign";
+type CalendarEventType = "showing" | "open_house" | "task" | "campaign" | "external";
 type CalendarEvent = {
   id: string;
   title: string;
@@ -57,6 +63,7 @@ const EVENT_ROW_STYLES: Record<CalendarEventType, string> = {
   open_house: "border-l-4 border-l-[#22C55E] bg-[#22C55E]/5",
   task: "border-l-4 border-l-[#D97706] bg-[#D97706]/5",
   campaign: "border-l-4 border-l-[#7C3AED] bg-[#7C3AED]/5",
+  external: "border-l-4 border-l-[#6366F1] bg-[#6366F1]/5",
 };
 
 function getWeekDays(anchor: Date): Date[] {
@@ -76,9 +83,11 @@ function isSameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-/** Generate mock events for demo. Merges with API open houses. */
+/** Build calendar events: open houses + external (Google Calendar) + mock when no connection. */
 function buildCalendarEvents(
   recentOpenHouses: Stats["recentOpenHouses"],
+  externalEvents: { id: string; title: string; startAt: string; type: string; meta?: string }[],
+  hasCalendarConnection: boolean,
   todayStart: Date
 ): CalendarEvent[] {
   const events: CalendarEvent[] = [];
@@ -97,7 +106,21 @@ function buildCalendarEvents(
     }
   });
 
-  // Mock events for variety
+  externalEvents.forEach((e) => {
+    const d = new Date(e.startAt);
+    if (d >= todayStart) {
+      events.push({
+        id: e.id,
+        title: e.title,
+        startAt: e.startAt,
+        type: "external",
+        meta: e.meta,
+      });
+    }
+  });
+
+  if (!hasCalendarConnection) {
+    // Mock events when no calendar connected
   for (let i = 0; i < 3; i++) {
     const date = new Date(todayStart);
     date.setDate(date.getDate() + i);
@@ -132,13 +155,17 @@ function buildCalendarEvents(
     type: "campaign",
     meta: "Downtown loop",
   });
+  }
 
   return events.sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
 }
 
+type CalendarData = { events: { id: string; title: string; startAt: string; type: string; meta?: string }[]; hasCalendarConnection: boolean };
+
 export function HomePage() {
   const { isLoaded } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
+  const [calendarData, setCalendarData] = useState<CalendarData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date>(() => {
@@ -149,38 +176,32 @@ export function HomePage() {
   const loadData = (retryCount = 0) => {
     setError(null);
     setLoading(true);
-    fetch("/api/v1/dashboard/stats")
-      .then(async (res) => {
-        const json = await res.json();
-        if (!res.ok) {
-          throw new Error(json?.error?.message ?? `Request failed (${res.status})`);
-        }
-        return json;
+    const today = new Date();
+    const timeMin = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+    const timeMax = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
+
+    Promise.all([
+      fetch("/api/v1/dashboard/stats").then((r) => r.json()),
+      fetch(`/api/v1/calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`).then((r) => r.json()),
+    ])
+      .then(([statsJson, calendarJson]) => {
+        if (statsJson?.error) throw new Error(statsJson.error.message);
+        setStats(statsJson.data ?? null);
+        setCalendarData(
+          calendarJson?.data
+            ? { events: calendarJson.data.events ?? [], hasCalendarConnection: calendarJson.data.hasCalendarConnection ?? false }
+            : { events: [], hasCalendarConnection: false }
+        );
       })
-      .then((json) => {
-        if (json.error) {
-          if (retryCount < MAX_RETRIES) {
-            setTimeout(() => loadData(retryCount + 1), RETRY_DELAY_MS);
-          } else {
-            setError(json.error.message);
-            setLoading(false);
-          }
-        } else if (json.data) {
-          setStats(json.data);
-          setLoading(false);
-        } else {
-          setError("Invalid response from server");
-          setLoading(false);
-        }
-      })
-      .catch(() => {
+      .catch((err) => {
         if (retryCount < MAX_RETRIES) {
           setTimeout(() => loadData(retryCount + 1), RETRY_DELAY_MS);
         } else {
-          setError("Failed to load");
+          setError(err?.message ?? "Failed to load");
           setLoading(false);
         }
-      });
+      })
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
@@ -207,7 +228,12 @@ export function HomePage() {
   ).length;
   const needsReply = 3;
   const tasksDue = 2;
-  const allEvents = buildCalendarEvents(stats?.recentOpenHouses ?? [], todayStart);
+  const allEvents = buildCalendarEvents(
+    stats?.recentOpenHouses ?? [],
+    calendarData?.events ?? [],
+    calendarData?.hasCalendarConnection ?? false,
+    todayStart
+  );
   const weekDays = getWeekDays(selectedDay);
   const eventsForDay = allEvents.filter((e) => isSameDay(new Date(e.startAt), selectedDay));
   const hasEventsOnDay = (d: Date) => allEvents.some((e) => isSameDay(new Date(e.startAt), d));

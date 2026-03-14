@@ -37,7 +37,8 @@ export type ModuleId =
   | "task-pilot"
   | "market-pilot"
   | "seller-pulse"
-  | "insight";
+  | "insight"
+  | "settings";
 
 export interface ModuleSidebarItem {
   label: string;
@@ -66,6 +67,7 @@ export const MODULE_ORDER: ModuleId[] = [
   "market-pilot",
   "seller-pulse",
   "insight",
+  "settings",
 ];
 
 export const MODULES: Record<ModuleId, ModuleConfig> = {
@@ -193,6 +195,19 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
       { label: "Settings", href: "/settings", icon: Settings },
     ],
   },
+  settings: {
+    id: "settings",
+    name: "Settings",
+    href: "/settings",
+    available: true,
+    sidebar: [
+      { label: "Account", href: "/settings/account", icon: LayoutDashboard, section: "PLATFORM" },
+      { label: "Connections", href: "/settings/connections", icon: Settings, section: "PLATFORM" },
+      { label: "Automation", href: "/settings/automation", icon: Settings, section: "PLATFORM" },
+      { label: "AI", href: "/settings/ai", icon: Settings, section: "PLATFORM" },
+      { label: "Modules", href: "/settings/modules", icon: Settings, section: "PLATFORM" },
+    ],
+  },
 };
 
 /** Alias for getModuleFromPath */
@@ -213,6 +228,7 @@ export function getModuleConfig(moduleId: ModuleId): ModuleConfig | undefined {
 /** Derive active module from pathname */
 export function getModuleFromPath(pathname: string): ModuleId {
   if (pathname === "/") return "home";
+  if (pathname.startsWith("/settings")) return "settings";
   if (pathname.startsWith("/properties") || pathname.startsWith("/property-vault"))
     return "property-vault";
   if (pathname.startsWith("/open-houses") || pathname.startsWith("/showing-hq"))

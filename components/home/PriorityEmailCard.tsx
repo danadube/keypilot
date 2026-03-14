@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Future: Priority Emails will aggregate from multiple connected inboxes
+ * (enabledForPriorityInbox). Accept connectionIds to filter sources.
+ */
+
 import { ChevronRight, Mail } from "lucide-react";
 import Link from "next/link";
 import { BrandBadge } from "@/components/ui/BrandBadge";

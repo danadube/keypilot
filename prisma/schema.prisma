@@ -19,7 +19,7 @@ model User {
   name        String
   email       String      @unique
   role        String      @default("agent")
-  productTier ProductTier  @default(OPEN_HOUSE)
+  productTier ProductTier @default(OPEN_HOUSE)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -64,32 +64,32 @@ model Property {
 }
 
 model Contact {
-  id               String         @id @default(uuid())
-  firstName        String
-  lastName         String
-  email            String?
-  phone            String?
-  hasAgent         Boolean?
-  timeline         String?
-  notes            String?
-  source           String         @default("ShowingsHQ")
-  status           ContactStatus? @default(LEAD)
-  assignedToUserId String?
-  googleResourceName String?      @unique
-  googleEtag       String?
-  externalSource   String?
-  externalSourceId String?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  deletedAt        DateTime?
+  id                 String         @id @default(uuid())
+  firstName          String
+  lastName           String
+  email              String?
+  phone              String?
+  hasAgent           Boolean?
+  timeline           String?
+  notes              String?
+  source             String         @default("ShowingsHQ")
+  status             ContactStatus? @default(LEAD)
+  assignedToUserId   String?
+  googleResourceName String?        @unique
+  googleEtag         String?
+  externalSource     String?
+  externalSourceId   String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  deletedAt          DateTime?
 
-  assignedToUser   User?          @relation(fields: [assignedToUserId], references: [id])
-  openHouseVisits  OpenHouseVisitor[]
-  activities       Activity[]
-  followUpDrafts   FollowUpDraft[]
-  contactTags      ContactTag[]
+  assignedToUser    User?              @relation(fields: [assignedToUserId], references: [id])
+  openHouseVisits   OpenHouseVisitor[]
+  activities        Activity[]
+  followUpDrafts    FollowUpDraft[]
+  contactTags       ContactTag[]
   followUpReminders FollowUpReminder[]
-  deals            Deal[]
+  deals             Deal[]
 
   @@index([email])
   @@index([phone])
@@ -108,21 +108,21 @@ enum ContactStatus {
 }
 
 model OpenHouse {
-  id           String          @id @default(uuid())
-  propertyId   String
-  hostUserId   String
-  title        String
-  startAt      DateTime
-  endAt        DateTime
-  agentName    String?
-  agentEmail   String?
-  agentPhone   String?
-  notes        String?
-  qrSlug       String          @unique
-  status       OpenHouseStatus @default(SCHEDULED)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  deletedAt    DateTime?
+  id         String          @id @default(uuid())
+  propertyId String
+  hostUserId String
+  title      String
+  startAt    DateTime
+  endAt      DateTime
+  agentName  String?
+  agentEmail String?
+  agentPhone String?
+  notes      String?
+  qrSlug     String          @unique
+  status     OpenHouseStatus @default(SCHEDULED)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  deletedAt  DateTime?
 
   property      Property           @relation(fields: [propertyId], references: [id])
   hostUser      User               @relation(fields: [hostUserId], references: [id])
@@ -145,13 +145,13 @@ enum OpenHouseStatus {
 }
 
 model OpenHouseVisitor {
-  id              String      @id @default(uuid())
+  id              String       @id @default(uuid())
   openHouseId     String
   contactId       String
   signInMethod    SignInMethod
   submittedAt     DateTime
   rawResponseJson Json?
-  createdAt       DateTime    @default(now())
+  createdAt       DateTime     @default(now())
 
   openHouse OpenHouse @relation(fields: [openHouseId], references: [id])
   contact   Contact   @relation(fields: [contactId], references: [id])
@@ -232,8 +232,8 @@ model Tag {
   userId    String
   createdAt DateTime @default(now())
 
-  user         User          @relation(fields: [userId], references: [id])
-  contactTags  ContactTag[]
+  user        User         @relation(fields: [userId], references: [id])
+  contactTags ContactTag[]
 
   @@unique([name, userId])
   @@index([userId])
@@ -247,7 +247,7 @@ model ContactTag {
   createdAt DateTime @default(now())
 
   contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  tag    Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@unique([contactId, tagId])
   @@index([contactId])
@@ -256,17 +256,17 @@ model ContactTag {
 }
 
 model FollowUpReminder {
-  id        String              @id @default(uuid())
+  id        String         @id @default(uuid())
   contactId String
   userId    String
   dueAt     DateTime
-  body      String              @db.Text
-  status    ReminderStatus      @default(PENDING)
-  createdAt DateTime            @default(now())
-  updatedAt DateTime            @updatedAt
+  body      String         @db.Text
+  status    ReminderStatus @default(PENDING)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 
   contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  user   User    @relation(fields: [userId], references: [id])
+  user    User    @relation(fields: [userId], references: [id])
 
   @@index([contactId])
   @@index([userId])
@@ -327,21 +327,35 @@ model SellerReport {
 }
 
 model Connection {
-  id           String             @id @default(uuid())
-  userId       String
-  provider     ConnectionProvider
-  service      ConnectionService
-  status       ConnectionStatus   @default(DISCONNECTED)
-  lastSyncAt   DateTime?
-  connectedAt  DateTime?
-  errorMessage String?
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+  id                      String             @id @default(uuid())
+  userId                  String
+  provider                ConnectionProvider
+  service                 ConnectionService
+  accountEmail            String? // Set after OAuth; null for pending
+  accountLabel            String?
+  status                  ConnectionStatus   @default(DISCONNECTED)
+  scopes                  Json?
+  isDefault               Boolean            @default(false)
+  isEnabled               Boolean            @default(true)
+  enabledForAi            Boolean            @default(true)
+  enabledForCalendar      Boolean            @default(true)
+  enabledForPriorityInbox Boolean            @default(true)
+  lastSyncAt              DateTime?
+  connectedAt             DateTime?
+  syncPreferences         Json?
+  errorMessage            String?
+  // OAuth tokens (encrypted at rest via DB; avoid logging)
+  accessToken             String?
+  refreshToken            String?
+  tokenExpiresAt          DateTime?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, provider, service])
+  @@unique([userId, provider, service, accountEmail])
   @@index([userId])
+  @@index([userId, provider])
   @@map("connections")
 }
 

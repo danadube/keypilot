@@ -15,6 +15,8 @@ export interface CalendarEvent {
   endAt?: string;
   meta?: string;
   href?: string;
+  /** Future: connectionId for multi-calendar aggregation */
+  connectionId?: string;
 }
 
 const EVENT_COLORS: Record<EventType, string> = {

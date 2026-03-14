@@ -5,12 +5,13 @@ import { apiErrorFromCaught } from "@/lib/api-response";
 import {
   CONNECTION_CONFIGS,
   prismaStatusToLib,
-  SERVICE_TO_PRISMA,
+  PRISMA_TO_SERVICE,
+  type ConnectionRecord,
 } from "@/lib/connections";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/v1/settings/connections - List all connections with status */
+/** GET /api/v1/settings/connections - List all connections (multi-account) */
 export async function GET() {
   try {
     const user = await getCurrentUser();
@@ -19,23 +20,37 @@ export async function GET() {
       where: { userId: user.id },
     });
 
-    const states = CONNECTION_CONFIGS.map((config) => {
-      const db = dbConnections.find(
-        (c) =>
-          c.provider === config.provider.toUpperCase() &&
-          c.service === SERVICE_TO_PRISMA[config.service]
-      );
+    const connections: ConnectionRecord[] = dbConnections
+      .filter((c) => PRISMA_TO_SERVICE[c.service])
+      .map((c) => {
+      const service = PRISMA_TO_SERVICE[c.service];
+      const config = service
+        ? CONNECTION_CONFIGS.find(
+            (cf) =>
+              cf.provider === (c.provider.toLowerCase() as "google" | "microsoft" | "apple") &&
+              cf.service === service
+          )
+        : null;
       return {
-        config,
-        dbId: db?.id,
-        status: db ? prismaStatusToLib(db.status) : "disconnected" as const,
-        lastSyncAt: db?.lastSyncAt?.toISOString() ?? null,
-        connectedAt: db?.connectedAt?.toISOString() ?? null,
-        errorMessage: db?.errorMessage ?? null,
-      };
-    });
+        id: c.id,
+        provider: (c.provider.toLowerCase() as "google" | "microsoft" | "apple"),
+        service: service!,
+        configId: config?.id ?? `${c.provider}-${c.service}`,
+        accountEmail: c.accountEmail,
+        accountLabel: c.accountLabel,
+        status: prismaStatusToLib(c.status),
+        isDefault: c.isDefault,
+        isEnabled: c.isEnabled,
+        enabledForAi: c.enabledForAi,
+        enabledForCalendar: c.enabledForCalendar,
+        enabledForPriorityInbox: c.enabledForPriorityInbox,
+        lastSyncAt: c.lastSyncAt?.toISOString() ?? null,
+        connectedAt: c.connectedAt?.toISOString() ?? null,
+        errorMessage: c.errorMessage,
+        };
+      });
 
-    return NextResponse.json({ data: states });
+    return NextResponse.json({ data: { connections } });
   } catch (e) {
     return apiErrorFromCaught(e);
   }

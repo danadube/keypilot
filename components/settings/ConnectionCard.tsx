@@ -1,5 +1,6 @@
 "use client";
 
+import { Mail } from "lucide-react";
 import { type ConnectionState } from "@/lib/connections";
 import { BrandBadge } from "@/components/ui/BrandBadge";
 import { BrandButton } from "@/components/ui/BrandButton";
@@ -49,7 +50,7 @@ export function ConnectionCard({
   isConnecting,
   isDisconnecting,
 }: ConnectionCardProps) {
-  const Icon = state.config.icon;
+  const Icon = state.config?.icon ?? Mail;
   const statusTone = STATUS_TONE[state.status];
   const statusLabel = STATUS_LABEL[state.status];
   const lastSync = formatRelativeTime(state.lastSyncAt);

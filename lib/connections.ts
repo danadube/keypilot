@@ -128,6 +128,36 @@ export const SERVICE_TO_PRISMA: Record<ConnectionService, string> = {
   apple_contacts: "APPLE_CONTACTS",
 };
 
+/** Map Prisma ConnectionService to lib service key */
+export const PRISMA_TO_SERVICE: Record<string, ConnectionService> = {
+  GMAIL: "gmail",
+  GOOGLE_CALENDAR: "google_calendar",
+  OUTLOOK_MAIL: "outlook_mail",
+  OUTLOOK_CALENDAR: "outlook_calendar",
+  APPLE_MAIL: "apple_mail",
+  APPLE_CALENDAR: "apple_calendar",
+  APPLE_CONTACTS: "apple_contacts",
+};
+
+/** API response shape for a single connection (multi-account ready) */
+export interface ConnectionRecord {
+  id: string;
+  provider: ConnectionProvider;
+  service: ConnectionService;
+  configId: string;
+  accountEmail: string | null;
+  accountLabel: string | null;
+  status: ConnectionStatus;
+  isDefault: boolean;
+  isEnabled: boolean;
+  enabledForAi: boolean;
+  enabledForCalendar: boolean;
+  enabledForPriorityInbox: boolean;
+  lastSyncAt: string | null;
+  connectedAt: string | null;
+  errorMessage: string | null;
+}
+
 /** Map Prisma ConnectionStatus to lib status */
 export function prismaStatusToLib(status: string): ConnectionStatus {
   const m: Record<string, ConnectionStatus> = {
@@ -147,4 +177,9 @@ export function getConnectionsByProvider(): Record<ConnectionProvider, Connectio
     apple: CONNECTION_CONFIGS.filter((c) => c.provider === "apple"),
   };
   return byProvider;
+}
+
+/** Get ConnectionConfig by config id */
+export function getConfigById(configId: string): ConnectionConfig | undefined {
+  return CONNECTION_CONFIGS.find((c) => c.id === configId);
 }

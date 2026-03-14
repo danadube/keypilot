@@ -5,8 +5,11 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/settings", label: "Account" },
+  { href: "/settings/account", label: "Account" },
   { href: "/settings/connections", label: "Connections" },
+  { href: "/settings/automation", label: "Automation" },
+  { href: "/settings/ai", label: "AI" },
+  { href: "/settings/modules", label: "Modules" },
 ];
 
 export default function SettingsLayout({
@@ -15,6 +18,12 @@ export default function SettingsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+
+  const isItemActive = (href: string) => {
+    if (pathname === href) return true;
+    if (href !== "/settings" && pathname.startsWith(href + "/")) return true;
+    return false;
+  };
 
   return (
     <div className="flex flex-col gap-[var(--space-xl)]">
@@ -25,7 +34,7 @@ export default function SettingsLayout({
             href={item.href}
             className={cn(
               "px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px",
-              pathname === item.href
+              isItemActive(item.href)
                 ? "text-[var(--brand-primary)] border-[var(--brand-primary)]"
                 : "text-[var(--brand-text-muted)] border-transparent hover:text-[var(--brand-text)]"
             )}
