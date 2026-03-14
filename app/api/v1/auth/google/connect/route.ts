@@ -11,6 +11,14 @@ export async function GET(req: NextRequest) {
   try {
     await getCurrentUser();
 
+    const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+    if (!clientId || !clientSecret) {
+      return NextResponse.redirect(
+        new URL("/settings/connections?error=config_error", req.url)
+      );
+    }
+
     const service = req.nextUrl.searchParams.get("service");
     if (!service || !ALLOWED_SERVICES.includes(service as (typeof ALLOWED_SERVICES)[number])) {
       return NextResponse.redirect(
@@ -39,8 +47,12 @@ export async function GET(req: NextRequest) {
     return res;
   } catch (e) {
     console.error("[auth/google/connect]", e);
+    const msg = (e as Error).message ?? "";
+    const isConfigError = msg.includes("GOOGLE_CLIENT_ID") || msg.includes("GOOGLE_CLIENT_SECRET");
+    const errorCode = isConfigError ? "config_error" : "auth_failed";
+    const origin = req.nextUrl.origin;
     return NextResponse.redirect(
-      new URL("/settings/connections?error=auth_failed", req.url)
+      new URL(`/settings/connections?error=${errorCode}`, origin)
     );
   }
 }

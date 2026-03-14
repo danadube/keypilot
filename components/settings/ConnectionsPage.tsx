@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { BrandSectionHeader } from "@/components/ui/BrandSectionHeader";
 import { BrandCard } from "@/components/ui/BrandCard";
 import { BrandBadge } from "@/components/ui/BrandBadge";
@@ -63,11 +64,41 @@ function groupConnectionsByProviderAndAccount(
   return result;
 }
 
+const URL_ERROR_MESSAGES: Record<string, string> = {
+  auth_failed:
+    "Authentication failed. Check that GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set, and that the Gmail/Calendar APIs are enabled in Google Cloud Console.",
+  config_error: "Google OAuth is not configured. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your environment.",
+  invalid_service: "Invalid service. Please try connecting again.",
+  invalid_state: "Session expired. Please try connecting again.",
+  missing_params: "Missing OAuth parameters. Please try again.",
+  no_token: "Could not get access from Google. Please try again.",
+  access_denied: "You declined access. Connect again when ready.",
+};
+
 export function ConnectionsPageContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [connections, setConnections] = useState<ConnectionRecord[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [urlMessage, setUrlMessage] = useState<{ type: "error" | "success"; code: string } | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  useEffect(() => {
+    const err = searchParams.get("error");
+    const conn = searchParams.get("connected");
+    if (err) {
+      setUrlMessage({ type: "error", code: err });
+    } else if (conn) {
+      setUrlMessage({ type: "success", code: conn });
+    }
+  }, [searchParams]);
+
+  const dismissUrlMessage = () => {
+    setUrlMessage(null);
+    router.replace("/settings/connections", { scroll: false });
+  };
 
   const load = () => {
     setLoading(true);
@@ -90,7 +121,8 @@ export function ConnectionsPageContent() {
     if (provider === "google") {
       const svc = service === "gmail" ? "gmail" : service === "google_calendar" ? "google_calendar" : "google_calendar";
       setActionId(service ?? provider);
-      window.location.href = `/api/v1/auth/google/connect?service=${svc}`;
+      setIsRedirecting(true);
+      window.location.href = `${window.location.origin}/api/v1/auth/google/connect?service=${svc}`;
       return;
     }
     setActionId(provider);
@@ -159,7 +191,47 @@ export function ConnectionsPageContent() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
+      {isRedirecting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--brand-bg)]/90">
+          <div className="flex flex-col items-center gap-3 rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface)] px-8 py-6 shadow-lg">
+            <Loader2 className="h-8 w-8 animate-spin text-[var(--brand-primary)]" />
+            <p className="text-sm font-medium text-[var(--brand-text)]">Redirecting to Google…</p>
+          </div>
+        </div>
+      )}
+      {urlMessage && (
+        <BrandCard
+          padded
+          className={
+            urlMessage.type === "error"
+              ? "border-[var(--brand-danger)] bg-[var(--brand-danger)]/10"
+              : "border-[var(--brand-success)] bg-[var(--brand-success)]/10"
+          }
+        >
+          <div className="flex items-start justify-between gap-4">
+            <p
+              className={
+                urlMessage.type === "error"
+                  ? "text-[var(--brand-danger)]"
+                  : "text-[var(--brand-success)]"
+              }
+            >
+              {urlMessage.type === "error"
+                ? URL_ERROR_MESSAGES[urlMessage.code] ?? urlMessage.code
+                : `${urlMessage.code === "gmail" ? "Gmail" : urlMessage.code === "google_calendar" ? "Google Calendar" : urlMessage.code} connected successfully.`}
+            </p>
+            <button
+              type="button"
+              onClick={dismissUrlMessage}
+              className="text-[var(--brand-text-muted)] hover:text-[var(--brand-text)] shrink-0"
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
+          </div>
+        </BrandCard>
+      )}
       <BrandSectionHeader
         title="Connections"
         description="Connect multiple email and calendar accounts. Each account can be enabled for AI, Home calendar, and priority inbox."
