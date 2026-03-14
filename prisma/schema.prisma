@@ -14,14 +14,16 @@ enum ProductTier {
 }
 
 model User {
-  id          String      @id @default(uuid())
-  clerkId     String      @unique
-  name        String
-  email       String      @unique
-  role        String      @default("agent")
-  productTier ProductTier @default(OPEN_HOUSE)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id           String      @id @default(uuid())
+  clerkId      String      @unique
+  name         String
+  email        String      @unique
+  role         String      @default("agent")
+  productTier  ProductTier @default(OPEN_HOUSE)
+  /** Per-module access: { "showing-hq": true, "client-keep": false }. Null = defaults (showing-hq enabled). */
+  moduleAccess Json?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
 
   properties        Property[]
   openHouses        OpenHouse[]

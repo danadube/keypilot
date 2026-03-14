@@ -106,13 +106,11 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     available: true,
     sidebar: [
       { label: "Overview", href: "/showing-hq", icon: LayoutDashboard, section: "OVERVIEW" },
-      { label: "Showing Requests", href: "/showing-hq/requests", icon: Calendar, section: "SHOWINGS" },
-      { label: "Scheduled Showings", href: "/open-houses", icon: Calendar, section: "SHOWINGS" },
-      { label: "Open Sign-in", href: "/open-houses/sign-in", icon: QrCode, section: "SHOWINGS" },
-      { label: "Feedback", href: "/showing-hq/feedback", icon: MessageSquare, section: "VISITORS" },
-      { label: "Buyer Agents", href: "/showing-hq/buyer-agents", icon: Users, section: "VISITORS" },
-      { label: "Buyers", href: "/showing-hq/buyers", icon: Users, section: "VISITORS" },
+      { label: "Showings", href: "/open-houses", icon: Calendar, section: "SHOWINGS" },
+      { label: "Open Houses", href: "/open-houses/sign-in", icon: QrCode, section: "SHOWINGS" },
+      { label: "Visitors", href: "/showing-hq/visitors", icon: Users, section: "SHOWINGS" },
       { label: "Activity", href: "/showing-hq/activity", icon: BarChart3, section: "ACTIVITY" },
+      { label: "Templates", href: "/showing-hq/templates", icon: FileText, section: "ACTIVITY" },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
     ],
   },
@@ -228,6 +226,7 @@ export function getModuleConfig(moduleId: ModuleId): ModuleConfig | undefined {
 /** Derive active module from pathname */
 export function getModuleFromPath(pathname: string): ModuleId {
   if (pathname === "/") return "home";
+  if (pathname.startsWith("/upgrade")) return "showing-hq";
   if (pathname.startsWith("/settings")) return "settings";
   if (pathname.startsWith("/properties") || pathname.startsWith("/property-vault"))
     return "property-vault";

@@ -96,6 +96,14 @@ export interface AiReplyDraft {
   status: "draft" | "approved" | "sent" | "discarded";
 }
 
+/** Suggested reply draft from pipeline (extends AiReplyDraft with intent metadata) */
+export interface SuggestedReplyDraft extends AiReplyDraft {
+  emailId: string;
+  draftType: "short" | "polished";
+  subjectSuggestion?: string;
+  rationale?: string;
+}
+
 /** Suggested next action (create task, link contact, etc.) */
 export interface AiActionSuggestion {
   id: string;

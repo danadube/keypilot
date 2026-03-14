@@ -161,13 +161,14 @@ function buildCalendarEvents(
 }
 
 type CalendarData = { events: { id: string; title: string; startAt: string; type: string; meta?: string }[]; hasCalendarConnection: boolean };
-type EmailData = { emails: { id: string; sender: string; subject: string; snippet: string; receivedAt: string; classification?: string; href?: string }[]; hasGmailConnection: boolean };
+type EmailData = { emails: { id: string; sender: string; subject: string; snippet: string; receivedAt: string; classification?: string; aiSummary?: string; href?: string; threadId?: string }[]; hasGmailConnection: boolean };
 
 export function HomePage() {
   const { isLoaded } = useAuth();
   const [stats, setStats] = useState<Stats | null>(null);
   const [calendarData, setCalendarData] = useState<CalendarData | null>(null);
   const [emailData, setEmailData] = useState<EmailData | null>(null);
+  const [taskSuggestions, setTaskSuggestions] = useState<AITodo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date>(() => {
@@ -178,28 +179,29 @@ export function HomePage() {
   const loadData = (retryCount = 0) => {
     setError(null);
     setLoading(true);
-    const today = new Date();
-    const timeMin = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
-    const timeMax = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
-    Promise.all([
-      fetch("/api/v1/dashboard/stats").then((r) => r.json()),
-      fetch(`/api/v1/calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`).then((r) => r.json()),
-      fetch("/api/v1/emails/priority").then((r) => r.json()),
-    ])
-      .then(([statsJson, calendarJson, emailJson]) => {
-        if (statsJson?.error) throw new Error(statsJson.error.message);
-        setStats(statsJson.data ?? null);
-        setCalendarData(
-          calendarJson?.data
-            ? { events: calendarJson.data.events ?? [], hasCalendarConnection: calendarJson.data.hasCalendarConnection ?? false }
-            : { events: [], hasCalendarConnection: false }
-        );
-        setEmailData(
-          emailJson?.data
-            ? { emails: emailJson.data.emails ?? [], hasGmailConnection: emailJson.data.hasGmailConnection ?? false }
-            : { emails: [], hasGmailConnection: false }
-        );
+    fetch("/api/v1/ai/home-briefing")
+      .then((r) => r.json())
+      .then((briefing) => {
+        if (briefing?.error) throw new Error(briefing.error.message);
+        const data = briefing.data ?? {};
+        setStats(data.stats ?? null);
+        setCalendarData({
+          events: data.calendarEvents ?? [],
+          hasCalendarConnection: data.hasCalendarConnection ?? false,
+        });
+        setEmailData({
+          emails: data.interpretedEmails ?? [],
+          hasGmailConnection: data.hasGmailConnection ?? false,
+        });
+        const tasks = (data.taskSuggestions ?? []).map((t: { id: string; title: string; source: AITodo["source"]; href?: string; meta?: string }) => ({
+          id: t.id,
+          title: t.title,
+          source: t.source,
+          href: t.href,
+          meta: t.meta,
+        }));
+        setTaskSuggestions(tasks);
       })
       .catch((err) => {
         if (retryCount < MAX_RETRIES) {
@@ -234,8 +236,10 @@ export function HomePage() {
   const showingsToday = (stats?.recentOpenHouses ?? []).filter(
     (oh) => isSameDay(new Date(oh.startAt), today)
   ).length;
-  const needsReply = 3;
-  const tasksDue = 2;
+  const needsReply = emailData?.hasGmailConnection
+    ? (emailData.emails.filter((e) => e.classification === "needs_reply").length)
+    : 0;
+  const tasksDue = taskSuggestions.length;
   const allEvents = buildCalendarEvents(
     stats?.recentOpenHouses ?? [],
     calendarData?.events ?? [],
@@ -263,13 +267,15 @@ export function HomePage() {
 
   const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
 
-  // Mock data for AI To-Do List (Gmail, Calendar, showings, leads, follow-ups)
-  const mockAITodos: AITodo[] = [
-    { id: "1", title: "Reply to John about showing time", source: "email", meta: "From yesterday", href: "#" },
-    { id: "2", title: "Prep for 10am Oak St showing", source: "showing", meta: "123 Oak St", href: "/open-houses" },
-    { id: "3", title: "Follow up with Smith lead", source: "lead", meta: "Viewed 3 properties", href: "/contacts" },
-    { id: "4", title: "Send listing docs to buyer", source: "follow_up", meta: "Requested Tue", href: "/task-pilot" },
-  ];
+  const aiTodosForUi: AITodo[] =
+    taskSuggestions.length > 0
+      ? taskSuggestions
+      : [
+          { id: "1", title: "Reply to John about showing time", source: "email", meta: "From yesterday", href: "#" },
+          { id: "2", title: "Prep for 10am Oak St showing", source: "showing", meta: "123 Oak St", href: "/open-houses" },
+          { id: "3", title: "Follow up with Smith lead", source: "lead", meta: "Viewed 3 properties", href: "/contacts" },
+          { id: "4", title: "Send listing docs to buyer", source: "follow_up", meta: "Requested Tue", href: "/task-pilot" },
+        ];
 
   /** Format receivedAt to relative date for display */
   const formatEmailDate = (iso: string) => {
@@ -292,10 +298,12 @@ export function HomePage() {
         id: e.id,
         sender: e.sender,
         subject: e.subject,
-        aiSummary: e.snippet || undefined,
+        aiSummary: e.aiSummary ?? e.snippet?.slice(0, 120) ?? undefined,
         status: (e.classification as PriorityEmail["status"]) ?? "informational",
         date: formatEmailDate(e.receivedAt),
         href: e.href,
+        snippet: e.snippet,
+        threadId: e.threadId,
       }))
     : [
         { id: "1", sender: "Sarah Chen", subject: "Re: 456 Elm - inspection schedule", aiSummary: "Buyer requesting flexible inspection window next week.", status: "needs_reply", date: "Today 9:12 AM", href: "#" },
@@ -446,7 +454,7 @@ export function HomePage() {
         />
         <BrandCard elevated padded>
           <div className="space-y-2">
-            {mockAITodos.map((todo) => (
+            {aiTodosForUi.map((todo) => (
               <AITodoItem key={todo.id} todo={todo} />
             ))}
           </div>

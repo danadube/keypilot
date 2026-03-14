@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { ModuleGate } from "@/components/shared/ModuleGate";
 import {
   Card,
   CardContent,
@@ -34,6 +35,12 @@ export default function ClientKeepOverviewPage() {
   if (error) return <ErrorMessage message={error} onRetry={() => window.location.reload()} />;
 
   return (
+    <ModuleGate
+      moduleId="client-keep"
+      moduleName="ClientKeep"
+      valueProposition="Full CRM for contacts, leads, tags, communication logs, and follow-ups."
+      backHref="/showing-hq"
+    >
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">ClientKeep</h1>
@@ -70,5 +77,6 @@ export default function ClientKeepOverviewPage() {
         </CardContent>
       </Card>
     </div>
+    </ModuleGate>
   );
 }

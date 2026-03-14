@@ -3,7 +3,10 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { Lock } from "lucide-react";
 import { MODULES, getModuleFromPath } from "@/lib/modules";
+import { useProductTier } from "@/components/ProductTierProvider";
+import { getUpgradeModuleIds } from "@/lib/upgrade-modules";
 import type { ModuleSidebarItem } from "@/lib/modules";
 
 const SIDEBAR_WIDTH = 240;
@@ -46,6 +49,9 @@ export function ModuleSidebar() {
   const mod = MODULES[activeId];
   const items = mod.sidebar;
   const groups = groupBySection(items);
+  const { hasModuleAccess: checkAccess, isLoading } = useProductTier();
+  const upgradeIds = getUpgradeModuleIds();
+  const lockedModules = isLoading ? [] : upgradeIds.filter((id) => !checkAccess(id));
 
   return (
     <aside
@@ -90,6 +96,37 @@ export function ModuleSidebar() {
             </ul>
           </div>
         ))}
+        {lockedModules.length > 0 && (
+          <div className="mt-6 border-t border-[var(--brand-border)] pt-4">
+            <p className="mb-1.5 px-5 text-xs font-semibold uppercase tracking-wide text-[var(--brand-text-muted)]">
+              Upgrade Your Platform
+            </p>
+            <ul className="space-y-0.5">
+              {lockedModules.map((id) => {
+                const cfg = MODULES[id];
+                if (!cfg) return null;
+                const isActive = pathname === `/upgrade/${id}`;
+                return (
+                  <li key={id}>
+                    <Link
+                      href={`/upgrade/${id}`}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-5 py-2.5 text-sm transition-colors",
+                        "hover:bg-[var(--brand-surface)] hover:text-[var(--brand-text)]",
+                        "text-[var(--brand-text-muted)]",
+                        isActive &&
+                          "bg-[var(--brand-primary)]/12 font-semibold text-[var(--brand-primary)] border-l-2 border-l-[var(--brand-primary)] -ml-[2px] pl-[calc(1.25rem+2px)]"
+                      )}
+                    >
+                      <Lock className="h-[18px] w-[18px] shrink-0 opacity-70" />
+                      {cfg.name}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
       </nav>
     </aside>
   );

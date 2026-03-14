@@ -4,10 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { MODULES, MODULE_ORDER, getModuleFromPath } from "@/lib/modules";
+import { useProductTier } from "@/components/ProductTierProvider";
+import { isUpgradeModule } from "@/lib/module-access";
 
 export function TopModuleNav() {
   const pathname = usePathname();
   const activeId = getModuleFromPath(pathname);
+  const { hasModuleAccess, isLoading } = useProductTier();
 
   return (
     <nav
@@ -17,11 +20,15 @@ export function TopModuleNav() {
     >
       {MODULE_ORDER.map((id) => {
         const mod = MODULES[id];
-        const isActive = activeId === id;
+        const isActive = activeId === id || pathname === `/upgrade/${id}`;
+        const hasAccess = hasModuleAccess(id);
+        const showUpgrade = isUpgradeModule(id) && !hasAccess && !isLoading;
+
+        const href = showUpgrade ? `/upgrade/${id}` : mod.href;
         return (
           <Link
             key={id}
-            href={mod.href}
+            href={href}
             role="tab"
             aria-selected={isActive}
             className={cn(
@@ -30,7 +37,7 @@ export function TopModuleNav() {
               isActive
                 ? "font-semibold text-[var(--brand-text)] [&_.relative]:text-[var(--brand-primary)]"
                 : "font-medium text-[var(--brand-text-muted)]",
-              !mod.available && "opacity-60 cursor-default"
+              !mod.available && "opacity-60"
             )}
           >
             {isActive && (
@@ -39,7 +46,14 @@ export function TopModuleNav() {
                 aria-hidden
               />
             )}
-            <span className="relative">{mod.name}</span>
+            <span className="relative flex items-center gap-1.5">
+              {mod.name}
+              {showUpgrade && (
+                <span className="rounded bg-[var(--brand-primary)]/15 px-1.5 py-0.5 text-xs font-medium text-[var(--brand-primary)]">
+                  Upgrade
+                </span>
+              )}
+            </span>
           </Link>
         );
       })}

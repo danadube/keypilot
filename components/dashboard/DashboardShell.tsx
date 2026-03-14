@@ -13,6 +13,7 @@ const HEADER_HEIGHT = 64;
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
+    <ProductTierProvider>
     <div className="flex min-h-screen flex-col">
       {/* Header: grid-aligned with sidebar — brand (240px) | module nav | global controls */}
       <header
@@ -54,13 +55,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-0 flex-1">
         <ModuleSidebar />
         <main className="min-h-0 flex-1 overflow-auto bg-[var(--brand-bg)] p-8 md:p-10">
-          <ProductTierProvider>
-            <div className="mx-auto min-h-[50vh]" style={{ maxWidth: 1280 }}>
-              {children}
-            </div>
-          </ProductTierProvider>
+          <div className="mx-auto min-h-[50vh]" style={{ maxWidth: 1280 }}>
+            {children}
+          </div>
         </main>
       </div>
     </div>
+    </ProductTierProvider>
   );
 }

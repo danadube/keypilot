@@ -4,22 +4,22 @@ import { ModuleGate } from "@/components/shared/ModuleGate";
 import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
 import { BrandCard } from "@/components/ui/BrandCard";
 
-export default function FarmTrackrPage() {
+export default function SellerPulsePage() {
   return (
     <ModuleGate
-      moduleId="farm-trackr"
-      moduleName="FarmTrackr"
-      valueProposition="Geographic farming intelligence and territory management for prospecting in your farm areas."
+      moduleId="seller-pulse"
+      moduleName="SellerPulse"
+      valueProposition="Seller reports and listing performance insights for your sellers."
       backHref="/showing-hq"
     >
       <div className="flex flex-col gap-[var(--space-xl)]">
         <BrandPageHeader
-          title="FarmTrackr"
-          description="Geographic farming intelligence and territory management."
+          title="SellerPulse"
+          description="Seller reports and listing performance."
         />
         <BrandCard padded elevated>
           <p className="text-[var(--brand-text-muted)]">
-            Coming soon: farms, farm lists, routes, mailing plans, and campaign history.
+            Coming soon: seller reports and performance dashboards.
           </p>
         </BrandCard>
       </div>
