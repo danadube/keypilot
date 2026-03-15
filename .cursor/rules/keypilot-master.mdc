@@ -72,4 +72,18 @@ When the user types **`next`** (or "next step"): Determine the next logical deve
 
 ---
 
+---
+
+## Task completion (required)
+
+Every completed task must end with:
+
+1. **Build check** — `npm run build` (or `npm run validate`) must succeed
+2. **Commit** — `git add .` and `git commit` with a clear prefix (feature:, fix:, docs:, etc.)
+3. **Push** — `git push` to the remote
+
+Do not leave work in an uncommitted state. See `docs/dev-workflow.md` for full workflow rules.
+
+---
+
 For full details, see `docs/AI_DEVELOPMENT_GUIDE.md`.
