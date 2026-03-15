@@ -1,0 +1,15 @@
+---
+description: Protect reference-only folders from edits
+alwaysApply: true
+---
+
+The CODE_PROJECTS folder is informational reference material only.
+
+Rules:
+- never modify files inside CODE_PROJECTS
+- never refactor files inside CODE_PROJECTS
+- never move or rename files inside CODE_PROJECTS
+- never include CODE_PROJECTS files in commits for KeyPilot changes
+- use CODE_PROJECTS only for inspiration or reference
+
+All active development must occur outside CODE_PROJECTS.

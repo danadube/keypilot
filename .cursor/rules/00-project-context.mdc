@@ -1,0 +1,35 @@
+---
+description: KeyPilot product context and module definitions
+alwaysApply: true
+---
+
+You are working inside the KeyPilot repository.
+
+KeyPilot is a real estate operations platform.
+
+Current / planned modules:
+- ShowingHQ
+- PropertyVault
+- Transactions
+- ClientKeep
+- FarmTrackr
+- SellerPulse
+- MarketPilot
+
+Important product distinctions:
+- A private showing is not the same as an open house
+- Showings = private appointments, often from Supra or manual entry
+- Open Houses = public events with QR sign-in, visitors, flyer delivery, and host workflows
+- Visitor capture should lead into follow-up, CRM, and transaction workflows
+
+Current architectural themes:
+- ShowingHQ-first product experience
+- Separate surfaces for visitor, host, and internal dashboard use
+- Public sign-in pages should feel like property pages, not admin pages
+- Host workflows may involve listing agent, host agent, assistant, or invited host
+- Transaction and commission tracking are separate module concerns, not mixed into ShowingHQ UI
+
+When making changes:
+- preserve module boundaries
+- do not blur showings and open houses
+- prefer scalable, reusable platform-level data structures over one-off hacks

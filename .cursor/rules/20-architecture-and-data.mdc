@@ -1,0 +1,36 @@
+---
+description: Architecture, schema, API, and data-model rules
+globs:
+  - "app/**/*.ts"
+  - "app/**/*.tsx"
+  - "lib/**/*.ts"
+  - "prisma/**/*.prisma"
+  - "components/**/*.ts"
+  - "components/**/*.tsx"
+---
+
+Respect existing architecture:
+- Next.js app router
+- Prisma for schema and database access
+- Supabase for storage
+- modular product structure
+
+Data modeling rules:
+- favor explicit relationships over overloaded fields
+- preserve separation between showings, open houses, visitors, follow-ups, transactions, commissions
+- when representing different roles, model them clearly (listing agent, host agent, assistant, etc.)
+- avoid introducing ambiguous route names or mixed terminology
+
+API rules:
+- route names and page titles must match product concepts
+- do not label open houses as showings or vice versa
+- preserve public/host/internal surface separation
+
+Environment rules:
+- use NEXT_PUBLIC_* only for browser-safe values
+- server-only secrets must stay server-side
+- do not move secrets into client code
+
+Migration rules:
+- if schema changes are introduced, explain migration impact
+- do not silently break existing data flows

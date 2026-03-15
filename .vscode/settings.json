@@ -1,0 +1,8 @@
+{
+  "files.readonlyInclude": {
+    "CODE_PROJECTS/**": true
+  },
+  "search.exclude": {
+    "CODE_PROJECTS": true
+  }
+}

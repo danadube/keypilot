@@ -1,0 +1,42 @@
+---
+description: Required development workflow for this repository
+alwaysApply: true
+---
+
+All completed code changes must end with:
+
+1. successful build
+2. git add .
+3. git commit with a clear message
+4. git push
+
+Do not leave work only in local uncommitted state.
+
+Use commit prefixes like:
+- feature:
+- fix:
+- ui:
+- refactor:
+- docs:
+- chore:
+- feat(...):
+- fix(...):
+
+After completing work, summarize:
+- files changed
+- build result
+- commit message
+- push result
+
+If a change affects product behavior, also summarize:
+- routes changed
+- user-facing UX changes
+- data model changes if relevant
+
+Preferred workflow:
+- work on branch when appropriate
+- push branch
+- verify preview deploy
+- merge when build passes
+
+If the user explicitly asks to keep work only local, follow that instruction for that task only.

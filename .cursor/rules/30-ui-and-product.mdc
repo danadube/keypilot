@@ -1,0 +1,37 @@
+---
+description: UI and product design rules for KeyPilot
+globs:
+  - "app/**/*.tsx"
+  - "components/**/*.tsx"
+  - "app/globals.css"
+  - "design-system/**/*"
+---
+
+UI should feel like a product, not a generic admin template.
+
+Design principles:
+- strong visual hierarchy
+- compact, efficient layouts
+- avoid oversized empty cards and excessive whitespace
+- prefer command-center patterns for operational dashboards
+- keep critical information visible within a standard laptop viewport when possible
+
+ShowingHQ-specific product rules:
+- ShowingHQ should feel like a distinct product, not a generic dashboard
+- dashboard should emphasize today's work, active properties, visitors, follow-ups, and schedule
+- public sign-in pages should feel like polished property welcome pages
+- host pages should be task-focused and operational
+- QR usage should be intentional:
+  - public visitor page: QR optional on desktop/tablet, hidden on phones
+  - host page: large QR
+  - printable poster: large branded QR
+
+Product language rules:
+- use clear real estate terminology
+- do not mix "showings" and "open houses"
+- page headings, routes, button labels, and empty states must match the actual workflow
+
+Branding rules:
+- KeyPilot is the parent platform
+- ShowingHQ should have its own identity within KeyPilot
+- public-facing pages should feel professional, modern, and trustworthy
