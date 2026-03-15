@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Lock } from "lucide-react";
+import { FeedbackButton } from "@/components/showing-hq/FeedbackButton";
 import { MODULES, getModuleFromPath } from "@/lib/modules";
 import { useProductTier } from "@/components/ProductTierProvider";
 import { getUpgradeModuleIds } from "@/lib/upgrade-modules";
@@ -61,11 +62,11 @@ export function ModuleSidebar() {
     >
       <div className="border-b border-[var(--brand-border)] px-5 py-4">
         <h2 className="text-sm font-semibold text-[var(--brand-text)]">
-          {mod.name}
+          {activeId === "showing-hq" ? "ShowingHQ Beta" : mod.name}
         </h2>
         {activeId === "showing-hq" && (
           <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">
-            by KeyPilot
+            by KeyPilot · Early Access
           </p>
         )}
       </div>
@@ -133,6 +134,13 @@ export function ModuleSidebar() {
           </div>
         )}
       </nav>
+      {activeId === "showing-hq" && (
+        <div className="shrink-0 border-t border-[var(--brand-border)] p-4">
+          <FeedbackButton variant="outline" size="sm" className="w-full justify-center">
+            Send feedback
+          </FeedbackButton>
+        </div>
+      )}
     </aside>
   );
 }

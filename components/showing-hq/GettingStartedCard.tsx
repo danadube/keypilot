@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { BrandCard } from "@/components/ui/BrandCard";
+import { BrandButton } from "@/components/ui/BrandButton";
 import { Button } from "@/components/ui/button";
 import {
   Home,
@@ -36,6 +37,7 @@ export function GettingStartedCard({
 }: GettingStartedCardProps) {
   const completed = steps.filter((s) => s.done).length;
   const total = steps.length;
+  const nextStep = steps.find((s) => !s.done);
 
   return (
     <BrandCard elevated padded className={cn("relative overflow-hidden", className)}>
@@ -75,6 +77,30 @@ export function GettingStartedCard({
             )}
           </div>
         </div>
+        {nextStep && (
+          <div className="rounded-lg border-2 border-[var(--brand-primary)]/30 bg-[var(--brand-primary)]/5 p-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--brand-text-muted)]">
+              Your next step
+            </p>
+            <Link
+              href={nextStep.href}
+              className="flex items-center gap-3 text-left transition-opacity hover:opacity-90"
+            >
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--brand-primary)]/20 text-[var(--brand-primary)]">
+                {nextStep.icon}
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="font-semibold text-[var(--brand-text)]">{nextStep.label}</span>
+                <p className="mt-0.5 text-sm text-[var(--brand-text-muted)]">
+                  Click to get started
+                </p>
+              </div>
+              <BrandButton variant="primary" size="sm" asChild>
+                <span>Do it now →</span>
+              </BrandButton>
+            </Link>
+          </div>
+        )}
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {steps.map((step) => (
             <li key={step.id}>

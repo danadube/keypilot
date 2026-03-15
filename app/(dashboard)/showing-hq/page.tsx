@@ -163,7 +163,7 @@ export default function ShowingHQOverviewPage() {
               Open house lead capture
             </p>
             <h1
-              className="font-bold text-[var(--brand-text)] tracking-tight"
+              className="flex items-center gap-3 font-bold text-[var(--brand-text)] tracking-tight"
               style={{
                 fontFamily: "var(--font-heading)",
                 fontSize: "clamp(1.75rem, 3vw, 2.25rem)",
@@ -171,6 +171,9 @@ export default function ShowingHQOverviewPage() {
               }}
             >
               ShowingHQ
+              <span className="rounded-md border border-[var(--brand-primary)]/40 bg-[var(--brand-primary)]/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-[var(--brand-primary)]">
+                Beta
+              </span>
             </h1>
             <p className="mt-2 max-w-[420px] text-[var(--brand-text-muted)]" style={{ fontSize: "var(--text-body-size)" }}>
               Capture visitor leads at the door, then follow up with personalized emails—all in one place.
