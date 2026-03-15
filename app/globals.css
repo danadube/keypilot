@@ -101,4 +101,13 @@ body {
     flex-direction: column;
     gap: var(--space-lg, 32px);
   }
+
+  /* Visitor table: temporary highlight for newest visitor on load */
+  @keyframes visitor-highlight {
+    0% { background-color: rgba(59, 130, 246, 0.25); }
+    100% { background-color: transparent; }
+  }
+  .animate-visitor-highlight {
+    animation: visitor-highlight 2s ease-out forwards;
+  }
 }

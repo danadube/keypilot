@@ -17,6 +17,7 @@ import {
   QrCode,
   Copy,
   ChevronRight,
+  Building2,
 } from "lucide-react";
 import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
 import { GettingStartedCard, buildGettingStartedSteps } from "@/components/showing-hq/GettingStartedCard";
@@ -142,6 +143,23 @@ export default function ShowingHQOverviewPage() {
   const formatTime = (d: string) =>
     new Date(d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
+  /** Contextual time for visitor table: "4:30 PM · today" or "4:12 PM · 15m ago" */
+  const formatTimeContextual = (d: string) => {
+    const date = new Date(d);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const timeStr = formatTime(d);
+    if (date.toDateString() === now.toDateString()) {
+      if (diffMins < 1) return `${timeStr} · just now`;
+      if (diffMins < 60) return `${timeStr} · ${diffMins}m ago`;
+      return `${timeStr} · today`;
+    }
+    if (diffHours < 48 && date.getDate() === now.getDate() - 1) return `${timeStr} · yesterday`;
+    return `${timeStr} · ${formatDate(d)}`;
+  };
+
   const primaryOpenHouse = todaysShowings[0] ?? upcoming[0];
   const signInUrl =
     typeof window !== "undefined" && primaryOpenHouse?.qrSlug
@@ -174,9 +192,17 @@ export default function ShowingHQOverviewPage() {
 
   return (
     <div className="min-h-0 flex flex-col gap-3" style={{ backgroundColor: "#f8fafc" }}>
-      {/* Today Panel — operational command center */}
+      {/* Today Panel — operational command center, state-based colors */}
       <div
-        className="rounded-lg border border-[var(--brand-primary)]/25 bg-[var(--brand-primary)]/8 px-4 py-2.5 shadow-sm"
+        className={`rounded-lg border px-4 py-2.5 shadow-sm transition-colors duration-200 ${
+          todayState === "follow_up_drafts_ready"
+            ? "border-amber-300 bg-amber-50"
+            : todayState === "visitors_checked_in"
+              ? "border-green-300 bg-green-50"
+              : todayState === "open_house_in_progress"
+                ? "border-blue-300 bg-blue-50"
+                : "border-[var(--brand-primary)]/25 bg-[var(--brand-primary)]/8"
+        }`}
         role="region"
         aria-label="Today"
       >
@@ -286,15 +312,19 @@ export default function ShowingHQOverviewPage() {
 
       {/* Active Open House spotlight — command center focus */}
       {primaryOpenHouse && (
-        <div className="rounded-lg border border-[var(--brand-primary)]/30 bg-white px-4 py-2.5 shadow-sm">
+        <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-2.5 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-4 min-w-0">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/80">
                   Active Open House
                 </p>
-                <p className="text-sm font-semibold text-[var(--brand-text)]">
-                  {primaryOpenHouse.property.address1}, {primaryOpenHouse.property.city}
+                <p className="flex items-center gap-2 mt-0.5 text-base font-semibold text-[var(--brand-text)]">
+                  <Building2 className="h-4 w-4 shrink-0 text-blue-600" />
+                  {primaryOpenHouse.property.address1}
+                </p>
+                <p className="text-sm text-[var(--brand-text-muted)]">
+                  {primaryOpenHouse.property.city}, {primaryOpenHouse.property.state}
                 </p>
               </div>
               <div className="flex items-center gap-2 text-sm text-[var(--brand-text-muted)]">
@@ -404,20 +434,26 @@ export default function ShowingHQOverviewPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {recentVisitors.slice(0, 6).map((v) => {
+                    {recentVisitors.slice(0, 6).map((v, idx) => {
                       const addr = (v.openHouse as { property?: { address1: string } })?.property?.address1 ?? v.openHouse.title;
+                      const isNewest = idx === 0;
                       return (
                         <tr
                           key={v.id}
-                          className="border-b border-[var(--brand-border)]/50 transition-colors hover:bg-[var(--brand-surface-alt)]/50"
+                          className={`border-b border-[var(--brand-border)]/50 transition-colors duration-150 hover:bg-blue-50/60 ${isNewest ? "animate-visitor-highlight" : ""}`}
                         >
                           <td className="py-1.5 pr-3">
                             <Link href={`/showing-hq/visitors/${v.id}`} className="font-medium text-[var(--brand-text)] hover:underline">
                               {v.contact.firstName} {v.contact.lastName}
                             </Link>
                           </td>
-                          <td className="py-1.5 pr-3 text-[var(--brand-text-muted)]">{formatTime(v.submittedAt)}</td>
-                          <td className="py-1.5 pr-3 truncate max-w-[120px] text-[var(--brand-text-muted)]">{addr}</td>
+                          <td className="py-1.5 pr-3 text-[var(--brand-text-muted)]">{formatTimeContextual(v.submittedAt)}</td>
+                          <td className="py-1.5 pr-3 truncate max-w-[120px] text-[var(--brand-text-muted)]">
+                            <span className="flex items-center gap-1.5">
+                              <Building2 className="h-3.5 w-3.5 shrink-0 text-[var(--brand-text-muted)]" />
+                              {addr}
+                            </span>
+                          </td>
                           <td className="py-1.5 pr-3">
                             {v.leadStatus ? <LeadStatusBadge status={v.leadStatus} className="text-[10px]" /> : "—"}
                           </td>
@@ -448,6 +484,11 @@ export default function ShowingHQOverviewPage() {
               <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
                 <CheckSquare className="h-4 w-4 text-[var(--brand-secondary)]" />
                 Follow-up Tasks
+                {followUpTasks.length > 0 && (
+                  <span className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500/20 px-1.5 text-[10px] font-semibold text-amber-700">
+                    {followUpTasks.length}
+                  </span>
+                )}
               </h2>
               <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">Draft emails waiting to be reviewed</p>
             </div>
