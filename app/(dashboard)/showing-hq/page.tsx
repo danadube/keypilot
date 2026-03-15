@@ -69,8 +69,11 @@ type DashboardData = {
   stats: {
     totalVisitors: number;
     totalShowings: number;
+    totalOpenHouses?: number;
     contactsCaptured: number;
     followUpTasks?: number;
+    privateShowingsToday?: number;
+    feedbackRequestsPending?: number;
   };
   connections?: { hasCalendar: boolean; hasGmail: boolean; hasBranding: boolean };
 };
@@ -121,7 +124,15 @@ export default function ShowingHQOverviewPage() {
   if (loading) return <PageLoading message="Loading dashboard..." />;
   if (error) return <ErrorMessage message={error} onRetry={() => window.location.reload()} />;
 
-  const stats = data?.stats ?? { totalVisitors: 0, totalShowings: 0, contactsCaptured: 0, followUpTasks: 0 };
+  const stats = data?.stats ?? {
+    totalVisitors: 0,
+    totalShowings: 0,
+    totalOpenHouses: 0,
+    contactsCaptured: 0,
+    followUpTasks: 0,
+    privateShowingsToday: 0,
+    feedbackRequestsPending: 0,
+  };
   const todaysShowings = data?.todaysShowings ?? [];
   const upcoming = data?.upcomingOpenHouses ?? [];
   const recentVisitors = data?.recentVisitors ?? [];
@@ -283,7 +294,7 @@ export default function ShowingHQOverviewPage() {
                   </Button>
                 )}
                 <Button variant="outline" size="sm" asChild>
-                  <Link href="/open-houses/new">Create showing</Link>
+                  <Link href="/open-houses/new">Create open house</Link>
                 </Button>
               </>
             )}
@@ -371,10 +382,32 @@ export default function ShowingHQOverviewPage() {
         <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-purple-200/60 bg-purple-50 px-2.5">
           <Calendar className="h-3.5 w-3.5 shrink-0 text-purple-600" />
           <div className="flex items-baseline gap-1">
-            <span className="text-[10px] font-medium text-purple-700/80">Today</span>
+            <span className="text-[10px] font-medium text-purple-700/80">Open houses</span>
             <span className="text-xs font-semibold text-[var(--brand-text)]">{todaysShowings.length}</span>
           </div>
         </div>
+        <Button variant="ghost" size="sm" className="h-8 px-2.5" asChild>
+          <Link href="/showing-hq/showings">
+            <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-amber-200/60 bg-amber-50 px-2.5">
+              <Calendar className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+              <div className="flex items-baseline gap-1">
+                <span className="text-[10px] font-medium text-amber-700/80">Showings</span>
+                <span className="text-xs font-semibold text-[var(--brand-text)]">{stats.privateShowingsToday ?? 0}</span>
+              </div>
+            </div>
+          </Link>
+        </Button>
+        <Button variant="ghost" size="sm" className="h-8 px-2.5" asChild>
+          <Link href="/showing-hq/feedback-requests">
+            <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-indigo-200/60 bg-indigo-50 px-2.5">
+              <CheckSquare className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
+              <div className="flex items-baseline gap-1">
+                <span className="text-[10px] font-medium text-indigo-700/80">Feedback</span>
+                <span className="text-xs font-semibold text-[var(--brand-text)]">{stats.feedbackRequestsPending ?? 0}</span>
+              </div>
+            </div>
+          </Link>
+        </Button>
         <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-teal-200/60 bg-teal-50 px-2.5">
           <UserPlus className="h-3.5 w-3.5 shrink-0 text-teal-600" />
           <div className="flex items-baseline gap-1">
@@ -555,12 +588,12 @@ export default function ShowingHQOverviewPage() {
           </div>
         </BrandCard>
 
-        {/* Today's Showings */}
+        {/* Today's Open Houses */}
         <BrandCard padded={false} className="flex flex-col min-h-0 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
               <Calendar className="h-4 w-4 text-[var(--brand-accent)]" />
-              Today&apos;s Showings
+              Today&apos;s Open Houses
             </h2>
             <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
               <Link href="/open-houses/new">Create</Link>
@@ -572,11 +605,11 @@ export default function ShowingHQOverviewPage() {
                 compact
                 variant="premium"
                 icon={<Calendar className="h-5 w-5" />}
-                title="No showings today"
-                description="Schedule an open house."
+                title="No open houses today"
+                description="Schedule a public open house."
                 action={
                   <Button variant="outline" size="sm" asChild>
-                    <Link href="/open-houses/new">Create showing</Link>
+                    <Link href="/open-houses/new">Create open house</Link>
                   </Button>
                 }
               />
@@ -607,7 +640,7 @@ export default function ShowingHQOverviewPage() {
             )}
             {todaysShowings.length > 0 && (
               <Button variant="ghost" size="sm" className="mt-2 h-7 text-xs" asChild>
-                <Link href="/open-houses/new">Create showing</Link>
+                <Link href="/open-houses/new">Create open house</Link>
               </Button>
             )}
           </div>

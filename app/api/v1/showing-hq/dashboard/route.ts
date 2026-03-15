@@ -22,7 +22,7 @@ export async function GET() {
     weekEnd.setDate(weekEnd.getDate() + 14);
 
     const [
-      todaysShowings,
+      todaysOpenHouses,
       upcomingOpenHouses,
       recentVisitorsData,
       followUpDrafts,
@@ -32,6 +32,8 @@ export async function GET() {
       contactsFromVisitorsCount,
       connections,
       userProfile,
+      privateShowingsTodayCount,
+      feedbackRequestsPendingCount,
     ] = await Promise.all([
       prisma.openHouse.findMany({
         where: {
@@ -128,6 +130,24 @@ export async function GET() {
         where: { userId: user.id },
         select: { displayName: true, brokerageName: true, headshotUrl: true, logoUrl: true },
       }),
+      prisma.showing.count({
+        where: {
+          hostUserId: user.id,
+          deletedAt: null,
+          scheduledAt: { gte: todayStart, lt: todayEnd },
+        },
+      }),
+      prisma.showing.count({
+        where: {
+          hostUserId: user.id,
+          deletedAt: null,
+          feedbackRequired: true,
+          OR: [
+            { feedbackRequestStatus: null },
+            { feedbackRequestStatus: { in: ["PENDING", "SENT"] } },
+          ],
+        },
+      }),
     ]);
 
     const hasCalendar = connections.some(
@@ -157,15 +177,19 @@ export async function GET() {
 
     return NextResponse.json({
       data: {
-        todaysShowings,
+        todaysShowings: todaysOpenHouses,
+        todaysOpenHouses,
         upcomingOpenHouses,
         recentVisitors,
         followUpTasks: followUpDrafts,
         stats: {
           totalVisitors: totalVisitorsCount,
+          totalOpenHouses: openHousesCount,
           totalShowings: openHousesCount,
           contactsCaptured: contactsFromVisitorsCount,
           followUpTasks: followUpTasksCount,
+          privateShowingsToday: privateShowingsTodayCount,
+          feedbackRequestsPending: feedbackRequestsPendingCount,
         },
         connections: { hasCalendar, hasGmail, hasBranding },
       },

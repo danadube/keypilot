@@ -27,6 +27,7 @@ model User {
 
   properties        Property[]
   openHouses        OpenHouse[]
+  showings          Showing[]
   sellerReports     SellerReport[]
   assignedContacts  Contact[]
   tags              Tag[]
@@ -78,6 +79,7 @@ model Property {
 
   createdByUser User        @relation(fields: [createdByUserId], references: [id])
   openHouses    OpenHouse[]
+  showings      Showing[]
   activities    Activity[]
   deals         Deal[]
 
@@ -207,6 +209,39 @@ enum SignInMethod {
   TABLET
   QR
   MANUAL
+}
+
+/** Single scheduled private showing (distinct from OpenHouse). Source: manual entry or Supra scrape. */
+model Showing {
+  id                 String          @id @default(uuid())
+  propertyId         String
+  hostUserId         String
+  scheduledAt        DateTime
+  buyerAgentName     String?
+  buyerAgentEmail    String?
+  buyerName          String?
+  notes              String?         @db.Text
+  feedbackRequired   Boolean         @default(false)
+  source             ShowingSource   @default(MANUAL)
+  scrapeStatus       String?         // e.g. PARSED, MATCHED, UNMATCHED
+  feedbackRequestStatus String?      // e.g. PENDING, SENT, RECEIVED
+  createdAt          DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  deletedAt         DateTime?
+
+  property   Property @relation(fields: [propertyId], references: [id])
+  hostUser   User     @relation(fields: [hostUserId], references: [id])
+
+  @@index([hostUserId])
+  @@index([propertyId])
+  @@index([scheduledAt])
+  @@index([source])
+  @@map("showings")
+}
+
+enum ShowingSource {
+  MANUAL
+  SUPRA_SCRAPE
 }
 
 model Activity {
