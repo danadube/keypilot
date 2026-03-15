@@ -284,34 +284,77 @@ export default function ShowingHQOverviewPage() {
         />
       )}
 
-      {/* Compact metrics bar */}
-      <div className="grid grid-cols-4 gap-2">
-        <div className="flex h-11 items-center gap-2 rounded-lg border border-blue-200/60 bg-blue-50 px-3">
+      {/* Active Open House spotlight — command center focus */}
+      {primaryOpenHouse && (
+        <div className="rounded-lg border border-[var(--brand-primary)]/30 bg-white px-4 py-2.5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-4 min-w-0">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
+                  Active Open House
+                </p>
+                <p className="text-sm font-semibold text-[var(--brand-text)]">
+                  {primaryOpenHouse.property.address1}, {primaryOpenHouse.property.city}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-[var(--brand-text-muted)]">
+                <Users className="h-4 w-4" />
+                {primaryOpenHouse._count.visitors} visitor{primaryOpenHouse._count.visitors !== 1 ? "s" : ""}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" className="h-8" asChild>
+                <Link href={`/open-houses/${primaryOpenHouse.id}/sign-in`}>
+                  <QrCode className="mr-1.5 h-3.5 w-3.5" />
+                  View QR code
+                </Link>
+              </Button>
+              {signInUrl && (
+                <>
+                  <Button variant="outline" size="sm" className="h-8" onClick={handleCopyLink(signInUrl)}>
+                    <Copy className="mr-1.5 h-3.5 w-3.5" />
+                    {linkCopied ? "Copied" : "Copy link"}
+                  </Button>
+                  <BrandButton variant="primary" size="sm" className="h-8" asChild>
+                    <a href={signInUrl} target="_blank" rel="noopener noreferrer">
+                      Open sign-in
+                    </a>
+                  </BrandButton>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Metric chips — compact */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-blue-200/60 bg-blue-50 px-2.5">
           <Users className="h-4 w-4 shrink-0 text-blue-600" />
           <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-blue-700/70">Visitors</p>
-            <p className="text-sm font-semibold text-[var(--brand-text)]">{stats.totalVisitors}</p>
+            <span className="text-[10px] font-medium text-blue-700/80">Visitors</span>
+            <span className="text-xs font-semibold text-[var(--brand-text)]">{stats.totalVisitors}</span>
           </div>
         </div>
-        <div className="flex h-11 items-center gap-2 rounded-lg border border-purple-200/60 bg-purple-50 px-3">
-          <Calendar className="h-4 w-4 shrink-0 text-purple-600" />
-          <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-purple-700/70">Today</p>
-            <p className="text-sm font-semibold text-[var(--brand-text)]">{todaysShowings.length}</p>
+        <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-purple-200/60 bg-purple-50 px-2.5">
+          <Calendar className="h-3.5 w-3.5 shrink-0 text-purple-600" />
+          <div className="flex items-baseline gap-1">
+            <span className="text-[10px] font-medium text-purple-700/80">Today</span>
+            <span className="text-xs font-semibold text-[var(--brand-text)]">{todaysShowings.length}</span>
           </div>
         </div>
-        <div className="flex h-11 items-center gap-2 rounded-lg border border-teal-200/60 bg-teal-50 px-3">
-          <UserPlus className="h-4 w-4 shrink-0 text-teal-600" />
-          <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-teal-700/70">Contacts</p>
-            <p className="text-sm font-semibold text-[var(--brand-text)]">{stats.contactsCaptured}</p>
+        <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-teal-200/60 bg-teal-50 px-2.5">
+          <UserPlus className="h-3.5 w-3.5 shrink-0 text-teal-600" />
+          <div className="flex items-baseline gap-1">
+            <span className="text-[10px] font-medium text-teal-700/80">Contacts</span>
+            <span className="text-xs font-semibold text-[var(--brand-text)]">{stats.contactsCaptured}</span>
           </div>
         </div>
-        <div className="flex h-11 items-center gap-2 rounded-lg border border-green-200/60 bg-green-50 px-3">
-          <CheckSquare className="h-4 w-4 shrink-0 text-green-600" />
-          <div className="min-w-0">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-green-700/70">Follow-ups</p>
-            <p className="text-sm font-semibold text-[var(--brand-text)]">{stats.followUpTasks ?? followUpTasks.length}</p>
+        <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-green-200/60 bg-green-50 px-2.5">
+          <CheckSquare className="h-3.5 w-3.5 shrink-0 text-green-600" />
+          <div className="flex items-baseline gap-1">
+            <span className="text-[10px] font-medium text-green-700/80">Follow-ups</span>
+            <span className="text-xs font-semibold text-[var(--brand-text)]">{stats.followUpTasks ?? followUpTasks.length}</span>
           </div>
         </div>
       </div>
@@ -349,37 +392,46 @@ export default function ShowingHQOverviewPage() {
                 }
               />
             ) : (
-              <ul className="space-y-1">
-                {recentVisitors.slice(0, 5).map((v) => {
-                  const addr = (v.openHouse as { property?: { address1: string } })?.property?.address1;
-                  return (
-                    <li
-                      key={v.id}
-                      className="flex items-center justify-between gap-2 rounded-md border border-[var(--brand-border)] p-1.5 transition-colors hover:bg-[var(--brand-surface-alt)]/50"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-[var(--brand-text)]">
-                          {v.contact.firstName} {v.contact.lastName}
-                        </p>
-                        <p className="truncate text-xs text-[var(--brand-text-muted)]">
-                          {addr ?? v.openHouse.title} · {formatTime(v.submittedAt)}
-                        </p>
-                        {v.leadStatus === "NEW" && (
-                          <LeadStatusBadge status={v.leadStatus} className="mt-0.5" />
-                        )}
-                      </div>
-                      <div className="flex shrink-0 gap-1">
-                        <Button variant="outline" size="sm" className="h-6 text-xs" asChild>
-                          <Link href={`/showing-hq/visitors/${v.id}`}>Profile</Link>
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-6 text-xs" asChild>
-                          <Link href={`/contacts/${v.contact.id}`}>Contact</Link>
-                        </Button>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+              <div className="min-w-0 overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-[var(--brand-border)] text-[10px] font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
+                      <th className="py-1.5 pr-3">Name</th>
+                      <th className="py-1.5 pr-3">Time</th>
+                      <th className="py-1.5 pr-3">Property</th>
+                      <th className="py-1.5 pr-3">Status</th>
+                      <th className="py-1.5 text-right"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentVisitors.slice(0, 6).map((v) => {
+                      const addr = (v.openHouse as { property?: { address1: string } })?.property?.address1 ?? v.openHouse.title;
+                      return (
+                        <tr
+                          key={v.id}
+                          className="border-b border-[var(--brand-border)]/50 transition-colors hover:bg-[var(--brand-surface-alt)]/50"
+                        >
+                          <td className="py-1.5 pr-3">
+                            <Link href={`/showing-hq/visitors/${v.id}`} className="font-medium text-[var(--brand-text)] hover:underline">
+                              {v.contact.firstName} {v.contact.lastName}
+                            </Link>
+                          </td>
+                          <td className="py-1.5 pr-3 text-[var(--brand-text-muted)]">{formatTime(v.submittedAt)}</td>
+                          <td className="py-1.5 pr-3 truncate max-w-[120px] text-[var(--brand-text-muted)]">{addr}</td>
+                          <td className="py-1.5 pr-3">
+                            {v.leadStatus ? <LeadStatusBadge status={v.leadStatus} className="text-[10px]" /> : "—"}
+                          </td>
+                          <td className="py-1.5 text-right">
+                            <Button variant="ghost" size="sm" className="h-6 text-xs" asChild>
+                              <Link href={`/contacts/${v.contact.id}`}>Contact</Link>
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
             {recentVisitors.length > 0 && (
               <Button variant="ghost" size="sm" className="mt-2 h-7 text-xs" asChild>
@@ -427,23 +479,26 @@ export default function ShowingHQOverviewPage() {
                 />
               </div>
             ) : (
-              <ul className="space-y-1">
-                {followUpTasks.slice(0, 5).map((t) => {
-                  const addr = t.openHouse?.property?.address1;
+              <ul className="space-y-1.5">
+                {followUpTasks.slice(0, 6).map((t) => {
+                  const addr = t.openHouse?.property?.address1 ?? t.openHouse.title;
                   return (
                     <li
                       key={t.id}
-                      className="flex items-center justify-between gap-2 rounded-md border border-[var(--brand-border)] p-1.5 transition-colors hover:bg-[var(--brand-surface-alt)]/50"
+                      className="flex items-center justify-between gap-3 rounded-md border border-[var(--brand-border)] p-2 transition-colors hover:bg-[var(--brand-surface-alt)]/50"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-[var(--brand-text)]">
-                          {t.contact.firstName} {t.contact.lastName} — {addr ?? t.openHouse.title}
+                        <p className="truncate text-sm font-semibold text-[var(--brand-text)]">
+                          {t.contact.firstName} {t.contact.lastName}
                         </p>
-                        <p className="text-xs text-[var(--brand-text-muted)]">Draft follow-up email ready</p>
+                        <p className="truncate text-xs text-[var(--brand-text-muted)]">{addr}</p>
                       </div>
-                      <Button variant="outline" size="sm" className="h-6 shrink-0 text-xs" asChild>
-                        <Link href={`/open-houses/${t.openHouse.id}/follow-ups`}>Review draft</Link>
-                      </Button>
+                      <BrandButton variant="primary" size="sm" className="h-8 shrink-0 text-xs" asChild>
+                        <Link href={`/open-houses/${t.openHouse.id}/follow-ups`}>
+                          <CheckSquare className="mr-1.5 h-3.5 w-3.5" />
+                          Review draft
+                        </Link>
+                      </BrandButton>
                     </li>
                   );
                 })}
