@@ -147,53 +147,131 @@ export default function ShowingHQOverviewPage() {
         ? `/oh/${primaryOpenHouse.qrSlug}`
         : null;
 
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const visitorsToday = recentVisitors.filter((v) => new Date(v.submittedAt) >= todayStart).length;
+  const activeShowing = todaysShowings.find((oh) => oh.status === "ACTIVE") ?? todaysShowings[0];
+
+  type TodayState =
+    | "follow_up_drafts_ready"
+    | "visitors_checked_in"
+    | "open_house_in_progress"
+    | "upcoming_open_house_today"
+    | "no_open_houses_today";
+
+  const todayState: TodayState = followUpTasks.length > 0
+    ? "follow_up_drafts_ready"
+    : visitorsToday > 0
+      ? "visitors_checked_in"
+      : activeShowing?.status === "ACTIVE"
+        ? "open_house_in_progress"
+        : todaysShowings.length > 0
+          ? "upcoming_open_house_today"
+          : "no_open_houses_today";
+
   return (
     <div className="min-h-0 flex flex-col gap-3" style={{ backgroundColor: "#f8fafc" }}>
-      {/* Compact header row */}
-      <div className="flex flex-wrap items-center justify-between gap-3 py-2">
-        <div className="flex items-center gap-3">
-          <h1
-            className="flex items-center gap-2 font-bold text-[var(--brand-text)] tracking-tight"
-            style={{
-              fontFamily: "var(--font-heading)",
-              fontSize: "1.25rem",
-              lineHeight: 1.3,
-            }}
-          >
-            ShowingHQ
-            <span className="rounded border border-[var(--brand-primary)]/40 bg-[var(--brand-primary)]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--brand-primary)]">
-              Beta
-            </span>
-          </h1>
-          <span className="hidden text-sm text-[var(--brand-text-muted)] sm:inline">
-            Capture leads at the door, follow up in one place.
-          </span>
-        </div>
-        <div className="flex items-center gap-2">
-          <BrandButton variant="primary" size="sm" asChild>
-            <Link href="/open-houses/new">New Showing</Link>
-          </BrandButton>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/open-houses/sign-in">
-              <QrCode className="mr-1.5 h-3.5 w-3.5" />
-              Sign-in Page
-            </Link>
-          </Button>
-          {signInUrl ? (
-            <>
-              <Button variant="outline" size="sm" onClick={handleCopyLink(signInUrl)}>
-                <Copy className="mr-1.5 h-3.5 w-3.5" />
-                {linkCopied ? "Copied" : "Copy link"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(signInUrl, "_blank", "noopener,noreferrer")}
+      {/* Today Panel */}
+      <div
+        className="rounded-lg border-2 border-[var(--brand-primary)]/20 bg-[var(--brand-primary)]/5 px-4 py-3"
+        role="region"
+        aria-label="Today"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex items-center gap-2 shrink-0">
+              <span
+                className="text-[10px] font-semibold uppercase tracking-wider text-[var(--brand-primary)]"
+                style={{ fontFamily: "var(--font-body)" }}
               >
-                Test sign-in
-              </Button>
-            </>
-          ) : null}
+                Today
+              </span>
+              <span className="flex items-center gap-2 font-semibold text-[var(--brand-text)]" style={{ fontSize: "var(--text-body-size)" }}>
+                {todayState === "follow_up_drafts_ready" && (
+                  <>
+                    <CheckSquare className="h-4 w-4 text-[var(--brand-secondary)]" />
+                    {followUpTasks.length} follow-up draft{followUpTasks.length !== 1 ? "s" : ""} ready to review
+                  </>
+                )}
+                {todayState === "visitors_checked_in" && (
+                  <>
+                    <Users className="h-4 w-4 text-[var(--brand-primary)]" />
+                    {visitorsToday} visitor{visitorsToday !== 1 ? "s" : ""} checked in today
+                  </>
+                )}
+                {todayState === "open_house_in_progress" && activeShowing && (
+                  <>
+                    <Calendar className="h-4 w-4 text-[var(--brand-primary)]" />
+                    Open house in progress — {activeShowing.title}
+                  </>
+                )}
+                {todayState === "upcoming_open_house_today" && primaryOpenHouse && (
+                  <>
+                    <Calendar className="h-4 w-4 text-[var(--brand-secondary)]" />
+                    Open house today at {formatTime(primaryOpenHouse.startAt)} — {primaryOpenHouse.title}
+                  </>
+                )}
+                {todayState === "no_open_houses_today" && (
+                  <>
+                    <Calendar className="h-4 w-4 text-[var(--brand-text-muted)]" />
+                    No open houses scheduled today
+                  </>
+                )}
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {(todayState === "follow_up_drafts_ready" || todayState === "visitors_checked_in") && (
+              <BrandButton variant="primary" size="sm" asChild>
+                <Link href="/showing-hq/follow-ups">
+                  <CheckSquare className="mr-1.5 h-3.5 w-3.5" />
+                  Review follow-ups
+                </Link>
+              </BrandButton>
+            )}
+            {todayState === "no_open_houses_today" && (
+              <BrandButton variant="primary" size="sm" asChild>
+                <Link href="/open-houses/new">
+                  <Calendar className="mr-1.5 h-3.5 w-3.5" />
+                  Create open house
+                </Link>
+              </BrandButton>
+            )}
+            {(todayState === "upcoming_open_house_today" || todayState === "open_house_in_progress") && (
+              <>
+                <BrandButton variant="primary" size="sm" asChild>
+                  <Link href="/open-houses/sign-in">
+                    <QrCode className="mr-1.5 h-3.5 w-3.5" />
+                    Open sign-in page
+                  </Link>
+                </BrandButton>
+                {primaryOpenHouse && (
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/open-houses/${primaryOpenHouse.id}/sign-in`}>
+                      View QR code
+                    </Link>
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/open-houses/new">Create showing</Link>
+                </Button>
+              </>
+            )}
+            {signInUrl && (todayState === "follow_up_drafts_ready" || todayState === "visitors_checked_in") && (
+              <>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/open-houses/sign-in">
+                    <QrCode className="mr-1.5 h-3.5 w-3.5" />
+                    Sign-in page
+                  </Link>
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleCopyLink(signInUrl)}>
+                  <Copy className="mr-1.5 h-3.5 w-3.5" />
+                  {linkCopied ? "Copied" : "Copy link"}
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
