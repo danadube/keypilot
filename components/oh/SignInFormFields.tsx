@@ -91,7 +91,7 @@ export function SignInFormFields({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
         <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
           {error}
@@ -107,7 +107,7 @@ export function SignInFormFields({
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             required
-            className="h-11 text-base"
+            className="h-12 text-base"
           />
         </div>
         <div className="space-y-2">
@@ -119,7 +119,7 @@ export function SignInFormFields({
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             required
-            className="h-11 text-base"
+            className="h-12 text-base"
           />
         </div>
       </div>
@@ -174,8 +174,13 @@ export function SignInFormFields({
           rows={compact ? 2 : 2}
         />
       </div>
-      <Button type="submit" className="w-full" size={compact ? "default" : "lg"} disabled={submitting}>
-        {submitting ? "Checking in..." : signInMethod === "TABLET" ? "Check In" : "Sign in"}
+      <Button
+        type="submit"
+        className="h-12 w-full text-base font-semibold sm:h-12"
+        size={compact ? "default" : "lg"}
+        disabled={submitting}
+      >
+        {submitting ? "Checking in..." : "Check in"}
       </Button>
     </form>
   );
