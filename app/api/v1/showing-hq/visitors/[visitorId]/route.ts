@@ -134,6 +134,9 @@ export async function GET(
           interestLevel: visitor.interestLevel,
           visitorNotes: visitor.visitorNotes,
           visitorTags: visitor.visitorTags,
+          flyerEmailSentAt: visitor.flyerEmailSentAt?.toISOString() ?? null,
+          flyerEmailStatus: visitor.flyerEmailStatus,
+          flyerLinkClickedAt: visitor.flyerLinkClickedAt?.toISOString() ?? null,
           contact: visitor.contact,
           openHouse: {
             id: visitor.openHouse.id,

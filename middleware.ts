@@ -6,6 +6,7 @@ export const runtime = "nodejs";
 
 const isPublicRoute = createRouteMatcher([
   "/oh/(.*)",
+  "/flyer/(.*)",
   "/api/v1/visitor-signin",
   "/api/v1/auth/webhook",
   "/api/v1/open-houses/by-slug/(.*)",

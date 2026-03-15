@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { generateQrCodeDataUrl } from "@/lib/qr";
+import { getEffectiveFlyerUrl } from "@/lib/flyer-effective";
 
 /**
  * Public API - no auth required.
@@ -20,7 +21,18 @@ export async function GET(
         status: { in: ["SCHEDULED", "ACTIVE"] },
       },
       include: {
-        property: true,
+        property: {
+          select: {
+            address1: true,
+            address2: true,
+            city: true,
+            state: true,
+            zip: true,
+            imageUrl: true,
+            flyerUrl: true,
+            flyerEnabled: true,
+          },
+        },
         hostUser: { include: { profile: true } },
       },
     });
@@ -50,6 +62,15 @@ export async function GET(
           phone: openHouse.agentPhone,
         };
 
+    const effectiveFlyerUrl = getEffectiveFlyerUrl({
+      flyerOverrideUrl: openHouse.flyerOverrideUrl,
+      flyerUrl: openHouse.flyerUrl,
+      property: {
+        flyerUrl: openHouse.property.flyerUrl,
+        flyerEnabled: openHouse.property.flyerEnabled,
+      },
+    });
+
     return NextResponse.json({
       data: {
         id: openHouse.id,
@@ -57,7 +78,8 @@ export async function GET(
         startAt: openHouse.startAt,
         endAt: openHouse.endAt,
         agentName: branding.displayName,
-        flyerUrl: openHouse.flyerUrl,
+        flyerUrl: effectiveFlyerUrl ?? openHouse.flyerUrl,
+        hasFlyer: !!effectiveFlyerUrl,
         qrCodeDataUrl,
         property: {
           address1: openHouse.property.address1,

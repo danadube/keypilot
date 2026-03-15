@@ -18,6 +18,7 @@ type OpenHouseInfo = {
   endAt: string;
   agentName?: string | null;
   flyerUrl?: string | null;
+  hasFlyer?: boolean;
   qrCodeDataUrl?: string | null;
   property: {
     address1: string;
@@ -156,6 +157,12 @@ export function VisitorSignInForm({ slug }: { slug: string }) {
               <p className="text-base text-slate-700">
                 Please sign in before touring the property.
               </p>
+
+              {oh.hasFlyer && (
+                <p className="text-sm text-slate-600">
+                  Sign in to receive the property flyer and additional details after your visit.
+                </p>
+              )}
 
               {oh.flyerUrl && (
                 <a

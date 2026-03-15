@@ -68,20 +68,24 @@ model UserProfile {
 }
 
 model Property {
-  id              String    @id @default(uuid())
-  mlsNumber       String?   @unique
-  address1        String
-  address2        String?
-  city            String
-  state           String
-  zip             String
-  listingPrice    Decimal?  @db.Decimal(12, 2)
-  imageUrl        String?
-  notes           String?
-  createdByUserId String
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  id                String    @id @default(uuid())
+  mlsNumber         String?   @unique
+  address1          String
+  address2          String?
+  city              String
+  state             String
+  zip               String
+  listingPrice      Decimal?  @db.Decimal(12, 2)
+  imageUrl          String?
+  notes             String?
+  flyerUrl          String?
+  flyerFilename     String?
+  flyerUploadedAt   DateTime?
+  flyerEnabled      Boolean   @default(true)
+  createdByUserId  String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
 
   createdByUser User        @relation(fields: [createdByUserId], references: [id])
   openHouses    OpenHouse[]
@@ -154,10 +158,12 @@ model OpenHouse {
   agentName       String?
   agentEmail      String?
   agentPhone      String?
-  notes           String?
-  flyerUrl        String?
-  qrSlug          String          @unique
-  status          OpenHouseStatus @default(SCHEDULED)
+  notes                 String?
+  flyerUrl              String?   // legacy / direct OH flyer
+  flyerOverrideUrl      String?   // event-specific override (broker open, price reduction)
+  flyerOverrideFilename String?
+  qrSlug                String          @unique
+  status                OpenHouseStatus @default(SCHEDULED)
   trafficLevel    String?
   feedbackTags    Json?
   hostNotes       String?         @db.Text
@@ -239,18 +245,23 @@ enum OpenHouseStatus {
 }
 
 model OpenHouseVisitor {
-  id              String               @id @default(uuid())
-  openHouseId     String
-  contactId       String
-  signInMethod    SignInMethod
-  submittedAt     DateTime
-  rawResponseJson Json?
-  leadStatus      VisitorLeadStatus    @default(NEW)
-  interestLevel   VisitorInterestLevel?
-  visitorNotes    String?              @db.Text
-  visitorTags     Json?
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @default(now()) @updatedAt
+  id                   String               @id @default(uuid())
+  openHouseId          String
+  contactId            String
+  signInMethod         SignInMethod
+  submittedAt          DateTime
+  rawResponseJson      Json?
+  leadStatus           VisitorLeadStatus    @default(NEW)
+  interestLevel        VisitorInterestLevel?
+  visitorNotes         String?              @db.Text
+  visitorTags          Json?
+  flyerEmailSentAt     DateTime?
+  flyerEmailStatus     FlyerEmailStatus?
+  flyerLinkToken       String?              @unique
+  flyerLinkClickedAt   DateTime?
+  flyerRedirectUrl     String?              // PDF URL for /flyer/[token] redirect
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @default(now()) @updatedAt
 
   openHouse OpenHouse      @relation(fields: [openHouseId], references: [id])
   contact   Contact        @relation(fields: [contactId], references: [id])
@@ -258,7 +269,14 @@ model OpenHouseVisitor {
 
   @@index([openHouseId])
   @@index([contactId])
+  @@index([flyerLinkToken])
   @@map("open_house_visitors")
+}
+
+enum FlyerEmailStatus {
+  SENT
+  FAILED
+  UNAVAILABLE
 }
 
 enum VisitorInterestLevel {

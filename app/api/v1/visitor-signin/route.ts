@@ -5,7 +5,9 @@ import { VisitorSignInSchema } from "@/lib/validations/visitor";
 import { trackUsageEvent } from "@/lib/track-usage";
 import { sendFlyerEmail } from "@/lib/email/flyer";
 import { generateFollowUpDraft } from "@/lib/follow-up-template";
+import { getEffectiveFlyerUrl } from "@/lib/flyer-effective";
 import { ActivityType } from "@prisma/client";
+import { nanoid } from "nanoid";
 
 export async function POST(request: Request) {
   try {
@@ -22,7 +24,19 @@ export async function POST(request: Request) {
 
     const openHouse = await prisma.openHouse.findFirst({
       where: { id: openHouseId, deletedAt: null },
-      include: { property: true },
+      include: {
+        property: {
+          select: {
+            address1: true,
+            address2: true,
+            city: true,
+            state: true,
+            zip: true,
+            flyerUrl: true,
+            flyerEnabled: true,
+          },
+        },
+      },
     });
     if (!openHouse) {
       return NextResponse.json(
@@ -111,12 +125,49 @@ export async function POST(request: Request) {
       contactId: contact.id,
     });
 
-    if (openHouse.flyerUrl?.trim() && contact.email?.trim()) {
-      void sendFlyerEmail({
-        to: contact.email.trim(),
-        address: openHouse.property.address1,
-        flyerUrl: openHouse.flyerUrl,
+    const effectiveFlyerUrl = getEffectiveFlyerUrl({
+      flyerOverrideUrl: openHouse.flyerOverrideUrl,
+      flyerUrl: openHouse.flyerUrl,
+      property: {
+        flyerUrl: openHouse.property.flyerUrl,
+        flyerEnabled: openHouse.property.flyerEnabled,
+      },
+    });
+
+    if (effectiveFlyerUrl?.trim() && contact.email?.trim()) {
+      const flyerLinkToken = nanoid(24);
+      const origin =
+        process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+        process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : "https://keypilot.vercel.app";
+      const trackableLink = `${origin}/flyer/${flyerLinkToken}`;
+
+      await prisma.openHouseVisitor.update({
+        where: { id: visitor.id },
+        data: { flyerLinkToken, flyerRedirectUrl: effectiveFlyerUrl },
       });
+
+      try {
+        await sendFlyerEmail({
+          to: contact.email.trim(),
+          address: openHouse.property.address1,
+          trackableLink,
+          firstName: contact.firstName.trim() || undefined,
+          agentName:
+            (hostUser?.profile?.displayName?.trim() || hostUser?.name?.trim()) ?? undefined,
+        });
+        await prisma.openHouseVisitor.update({
+          where: { id: visitor.id },
+          data: { flyerEmailSentAt: new Date(), flyerEmailStatus: "SENT" },
+        });
+      } catch (err) {
+        console.error("[visitor-signin] flyer email failed", err);
+        await prisma.openHouseVisitor.update({
+          where: { id: visitor.id },
+          data: { flyerEmailStatus: "FAILED" },
+        });
+      }
     }
 
     return NextResponse.json({

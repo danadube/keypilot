@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mail, Phone, User, Calendar, FileText, Copy, ExternalLink } from "lucide-react";
+import { Mail, Phone, User, Calendar, FileText, Copy, ExternalLink, Send } from "lucide-react";
 import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
 import { FollowUpStatusBadge } from "@/components/shared/FollowUpStatusBadge";
 
@@ -39,6 +39,9 @@ type VisitorProfile = {
     interestLevel?: string | null;
     visitorNotes?: string | null;
     visitorTags?: unknown;
+    flyerEmailSentAt?: string | null;
+    flyerEmailStatus?: string | null;
+    flyerLinkClickedAt?: string | null;
     contact: {
       id: string;
       firstName: string;
@@ -75,6 +78,7 @@ export default function VisitorProfilePage() {
   const [leadStatusSaving, setLeadStatusSaving] = useState(false);
   const [statusSavingId, setStatusSavingId] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
+  const [resendFlyerLoading, setResendFlyerLoading] = useState(false);
 
   const loadData = useCallback(() => {
     setError(null);
@@ -122,9 +126,34 @@ export default function VisitorProfilePage() {
     <div className="flex flex-col gap-[var(--space-xl)]">
       <BrandPageHeader
         title={fullName}
-        description={`Visitor from ${visitor.openHouse.title}`}
+        description={visitor.openHouse.title}
         actions={
           <div className="flex flex-wrap gap-2">
+            {contact.email && (
+              <BrandButton
+                variant="secondary"
+                size="sm"
+                disabled={resendFlyerLoading}
+                onClick={async () => {
+                  setResendFlyerLoading(true);
+                  try {
+                    const res = await fetch(`/api/v1/showing-hq/visitors/${visitorId}/resend-flyer`, {
+                      method: "POST",
+                    });
+                    const json = await res.json();
+                    if (json.error) throw new Error(json.error.message);
+                    loadData();
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "Failed to resend flyer");
+                  } finally {
+                    setResendFlyerLoading(false);
+                  }
+                }}
+              >
+                <Send className="mr-1.5 h-3.5 w-3.5" />
+                {resendFlyerLoading ? "Sending…" : "Resend flyer"}
+              </BrandButton>
+            )}
             <BrandButton variant="secondary" asChild>
               <Link href={`/contacts/${contact.id}`}>View contact</Link>
             </BrandButton>
@@ -189,6 +218,25 @@ export default function VisitorProfilePage() {
                 >
                   {contact.email}
                 </a>
+              </div>
+            )}
+            {(visitor.flyerEmailSentAt || visitor.flyerEmailStatus === "FAILED" || visitor.flyerEmailStatus === "UNAVAILABLE") && (
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-[var(--brand-text-muted)]" />
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  {visitor.flyerEmailStatus === "SENT" && visitor.flyerLinkClickedAt && (
+                    <span className="text-[var(--brand-text-muted)]">Flyer sent ✓ · Flyer opened ✓</span>
+                  )}
+                  {visitor.flyerEmailStatus === "SENT" && !visitor.flyerLinkClickedAt && (
+                    <span className="text-[var(--brand-text-muted)]">Flyer sent ✓</span>
+                  )}
+                  {visitor.flyerEmailStatus === "FAILED" && (
+                    <span className="text-amber-600 dark:text-amber-400">Flyer not delivered</span>
+                  )}
+                  {visitor.flyerEmailStatus === "UNAVAILABLE" && (
+                    <span className="text-[var(--brand-text-muted)]">Flyer unavailable</span>
+                  )}
+                </div>
               </div>
             )}
             {contact.phone && (
