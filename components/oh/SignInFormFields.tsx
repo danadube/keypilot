@@ -24,6 +24,7 @@ type OpenHouseForForm = {
     city: string;
     state: string;
     zip: string;
+    imageUrl?: string | null;
   };
 };
 
@@ -90,54 +91,66 @@ export function SignInFormFields({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
       {error && (
-        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+        <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
           {error}
         </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="firstName">First name *</Label>
+          <Label htmlFor="firstName" className="text-sm font-medium">
+            First name <span className="text-destructive">*</span>
+          </Label>
           <Input
             id="firstName"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             required
+            className="h-11 text-base"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="lastName">Last name *</Label>
+          <Label htmlFor="lastName" className="text-sm font-medium">
+            Last name <span className="text-destructive">*</span>
+          </Label>
           <Input
             id="lastName"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             required
+            className="h-11 text-base"
           />
         </div>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email" className="text-sm font-medium">
+          Email
+        </Label>
         <Input
           id="email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
+          className="h-11 text-base"
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="phone">Phone</Label>
+        <Label htmlFor="phone" className="text-sm font-medium">
+          Phone
+        </Label>
         <Input
           id="phone"
           type="tel"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           placeholder="(555) 123-4567"
+          className="h-11 text-base"
         />
       </div>
-      <p className="text-sm text-muted-foreground">
-        Please provide at least email or phone
+      <p className="text-xs text-muted-foreground">
+        Please provide at least email or phone so we can follow up.
       </p>
       <div className="space-y-2">
         <Label>Do you have a real estate agent?</Label>

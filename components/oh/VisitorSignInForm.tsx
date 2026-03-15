@@ -16,12 +16,14 @@ type OpenHouseInfo = {
   title: string;
   startAt: string;
   endAt: string;
+  agentName?: string | null;
   property: {
     address1: string;
     address2?: string | null;
     city: string;
     state: string;
     zip: string;
+    imageUrl?: string | null;
   };
 };
 
@@ -87,37 +89,70 @@ export function VisitorSignInForm({ slug }: { slug: string }) {
     );
   }
 
-  const address = [oh.property.address1, oh.property.address2, oh.property.city, oh.property.state, oh.property.zip]
-    .filter(Boolean)
-    .join(", ");
-
-  const formatDateTime = (d: string) =>
-    new Date(d).toLocaleString("en-US", {
+  const cityState = [oh.property.city, oh.property.state].filter(Boolean).join(", ");
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString("en-US", {
       weekday: "long",
       month: "long",
       day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
     });
+  const formatTime = (d: string) =>
+    new Date(d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const timeRange = `${formatDate(oh.startAt)} · ${formatTime(oh.startAt)} – ${formatTime(oh.endAt)}`;
+
+  const hasImage = !!oh.property?.imageUrl?.trim();
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-lg">
-        <CardHeader>
-          <CardTitle>{oh.title}</CardTitle>
-          <CardDescription>{address}</CardDescription>
-          <p className="text-sm text-muted-foreground">
-            {formatDateTime(oh.startAt)} – {new Date(oh.endAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
-          </p>
-        </CardHeader>
-        <CardContent>
-          <SignInFormFields
-            openHouse={oh}
-            signInMethod="QR"
-            onSuccess={() => setSuccess(true)}
+    <div className="min-h-screen bg-slate-50">
+      {/* Hero image when property has one */}
+      {hasImage && (
+        <div className="relative h-44 w-full overflow-hidden bg-slate-200 sm:h-52 md:h-56">
+          {/* eslint-disable-next-line @next/next/no-img-element -- external Supabase URL */}
+          <img
+            src={oh.property.imageUrl!}
+            alt={oh.property.address1}
+            className="h-full w-full object-cover"
           />
-        </CardContent>
-      </Card>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+        </div>
+      )}
+
+      <div className={`mx-auto max-w-lg px-4 pb-8 sm:px-6 ${hasImage ? "pt-0 sm:pt-0" : "pt-6 sm:pt-8"}`}>
+        <Card
+          className={`w-full shadow-lg sm:shadow-xl ${hasImage ? "-mt-8 rounded-t-none sm:-mt-12 sm:rounded-t-lg" : "rounded-lg"}`}
+        >
+          <CardHeader className="space-y-1 pb-2 sm:px-6 sm:pt-6">
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900 sm:text-2xl">
+              {oh.property.address1}
+            </h1>
+            {oh.property.address2 && (
+              <p className="text-sm text-muted-foreground">{oh.property.address2}</p>
+            )}
+            <p className="text-base text-slate-600">{cityState}</p>
+            <p className="text-sm text-muted-foreground">{timeRange}</p>
+            <p className="pt-2 text-sm text-slate-600">
+              Welcome to the open house. Please sign in before touring.
+            </p>
+            {oh.agentName && (
+              <p className="text-xs text-muted-foreground">Hosted by {oh.agentName}</p>
+            )}
+          </CardHeader>
+          <CardContent className="sm:px-6 sm:pb-6">
+            <p className="mb-4 text-xs text-muted-foreground">
+              We&apos;ll use your information to follow up after your visit.
+            </p>
+            <SignInFormFields
+              openHouse={oh}
+              signInMethod="QR"
+              onSuccess={() => setSuccess(true)}
+            />
+          </CardContent>
+        </Card>
+
+        <p className="mt-6 text-center text-[10px] text-muted-foreground">
+          Powered by KeyPilot
+        </p>
+      </div>
     </div>
   );
 }

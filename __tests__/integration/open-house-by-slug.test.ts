@@ -19,12 +19,14 @@ const mockOpenHouse = {
   title: "Sunday Open House",
   startAt: new Date("2025-03-16T14:00:00Z"),
   endAt: new Date("2025-03-16T17:00:00Z"),
+  agentName: "Jane Smith",
   property: {
     address1: "456 Oak Ave",
     address2: "Unit 2",
     city: "Austin",
     state: "TX",
     zip: "78702",
+    imageUrl: null,
   },
 };
 

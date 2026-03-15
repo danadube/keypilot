@@ -31,12 +31,14 @@ export async function GET(
         title: openHouse.title,
         startAt: openHouse.startAt,
         endAt: openHouse.endAt,
+        agentName: openHouse.agentName,
         property: {
           address1: openHouse.property.address1,
           address2: openHouse.property.address2,
           city: openHouse.property.city,
           state: openHouse.property.state,
           zip: openHouse.property.zip,
+          imageUrl: openHouse.property.imageUrl,
         },
       },
     });
