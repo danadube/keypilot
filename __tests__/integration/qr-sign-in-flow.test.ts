@@ -29,6 +29,10 @@ jest.mock("@/lib/contact-dedupe", () => ({
   findOrCreateContact: (...args: unknown[]) => mockFindOrCreateContact(...args),
 }));
 
+jest.mock("@/lib/track-usage", () => ({
+  trackUsageEvent: jest.fn().mockResolvedValue(undefined),
+}));
+
 const mockOpenHouse = {
   id: "550e8400-e29b-41d4-a716-446655440000",
   qrSlug: "abc12345",
@@ -36,12 +40,22 @@ const mockOpenHouse = {
   startAt: new Date("2025-03-16T14:00:00Z"),
   endAt: new Date("2025-03-16T17:00:00Z"),
   propertyId: "prop-1",
+  flyerUrl: null,
+  agentName: "Jane Agent",
+  agentEmail: "jane@example.com",
+  agentPhone: null,
   property: {
     address1: "123 Main St",
     address2: null,
     city: "Austin",
     state: "TX",
     zip: "78701",
+    imageUrl: null,
+  },
+  hostUser: {
+    name: "Jane Agent",
+    email: "jane@example.com",
+    profile: null,
   },
 };
 

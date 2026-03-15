@@ -46,6 +46,7 @@ export async function POST(request: Request) {
         signInMethod,
         submittedAt: new Date(),
         rawResponseJson: body as object,
+        interestLevel: parsed.data.interestLevel ?? undefined,
       },
     });
 

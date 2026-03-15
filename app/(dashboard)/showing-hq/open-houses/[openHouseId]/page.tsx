@@ -10,6 +10,7 @@ import { BrandButton } from "@/components/ui/BrandButton";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { LeadStatusBadge } from "@/components/shared/LeadStatusBadge";
+import { InterestBadge } from "@/components/shared/InterestBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Users, UserPlus, CheckSquare, QrCode, Copy, RefreshCw } from "lucide-react";
@@ -26,6 +27,7 @@ type OpenHouseData = {
   visitors: {
     id: string;
     leadStatus: string | null;
+    interestLevel: string | null;
     submittedAt: string;
     contact: {
       id: string;
@@ -217,6 +219,7 @@ export default function ShowingHQOpenHouseDetailPage() {
                       <th className="pb-2 text-left font-semibold">Name</th>
                       <th className="pb-2 text-left font-semibold">Email</th>
                       <th className="pb-2 text-left font-semibold">Phone</th>
+                      <th className="pb-2 text-left font-semibold">Interest</th>
                       <th className="pb-2 text-left font-semibold">Sign-in</th>
                       <th className="pb-2 text-left font-semibold">Status</th>
                       <th className="pb-2 w-[80px]"></th>
@@ -231,6 +234,9 @@ export default function ShowingHQOpenHouseDetailPage() {
                         </td>
                         <td className="py-2 text-[var(--brand-text-muted)]">
                           {v.contact.phone ?? "—"}
+                        </td>
+                        <td className="py-2">
+                          <InterestBadge interestLevel={v.interestLevel} />
                         </td>
                         <td className="py-2 text-[var(--brand-text-muted)]">
                           {formatDateTime(v.submittedAt)}

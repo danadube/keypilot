@@ -18,11 +18,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LeadStatusBadge } from "@/components/shared/LeadStatusBadge";
+import { InterestBadge } from "@/components/shared/InterestBadge";
 import { Users, Search } from "lucide-react";
 
 type Visitor = {
   id: string;
   leadStatus: string | null;
+  interestLevel: string | null;
   signInMethod: string;
   submittedAt: string;
   contact: {
@@ -169,6 +171,9 @@ export default function ShowingHQVisitorsPage() {
                     Phone
                   </th>
                   <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
+                    Interest
+                  </th>
+                  <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
                     Open House
                   </th>
                   <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
@@ -197,6 +202,9 @@ export default function ShowingHQVisitorsPage() {
                     </td>
                     <td className="py-3 text-[var(--brand-text-muted)]">
                       {v.contact.phone ?? "—"}
+                    </td>
+                    <td className="py-3">
+                      <InterestBadge interestLevel={v.interestLevel} />
                     </td>
                     <td className="py-3 text-[var(--brand-text-muted)]">
                       {v.openHouse.title}

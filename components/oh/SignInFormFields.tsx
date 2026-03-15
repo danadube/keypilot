@@ -5,13 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 type OpenHouseForForm = {
   id: string;
@@ -47,6 +40,7 @@ export function SignInFormFields({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [hasAgent, setHasAgent] = useState<string>("");
+  const [interestLevel, setInterestLevel] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +64,16 @@ export function SignInFormFields({
           email: email.trim() || undefined,
           phone: phone.trim() || undefined,
           hasAgent: hasAgent === "" ? undefined : hasAgent === "yes",
+          interestLevel:
+            interestLevel === ""
+              ? undefined
+              : interestLevel === "VERY_INTERESTED"
+                ? "VERY_INTERESTED"
+                : interestLevel === "MAYBE_INTERESTED"
+                  ? "MAYBE_INTERESTED"
+                  : interestLevel === "JUST_BROWSING"
+                    ? "JUST_BROWSING"
+                    : undefined,
           notes: notes.trim() || undefined,
           signInMethod,
         }),
@@ -81,6 +85,7 @@ export function SignInFormFields({
       setEmail("");
       setPhone("");
       setHasAgent("");
+      setInterestLevel("");
       setNotes("");
       onSuccess?.();
     } catch (err) {
@@ -153,16 +158,48 @@ export function SignInFormFields({
         Please provide at least email or phone so we can follow up.
       </p>
       <div className="space-y-2">
+        <Label>What best describes your interest in this home?</Label>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { value: "VERY_INTERESTED", label: "Very interested" },
+            { value: "MAYBE_INTERESTED", label: "Maybe interested" },
+            { value: "JUST_BROWSING", label: "Just browsing" },
+          ].map((opt) => (
+            <Button
+              key={opt.value}
+              type="button"
+              variant={interestLevel === opt.value ? "default" : "outline"}
+              size="sm"
+              className="h-10 touch-manipulation"
+              onClick={() => setInterestLevel(interestLevel === opt.value ? "" : opt.value)}
+            >
+              {opt.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-2">
         <Label>Do you have a real estate agent?</Label>
-        <Select value={hasAgent} onValueChange={setHasAgent}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="yes">Yes</SelectItem>
-            <SelectItem value="no">No</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant={hasAgent === "yes" ? "default" : "outline"}
+            size="sm"
+            className="h-10 flex-1 touch-manipulation"
+            onClick={() => setHasAgent(hasAgent === "yes" ? "" : "yes")}
+          >
+            Yes
+          </Button>
+          <Button
+            type="button"
+            variant={hasAgent === "no" ? "default" : "outline"}
+            size="sm"
+            className="h-10 flex-1 touch-manipulation"
+            onClick={() => setHasAgent(hasAgent === "no" ? "" : "no")}
+          >
+            No
+          </Button>
+        </div>
       </div>
       <div className="space-y-2">
         <Label htmlFor="notes">Notes</Label>

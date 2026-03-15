@@ -8,6 +8,7 @@ export const VisitorSignInSchema = z
     email: z.string().email().optional().or(z.literal("")),
     phone: z.string().optional(),
     hasAgent: z.boolean().optional().nullable(),
+    interestLevel: z.enum(["VERY_INTERESTED", "MAYBE_INTERESTED", "JUST_BROWSING"]).optional().nullable(),
     timeline: z.string().optional().nullable(),
     notes: z.string().optional().nullable(),
     signInMethod: z.enum(["TABLET", "QR", "MANUAL"]),

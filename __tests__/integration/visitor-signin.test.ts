@@ -21,6 +21,14 @@ jest.mock("@/lib/db", () => ({
   },
 }));
 
+jest.mock("@/lib/track-usage", () => ({
+  trackUsageEvent: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("@/lib/email/flyer", () => ({
+  sendFlyerEmail: jest.fn().mockResolvedValue(undefined),
+}));
+
 const validBody = {
   openHouseId: "550e8400-e29b-41d4-a716-446655440000",
   firstName: "Jane",
@@ -32,6 +40,8 @@ const validBody = {
 const mockOpenHouse = {
   id: validBody.openHouseId,
   propertyId: "prop-123",
+  hostUserId: "user-123",
+  flyerUrl: null,
   property: {
     address1: "123 Main St",
     address2: null,
@@ -151,10 +161,12 @@ describe("POST /api/v1/visitor-signin", () => {
 
   it("returns 500 on unexpected error", async () => {
     mockOpenHouseFindFirst.mockRejectedValue(new Error("DB connection failed"));
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
     const req = jsonRequest(validBody);
     const res = await POST(req);
     expect(res.status).toBe(500);
     const data = await res.json();
     expect(data.error?.message).toBe("Internal server error");
+    consoleSpy.mockRestore();
   });
 });

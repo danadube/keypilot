@@ -170,14 +170,15 @@ enum OpenHouseStatus {
 }
 
 model OpenHouseVisitor {
-  id              String            @id @default(uuid())
+  id              String               @id @default(uuid())
   openHouseId     String
   contactId       String
   signInMethod    SignInMethod
   submittedAt     DateTime
   rawResponseJson Json?
-  leadStatus      VisitorLeadStatus  @default(NEW)
-  createdAt       DateTime          @default(now())
+  leadStatus      VisitorLeadStatus    @default(NEW)
+  interestLevel   VisitorInterestLevel?
+  createdAt       DateTime             @default(now())
 
   openHouse OpenHouse @relation(fields: [openHouseId], references: [id])
   contact   Contact   @relation(fields: [contactId], references: [id])
@@ -185,6 +186,12 @@ model OpenHouseVisitor {
   @@index([openHouseId])
   @@index([contactId])
   @@map("open_house_visitors")
+}
+
+enum VisitorInterestLevel {
+  VERY_INTERESTED
+  MAYBE_INTERESTED
+  JUST_BROWSING
 }
 
 enum VisitorLeadStatus {
