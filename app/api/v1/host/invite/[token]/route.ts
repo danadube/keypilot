@@ -33,7 +33,9 @@ export async function GET(
       );
     }
 
-    if (invite.expiresAt < new Date()) {
+    const now = new Date();
+    const tokenExpiry = invite.tokenExpiresAt ?? invite.expiresAt;
+    if (invite.expiresAt < now || tokenExpiry < now) {
       return NextResponse.json(
         { error: { message: "Invite has expired" } },
         { status: 410 }
@@ -73,6 +75,8 @@ export async function GET(
             submittedAt: v.submittedAt.toISOString(),
             leadStatus: v.leadStatus,
             signInMethod: v.signInMethod,
+            visitorNotes: v.visitorNotes ?? null,
+            visitorTags: Array.isArray(v.visitorTags) ? v.visitorTags : null,
             contact: {
               id: v.contact.id,
               firstName: v.contact.firstName,

@@ -76,6 +76,13 @@ type DashboardData = {
     feedbackRequestsPending?: number;
   };
   connections?: { hasCalendar: boolean; hasGmail: boolean; hasBranding: boolean };
+  todaysSchedule?: Array<{
+    type: "open_house" | "showing";
+    id: string;
+    title: string;
+    at: string;
+    property: { address1: string; city: string; state: string };
+  }>;
 };
 
 const GETTING_STARTED_DISMISSED_KEY = "showinghq-getting-started-dismissed";
@@ -423,6 +430,41 @@ export default function ShowingHQOverviewPage() {
           </div>
         </div>
       </div>
+
+      {/* Today schedule — chronological list of showings + open houses */}
+      {(data?.todaysSchedule?.length ?? 0) > 0 && (
+        <BrandCard padded className="bg-white">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
+            <Calendar className="h-4 w-4 text-[var(--brand-primary)]" />
+            Today&apos;s schedule
+          </h2>
+          <ul className="space-y-2">
+            {data!.todaysSchedule!.map((item) => (
+              <li
+                key={`${item.type}-${item.id}`}
+                className="flex items-center justify-between gap-3 rounded-md border border-[var(--brand-border)] p-2.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-[var(--brand-text)]">
+                    {formatTime(item.at)} — {item.title}
+                  </p>
+                  <p className="truncate text-xs text-[var(--brand-text-muted)]">
+                    {item.property.address1}, {item.property.city}
+                  </p>
+                </div>
+                <Badge variant={item.type === "open_house" ? "default" : "secondary"} className="shrink-0 text-[10px]">
+                  {item.type === "open_house" ? "Open house" : "Showing"}
+                </Badge>
+                {item.type === "open_house" && (
+                  <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                    <Link href={`/showing-hq/open-houses/${item.id}`}>View</Link>
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </BrandCard>
+      )}
 
       {/* 2-column grid: Row 1 = Recent Visitors | Follow-up Tasks, Row 2 = Today's | Upcoming */}
       <div className="grid flex-1 min-h-0 gap-3 lg:grid-cols-2 lg:grid-rows-2">

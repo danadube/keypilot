@@ -41,6 +41,7 @@ model User {
   openHouseHostRoles  OpenHouseHost[]
   hostInvitesSent     OpenHouseHostInvite[]
   transactions        Transaction[]
+  commissions         Commission[]
 
   @@index([clerkId])
   @@map("users")
@@ -182,7 +183,7 @@ model OpenHouse {
   @@map("open_houses")
 }
 
-/** Multi-host support: listing agent, host agents, assistants. */
+/** Multi-host support: listing agent (canonical owner), host agents, assistants. */
 model OpenHouseHost {
   id          String            @id @default(uuid())
   openHouseId String
@@ -192,7 +193,7 @@ model OpenHouseHost {
   openHouse OpenHouse @relation(fields: [openHouseId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([openHouseId, userId, role])
+  @@unique([openHouseId, userId])
   @@index([openHouseId])
   @@index([userId])
   @@map("open_house_hosts")
@@ -206,15 +207,17 @@ enum OpenHouseHostRole {
 
 /** Invite sent by listing agent to add a host. Email with secure token link. */
 model OpenHouseHostInvite {
-  id          String   @id @default(uuid())
-  openHouseId String
-  email       String
-  role        OpenHouseHostRole @default(HOST_AGENT)
-  token       String   @unique
-  expiresAt   DateTime
-  acceptedAt  DateTime?
-  invitedById String
-  createdAt   DateTime @default(now())
+  id             String   @id @default(uuid())
+  openHouseId    String
+  email          String
+  role           OpenHouseHostRole @default(HOST_AGENT)
+  token          String   @unique
+  expiresAt      DateTime
+  /** When the token link stops working. Falls back to expiresAt if null (legacy). */
+  tokenExpiresAt DateTime?
+  acceptedAt     DateTime?
+  invitedById    String
+  createdAt      DateTime @default(now())
 
   openHouse  OpenHouse @relation(fields: [openHouseId], references: [id], onDelete: Cascade)
   invitedBy  User      @relation(fields: [invitedById], references: [id], onDelete: Cascade)
@@ -223,6 +226,7 @@ model OpenHouseHostInvite {
   @@index([email])
   @@index([token])
   @@index([expiresAt])
+  @@index([tokenExpiresAt])
   @@map("open_house_host_invites")
 }
 
@@ -243,7 +247,10 @@ model OpenHouseVisitor {
   rawResponseJson Json?
   leadStatus      VisitorLeadStatus    @default(NEW)
   interestLevel   VisitorInterestLevel?
+  visitorNotes    String?              @db.Text
+  visitorTags     Json?
   createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @default(now()) @updatedAt
 
   openHouse OpenHouse @relation(fields: [openHouseId], references: [id])
   contact   Contact   @relation(fields: [contactId], references: [id])
@@ -563,19 +570,19 @@ model Transaction {
 }
 
 enum TransactionStatus {
-  PENDING
+  LEAD
   UNDER_CONTRACT
-  INSPECTION
-  APPRAISAL
-  CLEAR_TO_CLOSE
+  IN_ESCROW
+  PENDING
   CLOSED
-  CANCELLED
+  FALLEN_APART
 }
 
 /** Commission split per transaction. */
 model Commission {
   id            String   @id @default(uuid())
   transactionId String
+  agentId       String?
   role          String   // e.g. LISTING_AGENT, BUYER_AGENT, REFERRAL
   amount        Decimal  @db.Decimal(12, 2)
   percent       Decimal? @db.Decimal(5, 2)
@@ -583,7 +590,9 @@ model Commission {
   createdAt     DateTime @default(now())
 
   transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  agent       User?       @relation(fields: [agentId], references: [id])
 
   @@index([transactionId])
+  @@index([agentId])
   @@map("commissions")
 }

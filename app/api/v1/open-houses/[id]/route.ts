@@ -138,6 +138,18 @@ export async function PUT(
       data: updateData,
       include: { property: true, listingAgent: true, hostAgent: true },
     });
+    const listingAgentIdToSync = openHouse.listingAgentId ?? openHouse.hostUserId;
+    await prisma.openHouseHost.upsert({
+      where: {
+        openHouseId_userId: { openHouseId: id, userId: listingAgentIdToSync },
+      },
+      create: {
+        openHouseId: id,
+        userId: listingAgentIdToSync,
+        role: "LISTING_AGENT",
+      },
+      update: { role: "LISTING_AGENT" },
+    });
     return NextResponse.json({ data: openHouse });
   } catch (e) {
     const zod = (e as { errors?: unknown[] })?.errors;

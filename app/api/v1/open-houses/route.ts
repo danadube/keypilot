@@ -73,6 +73,18 @@ export async function POST(req: NextRequest) {
       },
       include: { property: true, listingAgent: true, hostAgent: true },
     });
+
+    await prisma.openHouseHost.upsert({
+      where: {
+        openHouseId_userId: { openHouseId: openHouse.id, userId: listingAgentId },
+      },
+      create: {
+        openHouseId: openHouse.id,
+        userId: listingAgentId,
+        role: "LISTING_AGENT",
+      },
+      update: { role: "LISTING_AGENT" },
+    });
     const address = [
       openHouse.property.address1,
       openHouse.property.city,

@@ -25,6 +25,7 @@ import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { QrCode, Users, FileText, ExternalLink, Copy } from "lucide-react";
 import { HOST_FEEDBACK_TAGS, TRAFFIC_LEVELS } from "@/lib/validations/open-house";
+import { VisitorRow } from "./VisitorRow";
 
 type HostData = {
   invite: { id: string; email: string; role: string; expiresAt: string };
@@ -44,6 +45,8 @@ type HostData = {
       submittedAt: string;
       leadStatus: string | null;
       signInMethod: string;
+      visitorNotes?: string | null;
+      visitorTags?: string[] | null;
       contact: { firstName: string; lastName: string; email: string | null; phone: string | null };
     }>;
   };
@@ -259,21 +262,18 @@ export default function HostDashboardPage() {
                       <th className="pb-2 pr-4">Name</th>
                       <th className="pb-2 pr-4">Time</th>
                       <th className="pb-2 pr-4">Contact</th>
+                      <th className="pb-2 pr-4">Notes</th>
                     </tr>
                   </thead>
                   <tbody>
                     {oh.visitors.map((v) => (
-                      <tr key={v.id} className="border-b border-slate-100">
-                        <td className="py-2 pr-4 font-medium">
-                          {v.contact.firstName} {v.contact.lastName}
-                        </td>
-                        <td className="py-2 pr-4 text-slate-600">
-                          {formatTime(v.submittedAt)}
-                        </td>
-                        <td className="py-2 text-slate-600">
-                          {v.contact.email ?? v.contact.phone ?? "—"}
-                        </td>
-                      </tr>
+                      <VisitorRow
+                        key={v.id}
+                        visitor={v}
+                        token={token}
+                        formatTime={formatTime}
+                        onSaved={fetchData}
+                      />
                     ))}
                   </tbody>
                 </table>

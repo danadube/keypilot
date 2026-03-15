@@ -1,21 +1,21 @@
 /**
- * Host feedback API — token-authenticated (no Clerk).
- * Allows invited hosts to update traffic, tags, notes.
+ * Host visitor notes API — token-authenticated.
+ * Allows invited hosts to update visitor notes and tags.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
-import { HostFeedbackSchema } from "@/lib/validations/open-house";
+import { VisitorNotesSchema } from "@/lib/validations/visitor-notes";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: Promise<{ token: string }> }
+  { params }: { params: Promise<{ token: string; visitorId: string }> }
 ) {
   try {
-    const { token } = await params;
-    const now = new Date();
+    const { token, visitorId } = await params;
+
     const invite = await prisma.openHouseHostInvite.findFirst({
       where: { token, acceptedAt: null },
       include: { openHouse: true },
@@ -26,6 +26,7 @@ export async function PUT(
         { status: 404 }
       );
     }
+    const now = new Date();
     const tokenExpiry = invite.tokenExpiresAt ?? invite.expiresAt;
     if (invite.expiresAt < now || tokenExpiry < now) {
       return NextResponse.json(
@@ -34,8 +35,21 @@ export async function PUT(
       );
     }
 
+    const visitor = await prisma.openHouseVisitor.findFirst({
+      where: {
+        id: visitorId,
+        openHouseId: invite.openHouseId,
+      },
+    });
+    if (!visitor) {
+      return NextResponse.json(
+        { error: { message: "Visitor not found" } },
+        { status: 404 }
+      );
+    }
+
     const body = await req.json();
-    const parsed = HostFeedbackSchema.safeParse(body);
+    const parsed = VisitorNotesSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         { error: { message: parsed.error.issues[0]?.message ?? "Invalid input" } },
@@ -43,13 +57,13 @@ export async function PUT(
       );
     }
 
-    const { trafficLevel, feedbackTags, hostNotes } = parsed.data;
-    await prisma.openHouse.update({
-      where: { id: invite.openHouseId },
+    const { visitorNotes, visitorTags } = parsed.data;
+    await prisma.openHouseVisitor.update({
+      where: { id: visitorId },
       data: {
-        trafficLevel: trafficLevel ?? null,
-        feedbackTags: feedbackTags === null ? Prisma.JsonNull : feedbackTags,
-        hostNotes: hostNotes ?? null,
+        visitorNotes: visitorNotes?.trim() || null,
+        visitorTags: visitorTags === null ? Prisma.JsonNull : visitorTags ?? undefined,
+        updatedAt: new Date(),
       },
     });
 

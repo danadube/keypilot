@@ -66,6 +66,7 @@ export async function POST(
     const token = randomBytes(32).toString("hex");
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
+    const tokenExpiresAt = new Date(expiresAt);
 
     const invite = await prisma.openHouseHostInvite.create({
       data: {
@@ -74,6 +75,7 @@ export async function POST(
         role: role as OpenHouseHostRole,
         token,
         expiresAt,
+        tokenExpiresAt,
         invitedById: user.id,
       },
     });
