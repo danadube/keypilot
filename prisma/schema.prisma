@@ -37,7 +37,10 @@ model User {
   deals             Deal[]
   connections       Connection[]
   usageEvents       UsageEvent[]
-  profile           UserProfile?
+  profile             UserProfile?
+  openHouseHostRoles  OpenHouseHost[]
+  hostInvitesSent     OpenHouseHostInvite[]
+  transactions        Transaction[]
 
   @@index([clerkId])
   @@map("users")
@@ -84,6 +87,7 @@ model Property {
   showings      Showing[]
   activities    Activity[]
   deals         Deal[]
+  transactions  Transaction[]
 
   @@index([createdByUserId, deletedAt])
   @@index([city, state])
@@ -164,6 +168,8 @@ model OpenHouse {
   hostUser       User               @relation(fields: [hostUserId], references: [id])
   listingAgent   User?              @relation("OpenHouseListingAgent", fields: [listingAgentId], references: [id])
   hostAgent      User?              @relation("OpenHouseHostAgent", fields: [hostAgentId], references: [id])
+  hosts          OpenHouseHost[]
+  hostInvites    OpenHouseHostInvite[]
   visitors       OpenHouseVisitor[]
   activities     Activity[]
   drafts         FollowUpDraft[]
@@ -174,6 +180,50 @@ model OpenHouse {
   @@index([hostAgentId])
   @@index([propertyId])
   @@map("open_houses")
+}
+
+/** Multi-host support: listing agent, host agents, assistants. */
+model OpenHouseHost {
+  id          String            @id @default(uuid())
+  openHouseId String
+  userId      String
+  role        OpenHouseHostRole
+
+  openHouse OpenHouse @relation(fields: [openHouseId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([openHouseId, userId, role])
+  @@index([openHouseId])
+  @@index([userId])
+  @@map("open_house_hosts")
+}
+
+enum OpenHouseHostRole {
+  LISTING_AGENT
+  HOST_AGENT
+  ASSISTANT
+}
+
+/** Invite sent by listing agent to add a host. Email with secure token link. */
+model OpenHouseHostInvite {
+  id          String   @id @default(uuid())
+  openHouseId String
+  email       String
+  role        OpenHouseHostRole @default(HOST_AGENT)
+  token       String   @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  invitedById String
+  createdAt   DateTime @default(now())
+
+  openHouse  OpenHouse @relation(fields: [openHouseId], references: [id], onDelete: Cascade)
+  invitedBy  User      @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([openHouseId])
+  @@index([email])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("open_house_host_invites")
 }
 
 enum OpenHouseStatus {
@@ -486,4 +536,54 @@ model UsageEvent {
   @@index([eventName])
   @@index([createdAt])
   @@map("usage_events")
+}
+
+// ─── Transactions module (DealForge / FarmTrackr-inspired) ──────────────────
+model Transaction {
+  id             String            @id @default(uuid())
+  propertyId     String
+  userId         String
+  status         TransactionStatus @default(PENDING)
+  salePrice      Decimal?          @db.Decimal(12, 2)
+  closingDate    DateTime?
+  brokerageName  String?
+  notes          String?           @db.Text
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  property     Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commissions  Commission[]
+
+  @@index([userId])
+  @@index([propertyId])
+  @@index([status])
+  @@index([closingDate])
+  @@map("transactions")
+}
+
+enum TransactionStatus {
+  PENDING
+  UNDER_CONTRACT
+  INSPECTION
+  APPRAISAL
+  CLEAR_TO_CLOSE
+  CLOSED
+  CANCELLED
+}
+
+/** Commission split per transaction. */
+model Commission {
+  id            String   @id @default(uuid())
+  transactionId String
+  role          String   // e.g. LISTING_AGENT, BUYER_AGENT, REFERRAL
+  amount        Decimal  @db.Decimal(12, 2)
+  percent       Decimal? @db.Decimal(5, 2)
+  notes         String?  @db.Text
+  createdAt     DateTime @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@map("commissions")
 }

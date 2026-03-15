@@ -14,6 +14,7 @@ import { InterestBadge } from "@/components/shared/InterestBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Users, UserPlus, CheckSquare, QrCode, Copy, RefreshCw } from "lucide-react";
+import { InviteHostDialog } from "@/components/open-houses/InviteHostDialog";
 
 type OpenHouseData = {
   hostUserId?: string;
@@ -152,6 +153,7 @@ export default function ShowingHQOpenHouseDetailPage() {
         description={`${address} · ${formatDate(data.startAt)}`}
         actions={
           <div className="flex flex-wrap gap-2">
+            <InviteHostDialog openHouseId={openHouseId} onInviteSent={loadData} />
             <BrandButton variant="secondary" asChild>
               <Link href="/showing-hq">← Dashboard</Link>
             </BrandButton>

@@ -40,6 +40,7 @@ export type ModuleId =
   | "market-pilot"
   | "seller-pulse"
   | "insight"
+  | "transactions"
   | "settings";
 
 export interface ModuleSidebarItem {
@@ -188,6 +189,18 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
       { label: "Settings", href: "/settings", icon: Settings },
     ],
   },
+  transactions: {
+    id: "transactions",
+    name: "Transactions",
+    href: "/transactions",
+    available: false,
+    sidebar: [
+      { label: "Overview", href: "/transactions", icon: LayoutDashboard, section: "OVERVIEW" },
+      { label: "Pipeline", href: "/transactions/pipeline", icon: List, section: "CLOSING" },
+      { label: "Commissions", href: "/transactions/commissions", icon: BarChart3, section: "COMMISSIONS" },
+      { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
+    ],
+  },
   insight: {
     id: "insight",
     name: "Insight",
@@ -245,5 +258,6 @@ export function getModuleFromPath(pathname: string): ModuleId {
   if (pathname.startsWith("/market-pilot")) return "market-pilot";
   if (pathname.startsWith("/seller-pulse")) return "seller-pulse";
   if (pathname.startsWith("/insight")) return "insight";
+  if (pathname.startsWith("/transactions")) return "transactions";
   return "property-vault"; // default
 }

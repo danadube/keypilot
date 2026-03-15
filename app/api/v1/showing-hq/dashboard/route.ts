@@ -24,6 +24,7 @@ export async function GET() {
     const [
       todaysOpenHouses,
       upcomingOpenHouses,
+      todaysPrivateShowings,
       recentVisitorsData,
       followUpDrafts,
       totalVisitorsCount,
@@ -61,6 +62,15 @@ export async function GET() {
         },
         orderBy: { startAt: "asc" },
         take: 10,
+      }),
+      prisma.showing.findMany({
+        where: {
+          hostUserId: user.id,
+          deletedAt: null,
+          scheduledAt: { gte: todayStart, lt: todayEnd },
+        },
+        include: { property: true },
+        orderBy: { scheduledAt: "asc" },
       }),
       prisma.openHouseVisitor.findMany({
         where: {
@@ -150,6 +160,24 @@ export async function GET() {
       }),
     ]);
 
+    const todaysSchedule = [
+      ...todaysOpenHouses.map((oh) => ({
+        type: "open_house" as const,
+        id: oh.id,
+        title: oh.title,
+        at: oh.startAt,
+        property: oh.property,
+        _count: (oh as { _count?: { visitors: number } })._count,
+      })),
+      ...todaysPrivateShowings.map((s) => ({
+        type: "showing" as const,
+        id: s.id,
+        title: (s.buyerName || s.buyerAgentName || "Private showing") as string,
+        at: s.scheduledAt,
+        property: s.property,
+      })),
+    ].sort((a, b) => a.at.getTime() - b.at.getTime());
+
     const hasCalendar = connections.some(
       (c) => c.service === "GOOGLE_CALENDAR" && c.enabledForCalendar
     );
@@ -179,6 +207,11 @@ export async function GET() {
       data: {
         todaysShowings: todaysOpenHouses,
         todaysOpenHouses,
+        todaysPrivateShowings,
+        todaysSchedule: todaysSchedule.map((s) => ({
+          ...s,
+          at: s.at.toISOString(),
+        })),
         upcomingOpenHouses,
         recentVisitors,
         followUpTasks: followUpDrafts,
