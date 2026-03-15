@@ -1,7 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { Home, QrCode, Copy, Calendar } from "lucide-react";
+import {
+  Home,
+  QrCode,
+  Copy,
+  Calendar,
+  Users,
+  CheckSquare,
+  MessageSquare,
+  Building2,
+} from "lucide-react";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { Button } from "@/components/ui/button";
 
@@ -23,24 +32,33 @@ type ScheduleItem = {
 };
 
 type TodayCommandCenterProps = {
-  /** Currently active (live) open house */
   activeOpenHouse: OpenHouseItem | null;
-  /** Next upcoming open house today (not yet active) */
   nextOpenHouse: OpenHouseItem | null;
-  /** Next upcoming showing today */
   nextShowing: ScheduleItem | null;
   followUpCount: number;
+  visitorsToday: number;
+  feedbackRequestsPending: number;
   signInUrl: string | null;
   formatTime: (d: string) => string;
   onCopyLink: (url: string) => () => void;
   linkCopied: boolean;
 };
 
+type Scenario =
+  | "showing_soon"
+  | "active_oh"
+  | "oh_soon"
+  | "visitors_captured"
+  | "feedback_pending"
+  | "nothing";
+
 export function TodayCommandCenter({
   activeOpenHouse,
   nextOpenHouse,
   nextShowing,
   followUpCount,
+  visitorsToday,
+  feedbackRequestsPending,
   signInUrl,
   formatTime,
   onCopyLink,
@@ -48,63 +66,83 @@ export function TodayCommandCenter({
 }: TodayCommandCenterProps) {
   const now = new Date();
 
-  // Scenario priority: active OH → upcoming OH (soon) → showing soon → nothing urgent
-  const primaryOh = activeOpenHouse ?? nextOpenHouse;
-  const ohMins = primaryOh && !activeOpenHouse
-    ? Math.round((new Date(primaryOh.startAt).getTime() - now.getTime()) / 60000)
-    : null;
   const showingMins = nextShowing
     ? Math.round((new Date(nextShowing.at).getTime() - now.getTime()) / 60000)
     : null;
+  const ohMins = nextOpenHouse
+    ? Math.round((new Date(nextOpenHouse.startAt).getTime() - now.getTime()) / 60000)
+    : null;
 
-  const isActiveOh = !!activeOpenHouse;
-  const isUpcomingOh = !activeOpenHouse && primaryOh && ohMins !== null && ohMins > 0;
-  const isShowingSoon = !primaryOh && nextShowing && showingMins !== null && showingMins <= 60;
-  const isShowingLater = !primaryOh && nextShowing && showingMins !== null && showingMins > 60;
+  // Single primary state in priority order
+  const scenario: Scenario =
+    nextShowing && showingMins !== null && showingMins <= 30
+      ? "showing_soon"
+      : activeOpenHouse
+        ? "active_oh"
+        : nextOpenHouse && ohMins !== null && ohMins > 0 && ohMins <= 60
+          ? "oh_soon"
+          : visitorsToday > 0 && followUpCount === 0
+            ? "visitors_captured"
+            : feedbackRequestsPending > 0
+              ? "feedback_pending"
+              : "nothing";
 
-  const scenario: "active_oh" | "upcoming_oh" | "showing_soon" | "nothing" =
-    isActiveOh ? "active_oh"
-    : isUpcomingOh ? "upcoming_oh"
-    : isShowingSoon ? "showing_soon"
-    : isShowingLater ? "showing_soon"
-    : "nothing";
+  const primaryOh = activeOpenHouse ?? nextOpenHouse;
 
-  const heading =
-    scenario === "active_oh" ? "Open House Live"
-    : scenario === "upcoming_oh" ? (ohMins !== null && ohMins <= 60 ? `Open house starts in ${ohMins} min` : `Open house at ${primaryOh ? formatTime(primaryOh.startAt) : ""}`)
-    : scenario === "showing_soon" ? (showingMins !== null && showingMins <= 30 ? `Showing starts in ${showingMins} min` : `Showing at ${nextShowing ? formatTime(nextShowing.at) : ""}`)
-    : "You're all caught up";
+  let heading: string;
+  let address: string | null = null;
+  let supportingLine: string | null = null;
 
-  const address =
-    scenario === "active_oh" || scenario === "upcoming_oh"
-      ? primaryOh?.property.address1
-      : scenario === "showing_soon"
-        ? nextShowing?.property.address1
-        : null;
-
-  const supportingLine =
-    scenario === "active_oh" && activeOpenHouse
-      ? (activeOpenHouse._count.visitors === 0
+  switch (scenario) {
+    case "showing_soon":
+      heading =
+        showingMins !== null && showingMins <= 30
+          ? `Showing starts in ${showingMins} min`
+          : nextShowing
+            ? `Showing at ${formatTime(nextShowing.at)}`
+            : "Showing soon";
+      address = nextShowing?.property.address1 ?? null;
+      break;
+    case "active_oh":
+      heading = "Open House Live";
+      address = primaryOh?.property.address1 ?? null;
+      supportingLine =
+        activeOpenHouse?._count.visitors === 0
           ? "No visitors yet"
-          : `${activeOpenHouse._count.visitors} visitor${activeOpenHouse._count.visitors !== 1 ? "s" : ""} checked in`)
-      : scenario === "active_oh" && followUpCount > 0
-        ? "Follow-up pending"
-        : scenario === "upcoming_oh"
-          ? primaryOh?.property.address1
-          : scenario === "showing_soon"
-            ? nextShowing?.property.address1
-            : scenario === "nothing"
-              ? "No urgent items right now"
-              : null;
+          : `${activeOpenHouse?._count.visitors} visitor${activeOpenHouse?._count.visitors !== 1 ? "s" : ""} checked in`;
+      break;
+    case "oh_soon":
+      heading =
+        ohMins !== null && ohMins <= 60
+          ? `Open house starts in ${ohMins} min`
+          : primaryOh
+            ? `Open house at ${formatTime(primaryOh.startAt)}`
+            : "Open house soon";
+      address = primaryOh?.property.address1 ?? null;
+      break;
+    case "visitors_captured":
+      heading = `${visitorsToday} visitor${visitorsToday !== 1 ? "s" : ""} captured`;
+      supportingLine = "Follow-up pending";
+      break;
+    case "feedback_pending":
+      heading = "Feedback requests pending";
+      supportingLine = `${feedbackRequestsPending} request${feedbackRequestsPending !== 1 ? "s" : ""} awaiting response`;
+      break;
+    default:
+      heading = "You're all caught up";
+      supportingLine = "No urgent items right now";
+  }
 
   const containerClass =
-    scenario === "active_oh"
-      ? "border-emerald-500/60 bg-emerald-50/90 shadow-sm"
-      : scenario === "upcoming_oh"
-        ? "border-blue-400/50 bg-blue-50/80 shadow-sm"
-        : scenario === "showing_soon"
-          ? "border-amber-400/50 bg-amber-50/80 shadow-sm"
-          : "border-slate-200 bg-slate-50/80 shadow-sm";
+    scenario === "showing_soon"
+      ? "border-amber-500/70 bg-amber-50/95 shadow-md"
+      : scenario === "active_oh"
+        ? "border-emerald-500/70 bg-emerald-50/95 shadow-md"
+        : scenario === "oh_soon"
+          ? "border-blue-500/60 bg-blue-50/90 shadow-sm"
+          : scenario === "visitors_captured" || scenario === "feedback_pending"
+            ? "border-slate-300 bg-white shadow-md"
+            : "border-slate-200 bg-slate-50/90 shadow-sm";
 
   return (
     <section
@@ -114,30 +152,49 @@ export function TodayCommandCenter({
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="min-w-0 flex-1">
+          <p
+            className="text-[10px] font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]"
+            style={{ letterSpacing: "0.08em" }}
+          >
+            Now
+          </p>
           <h2
-            className="text-base font-bold tracking-tight text-[var(--brand-text)] sm:text-lg"
+            className="mt-0.5 text-lg font-bold tracking-tight text-[var(--brand-text)] sm:text-xl"
             style={{ fontFamily: "var(--font-heading)" }}
           >
             {heading}
           </h2>
           {address && (
-            <p className="mt-0.5 text-sm font-medium text-[var(--brand-text)]">
-              {address}
-            </p>
+            <p className="mt-0.5 text-sm font-medium text-[var(--brand-text)]">{address}</p>
           )}
-          {supportingLine && scenario !== "upcoming_oh" && scenario !== "showing_soon" && (
-            <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">
-              {supportingLine}
-            </p>
+          {supportingLine && (
+            <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">{supportingLine}</p>
           )}
           {scenario === "active_oh" && followUpCount > 0 && (
-            <p className="mt-0.5 text-xs text-amber-700 font-medium">
+            <p className="mt-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
               Follow-up pending
             </p>
           )}
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {scenario === "showing_soon" && (
+            <>
+              <BrandButton variant="primary" size="sm" className="h-9" asChild>
+                <Link href="/showing-hq/showings">
+                  <Building2 className="mr-1.5 h-4 w-4" />
+                  View showing
+                </Link>
+              </BrandButton>
+              <Button variant="outline" size="sm" className="h-9" asChild>
+                <Link href="/showing-hq/showings">Reschedule</Link>
+              </Button>
+              <Button variant="outline" size="sm" className="h-9" asChild>
+                <Link href="/showing-hq/feedback-requests">Request feedback</Link>
+              </Button>
+            </>
+          )}
+
           {scenario === "active_oh" && primaryOh && (
             <>
               <BrandButton variant="primary" size="sm" className="h-9" asChild>
@@ -167,7 +224,7 @@ export function TodayCommandCenter({
             </>
           )}
 
-          {scenario === "upcoming_oh" && primaryOh && (
+          {scenario === "oh_soon" && primaryOh && (
             <>
               <BrandButton variant="primary" size="sm" className="h-9" asChild>
                 <Link href={`/open-houses/${primaryOh.id}/sign-in`}>
@@ -190,19 +247,31 @@ export function TodayCommandCenter({
             </>
           )}
 
-          {scenario === "showing_soon" && (
+          {scenario === "visitors_captured" && (
             <>
               <BrandButton variant="primary" size="sm" className="h-9" asChild>
-                <Link href="/showing-hq/showings">
-                  View showing
+                <Link href="/showing-hq/visitors">
+                  <Users className="mr-1.5 h-4 w-4" />
+                  Review visitors
                 </Link>
               </BrandButton>
-              <Button variant="outline" size="sm" className="h-9" asChild>
-                <Link href="/showing-hq/showings">Reschedule</Link>
-              </Button>
-              <Button variant="outline" size="sm" className="h-9" asChild>
-                <Link href="/showing-hq/feedback-requests">Request feedback</Link>
-              </Button>
+              <BrandButton variant="secondary" size="sm" className="h-9" asChild>
+                <Link href="/showing-hq/follow-ups">
+                  <CheckSquare className="mr-1.5 h-4 w-4" />
+                  Review follow-ups
+                </Link>
+              </BrandButton>
+            </>
+          )}
+
+          {scenario === "feedback_pending" && (
+            <>
+              <BrandButton variant="primary" size="sm" className="h-9" asChild>
+                <Link href="/showing-hq/feedback-requests">
+                  <MessageSquare className="mr-1.5 h-4 w-4" />
+                  View feedback requests
+                </Link>
+              </BrandButton>
             </>
           )}
 

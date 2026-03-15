@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, CheckSquare, Building2, Home } from "lucide-react";
+import { Calendar, Building2, Home } from "lucide-react";
 import { BrandCard } from "@/components/ui/BrandCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,18 +21,15 @@ export type ScheduleItem = {
 type TodaysScheduleCardProps = {
   scheduleItems: ScheduleItem[];
   tomorrowItem?: ScheduleItem | null;
-  followUpCount: number;
   formatTime: (d: string) => string;
 };
 
 export function TodaysScheduleCard({
   scheduleItems,
   tomorrowItem,
-  followUpCount,
   formatTime,
 }: TodaysScheduleCardProps) {
-  const hasItems =
-    scheduleItems.length > 0 || (tomorrowItem != null) || followUpCount > 0;
+  const hasItems = scheduleItems.length > 0 || tomorrowItem != null;
   const timeRange = (at: string, endAt?: string) =>
     endAt
       ? `${formatTime(at)} – ${formatTime(endAt)}`
@@ -124,25 +121,6 @@ export function TodaysScheduleCard({
                 >
                   View
                 </Link>
-              </Button>
-            </li>
-          )}
-          {followUpCount > 0 && (
-            <li className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-2.5">
-              <div className="shrink-0" style={{ minWidth: "5rem" }} />
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                <CheckSquare className="h-3.5 w-3.5 shrink-0 text-amber-600" />
-                <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-800">
-                  Follow-up
-                </Badge>
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-medium text-[var(--brand-text)]">
-                  {followUpCount} draft{followUpCount !== 1 ? "s" : ""} ready to review
-                </p>
-              </div>
-              <Button variant="outline" size="sm" className="h-7 shrink-0 text-xs" asChild>
-                <Link href="/showing-hq/follow-ups">Review</Link>
               </Button>
             </li>
           )}

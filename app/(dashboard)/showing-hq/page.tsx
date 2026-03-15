@@ -320,12 +320,14 @@ export default function ShowingHQOverviewPage() {
         </div>
       </header>
 
-      {/* Today Command Center — critical now / next, primary actions */}
+      {/* Today Command Center — single primary state: now / next urgent / what to do */}
       <TodayCommandCenter
         activeOpenHouse={activeOpenHouse}
         nextOpenHouse={nextOh ?? null}
         nextShowing={nextShowing ?? null}
         followUpCount={followUpTasks.length}
+        visitorsToday={visitorsToday}
+        feedbackRequestsPending={stats.feedbackRequestsPending ?? 0}
         signInUrl={signInUrl}
         formatTime={formatTime}
         onCopyLink={handleCopyLink}
@@ -349,7 +351,6 @@ export default function ShowingHQOverviewPage() {
         <TodaysScheduleCard
           scheduleItems={scheduleItems}
           tomorrowItem={tomorrowItem}
-          followUpCount={followUpTasks.length}
           formatTime={formatTime}
         />
         <NextActionsCard items={nextActions} />
