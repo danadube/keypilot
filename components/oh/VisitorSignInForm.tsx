@@ -17,6 +17,7 @@ type OpenHouseInfo = {
   startAt: string;
   endAt: string;
   agentName?: string | null;
+  flyerUrl?: string | null;
   property: {
     address1: string;
     address2?: string | null;
@@ -150,6 +151,19 @@ export function VisitorSignInForm({ slug }: { slug: string }) {
             <p className="text-sm text-slate-600">
               Please sign in before touring the property.
             </p>
+            <p className="text-sm text-slate-600">
+              Sign in to receive the property flyer and additional details after your visit.
+            </p>
+            {oh.flyerUrl && (
+              <a
+                href={oh.flyerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium text-blue-600 hover:text-blue-800 underline"
+              >
+                View property flyer
+              </a>
+            )}
 
             {hasHost && (
               <div className="flex items-center gap-3 pt-3">

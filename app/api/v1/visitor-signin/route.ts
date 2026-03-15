@@ -3,6 +3,7 @@ import { findOrCreateContact } from "@/lib/contact-dedupe";
 import { prisma } from "@/lib/db";
 import { VisitorSignInSchema } from "@/lib/validations/visitor";
 import { trackUsageEvent } from "@/lib/track-usage";
+import { sendFlyerEmail } from "@/lib/email/flyer";
 
 export async function POST(request: Request) {
   try {
@@ -64,6 +65,14 @@ export async function POST(request: Request) {
       visitorId: visitor.id,
       contactId: contact.id,
     });
+
+    if (openHouse.flyerUrl?.trim() && contact.email?.trim()) {
+      void sendFlyerEmail({
+        to: contact.email.trim(),
+        address: openHouse.property.address1,
+        flyerUrl: openHouse.flyerUrl,
+      });
+    }
 
     return NextResponse.json({
       data: { visitorId: visitor.id, contactId: contact.id, wasCreated },

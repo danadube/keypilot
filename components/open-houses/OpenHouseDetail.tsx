@@ -21,6 +21,7 @@ type OpenHouseDetail = {
   endAt: string;
   status: string;
   qrSlug: string;
+  flyerUrl?: string | null;
   property: { address1: string; city: string; state: string; zip: string };
   _count: { visitors: number };
   visitorBreakdown: { total: number; hasAgentTrue: number; hasAgentFalse: number; unknownAgentStatus: number };
@@ -32,9 +33,10 @@ export function OpenHouseDetail({ id }: { id: string }) {
   const [oh, setOh] = useState<OpenHouseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [flyerUploading, setFlyerUploading] = useState(false);
 
-  useEffect(() => {
-    fetch(`/api/v1/open-houses/${id}`)
+  const refresh = () => {
+    return fetch(`/api/v1/open-houses/${id}`)
       .then((res) => res.json())
       .then((json) => {
         if (json.error) setError(json.error.message);
@@ -42,7 +44,40 @@ export function OpenHouseDetail({ id }: { id: string }) {
       })
       .catch(() => setError("Failed to load"))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    refresh();
   }, [id]);
+
+  const handleFlyerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !oh) return;
+    if (file.type !== "application/pdf") {
+      setError("Please upload a PDF file.");
+      return;
+    }
+    setFlyerUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`/api/v1/open-houses/${id}/flyer`, {
+        method: "POST",
+        body: formData,
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+      await refresh();
+      setLoading(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setFlyerUploading(false);
+      e.target.value = "";
+    }
+  };
 
   if (loading) return <PageLoading message="Loading open house..." />;
   if (error || !oh)
@@ -171,6 +206,52 @@ export function OpenHouseDetail({ id }: { id: string }) {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Property flyer</CardTitle>
+          <CardDescription>
+            Upload a PDF to email visitors after they sign in
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {oh.flyerUrl ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="outline" size="sm" asChild>
+                <a href={oh.flyerUrl} target="_blank" rel="noopener noreferrer">
+                  View flyer
+                </a>
+              </Button>
+              <label className="inline-block cursor-pointer">
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={handleFlyerUpload}
+                  disabled={flyerUploading}
+                />
+                <Button variant="outline" size="sm" type="button" disabled={flyerUploading}>
+                  {flyerUploading ? "Uploading..." : "Replace flyer"}
+                </Button>
+              </label>
+            </div>
+          ) : (
+            <label className="inline-block cursor-pointer">
+              <input
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={handleFlyerUpload}
+                disabled={flyerUploading}
+              />
+              <Button variant="outline" size="sm" type="button" disabled={flyerUploading}>
+                {flyerUploading ? "Uploading..." : "Upload PDF flyer"}
+              </Button>
+            </label>
+          )}
+          <p className="text-xs text-muted-foreground">PDF only, max 10MB. Visitors with an email receive it automatically after sign-in.</p>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

@@ -142,6 +142,7 @@ model OpenHouse {
   agentEmail String?
   agentPhone String?
   notes      String?
+  flyerUrl   String?
   qrSlug     String          @unique
   status     OpenHouseStatus @default(SCHEDULED)
   createdAt  DateTime        @default(now())

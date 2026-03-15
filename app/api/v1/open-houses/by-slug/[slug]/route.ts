@@ -54,6 +54,7 @@ export async function GET(
         startAt: openHouse.startAt,
         endAt: openHouse.endAt,
         agentName: branding.displayName,
+        flyerUrl: openHouse.flyerUrl,
         property: {
           address1: openHouse.property.address1,
           address2: openHouse.property.address2,
