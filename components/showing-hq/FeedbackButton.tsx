@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { trackEvent } from "@/lib/track-usage-client";
 import { Button } from "@/components/ui/button";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { MessageSquare, Send } from "lucide-react";
@@ -41,6 +42,7 @@ export function FeedbackButton({
 
   const handleSubmit = () => {
     if (!message.trim()) return;
+    trackEvent("feedback_submitted", { feedbackType: type });
     const subject = `ShowingHQ Beta Feedback – ${FEEDBACK_TYPES.find((t) => t.value === type)?.label ?? type}`;
     const body = `${message.trim()}\n\n---\nType: ${type}\nSent from ShowingHQ Beta`;
     const mailto = `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;

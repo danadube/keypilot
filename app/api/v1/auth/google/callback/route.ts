@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getGoogleOAuth2Client } from "@/lib/oauth/google";
 import { prisma } from "@/lib/db";
+import { trackUsageEvent } from "@/lib/track-usage";
 
 export const dynamic = "force-dynamic";
 
@@ -104,6 +105,12 @@ export async function GET(req: NextRequest) {
           connectedAt: new Date(),
         },
       });
+    }
+
+    if (prismaService === "GMAIL") {
+      void trackUsageEvent(user.id, "gmail_connected");
+    } else {
+      void trackUsageEvent(user.id, "calendar_connected");
     }
 
     const res = NextResponse.redirect(new URL(`/settings/connections?connected=${service}`, req.url));

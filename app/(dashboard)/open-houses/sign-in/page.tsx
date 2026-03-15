@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { trackEvent } from "@/lib/track-usage-client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,6 +32,10 @@ export default function OpenSignInPage() {
   const [openHouses, setOpenHouses] = useState<OpenHouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    trackEvent("sign_in_page_opened", { context: "setup" });
+  }, []);
 
   useEffect(() => {
     fetch("/api/v1/open-houses")

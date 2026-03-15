@@ -33,6 +33,7 @@ model User {
   followUpReminders FollowUpReminder[]
   deals             Deal[]
   connections       Connection[]
+  usageEvents       UsageEvent[]
 
   @@index([clerkId])
   @@map("users")
@@ -392,4 +393,20 @@ enum ConnectionStatus {
   CONNECTED
   PENDING
   ERROR
+}
+
+/** Lightweight usage events for ShowingHQ beta analytics. */
+model UsageEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  eventName String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([eventName])
+  @@index([createdAt])
+  @@map("usage_events")
 }

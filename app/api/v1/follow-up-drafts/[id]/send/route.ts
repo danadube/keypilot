@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { Resend } from "resend";
 import { apiErrorFromCaught } from "@/lib/api-response";
+import { trackUsageEvent } from "@/lib/track-usage";
 
 export async function POST(
   _req: NextRequest,
@@ -77,6 +78,11 @@ export async function POST(
     await prisma.followUpDraft.update({
       where: { id },
       data: { status: "SENT_MANUAL" },
+    });
+
+    void trackUsageEvent(user.id, "followup_sent", {
+      openHouseId: draft.openHouseId,
+      contactId: draft.contactId,
     });
 
     await prisma.activity.create({

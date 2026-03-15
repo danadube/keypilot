@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { trackEvent } from "@/lib/track-usage-client";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import {
@@ -58,6 +59,10 @@ function statusBadge(status?: string) {
 
 export function SignInDisplay({ openHouseId }: { openHouseId: string }) {
   const [data, setData] = useState<SignInData | null>(null);
+
+  useEffect(() => {
+    trackEvent("sign_in_page_opened", { context: "tablet", openHouseId });
+  }, [openHouseId]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

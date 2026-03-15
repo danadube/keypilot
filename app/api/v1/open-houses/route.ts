@@ -5,6 +5,7 @@ import { CreateOpenHouseSchema } from "@/lib/validations/open-house";
 import { generateQrSlug } from "@/lib/slugify";
 import { ActivityType } from "@prisma/client";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { trackUsageEvent } from "@/lib/track-usage";
 
 export async function GET(req: NextRequest) {
   try {
@@ -70,6 +71,7 @@ export async function POST(req: NextRequest) {
         openHouseId: openHouse.id,
       },
     });
+    void trackUsageEvent(user.id, "open_house_created", { openHouseId: openHouse.id });
     return NextResponse.json({ data: openHouse });
   } catch (e) {
     const zod = (e as { errors?: unknown[] })?.errors;
