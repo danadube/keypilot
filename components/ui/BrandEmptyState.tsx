@@ -9,6 +9,7 @@ export interface BrandEmptyStateProps {
   action?: React.ReactNode;
   icon?: React.ReactNode;
   compact?: boolean;
+  variant?: "default" | "premium";
   className?: string;
 }
 
@@ -18,6 +19,7 @@ export const BrandEmptyState: React.FC<BrandEmptyStateProps> = ({
   action,
   icon,
   compact = false,
+  variant = "default",
   className,
 }) => {
   return (
@@ -30,7 +32,12 @@ export const BrandEmptyState: React.FC<BrandEmptyStateProps> = ({
     >
       {icon && (
         <div
-          className="mb-[var(--space-md)] flex h-[var(--space-3xl)] w-[var(--space-3xl)] items-center justify-center rounded-[var(--radius-lg)] bg-[var(--brand-surface-alt)]"
+          className={cn(
+            "mb-[var(--space-md)] flex h-14 w-14 shrink-0 items-center justify-center rounded-xl",
+            variant === "premium"
+              ? "border border-[var(--brand-primary)]/20 bg-[var(--brand-primary)]/5 text-[var(--brand-primary)]"
+              : "border border-[var(--brand-border)] bg-[var(--brand-surface-alt)] text-[var(--brand-text-muted)]"
+          )}
         >
           {icon}
         </div>

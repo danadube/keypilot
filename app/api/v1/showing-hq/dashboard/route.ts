@@ -30,6 +30,7 @@ export async function GET() {
       openHousesCount,
       followUpTasksCount,
       contactsFromVisitorsCount,
+      connections,
     ] = await Promise.all([
       prisma.openHouse.findMany({
         where: {
@@ -118,7 +119,16 @@ export async function GET() {
           where: { id: { in: contactIds }, deletedAt: null },
         });
       })(),
+      prisma.connection.findMany({
+        where: { userId: user.id },
+        select: { service: true, enabledForCalendar: true },
+      }),
     ]);
+
+    const hasCalendar = connections.some(
+      (c) => c.service === "GOOGLE_CALENDAR" && c.enabledForCalendar
+    );
+    const hasGmail = connections.some((c) => c.service === "GMAIL");
 
     const recentVisitors = recentVisitorsData.map((v) => ({
       id: v.id,
@@ -146,6 +156,7 @@ export async function GET() {
           contactsCaptured: contactsFromVisitorsCount,
           followUpTasks: followUpTasksCount,
         },
+        connections: { hasCalendar, hasGmail },
       },
     });
   } catch (e) {

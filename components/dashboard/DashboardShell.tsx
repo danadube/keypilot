@@ -10,6 +10,8 @@ import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
 
 const SIDEBAR_WIDTH = 240;
 const HEADER_HEIGHT = 64;
+/** Fixed width for profile/actions — prevents overlap with module tabs */
+const HEADER_RIGHT_WIDTH = 80;
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
@@ -32,21 +34,27 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <Image
               src="/KeyPilot-logo.png?v=4"
               alt="KeyPilot - The Real Estate Operations Platform"
-              width={160}
-              height={48}
-              className="h-10 w-auto object-contain"
+              width={140}
+              height={42}
+              className="h-11 w-auto object-contain"
               priority
             />
           </Link>
         </div>
 
-        {/* Middle: Module navigation — separation from brand anchor */}
-        <div className="flex min-w-0 flex-1 items-center pl-14 pr-6">
+        {/* Middle: Module navigation — scrollable, never overlaps right */}
+        <div
+          className="flex min-w-0 flex-1 items-center overflow-hidden pl-14 pr-4"
+          style={{ maxWidth: `calc(100% - ${SIDEBAR_WIDTH + HEADER_RIGHT_WIDTH}px)` }}
+        >
           <TopModuleNav />
         </div>
 
-        {/* Right: Global controls */}
-        <div className="flex shrink-0 items-center gap-3 pr-4">
+        {/* Right: Global controls — fixed width, collision-proof */}
+        <div
+          className="flex shrink-0 items-center justify-end gap-3 border-l border-[var(--brand-border)] bg-[var(--brand-surface)] pl-4 pr-4"
+          style={{ width: HEADER_RIGHT_WIDTH }}
+        >
           <UserButton afterSignOutUrl="/" />
         </div>
       </header>

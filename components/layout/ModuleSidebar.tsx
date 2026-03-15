@@ -63,6 +63,11 @@ export function ModuleSidebar() {
         <h2 className="text-sm font-semibold text-[var(--brand-text)]">
           {mod.name}
         </h2>
+        {activeId === "showing-hq" && (
+          <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">
+            by KeyPilot
+          </p>
+        )}
       </div>
       <nav className="flex-1 overflow-auto py-4">
         {groups.map(({ section, items: groupItems }) => (

@@ -106,17 +106,30 @@ export default function ShowingHQFollowUpsPage() {
           />
           <div className="mt-4">
             {needsReply.length === 0 ? (
-              <BrandEmptyState
-                compact
-                icon={<Mail className="h-6 w-6 text-[var(--brand-text-muted)]" />}
-                title="No drafts"
-                description="Follow-up drafts will appear here when generated."
-                action={
-                  <BrandButton variant="secondary" size="sm" asChild>
-                    <Link href="/open-houses">View open houses</Link>
-                  </BrandButton>
-                }
-              />
+              <div className="space-y-4">
+                <div className="rounded-lg border border-dashed border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/30 p-4">
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--brand-text-muted)]">
+                    How it works
+                  </p>
+                  <ol className="list-decimal list-inside space-y-1 text-sm text-[var(--brand-text-muted)]">
+                    <li>Visitors sign in at your open house</li>
+                    <li>We generate personalized follow-up drafts</li>
+                    <li>Review, edit, and send with one click</li>
+                  </ol>
+                </div>
+                <BrandEmptyState
+                  compact
+                  variant="premium"
+                  icon={<Mail className="h-6 w-6" />}
+                  title="No drafts yet"
+                  description="After visitors sign in at your open house, we'll generate follow-up drafts here for you to review and send."
+                  action={
+                    <BrandButton variant="secondary" size="sm" asChild>
+                      <Link href="/open-houses">View open houses</Link>
+                    </BrandButton>
+                  }
+                />
+              </div>
             ) : (
               <ul className="space-y-3">
                 {needsReply.map((t) => (
@@ -137,9 +150,10 @@ export default function ShowingHQFollowUpsPage() {
             {upcoming.length === 0 ? (
               <BrandEmptyState
                 compact
-                icon={<Bell className="h-6 w-6 text-[var(--brand-text-muted)]" />}
+                variant="premium"
+                icon={<Bell className="h-6 w-6" />}
                 title="No reminders"
-                description="Pending reminders will appear here."
+                description="Call and follow-up reminders will appear here when scheduled."
               />
             ) : (
               <ul className="space-y-3">
@@ -161,9 +175,10 @@ export default function ShowingHQFollowUpsPage() {
             {completed.length === 0 ? (
               <BrandEmptyState
                 compact
-                icon={<CheckCircle className="h-6 w-6 text-[var(--brand-text-muted)]" />}
+                variant="premium"
+                icon={<CheckCircle className="h-6 w-6" />}
                 title="Nothing completed yet"
-                description="Completed follow-ups will appear here."
+                description="Completed follow-ups and sent emails will appear here."
               />
             ) : (
               <ul className="space-y-3">

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
+export const dynamic = "force-dynamic";
+
 /** Returns agents for dropdown: current user (as "Me") and optionally org members. */
 export async function GET() {
   try {

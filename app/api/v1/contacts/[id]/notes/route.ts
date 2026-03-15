@@ -5,6 +5,8 @@ import { requireCrmAccess } from "@/lib/product-tier";
 import { AddNoteSchema } from "@/lib/validations/note";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
+export const dynamic = "force-dynamic";
+
 async function getContactIfOwned(contactId: string, userId: string) {
   const openHouses = await prisma.openHouse.findMany({
     where: { hostUserId: userId, deletedAt: null },
