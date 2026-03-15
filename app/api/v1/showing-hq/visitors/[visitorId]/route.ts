@@ -131,6 +131,9 @@ export async function GET(
           leadStatus: visitor.leadStatus,
           signInMethod: visitor.signInMethod,
           submittedAt: visitor.submittedAt,
+          interestLevel: visitor.interestLevel,
+          visitorNotes: visitor.visitorNotes,
+          visitorTags: visitor.visitorTags,
           contact: visitor.contact,
           openHouse: {
             id: visitor.openHouse.id,
@@ -150,7 +153,13 @@ export async function GET(
             property: v.openHouse.property,
           },
         })),
-        followUpDrafts,
+        followUpDrafts: followUpDrafts.map((d) => ({
+          id: d.id,
+          subject: d.subject,
+          body: d.body,
+          status: d.status,
+          openHouse: d.openHouse,
+        })),
       },
     });
   } catch (e) {

@@ -9,7 +9,6 @@ import { BrandSectionHeader } from "@/components/ui/BrandSectionHeader";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -19,8 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mail, Phone, User, Calendar, FileText } from "lucide-react";
+import { Mail, Phone, User, Calendar, FileText, Copy, ExternalLink } from "lucide-react";
 import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
+import { FollowUpStatusBadge } from "@/components/shared/FollowUpStatusBadge";
 
 const LEAD_STATUS_OPTIONS = [
   { value: "NEW", label: "New" },
@@ -36,6 +36,9 @@ type VisitorProfile = {
     id: string;
     leadStatus: string | null;
     submittedAt: string;
+    interestLevel?: string | null;
+    visitorNotes?: string | null;
+    visitorTags?: unknown;
     contact: {
       id: string;
       firstName: string;
@@ -45,7 +48,7 @@ type VisitorProfile = {
       status: string | null;
       notes: string | null;
     };
-    openHouse: { id: string; title: string; startAt: string };
+    openHouse: { id: string; title: string; startAt: string; property?: { address1: string } };
   };
   allVisits: {
     id: string;
@@ -55,8 +58,9 @@ type VisitorProfile = {
   followUpDrafts: {
     id: string;
     subject: string;
+    body: string;
     status: string;
-    openHouse: { id: string; title: string };
+    openHouse: { id: string; title: string; property?: { address1: string } };
   }[];
 };
 
@@ -69,6 +73,8 @@ export default function VisitorProfilePage() {
   const [notes, setNotes] = useState("");
   const [notesSaving, setNotesSaving] = useState(false);
   const [leadStatusSaving, setLeadStatusSaving] = useState(false);
+  const [statusSavingId, setStatusSavingId] = useState<string | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
   const loadData = useCallback(() => {
     setError(null);
@@ -196,6 +202,18 @@ export default function VisitorProfilePage() {
                 </a>
               </div>
             )}
+            {(visitor.interestLevel || visitor.visitorNotes) && (
+              <div className="mt-2 space-y-1 border-t border-[var(--brand-border)] pt-3">
+                {visitor.interestLevel && (
+                  <p className="text-xs text-[var(--brand-text-muted)]">
+                    Interest: <span className="font-medium text-[var(--brand-text)]">{visitor.interestLevel.replace(/_/g, " ")}</span>
+                  </p>
+                )}
+                {visitor.visitorNotes && (
+                  <p className="text-xs text-[var(--brand-text-muted)]">Notes: {visitor.visitorNotes}</p>
+                )}
+              </div>
+            )}
           </div>
         </BrandCard>
 
@@ -242,8 +260,8 @@ export default function VisitorProfilePage() {
       <div className="grid gap-[var(--space-lg)] lg:grid-cols-2">
         <BrandCard elevated padded>
           <BrandSectionHeader
-            title="Follow-up suggestions"
-            description="Drafts and follow-ups for this visitor"
+            title="Follow-up drafts"
+            description="Drafts tied to this visitor"
           />
           <div className="mt-4">
             {followUpDrafts.length === 0 ? (
@@ -252,7 +270,7 @@ export default function VisitorProfilePage() {
                 variant="premium"
                 icon={<FileText className="h-6 w-6" />}
                 title="No follow-up drafts yet"
-                description="Generate follow-up drafts from the open house page after visitors sign in."
+                description="A draft is created automatically when this visitor signs in. If they signed in before this feature, generate from the open house follow-ups page."
                 action={
                   <Button variant="outline" size="sm" asChild>
                     <Link href="/showing-hq/follow-ups">View follow-ups</Link>
@@ -264,22 +282,70 @@ export default function VisitorProfilePage() {
                 {followUpDrafts.map((d) => (
                   <li
                     key={d.id}
-                    className="flex items-center justify-between rounded-lg border border-[var(--brand-border)] p-3"
+                    className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-[var(--brand-border)] p-3"
                   >
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="font-medium text-[var(--brand-text)]">
                         {d.subject}
                       </p>
                       <p className="text-sm text-[var(--brand-text-muted)]">
                         {d.openHouse.title}
+                        {d.openHouse.property?.address1 && ` · ${d.openHouse.property.address1}`}
                       </p>
-                      <Badge variant="outline" className="mt-1 text-xs">
-                        {d.status}
-                      </Badge>
+                      <div className="mt-2">
+                        <FollowUpStatusBadge status={d.status} className="text-xs" />
+                      </div>
                     </div>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/open-houses/${d.openHouse.id}/follow-ups`}>View draft</Link>
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/showing-hq/follow-ups/draft/${d.id}`}>
+                          Review draft
+                        </Link>
+                      </Button>
+                      {d.status === "DRAFT" && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={statusSavingId === d.id}
+                          onClick={async () => {
+                            setStatusSavingId(d.id);
+                            try {
+                              const res = await fetch(`/api/v1/follow-up-drafts/${d.id}/status`, {
+                                method: "PATCH",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ status: "REVIEWED" }),
+                              });
+                              const json = await res.json();
+                              if (json.error) throw new Error(json.error.message);
+                              loadData();
+                            } finally {
+                              setStatusSavingId(null);
+                            }
+                          }}
+                        >
+                          {statusSavingId === d.id ? "Saving…" : "Mark reviewed"}
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={async () => {
+                          const text = `Subject: ${d.subject}\n\n${d.body}`;
+                          await navigator.clipboard.writeText(text);
+                          setCopyFeedback(d.id);
+                          setTimeout(() => setCopyFeedback(null), 2000);
+                        }}
+                      >
+                        <Copy className="mr-1 h-3.5 w-3.5" />
+                        {copyFeedback === d.id ? "Copied" : "Copy email text"}
+                      </Button>
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/showing-hq/open-houses/${d.openHouse.id}`}>
+                          <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                          Open house
+                        </Link>
+                      </Button>
+                    </div>
                   </li>
                 ))}
               </ul>

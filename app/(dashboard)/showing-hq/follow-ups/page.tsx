@@ -9,13 +9,13 @@ import { BrandButton } from "@/components/ui/BrandButton";
 import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
-import { Badge } from "@/components/ui/badge";
 import { LeadStatusBadge } from "@/components/shared/LeadStatusBadge";
 import { Button } from "@/components/ui/button";
 import { Mail, Bell, CheckCircle } from "lucide-react";
+import { FollowUpStatusBadge } from "@/components/shared/FollowUpStatusBadge";
 
 type Task =
-  | { id: string; type: "draft"; subject: string; status: string; leadStatus?: string | null; contact: { id: string; firstName: string; lastName: string }; openHouse: { id: string; title: string }; updatedAt: string }
+  | { id: string; type: "draft"; subject: string; status: string; leadStatus?: string | null; contact: { id: string; firstName: string; lastName: string }; openHouse: { id: string; title: string; property?: { address1: string } }; updatedAt: string }
   | { id: string; type: "reminder"; body: string; dueAt: string; status: string; contact: { id: string; firstName: string; lastName: string }; createdAt: string };
 
 type FollowUpsData = {
@@ -55,22 +55,23 @@ export default function ShowingHQFollowUpsPage() {
 
   const TaskItem = ({ task }: { task: Task }) => {
     if (task.type === "draft") {
+      const addr = task.openHouse.property?.address1 ?? task.openHouse.title;
       return (
-        <li className="flex items-center justify-between rounded-lg border border-[var(--brand-border)] p-4">
-          <div>
+        <li className="flex items-center justify-between gap-4 rounded-lg border border-[var(--brand-border)] p-4">
+          <div className="min-w-0 flex-1">
             <p className="font-medium text-[var(--brand-text)]">{task.subject}</p>
             <p className="text-sm text-[var(--brand-text-muted)]">
-              {fullName(task.contact)} · {task.openHouse.title}
+              {fullName(task.contact)} · {addr}
             </p>
-            <div className="mt-1 flex flex-wrap items-center gap-2">
-              <Badge variant={task.status === "REVIEWED" ? "default" : "secondary"} className="text-xs">
-                {task.status}
-              </Badge>
-              {"leadStatus" in task && <LeadStatusBadge status={task.leadStatus} />}
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <FollowUpStatusBadge status={task.status} className="text-xs" />
+              {"leadStatus" in task && task.leadStatus && (
+                <LeadStatusBadge status={task.leadStatus} />
+              )}
             </div>
           </div>
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/open-houses/${task.openHouse.id}/follow-ups`}>View</Link>
+          <Button variant="outline" size="sm" className="shrink-0" asChild>
+            <Link href={`/showing-hq/follow-ups/draft/${task.id}`}>Review</Link>
           </Button>
         </li>
       );

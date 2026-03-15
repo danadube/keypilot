@@ -4,6 +4,8 @@ import { prisma } from "@/lib/db";
 import { VisitorSignInSchema } from "@/lib/validations/visitor";
 import { trackUsageEvent } from "@/lib/track-usage";
 import { sendFlyerEmail } from "@/lib/email/flyer";
+import { generateFollowUpDraft } from "@/lib/follow-up-template";
+import { ActivityType } from "@prisma/client";
 
 export async function POST(request: Request) {
   try {
@@ -57,6 +59,48 @@ export async function POST(request: Request) {
         openHouseId: openHouse.id,
         activityType: "VISITOR_SIGNED_IN" as const,
         body: `Visited showing at ${openHouse.property.address1}`,
+        occurredAt: new Date(),
+      },
+    });
+
+    const hostUser = await prisma.user.findUnique({
+      where: { id: openHouse.hostUserId },
+      include: { profile: true },
+    });
+    const agentName =
+      (hostUser?.profile?.displayName?.trim() || hostUser?.name?.trim()) ?? "Your agent";
+    const propertyAddress = [
+      openHouse.property.address1,
+      openHouse.property.address2,
+      openHouse.property.city,
+      openHouse.property.state,
+      openHouse.property.zip,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    const { subject: draftSubject, body: draftBody } = generateFollowUpDraft({
+      contactFirstName: contact.firstName.trim() || "there",
+      agentName,
+      propertyAddress: propertyAddress || openHouse.property.address1,
+    });
+
+    await prisma.followUpDraft.create({
+      data: {
+        contactId: contact.id,
+        openHouseId: openHouse.id,
+        openHouseVisitorId: visitor.id,
+        subject: draftSubject,
+        body: draftBody,
+        status: "DRAFT",
+      },
+    });
+
+    await prisma.activity.create({
+      data: {
+        contactId: contact.id,
+        openHouseId: openHouse.id,
+        activityType: ActivityType.FOLLOW_UP_DRAFT_CREATED,
+        body: "Follow-up draft created",
         occurredAt: new Date(),
       },
     });

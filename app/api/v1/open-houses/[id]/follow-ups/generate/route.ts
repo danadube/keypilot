@@ -63,6 +63,7 @@ export async function POST(
         data: {
           contactId: v.contactId,
           openHouseId,
+          openHouseVisitorId: v.id,
           subject,
           body,
         },
