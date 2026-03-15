@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BrandCard } from "@/components/ui/BrandCard";
-import { BrandSectionHeader } from "@/components/ui/BrandSectionHeader";
-import { BrandStatCard } from "@/components/ui/BrandStatCard";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
@@ -17,13 +15,11 @@ import {
   UserPlus,
   CheckSquare,
   QrCode,
+  Copy,
+  ChevronRight,
 } from "lucide-react";
-import { CurrentPlanCard } from "@/components/shared/CurrentPlanCard";
 import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
 import { GettingStartedCard, buildGettingStartedSteps } from "@/components/showing-hq/GettingStartedCard";
-import { SignInQuickCard } from "@/components/showing-hq/SignInQuickCard";
-import { SignInSetupPrompt } from "@/components/showing-hq/SignInSetupPrompt";
-import { SHOWINGHQ_PLAN } from "@/lib/current-plan";
 
 type DashboardData = {
   todaysShowings: {
@@ -80,6 +76,7 @@ export default function ShowingHQOverviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [gettingStartedDismissed, setGettingStartedDismissed] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -91,6 +88,16 @@ export default function ShowingHQOverviewPage() {
     if (typeof window !== "undefined") {
       localStorage.setItem(GETTING_STARTED_DISMISSED_KEY, "1");
       setGettingStartedDismissed(true);
+    }
+  };
+
+  const handleCopyLink = (url: string) => async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // fallback
     }
   };
 
@@ -132,12 +139,6 @@ export default function ShowingHQOverviewPage() {
   const formatDateTime = (d: string) =>
     new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const visitorsToday = recentVisitors.filter(
-    (v) => new Date(v.submittedAt) >= todayStart
-  ).length;
-
   const primaryOpenHouse = todaysShowings[0] ?? upcoming[0];
   const signInUrl =
     typeof window !== "undefined" && primaryOpenHouse?.qrSlug
@@ -147,94 +148,52 @@ export default function ShowingHQOverviewPage() {
         : null;
 
   return (
-    <div className="flex flex-col gap-[var(--space-2xl)]">
-      {/* Hero: ShowingHQ command center */}
-      <div className="relative overflow-hidden rounded-xl border border-[var(--brand-border)] bg-[var(--brand-surface)] shadow-[0_1px_3px_0_rgb(0_0_0_/0.05),0_4px_12px_-2px_rgb(0_0_0_/0.08)]">
-        <div
-          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[var(--brand-primary)]/8 via-transparent to-transparent"
-          aria-hidden
-        />
-        <div className="relative flex flex-col gap-6 p-6 md:flex-row md:items-start md:justify-between md:p-8">
-          <div>
-            <p
-              className="mb-1 font-semibold uppercase tracking-widest text-[var(--brand-primary)]"
-              style={{ fontFamily: "var(--font-body)", fontSize: "var(--text-caption-size)", letterSpacing: "0.08em" }}
-            >
-              Open house lead capture
-            </p>
-            <h1
-              className="flex items-center gap-3 font-bold text-[var(--brand-text)] tracking-tight"
-              style={{
-                fontFamily: "var(--font-heading)",
-                fontSize: "clamp(1.75rem, 3vw, 2.25rem)",
-                lineHeight: 1.2,
-              }}
-            >
-              ShowingHQ
-              <span className="rounded-md border border-[var(--brand-primary)]/40 bg-[var(--brand-primary)]/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-[var(--brand-primary)]">
-                Beta
-              </span>
-            </h1>
-            <p className="mt-2 max-w-[420px] text-[var(--brand-text-muted)]" style={{ fontSize: "var(--text-body-size)" }}>
-              Capture visitor leads at the door, then follow up with personalized emails—all in one place.
-            </p>
-            {/* Today's activity summary */}
-            <div className="mt-4 flex flex-wrap gap-6 border-t border-[var(--brand-border)] pt-4">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-[var(--brand-text-muted)]" />
-                <span className="text-sm text-[var(--brand-text-muted)]">
-                  Today&apos;s showings: <strong className="text-[var(--brand-text)]">{todaysShowings.length}</strong>
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-[var(--brand-text-muted)]" />
-                <span className="text-sm text-[var(--brand-text-muted)]">
-                  Visitors today: <strong className="text-[var(--brand-text)]">{visitorsToday}</strong>
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <CheckSquare className="h-4 w-4 text-[var(--brand-text-muted)]" />
-                <span className="text-sm text-[var(--brand-text-muted)]">
-                  Follow-ups pending: <strong className="text-[var(--brand-text)]">{followUpTasks.length}</strong>
-                </span>
-              </div>
-            </div>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <BrandButton variant="primary" size="sm" asChild>
-                <Link href="/open-houses/new">New Showing</Link>
-              </BrandButton>
-              <BrandButton variant="secondary" size="sm" asChild>
-                <Link href="/open-houses/sign-in">
-                  <QrCode className="mr-2 h-4 w-4" />
-                  Sign-in page
-                </Link>
-              </BrandButton>
-              {signInUrl ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(signInUrl, "_blank", "noopener,noreferrer")}
-                >
-                  Test sign-in
-                </Button>
-              ) : null}
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/showing-hq/visitors">View visitors →</Link>
+    <div className="min-h-0 flex flex-col gap-3" style={{ backgroundColor: "#f8fafc" }}>
+      {/* Compact header row */}
+      <div className="flex flex-wrap items-center justify-between gap-3 py-2">
+        <div className="flex items-center gap-3">
+          <h1
+            className="flex items-center gap-2 font-bold text-[var(--brand-text)] tracking-tight"
+            style={{
+              fontFamily: "var(--font-heading)",
+              fontSize: "1.25rem",
+              lineHeight: 1.3,
+            }}
+          >
+            ShowingHQ
+            <span className="rounded border border-[var(--brand-primary)]/40 bg-[var(--brand-primary)]/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--brand-primary)]">
+              Beta
+            </span>
+          </h1>
+          <span className="hidden text-sm text-[var(--brand-text-muted)] sm:inline">
+            Capture leads at the door, follow up in one place.
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <BrandButton variant="primary" size="sm" asChild>
+            <Link href="/open-houses/new">New Showing</Link>
+          </BrandButton>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/open-houses/sign-in">
+              <QrCode className="mr-1.5 h-3.5 w-3.5" />
+              Sign-in Page
+            </Link>
+          </Button>
+          {signInUrl ? (
+            <>
+              <Button variant="outline" size="sm" onClick={handleCopyLink(signInUrl)}>
+                <Copy className="mr-1.5 h-3.5 w-3.5" />
+                {linkCopied ? "Copied" : "Copy link"}
               </Button>
-            </div>
-          </div>
-          <div className="flex flex-col gap-4 md:flex-row md:items-start">
-            {signInUrl && primaryOpenHouse ? (
-              <SignInQuickCard
-                signInUrl={signInUrl}
-                openHouseId={primaryOpenHouse.id}
-                openHouseTitle={primaryOpenHouse.title}
-              />
-            ) : (
-              <SignInSetupPrompt />
-            )}
-            <CurrentPlanCard plan={SHOWINGHQ_PLAN} compact className="shrink-0" />
-          </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(signInUrl, "_blank", "noopener,noreferrer")}
+              >
+                Test sign-in
+              </Button>
+            </>
+          ) : null}
         </div>
       </div>
 
@@ -245,182 +204,88 @@ export default function ShowingHQOverviewPage() {
         />
       )}
 
-      {/* Stats row */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <BrandStatCard
-          title="Visitors Captured"
-          value={stats.totalVisitors}
-          icon={<Users className="h-5 w-5" />}
-          accent="primary"
-        />
-        <BrandStatCard
-          title="Today's Showings"
-          value={todaysShowings.length}
-          icon={<Calendar className="h-5 w-5" />}
-          accent="secondary"
-        />
-        <BrandStatCard
-          title="Contacts Created"
-          value={stats.contactsCaptured}
-          icon={<UserPlus className="h-5 w-5" />}
-          accent="accent"
-        />
-        <BrandStatCard
-          title="Follow-ups Generated"
-          value={stats.followUpTasks ?? followUpTasks.length}
-          icon={<CheckSquare className="h-5 w-5" />}
-        />
+      {/* Compact metrics bar */}
+      <div className="grid grid-cols-4 gap-2">
+        <div className="flex h-12 items-center gap-2 rounded-lg border border-[var(--brand-border)] bg-white px-3 shadow-sm">
+          <Users className="h-4 w-4 shrink-0 text-[var(--brand-primary)]" />
+          <div className="min-w-0">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--brand-text-muted)]">Visitors</p>
+            <p className="text-sm font-semibold text-[var(--brand-text)]">{stats.totalVisitors}</p>
+          </div>
+        </div>
+        <div className="flex h-12 items-center gap-2 rounded-lg border border-[var(--brand-border)] bg-white px-3 shadow-sm">
+          <Calendar className="h-4 w-4 shrink-0 text-[var(--brand-secondary)]" />
+          <div className="min-w-0">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--brand-text-muted)]">Today</p>
+            <p className="text-sm font-semibold text-[var(--brand-text)]">{todaysShowings.length}</p>
+          </div>
+        </div>
+        <div className="flex h-12 items-center gap-2 rounded-lg border border-[var(--brand-border)] bg-white px-3 shadow-sm">
+          <UserPlus className="h-4 w-4 shrink-0 text-[var(--brand-accent)]" />
+          <div className="min-w-0">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--brand-text-muted)]">Contacts</p>
+            <p className="text-sm font-semibold text-[var(--brand-text)]">{stats.contactsCaptured}</p>
+          </div>
+        </div>
+        <div className="flex h-12 items-center gap-2 rounded-lg border border-[var(--brand-border)] bg-white px-3 shadow-sm">
+          <CheckSquare className="h-4 w-4 shrink-0 text-[var(--brand-text-muted)]" />
+          <div className="min-w-0">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--brand-text-muted)]">Follow-ups</p>
+            <p className="text-sm font-semibold text-[var(--brand-text)]">{stats.followUpTasks ?? followUpTasks.length}</p>
+          </div>
+        </div>
       </div>
 
-      <div className="grid gap-[var(--space-lg)] lg:grid-cols-2">
-        {/* Today's Showings */}
-        <BrandCard elevated padded>
-          <BrandSectionHeader
-            title="Today's Showings"
-            description="Open houses happening today"
-          />
-          <div className="mt-4">
-            {todaysShowings.length === 0 ? (
-              <BrandEmptyState
-                compact
-                variant="premium"
-                icon={<Calendar className="h-6 w-6" />}
-                title="No showings today"
-                description="Schedule an open house to get started."
-                action={
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/open-houses/new">Create showing</Link>
-                  </Button>
-                }
-              />
-            ) : (
-              <ul className="space-y-3">
-                {todaysShowings.map((oh) => (
-                  <li
-                    key={oh.id}
-                    className="flex items-center justify-between rounded-lg border border-[var(--brand-border)] p-4"
-                  >
-                    <div>
-                      <p className="font-medium text-[var(--brand-text)]">{oh.title}</p>
-                      <p className="text-sm text-[var(--brand-text-muted)]">
-                        {oh.property.address1}, {oh.property.city} · {formatTime(oh.startAt)} · {oh._count.visitors} visitors
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Badge variant={oh.status === "ACTIVE" || oh.status === "SCHEDULED" ? "default" : "secondary"}>
-                        {oh.status}
-                      </Badge>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/showing-hq/open-houses/${oh.id}`}>View</Link>
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {todaysShowings.length > 0 && (
-              <div className="mt-4">
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/open-houses/new">Create showing</Link>
-                </Button>
-              </div>
-            )}
-          </div>
-        </BrandCard>
-
-        {/* Upcoming Open Houses */}
-        <BrandCard elevated padded>
-          <BrandSectionHeader
-            title="Upcoming Open Houses"
-            description="Next 14 days"
-          />
-          <div className="mt-4">
-            {upcoming.length === 0 ? (
-              <BrandEmptyState
-                compact
-                variant="premium"
-                icon={<Calendar className="h-6 w-6" />}
-                title="No upcoming open houses"
-                description="Create your first open house to schedule showings and capture visitor leads."
-                action={
-                  <BrandButton variant="primary" size="sm" asChild>
-                    <Link href="/open-houses/new">Create your first open house</Link>
-                  </BrandButton>
-                }
-              />
-            ) : (
-              <ul className="space-y-3">
-                {upcoming.map((oh) => (
-                  <li
-                    key={oh.id}
-                    className="flex items-center justify-between rounded-lg border border-[var(--brand-border)] p-4"
-                  >
-                    <div>
-                      <p className="font-medium text-[var(--brand-text)]">{oh.title}</p>
-                      <p className="text-sm text-[var(--brand-text-muted)]">
-                        {oh.property.address1}, {oh.property.city} · {formatDate(oh.startAt)} · {oh._count.visitors} visitors
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/showing-hq/open-houses/${oh.id}`}>View</Link>
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {upcoming.length > 0 && (
-              <div className="mt-4">
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/open-houses">View all</Link>
-                </Button>
-              </div>
-            )}
-          </div>
-        </BrandCard>
-      </div>
-
-      <div className="grid gap-[var(--space-lg)] lg:grid-cols-2">
+      {/* 2-column grid: Row 1 = Recent Visitors | Follow-up Tasks, Row 2 = Today's | Upcoming */}
+      <div className="grid flex-1 min-h-0 gap-3 lg:grid-cols-2 lg:grid-rows-2">
         {/* Recent Visitors */}
-        <BrandCard elevated padded>
-          <BrandSectionHeader
-            title="Recent Visitors"
-            description="Latest sign-ins across open houses"
-          />
-          <div className="mt-4">
+        <BrandCard padded={false} className="flex flex-col min-h-0 p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
+              <Users className="h-4 w-4 text-[var(--brand-primary)]" />
+              Recent Visitors
+            </h2>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+              <Link href="/showing-hq/visitors">
+                All <ChevronRight className="h-3 w-3" />
+              </Link>
+            </Button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto">
             {recentVisitors.length === 0 ? (
               <BrandEmptyState
                 compact
                 variant="premium"
-                icon={<Users className="h-6 w-6" />}
+                icon={<Users className="h-5 w-5" />}
                 title="No visitors yet"
-                description="Share your sign-in link or QR code at your next open house. Visitors will appear here as they check in."
+                description="Share your sign-in link at your next open house."
                 action={
-                  <BrandButton variant="primary" size="sm" asChild>
+                  <Button variant="outline" size="sm" asChild>
                     <Link href="/open-houses/sign-in">Get sign-in link</Link>
-                  </BrandButton>
+                  </Button>
                 }
               />
             ) : (
-              <ul className="space-y-3">
-                {recentVisitors.map((v) => (
+              <ul className="space-y-1.5">
+                {recentVisitors.slice(0, 5).map((v) => (
                   <li
                     key={v.id}
-                    className="flex items-center justify-between rounded-lg border border-[var(--brand-border)] p-4"
+                    className="flex items-center justify-between gap-2 rounded-md border border-[var(--brand-border)] p-2"
                   >
-                    <div>
-                      <p className="font-medium text-[var(--brand-text)]">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-[var(--brand-text)]">
                         {v.contact.firstName} {v.contact.lastName}
                       </p>
-                      <p className="text-sm text-[var(--brand-text-muted)]">
+                      <p className="truncate text-xs text-[var(--brand-text-muted)]">
                         {v.openHouse.title} · {formatDateTime(v.submittedAt)}
                       </p>
-                      <LeadStatusBadge status={v.leadStatus} className="mt-1" />
+                      <LeadStatusBadge status={v.leadStatus} className="mt-0.5" />
                     </div>
-                    <div className="flex gap-2 shrink-0">
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/showing-hq/visitors/${v.id}`}>View profile</Link>
+                    <div className="flex shrink-0 gap-1">
+                      <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                        <Link href={`/showing-hq/visitors/${v.id}`}>Profile</Link>
                       </Button>
-                      <Button variant="ghost" size="sm" asChild>
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
                         <Link href={`/contacts/${v.contact.id}`}>Contact</Link>
                       </Button>
                     </div>
@@ -429,43 +294,40 @@ export default function ShowingHQOverviewPage() {
               </ul>
             )}
             {recentVisitors.length > 0 && (
-              <div className="mt-4">
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/showing-hq/visitors">All visitors</Link>
-                </Button>
-              </div>
+              <Button variant="ghost" size="sm" className="mt-2 h-7 text-xs" asChild>
+                <Link href="/showing-hq/visitors">View all visitors</Link>
+              </Button>
             )}
           </div>
         </BrandCard>
 
         {/* Follow-up Tasks */}
-        <BrandCard elevated padded>
-          <BrandSectionHeader
-            title="Follow-up Tasks"
-            description="Drafts and follow-ups to complete"
-          />
-          <div className="mt-4">
+        <BrandCard padded={false} className="flex flex-col min-h-0 p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
+              <CheckSquare className="h-4 w-4 text-[var(--brand-secondary)]" />
+              Follow-up Tasks
+            </h2>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+              <Link href="/showing-hq/follow-ups">
+                All <ChevronRight className="h-3 w-3" />
+              </Link>
+            </Button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto">
             {followUpTasks.length === 0 ? (
-              <div className="space-y-4">
-                <div className="rounded-lg border border-dashed border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/30 p-4">
-                  <p className="mb-2 text-xs font-medium uppercase tracking-wider text-[var(--brand-text-muted)]">
-                    Example — What you&apos;ll see
+              <div className="space-y-2">
+                <div className="rounded border border-dashed border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/30 p-2">
+                  <p className="text-xs text-[var(--brand-text-muted)]">
+                    We generate follow-up emails for each visitor. Review and send in one click.
                   </p>
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-[var(--brand-text)]">
-                      Thanks for visiting 123 Oak St — let&apos;s schedule a showing
-                    </p>
-                    <p className="text-sm text-[var(--brand-text-muted)]">
-                      We generate personalized follow-up emails for each visitor. Review, edit, and send in one click.
-                    </p>
-                  </div>
                 </div>
                 <BrandEmptyState
                   compact
                   variant="premium"
-                  icon={<CheckSquare className="h-6 w-6" />}
+                  icon={<CheckSquare className="h-5 w-5" />}
                   title="No pending tasks"
-                  description="After visitors sign in at your open house, we&apos;ll generate follow-up drafts here."
+                  description="Visitors sign in → we create drafts here."
                   action={
                     <Button variant="outline" size="sm" asChild>
                       <Link href="/showing-hq/follow-ups">View follow-ups</Link>
@@ -474,22 +336,22 @@ export default function ShowingHQOverviewPage() {
                 />
               </div>
             ) : (
-              <ul className="space-y-3">
-                {followUpTasks.map((t) => (
+              <ul className="space-y-1.5">
+                {followUpTasks.slice(0, 5).map((t) => (
                   <li
                     key={t.id}
-                    className="flex items-center justify-between rounded-lg border border-[var(--brand-border)] p-4"
+                    className="flex items-center justify-between gap-2 rounded-md border border-[var(--brand-border)] p-2"
                   >
-                    <div>
-                      <p className="font-medium text-[var(--brand-text)]">{t.subject}</p>
-                      <p className="text-sm text-[var(--brand-text-muted)]">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-[var(--brand-text)]">{t.subject}</p>
+                      <p className="truncate text-xs text-[var(--brand-text-muted)]">
                         {t.contact.firstName} {t.contact.lastName} · {t.openHouse.title}
                       </p>
-                      <Badge variant={t.status === "REVIEWED" ? "default" : "secondary"} className="mt-1">
+                      <Badge variant={t.status === "REVIEWED" ? "default" : "secondary"} className="mt-0.5 text-[10px]">
                         {t.status}
                       </Badge>
                     </div>
-                    <Button variant="outline" size="sm" asChild>
+                    <Button variant="outline" size="sm" className="h-7 shrink-0 text-xs" asChild>
                       <Link href={`/open-houses/${t.openHouse.id}/follow-ups`}>View</Link>
                     </Button>
                   </li>
@@ -497,11 +359,120 @@ export default function ShowingHQOverviewPage() {
               </ul>
             )}
             {followUpTasks.length > 0 && (
-              <div className="mt-4">
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/showing-hq/follow-ups">View all follow-ups</Link>
-                </Button>
-              </div>
+              <Button variant="ghost" size="sm" className="mt-2 h-7 text-xs" asChild>
+                <Link href="/showing-hq/follow-ups">View all follow-ups</Link>
+              </Button>
+            )}
+          </div>
+        </BrandCard>
+
+        {/* Today's Showings */}
+        <BrandCard padded={false} className="flex flex-col min-h-0 p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
+              <Calendar className="h-4 w-4 text-[var(--brand-accent)]" />
+              Today&apos;s Showings
+            </h2>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+              <Link href="/open-houses/new">Create</Link>
+            </Button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto">
+            {todaysShowings.length === 0 ? (
+              <BrandEmptyState
+                compact
+                variant="premium"
+                icon={<Calendar className="h-5 w-5" />}
+                title="No showings today"
+                description="Schedule an open house."
+                action={
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/open-houses/new">Create showing</Link>
+                  </Button>
+                }
+              />
+            ) : (
+              <ul className="space-y-1.5">
+                {todaysShowings.map((oh) => (
+                  <li
+                    key={oh.id}
+                    className="flex items-center justify-between gap-2 rounded-md border border-[var(--brand-border)] p-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-[var(--brand-text)]">{oh.title}</p>
+                      <p className="truncate text-xs text-[var(--brand-text-muted)]">
+                        {oh.property.address1}, {oh.property.city} · {formatTime(oh.startAt)} · {oh._count.visitors} visitors
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Badge variant={oh.status === "ACTIVE" || oh.status === "SCHEDULED" ? "default" : "secondary"} className="text-[10px]">
+                        {oh.status}
+                      </Badge>
+                      <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                        <Link href={`/showing-hq/open-houses/${oh.id}`}>View</Link>
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {todaysShowings.length > 0 && (
+              <Button variant="ghost" size="sm" className="mt-2 h-7 text-xs" asChild>
+                <Link href="/open-houses/new">Create showing</Link>
+              </Button>
+            )}
+          </div>
+        </BrandCard>
+
+        {/* Upcoming Open Houses */}
+        <BrandCard padded={false} className="flex flex-col min-h-0 p-4">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
+              <Calendar className="h-4 w-4 text-[var(--brand-text-muted)]" />
+              Upcoming Open Houses
+            </h2>
+            <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+              <Link href="/open-houses">View all</Link>
+            </Button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-auto">
+            {upcoming.length === 0 ? (
+              <BrandEmptyState
+                compact
+                variant="premium"
+                icon={<Calendar className="h-5 w-5" />}
+                title="No upcoming open houses"
+                description="Create your first open house."
+                action={
+                  <BrandButton variant="primary" size="sm" asChild>
+                    <Link href="/open-houses/new">Create open house</Link>
+                  </BrandButton>
+                }
+              />
+            ) : (
+              <ul className="space-y-1.5">
+                {upcoming.slice(0, 5).map((oh) => (
+                  <li
+                    key={oh.id}
+                    className="flex items-center justify-between gap-2 rounded-md border border-[var(--brand-border)] p-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-[var(--brand-text)]">{oh.title}</p>
+                      <p className="truncate text-xs text-[var(--brand-text-muted)]">
+                        {oh.property.address1}, {oh.property.city} · {formatDate(oh.startAt)} · {oh._count.visitors} visitors
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                      <Link href={`/showing-hq/open-houses/${oh.id}`}>View</Link>
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {upcoming.length > 0 && (
+              <Button variant="ghost" size="sm" className="mt-2 h-7 text-xs" asChild>
+                <Link href="/open-houses">View all</Link>
+              </Button>
             )}
           </div>
         </BrandCard>
