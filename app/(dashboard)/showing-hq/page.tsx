@@ -339,6 +339,7 @@ export default function ShowingHQOverviewPage() {
         <ShowingHQCalendar
           events={data?.calendarEvents ?? []}
           height={380}
+          activeOpenHouseId={activeOpenHouse?.id ?? null}
           onDateClick={(dateStr) => {
             setQuickCreateDate(dateStr);
             setQuickCreateOpen(true);
@@ -352,6 +353,7 @@ export default function ShowingHQOverviewPage() {
           scheduleItems={scheduleItems}
           tomorrowItem={tomorrowItem}
           formatTime={formatTime}
+          activeOpenHouseId={activeOpenHouse?.id ?? null}
         />
         <NextActionsCard items={nextActions} />
       </div>

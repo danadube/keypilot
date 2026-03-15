@@ -22,12 +22,15 @@ type TodaysScheduleCardProps = {
   scheduleItems: ScheduleItem[];
   tomorrowItem?: ScheduleItem | null;
   formatTime: (d: string) => string;
+  /** When set, the matching open house item shows a LIVE badge */
+  activeOpenHouseId?: string | null;
 };
 
 export function TodaysScheduleCard({
   scheduleItems,
   tomorrowItem,
   formatTime,
+  activeOpenHouseId = null,
 }: TodaysScheduleCardProps) {
   const hasItems = scheduleItems.length > 0 || tomorrowItem != null;
   const timeRange = (at: string, endAt?: string) =>
@@ -46,20 +49,22 @@ export function TodaysScheduleCard({
       </p>
       {hasItems ? (
         <ul className="flex flex-1 flex-col gap-2 overflow-auto">
-          {scheduleItems.map((item) => (
+          {scheduleItems.map((item) => {
+            const isLive = item.type === "open_house" && activeOpenHouseId === item.id;
+            return (
             <li
               key={`today-${item.type}-${item.id}`}
               className={`flex items-start gap-2 rounded-lg border p-2.5 transition-colors hover:bg-slate-50/80 ${
                 item.type === "open_house"
                   ? "border-blue-200/80 bg-blue-50/40"
                   : "border-amber-200/80 bg-amber-50/30"
-              }`}
+              } ${isLive ? "ring-2 ring-emerald-500/60 ring-offset-1" : ""}`}
             >
               <div className="shrink-0 text-right text-xs font-medium tabular-nums text-[var(--brand-text)]" style={{ minWidth: "5rem" }}>
                 {timeRange(item.at, item.endAt)}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   {item.type === "open_house" ? (
                     <Home className="h-3.5 w-3.5 shrink-0 text-blue-600" />
                   ) : (
@@ -71,6 +76,9 @@ export function TodaysScheduleCard({
                   >
                     {item.type === "open_house" ? "Open house" : "Showing"}
                   </Badge>
+                  {isLive && (
+                    <Badge className="bg-emerald-600 text-[10px] hover:bg-emerald-600">LIVE</Badge>
+                  )}
                 </div>
                 <p className="mt-0.5 truncate font-medium text-[var(--brand-text)]">
                   {item.property.address1}
@@ -88,7 +96,8 @@ export function TodaysScheduleCard({
                 </Link>
               </Button>
             </li>
-          ))}
+          );
+          })}
           {tomorrowItem && (
             <li
               className="flex items-start gap-2 rounded-lg border border-slate-200/80 bg-slate-50/50 p-2.5"

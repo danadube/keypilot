@@ -13,11 +13,13 @@ import {
 } from "lucide-react";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { Button } from "@/components/ui/button";
+import { getRelativeTimeLabel } from "@/lib/relative-time-label";
 
 type OpenHouseItem = {
   id: string;
   title: string;
   startAt: string;
+  endAt?: string;
   status: string;
   qrSlug?: string;
   property: { address1: string; city: string; state: string };
@@ -96,8 +98,8 @@ export function TodayCommandCenter({
   switch (scenario) {
     case "showing_soon":
       heading =
-        showingMins !== null && showingMins <= 30
-          ? `Showing starts in ${showingMins} min`
+        nextShowing && showingMins !== null && showingMins <= 30
+          ? `Showing ${getRelativeTimeLabel(nextShowing.at)}`
           : nextShowing
             ? `Showing at ${formatTime(nextShowing.at)}`
             : "Showing soon";
@@ -106,15 +108,14 @@ export function TodayCommandCenter({
     case "active_oh":
       heading = "Open House Live";
       address = primaryOh?.property.address1 ?? null;
-      supportingLine =
-        activeOpenHouse?._count.visitors === 0
-          ? "No visitors yet"
-          : `${activeOpenHouse?._count.visitors} visitor${activeOpenHouse?._count.visitors !== 1 ? "s" : ""} checked in`;
+      supportingLine = primaryOh
+        ? getRelativeTimeLabel(primaryOh.startAt, primaryOh.endAt)
+        : null;
       break;
     case "oh_soon":
       heading =
-        ohMins !== null && ohMins <= 60
-          ? `Open house starts in ${ohMins} min`
+        primaryOh && ohMins !== null && ohMins <= 60
+          ? `Open house ${getRelativeTimeLabel(primaryOh.startAt, primaryOh.endAt)}`
           : primaryOh
             ? `Open house at ${formatTime(primaryOh.startAt)}`
             : "Open house soon";
@@ -170,9 +171,13 @@ export function TodayCommandCenter({
           {supportingLine && (
             <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">{supportingLine}</p>
           )}
-          {scenario === "active_oh" && followUpCount > 0 && (
-            <p className="mt-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
-              Follow-up pending
+          {scenario === "active_oh" && (
+            <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">
+              {activeOpenHouse?._count.visitors === 0
+                ? "No visitors yet"
+                : `${activeOpenHouse?._count.visitors} visitor${activeOpenHouse?._count.visitors !== 1 ? "s" : ""} checked in`}
+              {followUpCount > 0 &&
+                ` · ${followUpCount} follow-up${followUpCount !== 1 ? "s" : ""} pending`}
             </p>
           )}
         </div>

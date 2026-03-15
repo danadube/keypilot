@@ -2,6 +2,13 @@
 
 import { useMemo } from "react";
 import FullCalendar from "@fullcalendar/react";
+import type { EventContentArg } from "@fullcalendar/core";
+
+function escapeHtml(text: string): string {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { EventInput } from "@fullcalendar/core";
@@ -41,15 +48,16 @@ export type CalendarEvent = {
 type ShowingHQCalendarProps = {
   events: CalendarEvent[];
   height?: string | number;
-  /** Called when user clicks a day (date is YYYY-MM-DD) */
+  /** When set, the matching open house event gets live (ring/pulse) styling */
+  activeOpenHouseId?: string | null;
   onDateClick?: (dateStr: string) => void;
-  /** Called after an event is rescheduled via drag; parent can refetch and show toast */
   onEventRescheduled?: () => void;
 };
 
 export function ShowingHQCalendar({
   events,
   height = 320,
+  activeOpenHouseId = null,
   onDateClick,
   onEventRescheduled,
 }: ShowingHQCalendarProps) {
@@ -68,7 +76,7 @@ export function ShowingHQCalendar({
   );
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="showing-hq-calendar rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
       <FullCalendar
         plugins={[dayGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
@@ -84,6 +92,14 @@ export function ShowingHQCalendar({
         dayHeaderFormat={{ weekday: "short" }}
         firstDay={0}
         eventDisplay="block"
+        eventContent={(arg: EventContentArg) => {
+          const props = arg.event.extendedProps as { address?: string; eventTypeLabel?: string } | undefined;
+          const typeLabel = props?.eventTypeLabel ?? "Event";
+          const address = props?.address ?? arg.event.title;
+          return {
+            html: `<div class="fc-event-main-fallback"><span class="fc-event-type">${escapeHtml(typeLabel)}</span><span class="fc-event-address">${escapeHtml(address)}</span></div>`,
+          };
+        }}
         dateClick={(info) => {
           if (onDateClick) {
             const d = info.date;
@@ -103,14 +119,16 @@ export function ShowingHQCalendar({
           const id = info.event.id ?? "";
           if (id.startsWith("oh-")) info.el.classList.add("fc-event-open-house");
           else if (id.startsWith("s-")) info.el.classList.add("fc-event-showing");
+          if (activeOpenHouseId && id === `oh-${activeOpenHouseId}`) {
+            info.el.classList.add("fc-event-live");
+          }
           const start = info.event.start;
           const end = info.event.end;
           const addr =
             (info.event.extendedProps as { address?: string })?.address ?? info.event.title;
           const rawLabel =
             (info.event.extendedProps as { eventTypeLabel?: string })?.eventTypeLabel ?? "Event";
-          const typeLabel =
-            id.startsWith("oh-") ? `🏠 ${rawLabel}` : id.startsWith("s-") ? `🔑 ${rawLabel}` : rawLabel;
+          const typeLabel = rawLabel;
           const timeRange =
             start && end
               ? `${start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} – ${end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`

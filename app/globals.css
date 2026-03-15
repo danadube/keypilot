@@ -146,6 +146,36 @@ body {
 .fc .fc-daygrid-event-harness { margin-bottom: 2px; }
 .fc-event-open-house { border-left-width: 3px; }
 .fc-event-showing { border-left-width: 3px; }
+/* Event content: type + address (two lines) */
+.fc-event-main-fallback {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  line-height: 1.2;
+  overflow: hidden;
+}
+.fc-event-main-fallback .fc-event-type {
+  font-weight: 600;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.fc-event-main-fallback .fc-event-address {
+  font-size: 0.65rem;
+  opacity: 0.95;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Live open house: ring highlight */
+.fc-event-live {
+  box-shadow: 0 0 0 2px hsl(142 71% 45%);
+  animation: fc-event-live-pulse 2s ease-in-out infinite;
+}
+@keyframes fc-event-live-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px hsl(142 71% 45%); }
+  50% { box-shadow: 0 0 0 3px hsl(142 71% 45% / 0.8); }
+}
 
 /* Printable QR poster: hide everything except .print-qr-poster when printing */
 @media print {
