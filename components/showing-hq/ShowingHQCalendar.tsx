@@ -107,8 +107,10 @@ export function ShowingHQCalendar({
           const end = info.event.end;
           const addr =
             (info.event.extendedProps as { address?: string })?.address ?? info.event.title;
-          const typeLabel =
+          const rawLabel =
             (info.event.extendedProps as { eventTypeLabel?: string })?.eventTypeLabel ?? "Event";
+          const typeLabel =
+            id.startsWith("oh-") ? `🏠 ${rawLabel}` : id.startsWith("s-") ? `🔑 ${rawLabel}` : rawLabel;
           const timeRange =
             start && end
               ? `${start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} – ${end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`

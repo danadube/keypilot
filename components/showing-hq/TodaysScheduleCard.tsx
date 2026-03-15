@@ -40,10 +40,13 @@ export function TodaysScheduleCard({
 
   return (
     <BrandCard className="flex h-full min-h-0 flex-col bg-white p-4">
-      <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
+      <h2 className="mb-0.5 flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
         <Calendar className="h-4 w-4 text-[var(--brand-primary)]" />
         Today&apos;s Schedule
       </h2>
+      <p className="mb-2 text-[11px] text-[var(--brand-text-muted)]">
+        Timeline of today and next tomorrow
+      </p>
       {hasItems ? (
         <ul className="flex flex-1 flex-col gap-2 overflow-auto">
           {scheduleItems.map((item) => (
