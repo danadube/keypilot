@@ -4,13 +4,14 @@ Concise rules for repository workflow, deployment safety, and AI/dev sessions.
 
 ---
 
-## Core Rule: Every Task Ends With
+## Core Rule: All Completed Code Changes Must End With
 
 **Every completed task must end with:**
 
-1. **Build check** — `npm run build` succeeds
-2. **Commit** — `git add .` and `git commit` with a clear message
-3. **Push** — `git push` to the remote
+1. **Successful build** — `npm run build` (or `npm run validate`) must pass
+2. **`git add .`** — Stage all changes
+3. **`git commit`** — With a clear message (see prefixes below)
+4. **`git push`** — Push to the remote
 
 No work should be left only in local uncommitted state.
 
@@ -75,6 +76,15 @@ Configure these manually when possible:
 | **Environment variables** | Configure in both `.env.local` (local) and Vercel project settings (deploy) |
 
 See Vercel docs: [Environment Variables](https://vercel.com/docs/environment-variables), [Preview Deployments](https://vercel.com/docs/deployments/preview-deployments).
+
+### Manual Configuration Checklist
+
+Configure these in GitHub and Vercel when you have access:
+
+- [ ] **GitHub:** Settings → Branches → Add rule for `main` → Require a pull request before merging
+- [ ] **GitHub:** Require status checks to pass (e.g. Vercel build) before merge
+- [ ] **Vercel:** Project Settings → Environment Variables → Add all required vars (match `.env.local`)
+- [ ] **Vercel:** Confirm preview deployments are enabled (Settings → Git → Preview deployments)
 
 ---
 
