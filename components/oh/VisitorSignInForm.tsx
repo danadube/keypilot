@@ -136,64 +136,81 @@ export function VisitorSignInForm({ slug }: { slug: string }) {
         {/* Right: sign-in form — centered, max-width 420px, scrolls when needed */}
         <div className="flex min-h-0 flex-col items-center justify-center overflow-y-auto px-4 py-8 md:px-8 md:py-10">
           <div className="w-full max-w-[420px] rounded-xl border border-slate-200/80 bg-white p-6 shadow-md">
+            {/* Header section */}
             <div className="space-y-4">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                {oh.property.address1}
+              <h1 className="text-xl font-semibold tracking-tight text-slate-600">
+                Welcome to the Open House
               </h1>
-              {oh.property.address2 && (
-                <p className="text-sm text-slate-600">{oh.property.address2}</p>
-              )}
-              <p className="text-base text-slate-600">{cityState}</p>
-              <p className="text-sm font-medium text-slate-500">{timeRange}</p>
+              <div className="space-y-1">
+                <p className="text-2xl font-bold text-slate-900">
+                  {oh.property.address1}
+                </p>
+                {oh.property.address2 && (
+                  <p className="text-sm text-slate-600">{oh.property.address2}</p>
+                )}
+                <p className="text-base text-slate-600">{cityState}</p>
+                <p className="text-sm font-medium text-slate-500">{timeRange}</p>
+              </div>
 
-              <p className="pt-2 text-base text-slate-700">
-                Welcome to the open house.
-              </p>
-              <p className="text-sm text-slate-600">
+              <p className="text-base text-slate-700">
                 Please sign in before touring the property.
               </p>
-              <p className="text-sm text-slate-600">
-                Sign in to receive the property flyer and additional details after your visit.
-              </p>
+
               {oh.flyerUrl && (
                 <a
                   href={oh.flyerUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block text-sm font-medium text-blue-600 hover:text-blue-800 underline"
+                  className="block rounded-lg border border-slate-200 bg-slate-50/80 p-4 transition-colors hover:bg-slate-100"
                 >
-                  View property flyer
+                  <p className="text-sm font-medium text-slate-800">
+                    Property Details
+                  </p>
+                  <p className="mt-0.5 text-sm text-blue-600 hover:text-blue-800">
+                    Download Property Flyer (PDF)
+                  </p>
                 </a>
               )}
 
               {hasHost && (
-                <div className="flex items-center gap-3 pt-2">
-                  {oh.branding?.headshotUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- external Supabase URL
-                    <img
-                      src={oh.branding.headshotUrl}
-                      alt=""
-                      className="h-11 w-11 shrink-0 rounded-full object-cover ring-1 ring-slate-200/80"
-                    />
-                  ) : oh.branding?.logoUrl ? (
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-white ring-1 ring-slate-200/80 p-1.5">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={oh.branding.logoUrl} alt="" className="max-h-8 max-w-full object-contain" />
-                    </div>
-                  ) : null}
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-800">
-                      Hosted by {hostName}
-                    </p>
-                    {oh.branding?.brokerageName && (
-                      <p className="text-xs text-slate-500">{oh.branding.brokerageName}</p>
+                <div className="space-y-2 rounded-lg border border-slate-100 bg-slate-50/50 p-3">
+                  <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    Hosted by
+                  </p>
+                  <div className="flex items-center gap-3">
+                    {oh.branding?.headshotUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- external Supabase URL
+                      <img
+                        src={oh.branding.headshotUrl}
+                        alt=""
+                        className="h-12 w-12 shrink-0 rounded-full object-cover ring-1 ring-slate-200/80"
+                      />
+                    ) : oh.branding?.logoUrl ? (
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-white ring-1 ring-slate-200/80 p-1.5">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={oh.branding.logoUrl} alt="" className="max-h-9 max-w-full object-contain" />
+                      </div>
+                    ) : (
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500">
+                        <span className="text-lg font-medium">
+                          {hostName?.charAt(0) ?? "?"}
+                        </span>
+                      </div>
                     )}
+                    <div className="min-w-0">
+                      <p className="font-medium text-slate-800">{hostName}</p>
+                      {oh.branding?.brokerageName && (
+                        <p className="text-sm text-slate-500">
+                          {oh.branding.brokerageName}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="mt-6">
+            <div className="mt-8">
               <SignInFormFields
                 openHouse={oh}
                 signInMethod="QR"
