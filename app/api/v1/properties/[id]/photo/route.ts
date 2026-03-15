@@ -18,7 +18,10 @@ export async function POST(
     const { id } = await params;
     const supabase = getSupabaseAdmin();
     if (!supabase) {
-      return apiError("Photo upload is not configured (missing SUPABASE_URL)", 503);
+      return apiError(
+        "Photo upload is not configured (missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY)",
+        503
+      );
     }
 
     const property = await prisma.property.findFirst({
