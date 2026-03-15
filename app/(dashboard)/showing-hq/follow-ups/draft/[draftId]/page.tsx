@@ -32,8 +32,14 @@ export default function DraftReviewPage() {
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [saving, setSaving] = useState(false);
+  const [statusAction, setStatusAction] = useState<"reviewed" | "send" | "dismiss" | null>(null);
+  const [sendSuccess, setSendSuccess] = useState(false);
 
   useEffect(() => {
+    if (!draftId) {
+      setLoading(false);
+      return;
+    }
     fetch(`/api/v1/follow-up-drafts/${draftId}`)
       .then((res) => res.json())
       .then((json) => {
@@ -65,6 +71,64 @@ export default function DraftReviewPage() {
       setError(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleMarkReviewed = async () => {
+    if (!draftId || draft?.status !== "DRAFT") return;
+    setStatusAction("reviewed");
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/follow-up-drafts/${draftId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "REVIEWED" }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+      setDraft((d) => (d ? { ...d, status: "REVIEWED" } : d));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to update status");
+    } finally {
+      setStatusAction(null);
+    }
+  };
+
+  const handleSendEmail = async () => {
+    if (!draftId || (draft?.status !== "DRAFT" && draft?.status !== "REVIEWED")) return;
+    setStatusAction("send");
+    setError(null);
+    setSendSuccess(false);
+    try {
+      const res = await fetch(`/api/v1/follow-up-drafts/${draftId}/send`, { method: "POST" });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+      setDraft((d) => (d ? { ...d, status: "SENT_MANUAL" } : d));
+      setSendSuccess(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to send email");
+    } finally {
+      setStatusAction(null);
+    }
+  };
+
+  const handleDismiss = async () => {
+    if (!draftId || (draft?.status !== "DRAFT" && draft?.status !== "REVIEWED")) return;
+    setStatusAction("dismiss");
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/follow-up-drafts/${draftId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "ARCHIVED" }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+      window.location.href = "/showing-hq/follow-ups";
+      return;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to dismiss");
+      setStatusAction(null);
     }
   };
 
@@ -119,6 +183,9 @@ export default function DraftReviewPage() {
               className="min-h-[240px] resize-y font-mono text-sm"
             />
           </div>
+          {sendSuccess && (
+            <p className="text-sm font-medium text-green-600 dark:text-green-400">Email sent.</p>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <BrandButton
               variant="primary"
@@ -127,9 +194,37 @@ export default function DraftReviewPage() {
             >
               {saving ? "Saving…" : "Save changes"}
             </BrandButton>
+            {draft.status === "DRAFT" && (
+              <Button
+                variant="outline"
+                disabled={!!statusAction}
+                onClick={handleMarkReviewed}
+              >
+                {statusAction === "reviewed" ? "Saving…" : "Mark reviewed"}
+              </Button>
+            )}
+            {(draft.status === "DRAFT" || draft.status === "REVIEWED") && (
+              <Button
+                variant="outline"
+                disabled={!!statusAction}
+                onClick={handleSendEmail}
+              >
+                {statusAction === "send" ? "Sending…" : "Send email"}
+              </Button>
+            )}
+            {(draft.status === "DRAFT" || draft.status === "REVIEWED") && (
+              <Button
+                variant="ghost"
+                disabled={!!statusAction}
+                onClick={handleDismiss}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                {statusAction === "dismiss" ? "Dismissing…" : "Dismiss"}
+              </Button>
+            )}
             {(draft.status === "DRAFT" || draft.status === "REVIEWED") && (
               <Button variant="outline" asChild>
-                <Link href={`/showing-hq/visitors`}>Back to visitors</Link>
+                <Link href="/showing-hq/visitors">Back to visitors</Link>
               </Button>
             )}
           </div>
