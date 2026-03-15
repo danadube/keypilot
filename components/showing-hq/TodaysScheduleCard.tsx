@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, CheckSquare, Building2 } from "lucide-react";
+import { Calendar, CheckSquare, Building2, Home } from "lucide-react";
 import { BrandCard } from "@/components/ui/BrandCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,34 +35,40 @@ export function TodaysScheduleCard({
         Today&apos;s Schedule
       </h2>
       {hasItems ? (
-        <ul className="flex flex-1 flex-col gap-2 overflow-auto">
+        <ul className="flex flex-1 flex-col gap-3 overflow-auto">
           {scheduleItems.map((item) => (
             <li
               key={`${item.type}-${item.id}`}
-              className={`flex items-start justify-between gap-2 rounded-lg border p-2.5 ${
+              className={`flex items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-slate-50/80 ${
                 item.type === "open_house"
-                  ? "border-blue-200/80 bg-blue-50/50"
+                  ? "border-blue-200/80 bg-blue-50/40"
                   : "border-amber-200/80 bg-amber-50/30"
               }`}
             >
+              <div className="shrink-0 text-right font-semibold tabular-nums text-[var(--brand-text)]" style={{ minWidth: "4rem" }}>
+                {formatTime(item.at)}
+              </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-[var(--brand-text-muted)]">
-                  {formatTime(item.at)}
-                </p>
-                <p className="truncate font-medium text-[var(--brand-text)]">
+                <div className="flex items-center gap-2">
+                  {item.type === "open_house" ? (
+                    <Home className="h-3.5 w-3.5 shrink-0 text-blue-600" />
+                  ) : (
+                    <Building2 className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                  )}
+                  <Badge
+                    variant={item.type === "open_house" ? "default" : "secondary"}
+                    className="text-[10px]"
+                  >
+                    {item.type === "open_house" ? "Open house" : "Showing"}
+                  </Badge>
+                </div>
+                <p className="mt-0.5 truncate font-medium text-[var(--brand-text)]">
                   {item.title}
                 </p>
-                <p className="flex items-center gap-1 truncate text-xs text-[var(--brand-text-muted)]">
-                  <Building2 className="h-3 w-3 shrink-0" />
+                <p className="truncate text-xs text-[var(--brand-text-muted)]">
                   {item.property.address1}, {item.property.city}
                 </p>
               </div>
-              <Badge
-                variant={item.type === "open_house" ? "default" : "secondary"}
-                className="shrink-0 text-[10px]"
-              >
-                {item.type === "open_house" ? "Open house" : "Showing"}
-              </Badge>
               <Button variant="outline" size="sm" className="h-7 shrink-0 text-xs" asChild>
                 <Link
                   href={
@@ -77,26 +83,21 @@ export function TodaysScheduleCard({
             </li>
           ))}
           {followUpCount > 0 && (
-            <li className="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-2.5">
+            <li className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+              <div className="shrink-0" style={{ minWidth: "4rem" }} />
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <CheckSquare className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-800">
+                  Follow-up
+                </Badge>
+              </div>
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-[var(--brand-text)]">
-                  Follow-up reminders
-                </p>
-                <p className="text-xs text-[var(--brand-text-muted)]">
                   {followUpCount} draft{followUpCount !== 1 ? "s" : ""} ready to review
                 </p>
               </div>
-              <Badge
-                variant="outline"
-                className="shrink-0 text-[10px] border-amber-300 text-amber-800"
-              >
-                Follow-up
-              </Badge>
               <Button variant="outline" size="sm" className="h-7 shrink-0 text-xs" asChild>
-                <Link href="/showing-hq/follow-ups">
-                  <CheckSquare className="mr-1 h-3 w-3" />
-                  Review
-                </Link>
+                <Link href="/showing-hq/follow-ups">Review</Link>
               </Button>
             </li>
           )}

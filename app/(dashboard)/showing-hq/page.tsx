@@ -25,6 +25,8 @@ import { ShowingHQCalendar } from "@/components/showing-hq/ShowingHQCalendar";
 import type { CalendarEvent } from "@/components/showing-hq/ShowingHQCalendar";
 import { TodaysScheduleCard } from "@/components/showing-hq/TodaysScheduleCard";
 import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
+import { NextActionsCard } from "@/components/showing-hq/NextActionsCard";
+import type { NextActionItem } from "@/components/showing-hq/NextActionsCard";
 
 type DashboardData = {
   todaysShowings: {
@@ -228,8 +230,44 @@ export default function ShowingHQOverviewPage() {
     property: s.property,
   }));
 
+  const now = new Date();
+  const nextActions: NextActionItem[] = [];
+  const nextOh = todaysShowings.find((oh) => new Date(oh.startAt) > now && oh.status !== "ACTIVE");
+  if (nextOh) {
+    const start = new Date(nextOh.startAt);
+    const mins = Math.round((start.getTime() - now.getTime()) / 60000);
+    const label = mins <= 60
+      ? `Open house in ${mins} min · ${nextOh.property.address1}`
+      : `Open house at ${formatTime(nextOh.startAt)} · ${nextOh.property.address1}`;
+    nextActions.push({ id: "next-oh", label, href: `/open-houses/${nextOh.id}/sign-in`, icon: "clock" });
+  }
+  if (followUpTasks.length > 0) {
+    nextActions.push({
+      id: "follow-ups",
+      label: `Review ${followUpTasks.length} follow-up draft${followUpTasks.length !== 1 ? "s" : ""}`,
+      href: "/showing-hq/follow-ups",
+      icon: "check",
+    });
+  }
+  if ((stats.feedbackRequestsPending ?? 0) > 0) {
+    nextActions.push({
+      id: "feedback",
+      label: `${stats.feedbackRequestsPending} feedback request${stats.feedbackRequestsPending !== 1 ? "s" : ""} pending`,
+      href: "/showing-hq/feedback-requests",
+      icon: "message",
+    });
+  }
+  if (visitorsToday > 0 && followUpTasks.length === 0) {
+    nextActions.push({
+      id: "visitors-pending",
+      label: `${visitorsToday} visitor${visitorsToday !== 1 ? "s" : ""} captured · follow-up pending`,
+      href: "/showing-hq/visitors",
+      icon: "users",
+    });
+  }
+
   return (
-    <div className="min-h-0 flex flex-col gap-4" style={{ backgroundColor: "#f1f5f9" }}>
+    <div className="min-h-0 flex flex-col gap-5" style={{ backgroundColor: "#f1f5f9" }}>
       {/* Hero — product workspace identity */}
       <header
         className="rounded-xl border border-slate-200/90 bg-white px-5 py-4 shadow-sm"
@@ -248,25 +286,26 @@ export default function ShowingHQOverviewPage() {
           </p>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-0.5 text-xs text-[var(--brand-text-muted)]">
-          <span className="font-medium text-[var(--brand-text)]">Showings</span>
+          <span className="font-medium text-[var(--brand-text)]">Showings today</span>
           <span>{stats.privateShowingsToday ?? 0}</span>
-          <span className="font-medium text-[var(--brand-text)]">Open houses</span>
+          <span className="font-medium text-[var(--brand-text)]">Open houses today</span>
           <span>{todaysShowings.length}</span>
-          <span className="font-medium text-[var(--brand-text)]">Visitors</span>
-          <span>{stats.totalVisitors}</span>
-          <span className="font-medium text-[var(--brand-text)]">Follow-ups</span>
+          <span className="font-medium text-[var(--brand-text)]">Visitors today</span>
+          <span>{visitorsToday}</span>
+          <span className="font-medium text-[var(--brand-text)]">Follow-ups pending</span>
           <span>{stats.followUpTasks ?? followUpTasks.length}</span>
         </div>
       </header>
 
-      {/* Calendar + Today's Schedule — operations workspace row */}
-      <div className="grid min-h-0 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+      {/* Calendar + Today's Schedule + Next Actions — operations workspace row */}
+      <div className="grid min-h-0 gap-4 lg:grid-cols-[1.2fr_0.85fr_0.45fr]">
         <ShowingHQCalendar events={data?.calendarEvents ?? []} height={340} />
         <TodaysScheduleCard
           scheduleItems={scheduleItems}
           followUpCount={followUpTasks.length}
           formatTime={formatTime}
         />
+        <NextActionsCard items={nextActions} />
       </div>
 
       {/* Live / Today status — unified, no conflicting copy */}

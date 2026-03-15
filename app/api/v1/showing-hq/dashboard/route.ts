@@ -226,11 +226,14 @@ export async function GET() {
       },
     }));
 
+    const shortAddress = (addr: string, max = 22) =>
+      addr.length > max ? addr.slice(0, max).trim() + "…" : addr;
+
     const calendarEvents = [
       ...openHousesInMonth.map((oh) => ({
         id: `oh-${oh.id}`,
         type: "open_house" as const,
-        title: oh.title,
+        title: `Open House · ${shortAddress(oh.property.address1)}`,
         start: oh.startAt.toISOString(),
         end: oh.endAt.toISOString(),
         backgroundColor: "#0ea5e9",
@@ -244,7 +247,7 @@ export async function GET() {
         return {
           id: `s-${s.id}`,
           type: "showing" as const,
-          title: (s.buyerName || s.buyerAgentName || "Private showing") as string,
+          title: `Showing · ${shortAddress(s.property.address1)}`,
           start: start.toISOString(),
           end: end.toISOString(),
           backgroundColor: "#d97706",
