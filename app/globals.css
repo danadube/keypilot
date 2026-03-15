@@ -112,6 +112,21 @@ body {
   }
 }
 
+/* ShowingHQ FullCalendar — compact, readable month view */
+.fc {
+  --fc-border-color: hsl(214 32% 91%);
+  --fc-button-bg-color: hsl(221 83% 53%);
+  --fc-button-border-color: hsl(221 83% 53%);
+  --fc-today-bg-color: hsl(221 83% 53% / 0.08);
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: hsl(210 40% 98%);
+}
+.fc .fc-toolbar-title { font-size: 1rem; font-weight: 600; }
+.fc .fc-button { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
+.fc .fc-daygrid-day-number { font-size: 0.75rem; }
+.fc-event-open-house { border-left-width: 3px; }
+.fc-event-showing { border-left-width: 3px; }
+
 /* Printable QR poster: hide everything except .print-qr-poster when printing */
 @media print {
   body * {

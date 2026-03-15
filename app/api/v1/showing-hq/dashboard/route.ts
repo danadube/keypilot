@@ -20,10 +20,14 @@ export async function GET() {
     todayEnd.setDate(todayEnd.getDate() + 1);
     const weekEnd = new Date(today);
     weekEnd.setDate(weekEnd.getDate() + 14);
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+    const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
 
     const [
       todaysOpenHouses,
       upcomingOpenHouses,
+      openHousesInMonth,
+      showingsInMonth,
       todaysPrivateShowings,
       recentVisitorsData,
       followUpDrafts,
@@ -62,6 +66,25 @@ export async function GET() {
         },
         orderBy: { startAt: "asc" },
         take: 10,
+      }),
+      prisma.openHouse.findMany({
+        where: {
+          hostUserId: user.id,
+          deletedAt: null,
+          startAt: { gte: monthStart, lte: monthEnd },
+          status: { in: ["SCHEDULED", "ACTIVE", "COMPLETED"] },
+        },
+        include: { property: true },
+        orderBy: { startAt: "asc" },
+      }),
+      prisma.showing.findMany({
+        where: {
+          hostUserId: user.id,
+          deletedAt: null,
+          scheduledAt: { gte: monthStart, lte: monthEnd },
+        },
+        include: { property: true },
+        orderBy: { scheduledAt: "asc" },
       }),
       prisma.showing.findMany({
         where: {
@@ -203,11 +226,40 @@ export async function GET() {
       },
     }));
 
+    const calendarEvents = [
+      ...openHousesInMonth.map((oh) => ({
+        id: `oh-${oh.id}`,
+        type: "open_house" as const,
+        title: oh.title,
+        start: oh.startAt.toISOString(),
+        end: oh.endAt.toISOString(),
+        backgroundColor: "#0ea5e9",
+        borderColor: "#0284c7",
+        extendedProps: { address: oh.property.address1, city: oh.property.city },
+      })),
+      ...showingsInMonth.map((s) => {
+        const start = s.scheduledAt;
+        const end = new Date(start);
+        end.setHours(end.getHours() + 1);
+        return {
+          id: `s-${s.id}`,
+          type: "showing" as const,
+          title: (s.buyerName || s.buyerAgentName || "Private showing") as string,
+          start: start.toISOString(),
+          end: end.toISOString(),
+          backgroundColor: "#d97706",
+          borderColor: "#b45309",
+          extendedProps: { address: s.property.address1, city: s.property.city },
+        };
+      }),
+    ];
+
     return NextResponse.json({
       data: {
         todaysShowings: todaysOpenHouses,
         todaysOpenHouses,
         todaysPrivateShowings,
+        calendarEvents,
         todaysSchedule: todaysSchedule.map((s) => ({
           ...s,
           at: s.at.toISOString(),

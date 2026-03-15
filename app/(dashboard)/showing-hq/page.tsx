@@ -21,6 +21,10 @@ import {
 } from "lucide-react";
 import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
 import { GettingStartedCard, buildGettingStartedSteps } from "@/components/showing-hq/GettingStartedCard";
+import { ShowingHQCalendar } from "@/components/showing-hq/ShowingHQCalendar";
+import type { CalendarEvent } from "@/components/showing-hq/ShowingHQCalendar";
+import { TodaysScheduleCard } from "@/components/showing-hq/TodaysScheduleCard";
+import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
 
 type DashboardData = {
   todaysShowings: {
@@ -76,6 +80,7 @@ type DashboardData = {
     feedbackRequestsPending?: number;
   };
   connections?: { hasCalendar: boolean; hasGmail: boolean; hasBranding: boolean };
+  calendarEvents?: CalendarEvent[];
   todaysSchedule?: Array<{
     type: "open_house" | "showing";
     id: string;
@@ -215,25 +220,35 @@ export default function ShowingHQOverviewPage() {
             ? "visitors_checked_in"
             : "nothing_scheduled";
 
+  const scheduleItems: ScheduleItem[] = (data?.todaysSchedule ?? []).map((s) => ({
+    type: s.type,
+    id: s.id,
+    title: s.title,
+    at: s.at,
+    property: s.property,
+  }));
+
   return (
     <div className="min-h-0 flex flex-col gap-4" style={{ backgroundColor: "#f1f5f9" }}>
-      {/* ShowingHQ hero — product identity, stands apart */}
+      {/* Hero — product workspace identity */}
       <header
-        className="rounded-xl border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/80 px-5 py-5 shadow-sm"
+        className="rounded-xl border border-slate-200/90 bg-white px-5 py-4 shadow-sm"
         style={{ borderLeft: "4px solid var(--brand-primary)" }}
         role="banner"
       >
-        <h1
-          className="text-xl font-bold tracking-tight text-[var(--brand-text)] md:text-2xl"
-          style={{ fontFamily: "var(--font-heading)" }}
-        >
-          Welcome to ShowingHQ
-        </h1>
-        <p className="mt-1.5 max-w-2xl text-sm text-[var(--brand-text-muted)] md:text-base">
-          Manage private showings, open houses, visitors, feedback, and follow-ups in one command center.
-        </p>
-        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-[var(--brand-text-muted)]">
-          <span className="font-medium text-[var(--brand-text)]">Today&apos;s showings</span>
+        <div className="flex flex-col gap-1">
+          <h1
+            className="text-xl font-bold tracking-tight text-[var(--brand-text)] md:text-2xl"
+            style={{ fontFamily: "var(--font-heading)" }}
+          >
+            Welcome to ShowingHQ
+          </h1>
+          <p className="max-w-2xl text-sm text-[var(--brand-text-muted)] md:text-base">
+            Manage private showings, open houses, visitors, feedback, and follow-ups in one command center.
+          </p>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-0.5 text-xs text-[var(--brand-text-muted)]">
+          <span className="font-medium text-[var(--brand-text)]">Showings</span>
           <span>{stats.privateShowingsToday ?? 0}</span>
           <span className="font-medium text-[var(--brand-text)]">Open houses</span>
           <span>{todaysShowings.length}</span>
@@ -243,6 +258,16 @@ export default function ShowingHQOverviewPage() {
           <span>{stats.followUpTasks ?? followUpTasks.length}</span>
         </div>
       </header>
+
+      {/* Calendar + Today's Schedule — operations workspace row */}
+      <div className="grid min-h-0 gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+        <ShowingHQCalendar events={data?.calendarEvents ?? []} height={340} />
+        <TodaysScheduleCard
+          scheduleItems={scheduleItems}
+          followUpCount={followUpTasks.length}
+          formatTime={formatTime}
+        />
+      </div>
 
       {/* Live / Today status — unified, no conflicting copy */}
       <section
@@ -373,80 +398,6 @@ export default function ShowingHQOverviewPage() {
           </div>
         </div>
       </section>
-
-      {/* Today / Schedule — chronological: showings, open houses, follow-up reminders */}
-      <BrandCard padded className="bg-white">
-        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
-          <Calendar className="h-4 w-4 text-[var(--brand-primary)]" />
-          Today &amp; Schedule
-        </h2>
-        {(data?.todaysSchedule?.length ?? 0) > 0 || followUpTasks.length > 0 ? (
-          <ul className="space-y-2">
-            {(data?.todaysSchedule ?? []).map((item) => (
-              <li
-                key={`${item.type}-${item.id}`}
-                className="flex items-center justify-between gap-3 rounded-md border border-[var(--brand-border)] p-2.5"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-[var(--brand-text)]">
-                    {formatTime(item.at)} — {item.title}
-                  </p>
-                  <p className="truncate text-xs text-[var(--brand-text-muted)]">
-                    {item.property.address1}, {item.property.city}
-                  </p>
-                </div>
-                <Badge variant={item.type === "open_house" ? "default" : "secondary"} className="shrink-0 text-[10px]">
-                  {item.type === "open_house" ? "Open house" : "Showing"}
-                </Badge>
-                {item.type === "open_house" ? (
-                  <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
-                    <Link href={`/showing-hq/open-houses/${item.id}`}>View</Link>
-                  </Button>
-                ) : (
-                  <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
-                    <Link href="/showing-hq/showings">View</Link>
-                  </Button>
-                )}
-              </li>
-            ))}
-            {followUpTasks.length > 0 && (
-              <li className="flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50/60 p-2.5">
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-[var(--brand-text)]">
-                    Follow-up reminders — {followUpTasks.length} draft{followUpTasks.length !== 1 ? "s" : ""} ready to review
-                  </p>
-                  <p className="text-xs text-[var(--brand-text-muted)]">
-                    Review and send follow-up emails to visitors
-                  </p>
-                </div>
-                <Badge variant="outline" className="shrink-0 text-[10px] border-amber-300 text-amber-800">
-                  Follow-up
-                </Badge>
-                <BrandButton variant="primary" size="sm" className="h-7 text-xs" asChild>
-                  <Link href="/showing-hq/follow-ups">
-                    <CheckSquare className="mr-1.5 h-3.5 w-3.5" />
-                    Review
-                  </Link>
-                </BrandButton>
-              </li>
-            )}
-          </ul>
-        ) : (
-          <div className="rounded-md border border-dashed border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/30 px-4 py-6 text-center">
-            <p className="text-sm text-[var(--brand-text-muted)]">
-              No private showings, open houses, or follow-up reminders scheduled for today.
-            </p>
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/showing-hq/showings/new">Add showing</Link>
-              </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link href="/open-houses/new">Create open house</Link>
-              </Button>
-            </div>
-          </div>
-        )}
-      </BrandCard>
 
       {/* Active Open House — key actions, emphasized when live */}
       {primaryOpenHouse && (todayState === "open_house_live" || todayState === "upcoming_open_house_today") && (
