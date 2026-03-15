@@ -17,7 +17,10 @@ export async function GET(
         deletedAt: null,
         status: { in: ["SCHEDULED", "ACTIVE"] },
       },
-      include: { property: true },
+      include: {
+        property: true,
+        hostUser: { include: { profile: true } },
+      },
     });
     if (!openHouse) {
       return NextResponse.json(
@@ -25,13 +28,32 @@ export async function GET(
         { status: 404 }
       );
     }
+    const profile = openHouse.hostUser.profile;
+    const branding = profile
+      ? {
+          displayName: profile.displayName ?? openHouse.agentName ?? openHouse.hostUser.name,
+          brokerageName: profile.brokerageName,
+          headshotUrl: profile.headshotUrl,
+          logoUrl: profile.logoUrl,
+          email: profile.email ?? openHouse.agentEmail ?? openHouse.hostUser.email,
+          phone: profile.phone ?? openHouse.agentPhone,
+        }
+      : {
+          displayName: openHouse.agentName ?? openHouse.hostUser.name,
+          brokerageName: null,
+          headshotUrl: null,
+          logoUrl: null,
+          email: openHouse.agentEmail ?? openHouse.hostUser.email,
+          phone: openHouse.agentPhone,
+        };
+
     return NextResponse.json({
       data: {
         id: openHouse.id,
         title: openHouse.title,
         startAt: openHouse.startAt,
         endAt: openHouse.endAt,
-        agentName: openHouse.agentName,
+        agentName: branding.displayName,
         property: {
           address1: openHouse.property.address1,
           address2: openHouse.property.address2,
@@ -39,6 +61,14 @@ export async function GET(
           state: openHouse.property.state,
           zip: openHouse.property.zip,
           imageUrl: openHouse.property.imageUrl,
+        },
+        branding: {
+          displayName: branding.displayName,
+          brokerageName: branding.brokerageName,
+          headshotUrl: branding.headshotUrl,
+          logoUrl: branding.logoUrl,
+          email: branding.email,
+          phone: branding.phone,
         },
       },
     });

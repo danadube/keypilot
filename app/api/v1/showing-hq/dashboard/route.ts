@@ -31,6 +31,7 @@ export async function GET() {
       followUpTasksCount,
       contactsFromVisitorsCount,
       connections,
+      userProfile,
     ] = await Promise.all([
       prisma.openHouse.findMany({
         where: {
@@ -123,12 +124,22 @@ export async function GET() {
         where: { userId: user.id },
         select: { service: true, enabledForCalendar: true },
       }),
+      prisma.userProfile.findUnique({
+        where: { userId: user.id },
+        select: { displayName: true, brokerageName: true, headshotUrl: true, logoUrl: true },
+      }),
     ]);
 
     const hasCalendar = connections.some(
       (c) => c.service === "GOOGLE_CALENDAR" && c.enabledForCalendar
     );
     const hasGmail = connections.some((c) => c.service === "GMAIL");
+    const hasBranding = !!(
+      userProfile?.displayName?.trim() ||
+      userProfile?.brokerageName?.trim() ||
+      userProfile?.headshotUrl?.trim() ||
+      userProfile?.logoUrl?.trim()
+    );
 
     const recentVisitors = recentVisitorsData.map((v) => ({
       id: v.id,
@@ -156,7 +167,7 @@ export async function GET() {
           contactsCaptured: contactsFromVisitorsCount,
           followUpTasks: followUpTasksCount,
         },
-        connections: { hasCalendar, hasGmail },
+        connections: { hasCalendar, hasGmail, hasBranding },
       },
     });
   } catch (e) {

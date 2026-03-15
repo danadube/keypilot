@@ -72,7 +72,7 @@ type DashboardData = {
     contactsCaptured: number;
     followUpTasks?: number;
   };
-  connections?: { hasCalendar: boolean; hasGmail: boolean };
+  connections?: { hasCalendar: boolean; hasGmail: boolean; hasBranding: boolean };
 };
 
 const GETTING_STARTED_DISMISSED_KEY = "showinghq-getting-started-dismissed";
@@ -126,7 +126,8 @@ export default function ShowingHQOverviewPage() {
   const upcoming = data?.upcomingOpenHouses ?? [];
   const recentVisitors = data?.recentVisitors ?? [];
   const followUpTasks = data?.followUpTasks ?? [];
-  const connections = data?.connections ?? { hasCalendar: false, hasGmail: false };
+  const connections = data?.connections ?? { hasCalendar: false, hasGmail: false, hasBranding: false };
+  const hasBranding = connections.hasBranding ?? false;
 
   const showGettingStarted =
     stats.totalShowings < 2 && stats.totalVisitors === 0;
@@ -136,6 +137,7 @@ export default function ShowingHQOverviewPage() {
     hasGmail: connections.hasGmail,
     hasVisitors: stats.totalVisitors > 0,
     hasFollowUps: followUpTasks.length > 0,
+    hasBranding,
   });
 
   const formatDate = (d: string) =>

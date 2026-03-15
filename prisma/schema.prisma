@@ -34,9 +34,30 @@ model User {
   deals             Deal[]
   connections       Connection[]
   usageEvents       UsageEvent[]
+  profile           UserProfile?
 
   @@index([clerkId])
   @@map("users")
+}
+
+/** Optional agent branding for sign-in pages, follow-ups, reports. Reusable across modules. */
+model UserProfile {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  displayName        String?
+  brokerageName      String?
+  headshotUrl        String?
+  logoUrl            String?
+  phone              String?
+  email              String?
+  brandPrimaryColor  String?
+  brandSecondaryColor String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
 }
 
 model Property {

@@ -25,6 +25,14 @@ type OpenHouseInfo = {
     zip: string;
     imageUrl?: string | null;
   };
+  branding?: {
+    displayName: string | null;
+    brokerageName: string | null;
+    headshotUrl: string | null;
+    logoUrl: string | null;
+    email: string | null;
+    phone: string | null;
+  };
 };
 
 export function VisitorSignInForm({ slug }: { slug: string }) {
@@ -133,8 +141,30 @@ export function VisitorSignInForm({ slug }: { slug: string }) {
             <p className="pt-2 text-sm text-slate-600">
               Welcome to the open house. Please sign in before touring.
             </p>
-            {oh.agentName && (
-              <p className="text-xs text-muted-foreground">Hosted by {oh.agentName}</p>
+            {(oh.branding?.displayName || oh.branding?.brokerageName || oh.agentName) && (
+              <div className="mt-3 flex items-center gap-3 rounded-lg border border-slate-200/80 bg-slate-50/80 px-3 py-2">
+                {oh.branding?.headshotUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element -- external Supabase URL */
+                  <img
+                    src={oh.branding.headshotUrl}
+                    alt=""
+                    className="h-10 w-10 shrink-0 rounded-full object-cover"
+                  />
+                ) : oh.branding?.logoUrl ? (
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white p-1">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={oh.branding.logoUrl} alt="" className="max-h-8 max-w-full object-contain" />
+                  </div>
+                ) : null}
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-700">
+                    Hosted by {oh.branding?.displayName ?? oh.agentName ?? "your agent"}
+                  </p>
+                  {oh.branding?.brokerageName && (
+                    <p className="text-[10px] text-slate-500">{oh.branding.brokerageName}</p>
+                  )}
+                </div>
+              </div>
             )}
           </CardHeader>
           <CardContent className="sm:px-6 sm:pb-6">

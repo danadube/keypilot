@@ -13,6 +13,7 @@ import {
   Send,
   Check,
   Sparkles,
+  Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -153,15 +154,16 @@ export function GettingStartedCard({
   );
 }
 
-/** Order matches real agent workflow: create OH → sign-in → first visitor → integrations → follow-up */
+/** Order matches real agent workflow: create OH → sign-in → first visitor → integrations → branding → follow-up */
 export function buildGettingStartedSteps(params: {
   hasOpenHouse: boolean;
   hasCalendar: boolean;
   hasGmail: boolean;
   hasVisitors: boolean;
   hasFollowUps: boolean;
+  hasBranding?: boolean;
 }): GettingStartedStep[] {
-  const { hasOpenHouse, hasCalendar, hasGmail, hasVisitors, hasFollowUps } =
+  const { hasOpenHouse, hasCalendar, hasGmail, hasVisitors, hasFollowUps, hasBranding = false } =
     params;
   return [
     {
@@ -198,6 +200,13 @@ export function buildGettingStartedSteps(params: {
       href: "/api/v1/auth/google/connect?service=google_calendar",
       done: hasCalendar,
       icon: <Calendar className="h-5 w-5" />,
+    },
+    {
+      id: "branding",
+      label: "Personalize your brand",
+      href: "/settings/branding",
+      done: hasBranding,
+      icon: <Palette className="h-5 w-5" />,
     },
     {
       id: "follow-up",

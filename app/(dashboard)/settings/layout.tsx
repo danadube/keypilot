@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { href: "/settings/account", label: "Account" },
+  { href: "/settings/branding", label: "Branding" },
   { href: "/settings/connections", label: "Connections" },
   { href: "/settings/automation", label: "Automation" },
   { href: "/settings/ai", label: "AI" },

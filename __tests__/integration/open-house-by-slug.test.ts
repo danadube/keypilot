@@ -20,6 +20,8 @@ const mockOpenHouse = {
   startAt: new Date("2025-03-16T14:00:00Z"),
   endAt: new Date("2025-03-16T17:00:00Z"),
   agentName: "Jane Smith",
+  agentEmail: null,
+  agentPhone: null,
   property: {
     address1: "456 Oak Ave",
     address2: "Unit 2",
@@ -27,6 +29,12 @@ const mockOpenHouse = {
     state: "TX",
     zip: "78702",
     imageUrl: null,
+  },
+  hostUser: {
+    id: "user-1",
+    name: "Jane Smith",
+    email: "jane@example.com",
+    profile: null,
   },
 };
 
@@ -54,7 +62,10 @@ describe("GET /api/v1/open-houses/by-slug/[slug]", () => {
         deletedAt: null,
         status: { in: ["SCHEDULED", "ACTIVE"] },
       },
-      include: { property: true },
+      include: {
+        property: true,
+        hostUser: { include: { profile: true } },
+      },
     });
   });
 
