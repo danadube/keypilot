@@ -180,7 +180,8 @@ export default function ShowingHQOverviewPage() {
     return `${timeStr} · ${formatDate(d)}`;
   };
 
-  const primaryOpenHouse = todaysShowings[0] ?? upcoming[0];
+  const activeOpenHouse = todaysShowings.find((oh) => oh.status === "ACTIVE") ?? null;
+  const primaryOpenHouse = activeOpenHouse ?? todaysShowings[0] ?? upcoming[0];
   const signInUrl =
     typeof window !== "undefined" && primaryOpenHouse?.qrSlug
       ? `${window.location.origin}/oh/${primaryOpenHouse.qrSlug}`
@@ -191,30 +192,35 @@ export default function ShowingHQOverviewPage() {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const visitorsToday = recentVisitors.filter((v) => new Date(v.submittedAt) >= todayStart).length;
-  const activeShowing = todaysShowings.find((oh) => oh.status === "ACTIVE") ?? todaysShowings[0];
+  const hasPrivateShowingsToday = (data?.todaysSchedule?.length ?? 0) > 0 && (data?.todaysSchedule ?? []).some((s) => s.type === "showing");
 
+  /** Priority: (1) Active OH live now, (2) Upcoming OH today, (3) Private showings today, (4) Follow-ups, (5) Visitors, (6) Nothing scheduled. Never show "no open houses" when we have any today. */
   type TodayState =
+    | "open_house_live"
+    | "upcoming_open_house_today"
+    | "private_showings_today"
     | "follow_up_drafts_ready"
     | "visitors_checked_in"
-    | "open_house_in_progress"
-    | "upcoming_open_house_today"
-    | "no_open_houses_today";
+    | "nothing_scheduled";
 
-  const todayState: TodayState = followUpTasks.length > 0
-    ? "follow_up_drafts_ready"
-    : visitorsToday > 0
-      ? "visitors_checked_in"
-      : activeShowing?.status === "ACTIVE"
-        ? "open_house_in_progress"
-        : todaysShowings.length > 0
-          ? "upcoming_open_house_today"
-          : "no_open_houses_today";
+  const todayState: TodayState = activeOpenHouse
+    ? "open_house_live"
+    : todaysShowings.length > 0
+      ? "upcoming_open_house_today"
+      : hasPrivateShowingsToday
+        ? "private_showings_today"
+        : followUpTasks.length > 0
+          ? "follow_up_drafts_ready"
+          : visitorsToday > 0
+            ? "visitors_checked_in"
+            : "nothing_scheduled";
 
   return (
-    <div className="min-h-0 flex flex-col gap-3" style={{ backgroundColor: "#f8fafc" }}>
-      {/* ShowingHQ hero / product identity */}
-      <div
-        className="rounded-xl border border-[var(--brand-border)] bg-white px-5 py-6 shadow-sm"
+    <div className="min-h-0 flex flex-col gap-4" style={{ backgroundColor: "#f1f5f9" }}>
+      {/* ShowingHQ hero — product identity, stands apart */}
+      <header
+        className="rounded-xl border border-slate-200/80 bg-gradient-to-br from-white to-slate-50/80 px-5 py-5 shadow-sm"
+        style={{ borderLeft: "4px solid var(--brand-primary)" }}
         role="banner"
       >
         <h1
@@ -223,24 +229,38 @@ export default function ShowingHQOverviewPage() {
         >
           Welcome to ShowingHQ
         </h1>
-        <p className="mt-2 max-w-2xl text-sm text-[var(--brand-text-muted)] md:text-base">
-          Manage private showings, open houses, visitors, and follow-ups in one command center.
+        <p className="mt-1.5 max-w-2xl text-sm text-[var(--brand-text-muted)] md:text-base">
+          Manage private showings, open houses, visitors, feedback, and follow-ups in one command center.
         </p>
-      </div>
+        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-[var(--brand-text-muted)]">
+          <span className="font-medium text-[var(--brand-text)]">Today&apos;s showings</span>
+          <span>{stats.privateShowingsToday ?? 0}</span>
+          <span className="font-medium text-[var(--brand-text)]">Open houses</span>
+          <span>{todaysShowings.length}</span>
+          <span className="font-medium text-[var(--brand-text)]">Visitors</span>
+          <span>{stats.totalVisitors}</span>
+          <span className="font-medium text-[var(--brand-text)]">Follow-ups</span>
+          <span>{stats.followUpTasks ?? followUpTasks.length}</span>
+        </div>
+      </header>
 
-      {/* Today Panel — operational command center, state-based colors */}
-      <div
-        className={`rounded-lg border px-4 py-2.5 shadow-sm transition-colors duration-200 ${
-          todayState === "follow_up_drafts_ready"
-            ? "border-amber-300 bg-amber-50"
-            : todayState === "visitors_checked_in"
-              ? "border-green-300 bg-green-50"
-              : todayState === "open_house_in_progress"
-                ? "border-blue-300 bg-blue-50"
-                : "border-[var(--brand-primary)]/25 bg-[var(--brand-primary)]/8"
+      {/* Live / Today status — unified, no conflicting copy */}
+      <section
+        className={`rounded-lg border px-4 py-3 shadow-sm transition-colors duration-200 ${
+          todayState === "open_house_live"
+            ? "border-emerald-400 bg-emerald-50"
+            : todayState === "upcoming_open_house_today"
+              ? "border-blue-300 bg-blue-50"
+              : todayState === "follow_up_drafts_ready"
+                ? "border-amber-300 bg-amber-50"
+                : todayState === "visitors_checked_in"
+                  ? "border-green-300 bg-green-50"
+                  : todayState === "private_showings_today"
+                    ? "border-[var(--brand-primary)]/30 bg-[var(--brand-primary)]/8"
+                    : "border-slate-200 bg-slate-50/80"
         }`}
         role="region"
-        aria-label="Today"
+        aria-label="Live and today"
       >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-col gap-0.5 min-w-0">
@@ -248,41 +268,50 @@ export default function ShowingHQOverviewPage() {
               className="text-[10px] font-semibold uppercase tracking-wider text-[var(--brand-primary)]"
               style={{ fontFamily: "var(--font-body)" }}
             >
-              Today
+              {todayState === "open_house_live" ? "Open House Live" : "Today"}
             </span>
             <span className="flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)] leading-tight">
-                {todayState === "follow_up_drafts_ready" && (
-                  <>
-                    <CheckSquare className="h-4 w-4 shrink-0 text-[var(--brand-secondary)]" />
-                    {followUpTasks.length} follow-up draft{followUpTasks.length !== 1 ? "s" : ""} ready to review
-                  </>
-                )}
-                {todayState === "visitors_checked_in" && (
-                  <>
-                    <Users className="h-4 w-4 shrink-0 text-[var(--brand-primary)]" />
-                    {visitorsToday} visitor{visitorsToday !== 1 ? "s" : ""} checked in
-                    {primaryOpenHouse?.property && <> at {primaryOpenHouse.property.address1}</>}
-                  </>
-                )}
-                {todayState === "open_house_in_progress" && activeShowing && (
-                  <>
-                    <Calendar className="h-4 w-4 text-[var(--brand-primary)]" />
-                    Open house in progress — {activeShowing.title}
-                  </>
-                )}
-                {todayState === "upcoming_open_house_today" && primaryOpenHouse && (
-                  <>
-                    <Calendar className="h-4 w-4 text-[var(--brand-secondary)]" />
-                    Open house today at {formatTime(primaryOpenHouse.startAt)} — {primaryOpenHouse.title}
-                  </>
-                )}
-                {todayState === "no_open_houses_today" && (
-                  <>
-                    <Calendar className="h-4 w-4 text-[var(--brand-text-muted)]" />
-                    No open houses scheduled today
-                  </>
-                )}
-              </span>
+              {todayState === "open_house_live" && activeOpenHouse && (
+                <>
+                  <Building2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                  {activeOpenHouse.property.address1}
+                  <span className="text-[var(--brand-text-muted)] font-normal">
+                    · {activeOpenHouse._count.visitors} visitor{activeOpenHouse._count.visitors !== 1 ? "s" : ""}
+                  </span>
+                </>
+              )}
+              {todayState === "upcoming_open_house_today" && primaryOpenHouse && (
+                <>
+                  <Calendar className="h-4 w-4 text-[var(--brand-primary)]" />
+                  {primaryOpenHouse.title} at {formatTime(primaryOpenHouse.startAt)}
+                </>
+              )}
+              {todayState === "private_showings_today" && (
+                <>
+                  <Calendar className="h-4 w-4 text-[var(--brand-primary)]" />
+                  Private showings scheduled today
+                </>
+              )}
+              {todayState === "follow_up_drafts_ready" && (
+                <>
+                  <CheckSquare className="h-4 w-4 shrink-0 text-amber-600" />
+                  {followUpTasks.length} follow-up draft{followUpTasks.length !== 1 ? "s" : ""} ready to review
+                </>
+              )}
+              {todayState === "visitors_checked_in" && (
+                <>
+                  <Users className="h-4 w-4 shrink-0 text-[var(--brand-primary)]" />
+                  {visitorsToday} visitor{visitorsToday !== 1 ? "s" : ""} checked in
+                  {primaryOpenHouse?.property && <> at {primaryOpenHouse.property.address1}</>}
+                </>
+              )}
+              {todayState === "nothing_scheduled" && (
+                <>
+                  <Calendar className="h-4 w-4 text-[var(--brand-text-muted)]" />
+                  Nothing scheduled today
+                </>
+              )}
+            </span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {(todayState === "follow_up_drafts_ready" || todayState === "visitors_checked_in") && (
@@ -293,43 +322,49 @@ export default function ShowingHQOverviewPage() {
                 </Link>
               </BrandButton>
             )}
-            {todayState === "no_open_houses_today" && (
+            {todayState === "nothing_scheduled" && (
               <BrandButton variant="primary" size="sm" asChild>
                 <Link href="/open-houses/new">
                   <Calendar className="mr-1.5 h-3.5 w-3.5" />
-                  Create open house
+                  Schedule open house
                 </Link>
               </BrandButton>
             )}
-            {(todayState === "upcoming_open_house_today" || todayState === "open_house_in_progress") && (
+            {(todayState === "upcoming_open_house_today" || todayState === "open_house_live") && primaryOpenHouse && (
               <>
                 <BrandButton variant="primary" size="sm" asChild>
-                  <Link href="/open-houses/sign-in">
+                  <Link href={`/open-houses/${primaryOpenHouse.id}/sign-in`}>
                     <QrCode className="mr-1.5 h-3.5 w-3.5" />
-                    Open sign-in page
+                    Host Mode
                   </Link>
                 </BrandButton>
-                {primaryOpenHouse && (
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/open-houses/${primaryOpenHouse.id}/sign-in`}>
-                      View QR code
-                    </Link>
-                  </Button>
+                {signInUrl && (
+                  <BrandButton variant="secondary" size="sm" asChild>
+                    <a href={signInUrl} target="_blank" rel="noopener noreferrer">
+                      Visitor Sign-In
+                    </a>
+                  </BrandButton>
                 )}
                 <Button variant="outline" size="sm" asChild>
-                  <Link href="/open-houses/new">Create open house</Link>
+                  <Link href={`/open-houses/${primaryOpenHouse.id}/sign-in/print`}>
+                    Print QR Poster
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="sm" onClick={signInUrl ? handleCopyLink(signInUrl) : undefined} disabled={!signInUrl}>
+                  <Copy className="mr-1.5 h-3.5 w-3.5" />
+                  {linkCopied ? "Copied" : "Copy link"}
                 </Button>
               </>
             )}
-            {signInUrl && (todayState === "follow_up_drafts_ready" || todayState === "visitors_checked_in") && (
+            {signInUrl && (todayState === "follow_up_drafts_ready" || todayState === "visitors_checked_in") && primaryOpenHouse && (
               <>
+                <BrandButton variant="primary" size="sm" asChild>
+                  <Link href={`/open-houses/${primaryOpenHouse.id}/sign-in`}>Host Mode</Link>
+                </BrandButton>
                 <Button variant="outline" size="sm" asChild>
-                  <Link href="/open-houses/sign-in">
-                    <QrCode className="mr-1.5 h-3.5 w-3.5" />
-                    Sign-in page
-                  </Link>
+                  <a href={signInUrl} target="_blank" rel="noopener noreferrer">Visitor Sign-In</a>
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleCopyLink(signInUrl)}>
+                <Button variant="ghost" size="sm" onClick={handleCopyLink(signInUrl)}>
                   <Copy className="mr-1.5 h-3.5 w-3.5" />
                   {linkCopied ? "Copied" : "Copy link"}
                 </Button>
@@ -337,7 +372,7 @@ export default function ShowingHQOverviewPage() {
             )}
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Today / Schedule — chronological: showings, open houses, follow-up reminders */}
       <BrandCard padded className="bg-white">
@@ -413,58 +448,68 @@ export default function ShowingHQOverviewPage() {
         )}
       </BrandCard>
 
+      {/* Active Open House — key actions, emphasized when live */}
+      {primaryOpenHouse && (todayState === "open_house_live" || todayState === "upcoming_open_house_today") && (
+        <div
+          className={`rounded-xl border px-4 py-4 shadow-md ${
+            activeOpenHouse
+              ? "border-emerald-400 bg-emerald-50 ring-1 ring-emerald-200/60"
+              : "border-blue-200 bg-blue-50/80"
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-600">
+                  {activeOpenHouse ? "Open House Live" : "Upcoming today"}
+                </p>
+                <p className="flex items-center gap-2 mt-0.5 text-base font-semibold text-[var(--brand-text)]">
+                  <Building2 className="h-4 w-4 shrink-0 text-slate-600" />
+                  {primaryOpenHouse.property.address1}
+                </p>
+                <p className="text-sm text-[var(--brand-text-muted)]">
+                  {primaryOpenHouse.property.city}, {primaryOpenHouse.property.state}
+                  {primaryOpenHouse._count.visitors > 0 && (
+                    <> · {primaryOpenHouse._count.visitors} visitor{primaryOpenHouse._count.visitors !== 1 ? "s" : ""}</>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <BrandButton variant="primary" size="sm" className="h-8" asChild>
+                <Link href={`/open-houses/${primaryOpenHouse.id}/sign-in`}>
+                  <QrCode className="mr-1.5 h-3.5 w-3.5" />
+                  Host Mode
+                </Link>
+              </BrandButton>
+              {signInUrl && (
+                <BrandButton variant="secondary" size="sm" className="h-8" asChild>
+                  <a href={signInUrl} target="_blank" rel="noopener noreferrer">
+                    Visitor Sign-In
+                  </a>
+                </BrandButton>
+              )}
+              <Button variant="outline" size="sm" className="h-8" asChild>
+                <Link href={`/open-houses/${primaryOpenHouse.id}/sign-in/print`}>
+                  Print QR Poster
+                </Link>
+              </Button>
+              {signInUrl && (
+                <Button variant="ghost" size="sm" className="h-8" onClick={handleCopyLink(signInUrl)}>
+                  <Copy className="mr-1.5 h-3.5 w-3.5" />
+                  {linkCopied ? "Copied" : "Copy link"}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showGettingStarted && !gettingStartedDismissed && (
         <GettingStartedCard
           steps={gettingStartedSteps}
           onDismiss={handleDismissGettingStarted}
         />
-      )}
-
-      {/* Active Open House spotlight — command center focus */}
-      {primaryOpenHouse && (
-        <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-2.5 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-4 min-w-0">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-blue-600/80">
-                  Active Open House
-                </p>
-                <p className="flex items-center gap-2 mt-0.5 text-base font-semibold text-[var(--brand-text)]">
-                  <Building2 className="h-4 w-4 shrink-0 text-blue-600" />
-                  {primaryOpenHouse.property.address1}
-                </p>
-                <p className="text-sm text-[var(--brand-text-muted)]">
-                  {primaryOpenHouse.property.city}, {primaryOpenHouse.property.state}
-                </p>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-[var(--brand-text-muted)]">
-                <Users className="h-4 w-4" />
-                {primaryOpenHouse._count.visitors} visitor{primaryOpenHouse._count.visitors !== 1 ? "s" : ""}
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" className="h-8" asChild>
-                <Link href={`/open-houses/${primaryOpenHouse.id}/sign-in`}>
-                  <QrCode className="mr-1.5 h-3.5 w-3.5" />
-                  View QR code
-                </Link>
-              </Button>
-              {signInUrl && (
-                <>
-                  <Button variant="outline" size="sm" className="h-8" onClick={handleCopyLink(signInUrl)}>
-                    <Copy className="mr-1.5 h-3.5 w-3.5" />
-                    {linkCopied ? "Copied" : "Copy link"}
-                  </Button>
-                  <BrandButton variant="primary" size="sm" className="h-8" asChild>
-                    <a href={signInUrl} target="_blank" rel="noopener noreferrer">
-                      Open sign-in
-                    </a>
-                  </BrandButton>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Metric chips — compact */}
@@ -521,10 +566,10 @@ export default function ShowingHQOverviewPage() {
         </div>
       </div>
 
-      {/* 2-column grid: Row 1 = Recent Visitors | Follow-up Tasks, Row 2 = Today's | Upcoming */}
+      {/* 2-column grid: Recent Visitors | Follow-up Tasks, then Today's OH | Upcoming */}
       <div className="grid flex-1 min-h-0 gap-3 lg:grid-cols-2 lg:grid-rows-2">
         {/* Recent Visitors */}
-        <BrandCard padded={false} className="flex flex-col min-h-0 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+        <BrandCard padded={false} className="flex flex-col min-h-0 bg-white p-4 shadow-sm ring-1 ring-slate-200/60 transition-shadow hover:shadow-md">
           <div className="mb-2 flex items-center justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
@@ -610,7 +655,7 @@ export default function ShowingHQOverviewPage() {
         </BrandCard>
 
         {/* Follow-up Tasks */}
-        <BrandCard padded={false} className="flex flex-col min-h-0 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+        <BrandCard padded={false} className="flex flex-col min-h-0 bg-white p-4 shadow-sm ring-1 ring-slate-200/60 transition-shadow hover:shadow-md">
           <div className="mb-2 flex items-center justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
@@ -633,23 +678,28 @@ export default function ShowingHQOverviewPage() {
           <div className="min-h-0 flex-1 overflow-auto">
             {followUpTasks.length === 0 ? (
               <div className="space-y-2">
-                <div className="rounded border border-dashed border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/30 p-2">
-                  <p className="text-xs text-[var(--brand-text-muted)]">
-                    Follow-up drafts appear here after visitors sign in at your open house.
-                  </p>
-                </div>
-                <BrandEmptyState
-                  compact
-                  variant="premium"
-                  icon={<CheckSquare className="h-5 w-5" />}
-                  title="No pending tasks"
-                  description="Visitors sign in → we create drafts here."
-                  action={
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href="/showing-hq/follow-ups">View follow-ups</Link>
+                {stats.totalVisitors > 0 || recentVisitors.length > 0 ? (
+                  <div className="rounded-lg border border-amber-200/80 bg-amber-50/50 p-3">
+                    <p className="text-sm font-medium text-[var(--brand-text)]">
+                      {stats.totalVisitors} visitor{stats.totalVisitors !== 1 ? "s" : ""} captured.
+                    </p>
+                    <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">
+                      Follow-up drafts will appear here after draft generation runs. Visit Follow-ups to generate or review.
+                    </p>
+                    <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" asChild>
+                      <Link href="/showing-hq/follow-ups">Go to Follow-ups</Link>
                     </Button>
-                  }
-                />
+                  </div>
+                ) : (
+                  <div className="rounded border border-dashed border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/30 p-3">
+                    <p className="text-xs text-[var(--brand-text-muted)]">
+                      Follow-up drafts appear here after visitors sign in at your open house and drafts are generated.
+                    </p>
+                    <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" asChild>
+                      <Link href="/open-houses/sign-in">Get sign-in link</Link>
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <ul className="space-y-1.5">
