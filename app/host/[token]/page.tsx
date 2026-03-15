@@ -26,6 +26,7 @@ import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { QrCode, Users, FileText, ExternalLink, Copy } from "lucide-react";
 import { HOST_FEEDBACK_TAGS, TRAFFIC_LEVELS } from "@/lib/validations/open-house";
 import { VisitorRow } from "./VisitorRow";
+import { SignInFormFields } from "@/components/oh/SignInFormFields";
 
 type HostData = {
   invite: { id: string; email: string; role: string; expiresAt: string };
@@ -186,7 +187,7 @@ export default function HostDashboardPage() {
           </Badge>
         </header>
 
-        {/* QR Code + Sign-in link */}
+        {/* Large QR + Sign-in link + inline check-in form (host page) */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
@@ -194,49 +195,69 @@ export default function HostDashboardPage() {
               Visitor sign-in
             </CardTitle>
             <CardDescription>
-              Share the QR code or link so visitors can check in on their phone
+              Share the QR code or link so visitors can check in on their phone, or check someone in here.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex flex-col items-center gap-4">
-            {data.qrCodeDataUrl && (
-              <div className="rounded-xl border border-slate-200 bg-white p-4">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={data.qrCodeDataUrl}
-                  alt="QR Code for visitor sign-in"
-                  width={220}
-                  height={220}
-                />
-              </div>
-            )}
-            {data.signInUrl && (
-              <div className="flex w-full max-w-sm flex-col items-center gap-2">
-                <p className="text-xs font-medium text-slate-500">Sign-in link</p>
-                <p className="break-all text-center font-mono text-sm text-slate-600">
-                  {data.signInUrl}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleCopyLink(data.signInUrl)}
-                  >
-                    <Copy className="mr-1.5 h-3.5 w-3.5" />
-                    {linkCopied ? "Copied" : "Copy"}
-                  </Button>
-                  <Button variant="default" size="sm" asChild>
-                    <a
-                      href={data.signInUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                      Open
-                    </a>
-                  </Button>
+          <CardContent className="flex flex-col gap-6">
+            <div className="flex flex-col items-center gap-4">
+              {data.qrCodeDataUrl && (
+                <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={data.qrCodeDataUrl}
+                    alt="QR Code for visitor sign-in"
+                    width={220}
+                    height={220}
+                  />
                 </div>
-              </div>
-            )}
+              )}
+              {data.signInUrl && (
+                <div className="flex w-full max-w-sm flex-col items-center gap-2">
+                  <p className="text-xs font-medium text-slate-500">Sign-in link</p>
+                  <p className="break-all text-center font-mono text-sm text-slate-600">
+                    {data.signInUrl}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyLink(data.signInUrl)}
+                    >
+                      <Copy className="mr-1.5 h-3.5 w-3.5" />
+                      {linkCopied ? "Copied" : "Copy"}
+                    </Button>
+                    <Button variant="default" size="sm" asChild>
+                      <a
+                        href={data.signInUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                        Open
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="border-t border-slate-200 pt-4">
+              <p className="mb-3 text-sm font-medium text-slate-700">Check in here (e.g. walk-in)</p>
+              <SignInFormFields
+                openHouse={{
+                  id: oh.id,
+                  title: oh.title,
+                  startAt: oh.startAt,
+                  endAt: oh.endAt,
+                  property: {
+                    ...oh.property,
+                    zip: (oh.property as { zip?: string }).zip ?? "",
+                  },
+                }}
+                signInMethod="TABLET"
+                compact
+                onSuccess={fetchData}
+              />
+            </div>
           </CardContent>
         </Card>
 

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { generateQrCodeDataUrl } from "@/lib/qr";
 
 /**
  * Public API - no auth required.
  * Returns open house info by QR slug for the public sign-in page.
+ * Includes qrCodeDataUrl for optional desktop/tablet QR display (hidden on mobile).
  */
 export async function GET(
   _req: NextRequest,
@@ -28,6 +30,7 @@ export async function GET(
         { status: 404 }
       );
     }
+    const qrCodeDataUrl = await generateQrCodeDataUrl(openHouse.qrSlug);
     const profile = openHouse.hostUser.profile;
     const branding = profile
       ? {
@@ -55,6 +58,7 @@ export async function GET(
         endAt: openHouse.endAt,
         agentName: branding.displayName,
         flyerUrl: openHouse.flyerUrl,
+        qrCodeDataUrl,
         property: {
           address1: openHouse.property.address1,
           address2: openHouse.property.address2,

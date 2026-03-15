@@ -111,3 +111,26 @@ body {
     animation: visitor-highlight 2s ease-out forwards;
   }
 }
+
+/* Printable QR poster: hide everything except .print-qr-poster when printing */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-qr-poster,
+  .print-qr-poster * {
+    visibility: visible;
+  }
+  .print-qr-poster {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    min-height: 100vh;
+    padding: 1in;
+    background: white;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

@@ -212,6 +212,22 @@ export default function ShowingHQOverviewPage() {
 
   return (
     <div className="min-h-0 flex flex-col gap-3" style={{ backgroundColor: "#f8fafc" }}>
+      {/* ShowingHQ hero / product identity */}
+      <div
+        className="rounded-xl border border-[var(--brand-border)] bg-white px-5 py-6 shadow-sm"
+        role="banner"
+      >
+        <h1
+          className="text-xl font-bold tracking-tight text-[var(--brand-text)] md:text-2xl"
+          style={{ fontFamily: "var(--font-heading)" }}
+        >
+          Welcome to ShowingHQ
+        </h1>
+        <p className="mt-2 max-w-2xl text-sm text-[var(--brand-text-muted)] md:text-base">
+          Manage private showings, open houses, visitors, and follow-ups in one command center.
+        </p>
+      </div>
+
       {/* Today Panel — operational command center, state-based colors */}
       <div
         className={`rounded-lg border px-4 py-2.5 shadow-sm transition-colors duration-200 ${
@@ -323,6 +339,80 @@ export default function ShowingHQOverviewPage() {
         </div>
       </div>
 
+      {/* Today / Schedule — chronological: showings, open houses, follow-up reminders */}
+      <BrandCard padded className="bg-white">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
+          <Calendar className="h-4 w-4 text-[var(--brand-primary)]" />
+          Today &amp; Schedule
+        </h2>
+        {(data?.todaysSchedule?.length ?? 0) > 0 || followUpTasks.length > 0 ? (
+          <ul className="space-y-2">
+            {(data?.todaysSchedule ?? []).map((item) => (
+              <li
+                key={`${item.type}-${item.id}`}
+                className="flex items-center justify-between gap-3 rounded-md border border-[var(--brand-border)] p-2.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-[var(--brand-text)]">
+                    {formatTime(item.at)} — {item.title}
+                  </p>
+                  <p className="truncate text-xs text-[var(--brand-text-muted)]">
+                    {item.property.address1}, {item.property.city}
+                  </p>
+                </div>
+                <Badge variant={item.type === "open_house" ? "default" : "secondary"} className="shrink-0 text-[10px]">
+                  {item.type === "open_house" ? "Open house" : "Showing"}
+                </Badge>
+                {item.type === "open_house" ? (
+                  <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                    <Link href={`/showing-hq/open-houses/${item.id}`}>View</Link>
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                    <Link href="/showing-hq/showings">View</Link>
+                  </Button>
+                )}
+              </li>
+            ))}
+            {followUpTasks.length > 0 && (
+              <li className="flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50/60 p-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-[var(--brand-text)]">
+                    Follow-up reminders — {followUpTasks.length} draft{followUpTasks.length !== 1 ? "s" : ""} ready to review
+                  </p>
+                  <p className="text-xs text-[var(--brand-text-muted)]">
+                    Review and send follow-up emails to visitors
+                  </p>
+                </div>
+                <Badge variant="outline" className="shrink-0 text-[10px] border-amber-300 text-amber-800">
+                  Follow-up
+                </Badge>
+                <BrandButton variant="primary" size="sm" className="h-7 text-xs" asChild>
+                  <Link href="/showing-hq/follow-ups">
+                    <CheckSquare className="mr-1.5 h-3.5 w-3.5" />
+                    Review
+                  </Link>
+                </BrandButton>
+              </li>
+            )}
+          </ul>
+        ) : (
+          <div className="rounded-md border border-dashed border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/30 px-4 py-6 text-center">
+            <p className="text-sm text-[var(--brand-text-muted)]">
+              No private showings, open houses, or follow-up reminders scheduled for today.
+            </p>
+            <div className="mt-3 flex flex-wrap justify-center gap-2">
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/showing-hq/showings/new">Add showing</Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/open-houses/new">Create open house</Link>
+              </Button>
+            </div>
+          </div>
+        )}
+      </BrandCard>
+
       {showGettingStarted && !gettingStartedDismissed && (
         <GettingStartedCard
           steps={gettingStartedSteps}
@@ -430,41 +520,6 @@ export default function ShowingHQOverviewPage() {
           </div>
         </div>
       </div>
-
-      {/* Today schedule — chronological list of showings + open houses */}
-      {(data?.todaysSchedule?.length ?? 0) > 0 && (
-        <BrandCard padded className="bg-white">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
-            <Calendar className="h-4 w-4 text-[var(--brand-primary)]" />
-            Today&apos;s schedule
-          </h2>
-          <ul className="space-y-2">
-            {data!.todaysSchedule!.map((item) => (
-              <li
-                key={`${item.type}-${item.id}`}
-                className="flex items-center justify-between gap-3 rounded-md border border-[var(--brand-border)] p-2.5"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-[var(--brand-text)]">
-                    {formatTime(item.at)} — {item.title}
-                  </p>
-                  <p className="truncate text-xs text-[var(--brand-text-muted)]">
-                    {item.property.address1}, {item.property.city}
-                  </p>
-                </div>
-                <Badge variant={item.type === "open_house" ? "default" : "secondary"} className="shrink-0 text-[10px]">
-                  {item.type === "open_house" ? "Open house" : "Showing"}
-                </Badge>
-                {item.type === "open_house" && (
-                  <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
-                    <Link href={`/showing-hq/open-houses/${item.id}`}>View</Link>
-                  </Button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </BrandCard>
-      )}
 
       {/* 2-column grid: Row 1 = Recent Visitors | Follow-up Tasks, Row 2 = Today's | Upcoming */}
       <div className="grid flex-1 min-h-0 gap-3 lg:grid-cols-2 lg:grid-rows-2">

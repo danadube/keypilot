@@ -59,7 +59,7 @@ export default function OpenSignInPage() {
     }
   }, [loading, openHouses, router]);
 
-  if (loading) return <PageLoading message="Loading showings..." />;
+  if (loading) return <PageLoading message="Loading open houses..." />;
   if (error) return <ErrorMessage message={error} onRetry={() => window.location.reload()} />;
 
   const active = openHouses.filter(
@@ -92,20 +92,20 @@ export default function OpenSignInPage() {
         <Button variant="ghost" size="sm" asChild>
           <Link href="/open-houses">← Back</Link>
         </Button>
-        <h1 className="text-2xl font-semibold">Open sign-in</h1>
+        <h1 className="text-2xl font-semibold">Sign-in & QR</h1>
       </div>
 
       {active.length === 0 && recentOthers.length === 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>No showings yet</CardTitle>
+            <CardTitle>No open houses yet</CardTitle>
             <CardDescription>
-              Create a showing first, then open the sign-in display for your tablet.
+              Create an open house first, then open the host sign-in page for your tablet or print the QR poster.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button asChild>
-              <Link href="/open-houses/new">New showing</Link>
+              <Link href="/open-houses/new">New open house</Link>
             </Button>
           </CardContent>
         </Card>
@@ -115,7 +115,7 @@ export default function OpenSignInPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Active / upcoming</CardTitle>
-                <CardDescription>Select a showing to open the tablet sign-in</CardDescription>
+                <CardDescription>Select an open house to open the host sign-in page (QR + check-in)</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 {active.map((oh) => (
@@ -136,7 +136,7 @@ export default function OpenSignInPage() {
                     <Button asChild size="sm">
                       <Link href={`/open-houses/${oh.id}/sign-in`}>
                         <QrCode className="mr-2 h-4 w-4" />
-                        Open sign-in
+                        Host sign-in
                       </Link>
                     </Button>
                   </div>
@@ -148,7 +148,7 @@ export default function OpenSignInPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Recent</CardTitle>
-                <CardDescription>Past showings</CardDescription>
+                <CardDescription>Past open houses</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 {recentOthers.map((oh) => (

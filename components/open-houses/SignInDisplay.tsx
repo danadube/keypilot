@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { trackEvent } from "@/lib/track-usage-client";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Printer } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -120,14 +120,21 @@ export function SignInDisplay({ openHouseId }: { openHouseId: string }) {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-6xl flex-col py-8 px-6">
-      {/* Back navigation */}
-      <div className="mb-8">
+      {/* Back navigation + Print */}
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <Link
           href={`/open-houses/${openHouseId}`}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--brand-text-muted)] transition-colors hover:text-[var(--brand-text)]"
         >
           <ChevronLeft className="h-4 w-4" />
           Back to open house details
+        </Link>
+        <Link
+          href={`/open-houses/${openHouseId}/sign-in/print`}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--brand-text-muted)] transition-colors hover:text-[var(--brand-text)]"
+        >
+          <Printer className="h-4 w-4" />
+          Print QR poster
         </Link>
       </div>
 

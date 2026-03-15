@@ -358,14 +358,24 @@ export default function ShowingHQOpenHouseDetailPage() {
                 />
                 {regenerating ? "Regenerating..." : "Regenerate QR"}
               </Button>
+              <Button size="sm" variant="outline" asChild>
+                <Link href={`/open-houses/${openHouseId}/sign-in`}>
+                  <QrCode className="mr-2 h-4 w-4" />
+                  Host sign-in
+                </Link>
+              </Button>
+              <Button size="sm" variant="outline" asChild>
+                <Link href={`/open-houses/${openHouseId}/sign-in/print`}>
+                  Print QR poster
+                </Link>
+              </Button>
               <Button size="sm" variant="secondary" asChild>
                 <a
                   href={signInUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <QrCode className="mr-2 h-4 w-4" />
-                  Open sign-in page
+                  Open visitor page
                 </a>
               </Button>
             </div>

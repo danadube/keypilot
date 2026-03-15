@@ -18,6 +18,7 @@ type OpenHouseInfo = {
   endAt: string;
   agentName?: string | null;
   flyerUrl?: string | null;
+  qrCodeDataUrl?: string | null;
   property: {
     address1: string;
     address2?: string | null;
@@ -217,6 +218,25 @@ export function VisitorSignInForm({ slug }: { slug: string }) {
                 onSuccess={() => setSuccess(true)}
               />
             </div>
+
+            {/* QR optional on desktop/tablet only — hidden on phones so visitors use the form directly */}
+            {oh.qrCodeDataUrl && (
+              <div className="mt-6 hidden md:block rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-2">
+                  Or scan to open on your phone
+                </p>
+                <div className="flex justify-center">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={oh.qrCodeDataUrl}
+                    alt="Scan to open sign-in on your phone"
+                    width={120}
+                    height={120}
+                    className="rounded border border-slate-200 bg-white p-1"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <p className="mt-8 text-center text-[10px] text-slate-400">
