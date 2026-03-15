@@ -23,6 +23,7 @@ import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
 import { GettingStartedCard, buildGettingStartedSteps } from "@/components/showing-hq/GettingStartedCard";
 import { ShowingHQCalendar } from "@/components/showing-hq/ShowingHQCalendar";
 import type { CalendarEvent } from "@/components/showing-hq/ShowingHQCalendar";
+import { QuickCreateEventModal } from "@/components/showing-hq/QuickCreateEventModal";
 import { TodaysScheduleCard } from "@/components/showing-hq/TodaysScheduleCard";
 import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
 import { NextActionsCard } from "@/components/showing-hq/NextActionsCard";
@@ -88,8 +89,17 @@ type DashboardData = {
     id: string;
     title: string;
     at: string;
+    endAt?: string;
     property: { address1: string; city: string; state: string };
   }>;
+  tomorrowFirstEvent?: {
+    type: "open_house" | "showing";
+    id: string;
+    title: string;
+    at: string;
+    endAt: string;
+    property: { address1: string; city: string; state: string };
+  } | null;
 };
 
 const GETTING_STARTED_DISMISSED_KEY = "showinghq-getting-started-dismissed";
@@ -100,6 +110,9 @@ export default function ShowingHQOverviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [gettingStartedDismissed, setGettingStartedDismissed] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+  const [quickCreateDate, setQuickCreateDate] = useState<string | null>(null);
+  const [rescheduleToast, setRescheduleToast] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -124,16 +137,24 @@ export default function ShowingHQOverviewPage() {
     }
   };
 
-  useEffect(() => {
+  const refetchDashboard = () =>
     fetch("/api/v1/showing-hq/dashboard")
       .then((res) => res.json())
       .then((json) => {
         if (json.error) setError(json.error.message);
         else setData(json.data);
       })
-      .catch(() => setError("Failed to load"))
-      .finally(() => setLoading(false));
+      .catch(() => setError("Failed to load"));
+
+  useEffect(() => {
+    refetchDashboard().finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!rescheduleToast) return;
+    const t = setTimeout(() => setRescheduleToast(false), 2500);
+    return () => clearTimeout(t);
+  }, [rescheduleToast]);
 
   if (loading) return <PageLoading message="Loading dashboard..." />;
   if (error) return <ErrorMessage message={error} onRetry={() => window.location.reload()} />;
@@ -227,26 +248,51 @@ export default function ShowingHQOverviewPage() {
     id: s.id,
     title: s.title,
     at: s.at,
+    endAt: s.endAt,
     property: s.property,
   }));
+  const tomorrowItem: ScheduleItem | null =
+    data?.tomorrowFirstEvent != null
+      ? {
+          type: data.tomorrowFirstEvent.type,
+          id: data.tomorrowFirstEvent.id,
+          title: data.tomorrowFirstEvent.title,
+          at: data.tomorrowFirstEvent.at,
+          endAt: data.tomorrowFirstEvent.endAt,
+          property: data.tomorrowFirstEvent.property,
+        }
+      : null;
 
   const now = new Date();
   const nextActions: NextActionItem[] = [];
+  const nextShowing = scheduleItems
+    .filter((s) => s.type === "showing" && new Date(s.at) > now)
+    .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())[0];
   const nextOh = todaysShowings.find((oh) => new Date(oh.startAt) > now && oh.status !== "ACTIVE");
+  if (nextShowing) {
+    const start = new Date(nextShowing.at);
+    const mins = Math.round((start.getTime() - now.getTime()) / 60000);
+    const label =
+      mins <= 30
+        ? `Showing in ${mins} min · ${nextShowing.property.address1}`
+        : `Showing at ${formatTime(nextShowing.at)} · ${nextShowing.property.address1}`;
+    nextActions.push({ id: "next-showing", label, href: "/showing-hq/showings", icon: "clock" });
+  }
   if (nextOh) {
     const start = new Date(nextOh.startAt);
     const mins = Math.round((start.getTime() - now.getTime()) / 60000);
-    const label = mins <= 60
-      ? `Open house in ${mins} min · ${nextOh.property.address1}`
-      : `Open house at ${formatTime(nextOh.startAt)} · ${nextOh.property.address1}`;
+    const label =
+      mins <= 60
+        ? `Open house in ${mins} min · ${nextOh.property.address1}`
+        : `Open house at ${formatTime(nextOh.startAt)} · ${nextOh.property.address1}`;
     nextActions.push({ id: "next-oh", label, href: `/open-houses/${nextOh.id}/sign-in`, icon: "clock" });
   }
-  if (followUpTasks.length > 0) {
+  if (visitorsToday > 0 && followUpTasks.length === 0) {
     nextActions.push({
-      id: "follow-ups",
-      label: `Review ${followUpTasks.length} follow-up draft${followUpTasks.length !== 1 ? "s" : ""}`,
-      href: "/showing-hq/follow-ups",
-      icon: "check",
+      id: "visitors-pending",
+      label: `${visitorsToday} visitor${visitorsToday !== 1 ? "s" : ""} captured · follow-up pending`,
+      href: "/showing-hq/visitors",
+      icon: "users",
     });
   }
   if ((stats.feedbackRequestsPending ?? 0) > 0) {
@@ -257,12 +303,12 @@ export default function ShowingHQOverviewPage() {
       icon: "message",
     });
   }
-  if (visitorsToday > 0 && followUpTasks.length === 0) {
+  if (followUpTasks.length > 0) {
     nextActions.push({
-      id: "visitors-pending",
-      label: `${visitorsToday} visitor${visitorsToday !== 1 ? "s" : ""} captured · follow-up pending`,
-      href: "/showing-hq/visitors",
-      icon: "users",
+      id: "follow-ups",
+      label: `Review ${followUpTasks.length} follow-up draft${followUpTasks.length !== 1 ? "s" : ""}`,
+      href: "/showing-hq/follow-ups",
+      icon: "check",
     });
   }
 
@@ -298,15 +344,42 @@ export default function ShowingHQOverviewPage() {
       </header>
 
       {/* Calendar + Today's Schedule + Next Actions — operations workspace row */}
-      <div className="grid min-h-0 gap-4 lg:grid-cols-[1.2fr_0.85fr_0.45fr]">
-        <ShowingHQCalendar events={data?.calendarEvents ?? []} height={340} />
+      <div className="grid min-h-0 gap-4 lg:grid-cols-[1.5fr_0.9fr_0.6fr]">
+        <ShowingHQCalendar
+          events={data?.calendarEvents ?? []}
+          height={380}
+          onDateClick={(dateStr) => {
+            setQuickCreateDate(dateStr);
+            setQuickCreateOpen(true);
+          }}
+          onEventRescheduled={() => {
+            setRescheduleToast(true);
+            refetchDashboard();
+          }}
+        />
         <TodaysScheduleCard
           scheduleItems={scheduleItems}
+          tomorrowItem={tomorrowItem}
           followUpCount={followUpTasks.length}
           formatTime={formatTime}
         />
         <NextActionsCard items={nextActions} />
       </div>
+
+      <QuickCreateEventModal
+        open={quickCreateOpen}
+        onOpenChange={setQuickCreateOpen}
+        initialDateStr={quickCreateDate}
+        onSaved={() => refetchDashboard()}
+      />
+      {rescheduleToast && (
+        <div
+          className="fixed bottom-4 right-4 z-50 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-[var(--brand-text)] shadow-lg"
+          role="status"
+        >
+          Rescheduled
+        </div>
+      )}
 
       {/* Live / Today status — unified, no conflicting copy */}
       <section

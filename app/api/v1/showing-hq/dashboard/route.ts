@@ -183,23 +183,66 @@ export async function GET() {
       }),
     ]);
 
+    const showingEndAt = (s: { scheduledAt: Date }) =>
+      new Date(s.scheduledAt.getTime() + 60 * 60 * 1000);
     const todaysSchedule = [
       ...todaysOpenHouses.map((oh) => ({
         type: "open_house" as const,
         id: oh.id,
         title: oh.title,
         at: oh.startAt,
+        endAt: oh.endAt,
         property: oh.property,
         _count: (oh as { _count?: { visitors: number } })._count,
       })),
       ...todaysPrivateShowings.map((s) => ({
         type: "showing" as const,
         id: s.id,
-        title: (s.buyerName || s.buyerAgentName || "Private showing") as string,
+        title: s.property.address1,
         at: s.scheduledAt,
+        endAt: showingEndAt(s),
         property: s.property,
       })),
     ].sort((a, b) => a.at.getTime() - b.at.getTime());
+
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    const tomorrowEnd = new Date(tomorrowStart);
+    tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
+    const firstOpenHouseTomorrow = upcomingOpenHouses.find(
+      (oh) => oh.startAt >= tomorrowStart && oh.startAt < tomorrowEnd
+    );
+    const firstShowingTomorrow = await prisma.showing.findFirst({
+      where: {
+        hostUserId: user.id,
+        deletedAt: null,
+        scheduledAt: { gte: tomorrowStart, lt: tomorrowEnd },
+      },
+      include: { property: true },
+      orderBy: { scheduledAt: "asc" },
+    });
+    const tomorrowFirstEvent =
+      firstOpenHouseTomorrow || firstShowingTomorrow
+        ? firstOpenHouseTomorrow
+          ? {
+              type: "open_house" as const,
+              id: firstOpenHouseTomorrow.id,
+              title: firstOpenHouseTomorrow.title,
+              at: firstOpenHouseTomorrow.startAt,
+              endAt: firstOpenHouseTomorrow.endAt,
+              property: firstOpenHouseTomorrow.property,
+            }
+          : firstShowingTomorrow
+            ? {
+                type: "showing" as const,
+                id: firstShowingTomorrow.id,
+                title: firstShowingTomorrow.property.address1,
+                at: firstShowingTomorrow.scheduledAt,
+                endAt: showingEndAt(firstShowingTomorrow),
+                property: firstShowingTomorrow.property,
+              }
+            : null
+        : null;
 
     const hasCalendar = connections.some(
       (c) => c.service === "GOOGLE_CALENDAR" && c.enabledForCalendar
@@ -233,12 +276,16 @@ export async function GET() {
       ...openHousesInMonth.map((oh) => ({
         id: `oh-${oh.id}`,
         type: "open_house" as const,
-        title: `Open House · ${shortAddress(oh.property.address1)}`,
+        title: shortAddress(oh.property.address1),
         start: oh.startAt.toISOString(),
         end: oh.endAt.toISOString(),
         backgroundColor: "#0ea5e9",
         borderColor: "#0284c7",
-        extendedProps: { address: oh.property.address1, city: oh.property.city },
+        extendedProps: {
+          address: oh.property.address1,
+          city: oh.property.city,
+          eventTypeLabel: "Open House",
+        },
       })),
       ...showingsInMonth.map((s) => {
         const start = s.scheduledAt;
@@ -247,12 +294,16 @@ export async function GET() {
         return {
           id: `s-${s.id}`,
           type: "showing" as const,
-          title: `Showing · ${shortAddress(s.property.address1)}`,
+          title: shortAddress(s.property.address1),
           start: start.toISOString(),
           end: end.toISOString(),
           backgroundColor: "#d97706",
           borderColor: "#b45309",
-          extendedProps: { address: s.property.address1, city: s.property.city },
+          extendedProps: {
+            address: s.property.address1,
+            city: s.property.city,
+            eventTypeLabel: "Showing",
+          },
         };
       }),
     ];
@@ -266,7 +317,15 @@ export async function GET() {
         todaysSchedule: todaysSchedule.map((s) => ({
           ...s,
           at: s.at.toISOString(),
+          endAt: s.endAt.toISOString(),
         })),
+        tomorrowFirstEvent: tomorrowFirstEvent
+          ? {
+              ...tomorrowFirstEvent,
+              at: tomorrowFirstEvent.at.toISOString(),
+              endAt: tomorrowFirstEvent.endAt.toISOString(),
+            }
+          : null,
         upcomingOpenHouses,
         recentVisitors,
         followUpTasks: followUpDrafts,

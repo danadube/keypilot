@@ -10,4 +10,9 @@ export const CreateShowingSchema = z.object({
   feedbackRequired: z.boolean().optional().default(false),
 });
 
+export const RescheduleShowingSchema = z.object({
+  scheduledAt: z.coerce.date(),
+});
+
 export type CreateShowingInput = z.infer<typeof CreateShowingSchema>;
+export type RescheduleShowingInput = z.infer<typeof RescheduleShowingSchema>;

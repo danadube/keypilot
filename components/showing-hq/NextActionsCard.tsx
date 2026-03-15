@@ -25,12 +25,12 @@ const iconMap = {
 
 export function NextActionsCard({ items }: NextActionsCardProps) {
   return (
-    <BrandCard padded className="flex h-full min-h-0 flex-col bg-white">
-      <h2 className="mb-3 text-sm font-semibold text-[var(--brand-text)]">
+    <BrandCard className="flex h-full min-h-0 flex-col bg-white p-4">
+      <h2 className="mb-2 text-sm font-semibold text-[var(--brand-text)]">
         Next Actions
       </h2>
       {items.length > 0 ? (
-        <ul className="flex flex-1 flex-col gap-2 overflow-auto">
+        <ul className="flex flex-1 flex-col gap-1.5 overflow-auto">
           {items.map((item) => {
             const Icon = iconMap[item.icon];
             return (
