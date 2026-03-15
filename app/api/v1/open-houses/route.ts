@@ -14,12 +14,18 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status");
     const openHouses = await prisma.openHouse.findMany({
       where: {
-        hostUserId: user.id,
+        OR: [
+          { hostUserId: user.id },
+          { listingAgentId: user.id },
+          { hostAgentId: user.id },
+        ],
         deletedAt: null,
         ...(status ? { status: status as "DRAFT" | "SCHEDULED" | "ACTIVE" | "COMPLETED" | "CANCELLED" } : {}),
       },
       include: {
         property: true,
+        listingAgent: { select: { id: true, name: true, email: true } },
+        hostAgent: { select: { id: true, name: true, email: true } },
         _count: { select: { visitors: true } },
       },
       orderBy: { startAt: "desc" },
@@ -43,6 +49,13 @@ export async function POST(req: NextRequest) {
       qrSlug = generateQrSlug();
       exists = await prisma.openHouse.findUnique({ where: { qrSlug } });
     }
+    const property = await prisma.property.findUnique({
+      where: { id: parsed.propertyId },
+    });
+    if (!property) return apiError("Property not found", 404);
+    const listingAgentId = parsed.listingAgentId ?? property.createdByUserId;
+    const hostAgentId = parsed.hostAgentId ?? listingAgentId;
+
     const openHouse = await prisma.openHouse.create({
       data: {
         propertyId: parsed.propertyId,
@@ -54,9 +67,11 @@ export async function POST(req: NextRequest) {
         agentEmail: parsed.agentEmail?.trim() || null,
         agentPhone: parsed.agentPhone?.trim() || null,
         hostUserId: user.id,
+        listingAgentId,
+        hostAgentId,
         qrSlug,
       },
-      include: { property: true },
+      include: { property: true, listingAgent: true, hostAgent: true },
     });
     const address = [
       openHouse.property.address1,

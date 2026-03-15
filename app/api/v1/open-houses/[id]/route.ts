@@ -16,11 +16,17 @@ export async function GET(
     const openHouse = await prisma.openHouse.findFirst({
       where: {
         id,
-        hostUserId: user.id,
         deletedAt: null,
+        OR: [
+          { hostUserId: user.id },
+          { listingAgentId: user.id },
+          { hostAgentId: user.id },
+        ],
       },
       include: {
         property: true,
+        listingAgent: { select: { id: true, name: true, email: true } },
+        hostAgent: { select: { id: true, name: true, email: true } },
         visitors: {
           include: { contact: true },
         },
@@ -82,8 +88,12 @@ export async function PUT(
     const existing = await prisma.openHouse.findFirst({
       where: {
         id,
-        hostUserId: user.id,
         deletedAt: null,
+        OR: [
+          { hostUserId: user.id },
+          { listingAgentId: user.id },
+          { hostAgentId: user.id },
+        ],
       },
     });
     if (!existing) {
@@ -94,10 +104,39 @@ export async function PUT(
     }
     const body = await req.json();
     const parsed = UpdateOpenHouseSchema.parse(body);
+    const {
+      propertyId,
+      title,
+      startAt,
+      endAt,
+      listingAgentId,
+      hostAgentId,
+      agentName,
+      agentEmail,
+      agentPhone,
+      notes,
+      trafficLevel,
+      feedbackTags,
+      hostNotes,
+    } = parsed;
+    const updateData: Record<string, unknown> = {};
+    if (propertyId !== undefined) updateData.propertyId = propertyId;
+    if (title !== undefined) updateData.title = title;
+    if (startAt !== undefined) updateData.startAt = startAt;
+    if (endAt !== undefined) updateData.endAt = endAt;
+    if (listingAgentId !== undefined) updateData.listingAgentId = listingAgentId;
+    if (hostAgentId !== undefined) updateData.hostAgentId = hostAgentId;
+    if (agentName !== undefined) updateData.agentName = agentName?.trim() || null;
+    if (agentEmail !== undefined) updateData.agentEmail = agentEmail?.trim() || null;
+    if (agentPhone !== undefined) updateData.agentPhone = agentPhone?.trim() || null;
+    if (notes !== undefined) updateData.notes = notes?.trim() || null;
+    if (trafficLevel !== undefined) updateData.trafficLevel = trafficLevel;
+    if (feedbackTags !== undefined) updateData.feedbackTags = feedbackTags;
+    if (hostNotes !== undefined) updateData.hostNotes = hostNotes?.trim() || null;
     const openHouse = await prisma.openHouse.update({
       where: { id },
-      data: parsed,
-      include: { property: true },
+      data: updateData,
+      include: { property: true, listingAgent: true, hostAgent: true },
     });
     return NextResponse.json({ data: openHouse });
   } catch (e) {
@@ -117,8 +156,12 @@ export async function DELETE(
     const openHouse = await prisma.openHouse.findFirst({
       where: {
         id,
-        hostUserId: user.id,
         deletedAt: null,
+        OR: [
+          { hostUserId: user.id },
+          { listingAgentId: user.id },
+          { hostAgentId: user.id },
+        ],
       },
     });
     if (!openHouse) {

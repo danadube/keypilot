@@ -25,8 +25,10 @@ model User {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  properties        Property[]
-  openHouses        OpenHouse[]
+  properties              Property[]
+  openHouses              OpenHouse[]
+  openHousesAsListingAgent OpenHouse[] @relation("OpenHouseListingAgent")
+  openHousesAsHostAgent   OpenHouse[] @relation("OpenHouseHostAgent")
   showings          Showing[]
   sellerReports     SellerReport[]
   assignedContacts  Contact[]
@@ -134,31 +136,42 @@ enum ContactStatus {
 }
 
 model OpenHouse {
-  id         String          @id @default(uuid())
-  propertyId String
-  hostUserId String
-  title      String
-  startAt    DateTime
-  endAt      DateTime
-  agentName  String?
-  agentEmail String?
-  agentPhone String?
-  notes      String?
-  flyerUrl   String?
-  qrSlug     String          @unique
-  status     OpenHouseStatus @default(SCHEDULED)
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
-  deletedAt  DateTime?
+  id              String          @id @default(uuid())
+  propertyId      String
+  hostUserId      String
+  /** Listing agent (property owner). Null = use hostUserId for backward compat. */
+  listingAgentId  String?
+  /** Host agent (sitting the OH). Null = same as listing agent. */
+  hostAgentId     String?
+  title           String
+  startAt         DateTime
+  endAt           DateTime
+  agentName       String?
+  agentEmail      String?
+  agentPhone      String?
+  notes           String?
+  flyerUrl        String?
+  qrSlug          String          @unique
+  status          OpenHouseStatus @default(SCHEDULED)
+  trafficLevel    String?
+  feedbackTags    Json?
+  hostNotes       String?         @db.Text
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
 
-  property      Property           @relation(fields: [propertyId], references: [id])
-  hostUser      User               @relation(fields: [hostUserId], references: [id])
-  visitors      OpenHouseVisitor[]
-  activities    Activity[]
-  drafts        FollowUpDraft[]
-  sellerReports SellerReport[]
+  property       Property           @relation(fields: [propertyId], references: [id])
+  hostUser       User               @relation(fields: [hostUserId], references: [id])
+  listingAgent   User?              @relation("OpenHouseListingAgent", fields: [listingAgentId], references: [id])
+  hostAgent      User?              @relation("OpenHouseHostAgent", fields: [hostAgentId], references: [id])
+  visitors       OpenHouseVisitor[]
+  activities     Activity[]
+  drafts         FollowUpDraft[]
+  sellerReports  SellerReport[]
 
   @@index([hostUserId, status, startAt])
+  @@index([listingAgentId])
+  @@index([hostAgentId])
   @@index([propertyId])
   @@map("open_houses")
 }

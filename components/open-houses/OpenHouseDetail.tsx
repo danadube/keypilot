@@ -23,6 +23,9 @@ type OpenHouseDetail = {
   qrSlug: string;
   flyerUrl?: string | null;
   property: { address1: string; city: string; state: string; zip: string };
+  listingAgent?: { id: string; name: string; email: string } | null;
+  hostAgent?: { id: string; name: string; email: string } | null;
+  agentName?: string | null;
   _count: { visitors: number };
   visitorBreakdown: { total: number; hasAgentTrue: number; hasAgentFalse: number; unknownAgentStatus: number };
   draftStatusCounts: { DRAFT: number; REVIEWED: number; SENT_MANUAL: number; ARCHIVED: number };

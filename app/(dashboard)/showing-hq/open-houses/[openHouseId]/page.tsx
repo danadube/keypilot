@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Users, UserPlus, CheckSquare, QrCode, Copy, RefreshCw } from "lucide-react";
 
 type OpenHouseData = {
+  hostUserId?: string;
   id: string;
   title: string;
   startAt: string;
@@ -23,7 +24,12 @@ type OpenHouseData = {
   status: string;
   qrSlug: string;
   agentName: string | null;
+  trafficLevel: string | null;
+  feedbackTags: string[] | null;
+  hostNotes: string | null;
   property: { address1: string; city: string; state: string; zip: string };
+  listingAgent?: { id: string; name: string; email: string } | null;
+  hostAgent?: { id: string; name: string; email: string } | null;
   visitors: {
     id: string;
     leadStatus: string | null;
