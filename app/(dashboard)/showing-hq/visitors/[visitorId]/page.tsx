@@ -19,7 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mail, Phone, User } from "lucide-react";
+import { Mail, Phone, User, Calendar, FileText } from "lucide-react";
+import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
 
 const LEAD_STATUS_OPTIONS = [
   { value: "NEW", label: "New" },
@@ -205,9 +206,13 @@ export default function VisitorProfilePage() {
           />
           <div className="mt-4">
             {allVisits.length === 0 ? (
-              <p className="py-4 text-center text-[var(--brand-text-muted)]">
-                No visits recorded.
-              </p>
+              <BrandEmptyState
+                compact
+                variant="premium"
+                icon={<Calendar className="h-6 w-6" />}
+                title="No visits recorded"
+                description="Visits will appear when this contact signs in at future open houses."
+              />
             ) : (
               <ul className="space-y-3">
                 {allVisits.map((v) => (
@@ -224,7 +229,7 @@ export default function VisitorProfilePage() {
                       </p>
                     </div>
                     <Button variant="outline" size="sm" asChild>
-                      <Link href={`/open-houses/${v.openHouse.id}`}>View</Link>
+                      <Link href={`/showing-hq/open-houses/${v.openHouse.id}`}>View</Link>
                     </Button>
                   </li>
                 ))}
@@ -242,9 +247,18 @@ export default function VisitorProfilePage() {
           />
           <div className="mt-4">
             {followUpDrafts.length === 0 ? (
-              <p className="py-4 text-center text-[var(--brand-text-muted)]">
-                No follow-up drafts yet.
-              </p>
+              <BrandEmptyState
+                compact
+                variant="premium"
+                icon={<FileText className="h-6 w-6" />}
+                title="No follow-up drafts yet"
+                description="Generate follow-up drafts from the open house page after visitors sign in."
+                action={
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/showing-hq/follow-ups">View follow-ups</Link>
+                  </Button>
+                }
+              />
             ) : (
               <ul className="space-y-3">
                 {followUpDrafts.map((d) => (

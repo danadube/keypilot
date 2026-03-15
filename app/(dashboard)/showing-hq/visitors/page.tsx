@@ -143,12 +143,14 @@ export default function ShowingHQVisitorsPage() {
           <PageLoading message="Loading visitors..." />
         ) : visitors.length === 0 ? (
           <BrandEmptyState
-            icon={<Users className="h-8 w-8 text-[var(--brand-text-muted)]" />}
+            compact
+            variant="premium"
+            icon={<Users className="h-6 w-6" />}
             title="No visitors yet"
-            description="Visitors will appear here once they sign in at your open houses. Share your sign-in link at your next event."
+            description="Share your sign-in link or QR code at your next open house. Visitors will appear here as they sign in."
             action={
-              <BrandButton variant="secondary" asChild>
-                <Link href="/open-houses/sign-in">Open sign-in</Link>
+              <BrandButton variant="secondary" size="sm" asChild>
+                <Link href="/open-houses/sign-in">Set up sign-in page</Link>
               </BrandButton>
             }
           />

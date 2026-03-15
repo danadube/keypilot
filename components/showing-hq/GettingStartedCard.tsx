@@ -60,7 +60,7 @@ export function GettingStartedCard({
                 Get started with ShowingHQ
               </h2>
               <p className="mt-0.5 text-sm text-[var(--brand-text-muted)]">
-                Complete these steps to get the most from your open house leads
+                Six steps to capture leads and follow up like a pro
               </p>
             </div>
           </div>

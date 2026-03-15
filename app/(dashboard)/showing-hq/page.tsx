@@ -116,7 +116,7 @@ export default function ShowingHQOverviewPage() {
   const connections = data?.connections ?? { hasCalendar: false, hasGmail: false };
 
   const showGettingStarted =
-    stats.totalShowings < 2 || stats.totalVisitors === 0;
+    stats.totalShowings < 2 && stats.totalVisitors === 0;
   const gettingStartedSteps = buildGettingStartedSteps({
     hasOpenHouse: stats.totalShowings > 0,
     hasCalendar: connections.hasCalendar,
@@ -173,7 +173,7 @@ export default function ShowingHQOverviewPage() {
               ShowingHQ
             </h1>
             <p className="mt-2 max-w-[420px] text-[var(--brand-text-muted)]" style={{ fontSize: "var(--text-body-size)" }}>
-              Turn open house visitors into clients. Capture leads, schedule showings, and follow up—all in one place.
+              Capture visitor leads at the door, then follow up with personalized emails—all in one place.
             </p>
             {/* Today's activity summary */}
             <div className="mt-4 flex flex-wrap gap-6 border-t border-[var(--brand-border)] pt-4">
@@ -390,10 +390,10 @@ export default function ShowingHQOverviewPage() {
                 variant="premium"
                 icon={<Users className="h-6 w-6" />}
                 title="No visitors yet"
-                description="Set up your sign-in page and share the QR code or link at your next open house to start capturing leads."
+                description="Share your sign-in link or QR code at your next open house. Visitors will appear here as they check in."
                 action={
                   <BrandButton variant="primary" size="sm" asChild>
-                    <Link href="/open-houses/sign-in">Set up sign-in page</Link>
+                    <Link href="/open-houses/sign-in">Get sign-in link</Link>
                   </BrandButton>
                 }
               />
@@ -453,7 +453,7 @@ export default function ShowingHQOverviewPage() {
                       Thanks for visiting 123 Oak St — let&apos;s schedule a showing
                     </p>
                     <p className="text-sm text-[var(--brand-text-muted)]">
-                      AI drafts personalized follow-up emails for each visitor. Review, edit, and send with one click.
+                      We generate personalized follow-up emails for each visitor. Review, edit, and send in one click.
                     </p>
                   </div>
                 </div>

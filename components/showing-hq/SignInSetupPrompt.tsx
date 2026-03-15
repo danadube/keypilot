@@ -13,7 +13,7 @@ export function SignInSetupPrompt() {
         Sign-in page
       </p>
       <p className="mb-3 text-sm text-[var(--brand-text)]">
-        Create your first open house to get your sign-in link and QR code for visitor check-in.
+        Create an open house to get a unique sign-in link and QR code. Visitors check in on their phone—no clipboard needed.
       </p>
       <BrandButton variant="primary" size="sm" asChild>
         <Link href="/open-houses/new">
