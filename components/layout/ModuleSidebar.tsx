@@ -62,27 +62,16 @@ export function ModuleSidebar() {
       style={{ width: SIDEBAR_WIDTH, backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)" }}
       aria-label={`${mod.name} navigation`}
     >
-      {/* One clean branded header block: logo + module title */}
+      {/* Sidebar header: ShowingHQ as primary product identity (or module name) */}
       <div className="shrink-0 border-b border-white/10 px-4 py-4">
-        <Link
-          href="/"
-          className="mb-4 block w-full transition-opacity hover:opacity-90"
-          aria-label="KeyPilot home"
-        >
-          <Image
-            src="/KeyPilot-logo.png?v=4"
-            alt="KeyPilot"
-            width={200}
-            height={60}
-            className="h-8 w-auto max-w-full object-contain object-left brightness-0 invert"
-            priority
-          />
-        </Link>
         {activeId === "showing-hq" ? (
           <>
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-xl font-extrabold tracking-tight text-white leading-none">
-                ShowingHQ
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2
+                className="text-[21px] font-bold tracking-tight text-white leading-none"
+                style={{ letterSpacing: "-0.02em" }}
+              >
+                Showing<span className="text-[#4BAED8]">HQ</span>
               </h2>
               <span className="shrink-0 rounded-full border border-[#4BAED8]/60 bg-[#4BAED8]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#7DD3F5]">
                 Beta
@@ -171,6 +160,19 @@ export function ModuleSidebar() {
         </div>
       )}
       <footer className="shrink-0 border-t border-white/10 px-4 py-3">
+        <Link
+          href="/"
+          className="mb-2 block w-full opacity-60 hover:opacity-85 transition-opacity"
+          aria-label="KeyPilot home"
+        >
+          <Image
+            src="/KeyPilot-logo.png?v=4"
+            alt=""
+            width={160}
+            height={48}
+            className="h-6 w-auto max-w-full object-contain object-left brightness-0 invert"
+          />
+        </Link>
         <p className="text-[10px] text-slate-500" aria-label="App version">
           KeyPilot v{APP_VERSION}
           {APP_COMMIT ? ` • ${APP_COMMIT}` : null}
