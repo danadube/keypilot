@@ -136,16 +136,16 @@ export function TodayCommandCenter({
 
   const containerClass =
     scenario === "showing_soon"
-      ? "border-amber-400 bg-amber-50/90 shadow-md"
+      ? "border-amber-300 bg-amber-50/80 shadow-md"
       : scenario === "active_oh"
-        ? "border-emerald-500 bg-emerald-50/90 shadow-md"
+        ? "border-emerald-500 bg-emerald-50/80 shadow-md"
         : scenario === "oh_soon"
-          ? "border-sky-400 bg-sky-50/80 shadow-sm"
+          ? "border-sky-400 bg-sky-50/70 shadow-sm"
           : "border-slate-200 bg-white shadow-sm";
 
   return (
     <section
-      className={`rounded-xl border px-5 py-4 ${containerClass}`}
+      className={`rounded-lg border px-5 py-4 ${containerClass}`}
       role="region"
       aria-label="Today command center"
     >

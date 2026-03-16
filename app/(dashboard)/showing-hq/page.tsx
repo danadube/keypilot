@@ -310,10 +310,10 @@ export default function ShowingHQOverviewPage() {
   });
 
   return (
-    <div className="min-h-0 flex flex-col gap-5 bg-slate-100">
-      {/* Hero — product workspace identity */}
+    <div className="min-h-0 flex flex-col gap-5 bg-zinc-100">
+      {/* Hero — product workspace identity (stronger than cards) */}
       <header
-        className="rounded-xl border border-slate-200 bg-white px-5 py-5 shadow-md"
+        className="rounded-xl border border-slate-200 bg-white px-5 py-5 shadow-lg ring-1 ring-slate-200/60"
         style={{ borderLeftWidth: "4px", borderLeftColor: "var(--brand-primary)" }}
         role="banner"
       >
@@ -517,7 +517,7 @@ export default function ShowingHQOverviewPage() {
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs"
+                      className="flex items-center justify-between gap-3 rounded-md border-b border-slate-100 bg-white py-2 last:border-b-0 text-xs"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="flex items-center gap-1.5 font-medium text-slate-800">
@@ -573,7 +573,7 @@ export default function ShowingHQOverviewPage() {
                 {todaysShowings.map((oh) => (
                   <li
                     key={oh.id}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5"
+                    className="flex items-center justify-between gap-2 border-b border-slate-100 bg-white py-2 last:border-b-0"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium text-slate-800">
@@ -603,7 +603,7 @@ export default function ShowingHQOverviewPage() {
                 {upcoming.slice(0, 5).map((oh) => (
                   <li
                     key={oh.id}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5"
+                    className="flex items-center justify-between gap-2 border-b border-slate-100 bg-white py-2 last:border-b-0"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium text-slate-800">

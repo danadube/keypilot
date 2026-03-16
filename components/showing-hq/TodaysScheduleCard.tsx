@@ -54,13 +54,13 @@ export function TodaysScheduleCard({
             return (
             <li
               key={`today-${item.type}-${item.id}`}
-              className={`flex items-start gap-2 rounded-lg border border-slate-200 p-2.5 transition-colors ${
+              className={`flex items-start gap-2 rounded-md border-b border-slate-100 p-2.5 last:border-b-0 transition-colors ${
                 item.type === "open_house"
-                  ? "bg-sky-50/70"
-                  : "bg-amber-50/50"
-              } ${isLive ? "ring-2 ring-emerald-500/60 ring-offset-1" : "hover:bg-slate-50/80"}`}
+                  ? "bg-sky-50/50"
+                  : "bg-amber-50/40"
+              } ${isLive ? "ring-2 ring-emerald-500/60 ring-offset-1" : "hover:bg-slate-50/50"}`}
             >
-              <div className="shrink-0 text-right text-xs font-medium tabular-nums text-[var(--brand-text)]" style={{ minWidth: "5rem" }}>
+              <div className="shrink-0 text-right text-xs font-medium tabular-nums text-slate-800" style={{ minWidth: "5rem" }}>
                 {timeRange(item.at, item.endAt)}
               </div>
               <div className="min-w-0 flex-1">
@@ -100,7 +100,7 @@ export function TodaysScheduleCard({
           })}
           {tomorrowItem && (
             <li
-              className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50/60 p-2.5"
+              className="flex items-start gap-2 rounded-md border-b border-slate-100 bg-slate-50/50 p-2.5 last:border-b-0"
             >
               <div className="shrink-0 text-right text-xs font-medium tabular-nums text-slate-500" style={{ minWidth: "5rem" }}>
                 {timeRange(tomorrowItem.at, tomorrowItem.endAt)}

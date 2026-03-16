@@ -79,7 +79,7 @@ export function ShowingHQCalendar({
   );
 
   return (
-    <div className="showing-hq-calendar rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="showing-hq-calendar rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
       <FullCalendar
         plugins={[dayGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
