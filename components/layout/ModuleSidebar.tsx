@@ -9,7 +9,7 @@ import { FeedbackButton } from "@/components/showing-hq/FeedbackButton";
 import { MODULES, getModuleFromPath } from "@/lib/modules";
 import { useProductTier } from "@/components/ProductTierProvider";
 import { getUpgradeModuleIds } from "@/lib/upgrade-modules";
-import { APP_VERSION } from "@/lib/app-version";
+import { APP_VERSION, APP_COMMIT } from "@/lib/app-version";
 import type { ModuleSidebarItem } from "@/lib/modules";
 
 const SIDEBAR_WIDTH = 240;
@@ -173,6 +173,7 @@ export function ModuleSidebar() {
       <footer className="shrink-0 border-t border-white/10 px-4 py-3">
         <p className="text-[10px] text-slate-500" aria-label="App version">
           KeyPilot v{APP_VERSION}
+          {APP_COMMIT ? ` • ${APP_COMMIT}` : null}
         </p>
       </footer>
     </aside>
