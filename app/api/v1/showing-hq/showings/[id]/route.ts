@@ -18,7 +18,10 @@ export async function GET(
     const { id } = await params;
     const showing = await prisma.showing.findFirst({
       where: { id, hostUserId: user.id, deletedAt: null },
-      include: { property: true },
+      include: {
+        property: true,
+        feedbackRequests: { orderBy: { requestedAt: "desc" }, take: 1 },
+      },
     });
     if (!showing) {
       return NextResponse.json(

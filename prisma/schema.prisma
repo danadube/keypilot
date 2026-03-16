@@ -30,6 +30,7 @@ model User {
   openHousesAsListingAgent OpenHouse[] @relation("OpenHouseListingAgent")
   openHousesAsHostAgent   OpenHouse[] @relation("OpenHouseHostAgent")
   showings          Showing[]
+  feedbackRequests  FeedbackRequest[]
   sellerReports     SellerReport[]
   assignedContacts  Contact[]
   tags              Tag[]
@@ -90,6 +91,7 @@ model Property {
   createdByUser User        @relation(fields: [createdByUserId], references: [id])
   openHouses    OpenHouse[]
   showings      Showing[]
+  feedbackRequests FeedbackRequest[]
   activities    Activity[]
   deals         Deal[]
   transactions  Transaction[]
@@ -318,14 +320,51 @@ model Showing {
   updatedAt         DateTime        @updatedAt
   deletedAt         DateTime?
 
-  property   Property @relation(fields: [propertyId], references: [id])
-  hostUser   User     @relation(fields: [hostUserId], references: [id])
+  property   Property          @relation(fields: [propertyId], references: [id])
+  hostUser   User              @relation(fields: [hostUserId], references: [id])
+  feedbackRequests FeedbackRequest[]
 
   @@index([hostUserId])
   @@index([propertyId])
   @@index([scheduledAt])
   @@index([source])
   @@map("showings")
+}
+
+/** One per showing when feedback is requested. Public form submits to this. */
+model FeedbackRequest {
+  id           String                @id @default(uuid())
+  showingId    String
+  propertyId   String
+  hostUserId   String
+  token        String                @unique
+  status       FeedbackRequestStatus @default(PENDING)
+  requestedAt  DateTime               @default(now())
+  expiresAt   DateTime?
+  /** Response: LOVED_IT | LIKED_IT | NEUTRAL | NOT_A_FIT */
+  interestLevel String?
+  /** Response: array of reason keys e.g. ["PRICE", "LAYOUT"] */
+  reasons      Json?
+  note         String?               @db.Text
+  respondedAt  DateTime?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+
+  showing Showing  @relation(fields: [showingId], references: [id], onDelete: Cascade)
+  property Property @relation(fields: [propertyId], references: [id])
+  hostUser User     @relation(fields: [hostUserId], references: [id])
+
+  @@index([showingId])
+  @@index([hostUserId])
+  @@index([token])
+  @@index([status])
+  @@map("feedback_requests")
+}
+
+enum FeedbackRequestStatus {
+  PENDING
+  RESPONDED
+  EXPIRED
 }
 
 enum ShowingSource {

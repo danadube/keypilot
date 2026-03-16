@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Copy, Check, ClipboardCheck } from "lucide-react";
 
 type Property = { id: string; address1: string; city: string; state: string };
 
@@ -45,6 +46,8 @@ export function EditEventModal({
   const [endTimeStr, setEndTimeStr] = useState("11:00");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [feedbackRequest, setFeedbackRequest] = useState<{ token: string; status: string } | null>(null);
+  const [feedbackLinkCopied, setFeedbackLinkCopied] = useState(false);
 
   const isOpenHouse = eventType === "open_house";
   const canDelete = isOpenHouse && !!onDeleted;
@@ -54,6 +57,8 @@ export function EditEventModal({
     setError(null);
     setSubmitting(false);
     setDeleting(false);
+    setFeedbackRequest(null);
+    setFeedbackLinkCopied(false);
     fetch("/api/v1/properties")
       .then((res) => res.json())
       .then((json) => {
@@ -105,6 +110,8 @@ export function EditEventModal({
             );
           }
           setNotes(d.notes ?? "");
+          const fr = (d as { feedbackRequests?: { token: string; status: string }[] }).feedbackRequests?.[0];
+          setFeedbackRequest(fr ?? null);
         }
       })
       .catch(() => setError("Failed to load event"))
@@ -304,6 +311,36 @@ export function EditEventModal({
               rows={2}
             />
           </div>
+
+          {!isOpenHouse && feedbackRequest && (
+            <div className="rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/30 p-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-[var(--brand-text)]">
+                <ClipboardCheck className="h-4 w-4 text-[var(--brand-primary)]" />
+                Feedback request
+              </div>
+              <p className="mt-1 text-xs text-[var(--brand-text-muted)]">
+                Status: {feedbackRequest.status === "PENDING" ? "Pending" : feedbackRequest.status === "RESPONDED" ? "Responded" : "Expired"}
+              </p>
+              {feedbackRequest.status === "PENDING" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => {
+                    const url = typeof window !== "undefined" ? `${window.location.origin}/feedback/${feedbackRequest.token}` : "";
+                    navigator.clipboard.writeText(url).then(() => {
+                      setFeedbackLinkCopied(true);
+                      setTimeout(() => setFeedbackLinkCopied(false), 2000);
+                    });
+                  }}
+                >
+                  {feedbackLinkCopied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                  <span className="ml-1.5">{feedbackLinkCopied ? "Copied" : "Copy feedback link"}</span>
+                </Button>
+              )}
+            </div>
+          )}
         </form>
       )}
     </BrandModal>

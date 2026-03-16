@@ -170,16 +170,8 @@ export async function GET() {
           scheduledAt: { gte: todayStart, lt: todayEnd },
         },
       }),
-      prisma.showing.count({
-        where: {
-          hostUserId: user.id,
-          deletedAt: null,
-          feedbackRequired: true,
-          OR: [
-            { feedbackRequestStatus: null },
-            { feedbackRequestStatus: { in: ["PENDING", "SENT"] } },
-          ],
-        },
+      prisma.feedbackRequest.count({
+        where: { hostUserId: user.id, status: "PENDING" },
       }),
     ]);
 

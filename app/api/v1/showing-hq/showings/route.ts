@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { CreateShowingSchema } from "@/lib/validations/showing";
 import { apiErrorFromCaught } from "@/lib/api-response";
+import { generateId } from "@/lib/id";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const feedbackRequired = parsed.data.feedbackRequired ?? false;
     const showing = await prisma.showing.create({
       data: {
         propertyId: parsed.data.propertyId,
@@ -72,11 +74,24 @@ export async function POST(req: NextRequest) {
         buyerAgentEmail: parsed.data.buyerAgentEmail?.trim() || null,
         buyerName: parsed.data.buyerName ?? null,
         notes: parsed.data.notes ?? null,
-        feedbackRequired: parsed.data.feedbackRequired ?? false,
+        feedbackRequired,
+        feedbackRequestStatus: feedbackRequired ? "PENDING" : null,
         source: "MANUAL",
       },
       include: { property: true },
     });
+
+    if (feedbackRequired) {
+      await prisma.feedbackRequest.create({
+        data: {
+          showingId: showing.id,
+          propertyId: showing.propertyId,
+          hostUserId: user.id,
+          token: generateId(24),
+          status: "PENDING",
+        },
+      });
+    }
 
     return NextResponse.json({ data: showing });
   } catch (e) {
