@@ -19,7 +19,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col">
       {/* Header: grid-aligned with sidebar — brand (240px) | module nav | global controls */}
       <header
-        className="sticky top-0 z-20 flex shrink-0 items-center border-b border-[var(--brand-border)] bg-[var(--brand-surface)]"
+        className="sticky top-0 z-20 flex shrink-0 items-center border-b border-[var(--brand-border)] bg-white"
         style={{ height: HEADER_HEIGHT }}
       >
         {/* Left: KeyPilot brand area — same width as sidebar, platform anchor */}
@@ -52,7 +52,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
         {/* Right: Global controls — fixed width, collision-proof */}
         <div
-          className="flex shrink-0 items-center justify-end gap-3 border-l border-[var(--brand-border)] bg-[var(--brand-surface)] pl-4 pr-4"
+          className="flex shrink-0 items-center justify-end gap-3 border-l border-[var(--brand-border)] bg-white pl-4 pr-4"
           style={{ width: HEADER_RIGHT_WIDTH }}
         >
           <UserButton afterSignOutUrl="/" />
@@ -62,7 +62,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       {/* Main area: Sidebar (240px) + Content */}
       <div className="flex min-h-0 flex-1">
         <ModuleSidebar />
-        <main className="min-h-0 flex-1 overflow-auto bg-[var(--brand-bg)] p-8 md:p-10">
+        <main className="min-h-0 flex-1 overflow-auto bg-slate-50 p-8 md:p-10">
           <div className="mx-auto min-h-[50vh]" style={{ maxWidth: 1280 }}>
             {children}
           </div>

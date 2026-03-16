@@ -54,11 +54,9 @@ export function TodaysScheduleCard({
             return (
             <li
               key={`today-${item.type}-${item.id}`}
-              className={`flex items-start gap-2 rounded-md border-b border-slate-100 p-2.5 last:border-b-0 transition-colors ${
-                item.type === "open_house"
-                  ? ""
-                  : ""
-              } ${isLive ? "ring-2 ring-emerald-500/60 ring-offset-1" : "hover:bg-white"}`}
+              className={`flex items-start gap-2 rounded-md border-b border-slate-100 bg-white p-2.5 last:border-b-0 transition-colors ${
+                isLive ? "ring-2 ring-emerald-500/60 ring-offset-1" : "hover:bg-slate-50/60"
+              }`}
             >
               <div className="shrink-0 text-right text-xs font-medium tabular-nums text-slate-800" style={{ minWidth: "5rem" }}>
                 {timeRange(item.at, item.endAt)}

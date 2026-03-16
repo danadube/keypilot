@@ -56,16 +56,16 @@ export function ModuleSidebar() {
 
   return (
     <aside
-      className="flex shrink-0 flex-col border-r border-[var(--brand-border)] bg-[var(--brand-surface-alt)]"
+      className="flex shrink-0 flex-col border-r border-slate-900 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-slate-100"
       style={{ width: SIDEBAR_WIDTH }}
       aria-label={`${mod.name} navigation`}
     >
-      <div className="border-b border-[var(--brand-border)] px-5 py-4">
-        <h2 className="text-sm font-semibold text-[var(--brand-text)]">
+      <div className="border-b border-slate-800 px-5 py-4">
+        <h2 className="text-sm font-semibold text-slate-50">
           {activeId === "showing-hq" ? "ShowingHQ Beta" : mod.name}
         </h2>
         {activeId === "showing-hq" && (
-          <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">
+          <p className="mt-0.5 text-xs text-slate-400">
             by KeyPilot · Early Access
           </p>
         )}
@@ -74,7 +74,7 @@ export function ModuleSidebar() {
         {groups.map(({ section, items: groupItems }) => (
           <div key={section ?? "main"} className="mb-5 last:mb-0">
             {section && (
-              <p className="mb-1.5 px-5 text-xs font-semibold uppercase tracking-wide text-[var(--brand-text-muted)]">
+              <p className="mb-1.5 px-5 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {section}
               </p>
             )}
@@ -88,9 +88,9 @@ export function ModuleSidebar() {
                       href={item.href}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-5 py-2.5 text-sm transition-colors",
-                        "hover:bg-[var(--brand-surface)] hover:text-[var(--brand-text)]",
+                        "text-slate-300 hover:bg-slate-800 hover:text-slate-50",
                         active &&
-                          "bg-[var(--brand-primary)]/12 font-semibold text-[var(--brand-primary)] border-l-2 border-l-[var(--brand-primary)] -ml-[2px] pl-[calc(1.25rem+2px)]"
+                          "bg-sky-500/15 font-semibold text-sky-300 border-l-2 border-l-sky-400 -ml-[2px] pl-[calc(1.25rem+2px)]"
                       )}
                     >
                       {Icon && <Icon className="h-[18px] w-[18px] shrink-0 opacity-85" />}
@@ -103,8 +103,8 @@ export function ModuleSidebar() {
           </div>
         ))}
         {lockedModules.length > 0 && (
-          <div className="mt-6 border-t border-[var(--brand-border)] pt-4">
-            <p className="mb-1.5 px-5 text-xs font-semibold uppercase tracking-wide text-[var(--brand-text-muted)]">
+          <div className="mt-6 border-t border-slate-800 pt-4">
+            <p className="mb-1.5 px-5 text-xs font-semibold uppercase tracking-wide text-slate-500">
               Upgrade Your Platform
             </p>
             <ul className="space-y-0.5">
@@ -118,10 +118,9 @@ export function ModuleSidebar() {
                       href={`/upgrade/${id}`}
                       className={cn(
                         "flex items-center gap-3 rounded-md px-5 py-2.5 text-sm transition-colors",
-                        "hover:bg-[var(--brand-surface)] hover:text-[var(--brand-text)]",
-                        "text-[var(--brand-text-muted)]",
+                        "text-slate-400 hover:bg-slate-800 hover:text-slate-50",
                         isActive &&
-                          "bg-[var(--brand-primary)]/12 font-semibold text-[var(--brand-primary)] border-l-2 border-l-[var(--brand-primary)] -ml-[2px] pl-[calc(1.25rem+2px)]"
+                          "bg-sky-500/15 font-semibold text-sky-300 border-l-2 border-l-sky-400 -ml-[2px] pl-[calc(1.25rem+2px)]"
                       )}
                     >
                       <Lock className="h-[18px] w-[18px] shrink-0 opacity-70" />
