@@ -313,7 +313,7 @@ export default function ShowingHQOverviewPage() {
     <div className="min-h-0 flex flex-col gap-6 bg-transparent">
       {/* Hero — product workspace identity (white surface, strong brand accents) */}
       <header
-        className="relative rounded-2xl border border-[var(--brand-border)] bg-[var(--brand-surface)] px-6 py-6 shadow-lg ring-1 ring-[var(--kp-hero-ring, #4BAED8)]"
+        className="relative rounded-2xl bg-[var(--brand-surface)] px-6 py-6 shadow-xl ring-2 ring-[var(--kp-hero-ring, #4BAED8)]"
         style={{ borderLeftWidth: "4px", borderLeftColor: "var(--brand-primary)" }}
         role="banner"
       >
