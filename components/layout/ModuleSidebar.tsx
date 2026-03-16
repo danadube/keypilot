@@ -70,15 +70,15 @@ export function ModuleSidebar() {
           </p>
         )}
       </div>
-      <nav className="flex-1 overflow-auto py-4">
+      <nav className="flex-1 overflow-auto py-3">
         {groups.map(({ section, items: groupItems }) => (
-          <div key={section ?? "main"} className="mb-5 last:mb-0">
+          <div key={section ?? "main"} className="mb-4 last:mb-2">
             {section && (
               <p className="mb-1.5 px-5 text-xs font-semibold uppercase tracking-wide text-slate-500">
                 {section}
               </p>
             )}
-            <ul className="space-y-0.5">
+            <ul className="space-y-0.5 px-2">
               {groupItems.map((item) => {
                 const Icon = item.icon;
                 const active = isItemActive(pathname, item);
@@ -87,10 +87,10 @@ export function ModuleSidebar() {
                     <Link
                       href={item.href}
                       className={cn(
-                        "flex items-center gap-3 rounded-md px-5 py-2.5 text-sm transition-colors",
+                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
                         "text-slate-300 hover:bg-slate-800 hover:text-slate-50",
                         active &&
-                          "bg-sky-500/15 font-semibold text-sky-300 border-l-2 border-l-sky-400 -ml-[2px] pl-[calc(1.25rem+2px)]"
+                          "bg-sky-500/15 font-semibold text-sky-300 border-l-2 border-l-sky-400 pl-[calc(0.75rem+2px)]"
                       )}
                     >
                       {Icon && <Icon className="h-[18px] w-[18px] shrink-0 opacity-85" />}

@@ -313,11 +313,11 @@ export default function ShowingHQOverviewPage() {
     <div className="min-h-0 flex flex-col gap-6 bg-slate-50">
       {/* Hero — product workspace identity (stronger than cards) */}
       <header
-        className="rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-xl ring-1 ring-slate-200/80"
+        className="rounded-2xl border border-sky-100 bg-sky-50 px-6 py-6 shadow-xl ring-1 ring-slate-200/80"
         style={{ borderLeftWidth: "4px", borderLeftColor: "var(--brand-primary)" }}
         role="banner"
       >
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <h1
             className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl"
             style={{ fontFamily: "var(--font-heading)" }}
@@ -328,15 +328,66 @@ export default function ShowingHQOverviewPage() {
             Manage private showings, open houses, visitors, feedback, and follow-ups in one command center.
           </p>
         </div>
-        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-slate-500">
-          <span className="font-medium text-slate-700">Showings today</span>
-          <span>{stats.privateShowingsToday ?? 0}</span>
-          <span className="font-medium text-slate-700">Open houses today</span>
-          <span>{todaysShowings.length}</span>
-          <span className="font-medium text-slate-700">Visitors today</span>
-          <span>{visitorsToday}</span>
-          <span className="font-medium text-slate-700">Follow-ups pending</span>
-          <span>{stats.followUpTasks ?? followUpTasks.length}</span>
+        {/* Metric chips — semantic color on icon only, neutral surface */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
+            <Users className="h-4 w-4 shrink-0 text-blue-600" />
+            <div className="min-w-0">
+              <span className="text-[10px] font-medium text-slate-500">Visitors</span>
+              <span className="text-xs font-semibold text-slate-800">{stats.totalVisitors}</span>
+            </div>
+          </div>
+          <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
+            <Calendar className="h-3.5 w-3.5 shrink-0 text-sky-600" />
+            <div className="flex items-baseline gap-1">
+              <span className="text-[10px] font-medium text-slate-500">Open houses</span>
+              <span className="text-xs font-semibold text-slate-800">{todaysShowings.length}</span>
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" className="h-8 px-2.5" asChild>
+            <Link href="/showing-hq/showings">
+              <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
+                <Calendar className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                <div className="flex items-baseline gap-1">
+                  <span className="text-[10px] font-medium text-slate-500">Showings</span>
+                  <span className="text-xs font-semibold text-slate-800">
+                    {stats.privateShowingsToday ?? 0}
+                  </span>
+                </div>
+              </div>
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" className="h-8 px-2.5" asChild>
+            <Link href="/showing-hq/feedback-requests">
+              <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
+                <CheckSquare className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
+                <div className="flex items-baseline gap-1">
+                  <span className="text-[10px] font-medium text-slate-500">Feedback</span>
+                  <span className="text-xs font-semibold text-slate-800">
+                    {stats.feedbackRequestsPending ?? 0}
+                  </span>
+                </div>
+              </div>
+            </Link>
+          </Button>
+          <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
+            <UserPlus className="h-3.5 w-3.5 shrink-0 text-slate-600" />
+            <div className="flex items-baseline gap-1">
+              <span className="text-[10px] font-medium text-slate-500">Contacts</span>
+              <span className="text-xs font-semibold text-slate-800">
+                {stats.contactsCaptured}
+              </span>
+            </div>
+          </div>
+          <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
+            <CheckSquare className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+            <div className="flex items-baseline gap-1">
+              <span className="text-[10px] font-medium text-slate-500">Follow-ups</span>
+              <span className="text-xs font-semibold text-slate-800">
+                {stats.followUpTasks ?? followUpTasks.length}
+              </span>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -417,60 +468,6 @@ export default function ShowingHQOverviewPage() {
           onDismiss={handleDismissGettingStarted}
         />
       )}
-
-      {/* Metric chips — semantic color on icon only, neutral surface */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 shadow-sm">
-          <Users className="h-4 w-4 shrink-0 text-blue-600" />
-          <div className="min-w-0">
-            <span className="text-[10px] font-medium text-slate-500">Visitors</span>
-            <span className="text-xs font-semibold text-slate-800">{stats.totalVisitors}</span>
-          </div>
-        </div>
-        <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 shadow-sm">
-          <Calendar className="h-3.5 w-3.5 shrink-0 text-sky-600" />
-          <div className="flex items-baseline gap-1">
-            <span className="text-[10px] font-medium text-slate-500">Open houses</span>
-            <span className="text-xs font-semibold text-slate-800">{todaysShowings.length}</span>
-          </div>
-        </div>
-        <Button variant="ghost" size="sm" className="h-8 px-2.5" asChild>
-          <Link href="/showing-hq/showings">
-            <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 shadow-sm">
-              <Calendar className="h-3.5 w-3.5 shrink-0 text-amber-600" />
-              <div className="flex items-baseline gap-1">
-                <span className="text-[10px] font-medium text-slate-500">Showings</span>
-                <span className="text-xs font-semibold text-slate-800">{stats.privateShowingsToday ?? 0}</span>
-              </div>
-            </div>
-          </Link>
-        </Button>
-        <Button variant="ghost" size="sm" className="h-8 px-2.5" asChild>
-          <Link href="/showing-hq/feedback-requests">
-            <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 shadow-sm">
-              <CheckSquare className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
-              <div className="flex items-baseline gap-1">
-                <span className="text-[10px] font-medium text-slate-500">Feedback</span>
-                <span className="text-xs font-semibold text-slate-800">{stats.feedbackRequestsPending ?? 0}</span>
-              </div>
-            </div>
-          </Link>
-        </Button>
-        <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 shadow-sm">
-          <UserPlus className="h-3.5 w-3.5 shrink-0 text-slate-600" />
-          <div className="flex items-baseline gap-1">
-            <span className="text-[10px] font-medium text-slate-500">Contacts</span>
-            <span className="text-xs font-semibold text-slate-800">{stats.contactsCaptured}</span>
-          </div>
-        </div>
-        <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 shadow-sm">
-          <CheckSquare className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
-          <div className="flex items-baseline gap-1">
-            <span className="text-[10px] font-medium text-slate-500">Follow-ups</span>
-            <span className="text-xs font-semibold text-slate-800">{stats.followUpTasks ?? followUpTasks.length}</span>
-          </div>
-        </div>
-      </div>
 
       {/* Row 2: Activity | Open Houses */}
       <div className="grid flex-1 min-h-0 gap-5 lg:grid-cols-2">
