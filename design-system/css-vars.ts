@@ -54,6 +54,10 @@ export function themeToCssVars(theme: BrandTheme): Record<string, string> {
     "--brand-warning": theme.colors.warning,
     "--brand-danger": theme.colors.danger,
     "--brand-danger-foreground": theme.colors.dangerForeground,
+    // Optional semantic structural colors
+    ...(theme.colors.sidebarBg && { "--brand-sidebar-bg": theme.colors.sidebarBg }),
+    ...(theme.colors.heroBg && { "--kp-hero-bg": theme.colors.heroBg }),
+    ...(theme.colors.heroRing && { "--kp-hero-ring": theme.colors.heroRing }),
     // Fonts
     "--font-heading": theme.fonts.heading,
     "--font-body": theme.fonts.body,

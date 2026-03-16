@@ -7,23 +7,31 @@ export const keypilotTheme: BrandTheme = {
     tagline: "Smart property operations, organized",
   },
   colors: {
-    primary: "#2563EB",
+    // Brand-aligned core palette
+    // Primary navy: structure, key accents
+    primary: "#1A3672",
     primaryForeground: "#FFFFFF",
-    primaryHover: "#1D4ED8",
-    primaryActive: "#1E40AF",
-    secondary: "#22C55E",
-    secondaryHover: "#16A34A",
-    accent: "#06B6D4",
-    background: "#F8FAFC",
-    surface: "#FFFFFF",
-    surfaceAlt: "#F1F5F9",
-    border: "#E2E8F0",
+    primaryHover: "#162B5A",
+    primaryActive: "#112146",
+    // Secondary sky: interactions, highlights
+    secondary: "#4BAED8",
+    secondaryHover: "#3A93B9",
+    accent: "#4BAED8",
+    // Surfaces
+    background: "#F8FAFC", // main canvas
+    surface: "#FFFFFF", // cards
+    surfaceAlt: "#EDF2F8", // light navy-tinted surface
+    border: "#D3E2F0", // very light navy/gray
     text: "#0F172A",
     textMuted: "#64748B",
     success: "#16A34A",
     warning: "#D97706",
     danger: "#DC2626",
     dangerForeground: "#FFFFFF",
+    // Semantic structural colors for shells/heroes
+    sidebarBg: "#0B1A3C",
+    heroBg: "#E6F1FB",
+    heroRing: "#4BAED8",
   },
   // TODO: Load Inter via next/font: import { Inter } from "next/font/google"; Inter({ subsets: ["latin"] })
   fonts: {

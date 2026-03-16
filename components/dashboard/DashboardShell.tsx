@@ -19,12 +19,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col">
       {/* Header: grid-aligned with sidebar — brand (240px) | module nav | global controls */}
       <header
-        className="sticky top-0 z-20 flex shrink-0 items-center border-b border-slate-200 bg-white"
+        className="sticky top-0 z-20 flex shrink-0 items-center border-b border-[var(--brand-border)] bg-[var(--brand-surface)]"
         style={{ height: HEADER_HEIGHT }}
       >
         {/* Left: KeyPilot brand area — same width as sidebar, matches dark sidebar */}
         <div
-          className="flex shrink-0 items-center border-r border-slate-800 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-5"
+          className="flex shrink-0 items-center border-r border-[var(--brand-border)] bg-[var(--brand-sidebar-bg, #0B1A3C)] px-5"
           style={{ width: SIDEBAR_WIDTH }}
         >
           <Link
@@ -60,9 +60,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {/* Main area: Sidebar (240px) + Content */}
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 bg-[var(--brand-bg)]">
         <ModuleSidebar />
-        <main className="min-h-0 flex-1 overflow-auto bg-sky-50 p-8 md:p-10">
+        <main className="min-h-0 flex-1 overflow-auto p-8 md:p-10">
           <div className="mx-auto min-h-[50vh]" style={{ maxWidth: 1280 }}>
             {children}
           </div>

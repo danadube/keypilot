@@ -36,6 +36,10 @@ export interface BrandTheme {
     warning: string;
     danger: string;
     dangerForeground: string;
+    /** Semantic structural colors (optional but recommended for shells/heroes) */
+    sidebarBg?: string;
+    heroBg?: string;
+    heroRing?: string;
   };
   fonts: {
     heading: string;
