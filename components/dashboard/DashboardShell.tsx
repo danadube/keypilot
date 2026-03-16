@@ -36,7 +36,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               alt="KeyPilot - The Real Estate Operations Platform"
               width={180}
               height={54}
-              className="h-10 w-auto object-cover object-left"
+              className="h-8 w-auto object-contain"
               priority
             />
           </Link>
@@ -62,7 +62,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       {/* Main area: Sidebar (240px) + Content */}
       <div className="flex min-h-0 flex-1">
         <ModuleSidebar />
-        <main className="min-h-0 flex-1 overflow-auto bg-gradient-to-b from-sky-50 to-sky-100 p-8 md:p-10">
+        <main className="min-h-0 flex-1 overflow-auto bg-sky-50 p-8 md:p-10">
           <div className="mx-auto min-h-[50vh]" style={{ maxWidth: 1280 }}>
             {children}
           </div>

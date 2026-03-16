@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -60,19 +61,42 @@ export function ModuleSidebar() {
       style={{ width: SIDEBAR_WIDTH }}
       aria-label={`${mod.name} navigation`}
     >
-      <div className="border-b border-slate-800 px-5 py-4">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-          {activeId === "showing-hq" ? "Module" : ""}
-        </p>
-        <h2 className="mt-1 text-base font-bold tracking-tight text-white">
-          {activeId === "showing-hq" ? "ShowingHQ" : mod.name}
-        </h2>
-        {activeId === "showing-hq" && (
-          <p className="mt-1 text-xs text-slate-400">
-            by KeyPilot · Early Access
+      {activeId === "showing-hq" ? (
+        <div className="border-b border-slate-800 px-4 py-3.5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 ring-1 ring-slate-700">
+              <Image
+                src="/KeyPilot-logo.png?v=4"
+                alt="KeyPilot"
+                width={28}
+                height={28}
+                className="h-5 w-auto object-contain"
+                priority
+              />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                KeyPilot
+              </span>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-semibold tracking-tight text-white">
+                  ShowingHQ
+                </h2>
+                <span className="rounded-full border border-slate-700 bg-slate-900 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-200">
+                  Beta
+                </span>
+              </div>
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-slate-400">
+            Private showings & open house command center.
           </p>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="border-b border-slate-800 px-5 py-4">
+          <h2 className="text-sm font-semibold text-slate-50">{mod.name}</h2>
+        </div>
+      )}
       <nav className="flex-1 overflow-auto py-3">
         {groups.map(({ section, items: groupItems }) => (
           <div key={section ?? "main"} className="mb-4 last:mb-2">
