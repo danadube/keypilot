@@ -161,6 +161,8 @@ export async function GET(
           subject: d.subject,
           body: d.body,
           status: d.status,
+          createdAt: d.createdAt.toISOString(),
+          updatedAt: d.updatedAt.toISOString(),
           openHouse: d.openHouse,
         })),
       },

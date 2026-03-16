@@ -57,6 +57,21 @@ export async function GET(req: NextRequest) {
       take: 50,
     });
 
+    const visitorPairs = visitors.map((v) => ({ contactId: v.contactId, openHouseId: v.openHouseId }));
+    const draftStatusMap = new Map<string, string>();
+    if (visitorPairs.length > 0) {
+      const drafts = await prisma.followUpDraft.findMany({
+        where: {
+          OR: visitorPairs.map((p) => ({ contactId: p.contactId, openHouseId: p.openHouseId })),
+          deletedAt: null,
+        },
+        select: { contactId: true, openHouseId: true, status: true },
+      });
+      for (const d of drafts) {
+        draftStatusMap.set(`${d.contactId}:${d.openHouseId}`, d.status);
+      }
+    }
+
     return NextResponse.json({
       data: {
         visitors: visitors.map((v) => ({
@@ -65,6 +80,10 @@ export async function GET(req: NextRequest) {
           interestLevel: v.interestLevel,
           signInMethod: v.signInMethod,
           submittedAt: v.submittedAt,
+          flyerEmailSentAt: v.flyerEmailSentAt?.toISOString() ?? null,
+          flyerLinkClickedAt: v.flyerLinkClickedAt?.toISOString() ?? null,
+          flyerEmailStatus: v.flyerEmailStatus,
+          followUpStatus: draftStatusMap.get(`${v.contactId}:${v.openHouseId}`) ?? null,
           contact: v.contact,
           openHouse: {
             id: v.openHouse.id,

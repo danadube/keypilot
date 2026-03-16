@@ -15,7 +15,7 @@ import { Mail, Bell, CheckCircle } from "lucide-react";
 import { FollowUpStatusBadge } from "@/components/shared/FollowUpStatusBadge";
 
 type Task =
-  | { id: string; type: "draft"; subject: string; status: string; leadStatus?: string | null; contact: { id: string; firstName: string; lastName: string }; openHouse: { id: string; title: string; property?: { address1: string } }; updatedAt: string }
+  | { id: string; type: "draft"; subject: string; status: string; leadStatus?: string | null; flyerSent?: boolean; flyerOpened?: boolean; contact: { id: string; firstName: string; lastName: string }; openHouse: { id: string; title: string; property?: { address1: string } }; updatedAt: string }
   | { id: string; type: "reminder"; body: string; dueAt: string; status: string; contact: { id: string; firstName: string; lastName: string }; createdAt: string };
 
 type FollowUpsData = {
@@ -67,6 +67,13 @@ export default function ShowingHQFollowUpsPage() {
               <FollowUpStatusBadge status={task.status} className="text-xs" />
               {"leadStatus" in task && task.leadStatus && (
                 <LeadStatusBadge status={task.leadStatus} />
+              )}
+              {"flyerSent" in task && (task.flyerSent || task.flyerOpened) && (
+                <span className="text-xs text-[var(--brand-text-muted)]">
+                  {task.flyerSent && "Flyer sent ✓"}
+                  {task.flyerSent && task.flyerOpened && " · "}
+                  {task.flyerOpened && "Flyer opened ✓"}
+                </span>
               )}
             </div>
           </div>

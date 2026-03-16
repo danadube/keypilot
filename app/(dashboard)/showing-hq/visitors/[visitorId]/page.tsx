@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Mail, Phone, User, Calendar, FileText, Copy, ExternalLink, Send } from "lucide-react";
+import { Mail, Phone, User, Calendar, FileText, Copy, ExternalLink, Send, Clock, CheckCircle } from "lucide-react";
 import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
 import { FollowUpStatusBadge } from "@/components/shared/FollowUpStatusBadge";
 
@@ -63,6 +63,8 @@ type VisitorProfile = {
     subject: string;
     body: string;
     status: string;
+    createdAt: string;
+    updatedAt: string;
     openHouse: { id: string; title: string; property?: { address1: string } };
   }[];
 };
@@ -122,6 +124,45 @@ export default function VisitorProfilePage() {
       minute: "2-digit",
     });
 
+  const formatTimeShort = (d: string) =>
+    new Date(d).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+
+  // Build timeline events (chronological) from visitor + drafts
+  type TimelineEvent = { at: string; label: string; detail?: string | null };
+  const timelineEvents: TimelineEvent[] = [];
+  timelineEvents.push({ at: visitor.submittedAt, label: "Signed in" });
+  if (visitor.flyerEmailSentAt)
+    timelineEvents.push({ at: visitor.flyerEmailSentAt, label: "Flyer sent" });
+  if (visitor.flyerLinkClickedAt)
+    timelineEvents.push({ at: visitor.flyerLinkClickedAt, label: "Flyer opened" });
+  for (const d of followUpDrafts) {
+    timelineEvents.push({
+      at: d.createdAt,
+      label: "Follow-up draft created",
+      detail: d.subject,
+    });
+    if (d.status === "REVIEWED")
+      timelineEvents.push({
+        at: d.updatedAt,
+        label: "Follow-up marked reviewed",
+        detail: d.subject,
+      });
+    if (d.status === "SENT_MANUAL")
+      timelineEvents.push({ at: d.updatedAt, label: "Follow-up sent", detail: d.subject });
+    if (d.status === "ARCHIVED")
+      timelineEvents.push({ at: d.updatedAt, label: "Follow-up dismissed", detail: d.subject });
+  }
+  timelineEvents.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+
+  const hasDraftReady = followUpDrafts.some((d) => d.status === "DRAFT");
+  const hasReviewed = followUpDrafts.some((d) => d.status === "REVIEWED");
+  const hasFollowUpSent = followUpDrafts.some((d) => d.status === "SENT_MANUAL");
+
   return (
     <div className="flex flex-col gap-[var(--space-xl)]">
       <BrandPageHeader
@@ -163,6 +204,44 @@ export default function VisitorProfilePage() {
           </div>
         }
       />
+
+      {/* Conversion status strip — quick-glance indicators */}
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/30 px-4 py-2">
+        <span className="text-xs font-medium text-[var(--brand-text-muted)]">Status</span>
+        <span className="text-[var(--brand-text-muted)]">·</span>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
+          <CheckCircle className="h-3 w-3" />
+          Signed in
+        </span>
+        {visitor.flyerEmailSentAt && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+            <CheckCircle className="h-3 w-3" />
+            Flyer sent
+          </span>
+        )}
+        {visitor.flyerLinkClickedAt && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">
+            <CheckCircle className="h-3 w-3" />
+            Flyer opened
+          </span>
+        )}
+        {hasDraftReady && (
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/50 dark:text-amber-300">
+            Draft ready
+          </span>
+        )}
+        {hasReviewed && (
+          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-600 dark:text-slate-200">
+            Reviewed
+          </span>
+        )}
+        {hasFollowUpSent && (
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
+            <CheckCircle className="h-3 w-3" />
+            Follow-up sent
+          </span>
+        )}
+      </div>
 
       <div className="grid gap-[var(--space-lg)] lg:grid-cols-2">
         <BrandCard elevated padded>
@@ -304,6 +383,42 @@ export default function VisitorProfilePage() {
           </div>
         </BrandCard>
       </div>
+
+      {/* Visitor timeline — workflow history */}
+      <BrandCard elevated padded>
+        <BrandSectionHeader
+          title="Visitor timeline"
+          description="Activity and conversion steps"
+        />
+        <div className="mt-4">
+          {timelineEvents.length === 0 ? (
+            <BrandEmptyState
+              compact
+              variant="premium"
+              icon={<Clock className="h-6 w-6" />}
+              title="No activity yet"
+              description="Timeline will show sign-in, flyer, and follow-up events."
+            />
+          ) : (
+            <ul className="space-y-0">
+              {timelineEvents.map((evt, i) => (
+                <li
+                  key={`${evt.at}-${evt.label}-${i}`}
+                  className="flex items-baseline gap-3 border-b border-[var(--brand-border)] py-2.5 last:border-b-0"
+                >
+                  <span className="shrink-0 text-xs text-[var(--brand-text-muted)] tabular-nums">
+                    {formatTimeShort(evt.at)}
+                  </span>
+                  <span className="font-medium text-[var(--brand-text)]">{evt.label}</span>
+                  {evt.detail && (
+                    <span className="truncate text-sm text-[var(--brand-text-muted)]">{evt.detail}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </BrandCard>
 
       <div className="grid gap-[var(--space-lg)] lg:grid-cols-2">
         <BrandCard elevated padded>

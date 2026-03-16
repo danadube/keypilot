@@ -93,11 +93,23 @@ export async function GET() {
                 openHouseId: p.openHouseId,
               })),
             },
-            select: { contactId: true, openHouseId: true, leadStatus: true },
+            select: {
+              contactId: true,
+              openHouseId: true,
+              leadStatus: true,
+              flyerEmailSentAt: true,
+              flyerLinkClickedAt: true,
+            },
           })
         : [];
     const leadStatusMap = new Map(
       visitors.map((v) => [`${v.contactId}:${v.openHouseId}`, v.leadStatus])
+    );
+    const flyerSentMap = new Map(
+      visitors.map((v) => [`${v.contactId}:${v.openHouseId}`, !!v.flyerEmailSentAt])
+    );
+    const flyerOpenedMap = new Map(
+      visitors.map((v) => [`${v.contactId}:${v.openHouseId}`, !!v.flyerLinkClickedAt])
     );
 
     return NextResponse.json({
@@ -111,6 +123,8 @@ export async function GET() {
           openHouse: d.openHouse,
           leadStatus: leadStatusMap.get(`${d.contactId}:${d.openHouseId}`) ?? null,
           updatedAt: d.updatedAt,
+          flyerSent: flyerSentMap.get(`${d.contactId}:${d.openHouseId}`) ?? false,
+          flyerOpened: flyerOpenedMap.get(`${d.contactId}:${d.openHouseId}`) ?? false,
         })),
         upcoming: remindersUpcoming.map((r) => ({
           id: r.id,
@@ -131,6 +145,8 @@ export async function GET() {
             openHouse: d.openHouse,
             updatedAt: d.updatedAt,
             leadStatus: leadStatusMap.get(`${d.contactId}:${d.openHouseId}`) ?? null,
+            flyerSent: flyerSentMap.get(`${d.contactId}:${d.openHouseId}`) ?? false,
+            flyerOpened: flyerOpenedMap.get(`${d.contactId}:${d.openHouseId}`) ?? false,
           })),
           ...remindersCompleted.map((r) => ({
             id: r.id,

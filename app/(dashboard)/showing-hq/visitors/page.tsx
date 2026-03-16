@@ -27,6 +27,10 @@ type Visitor = {
   interestLevel: string | null;
   signInMethod: string;
   submittedAt: string;
+  flyerEmailSentAt: string | null;
+  flyerLinkClickedAt: string | null;
+  flyerEmailStatus: string | null;
+  followUpStatus: string | null;
   contact: {
     id: string;
     firstName: string;
@@ -186,6 +190,9 @@ export default function ShowingHQVisitorsPage() {
                     Lead status
                   </th>
                   <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
+                    Conversion
+                  </th>
+                  <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
                     Notes
                   </th>
                   <th className="pb-3 w-[80px]"></th>
@@ -217,6 +224,16 @@ export default function ShowingHQVisitorsPage() {
                     </td>
                     <td className="py-3">
                       <LeadStatusBadge status={v.leadStatus} />
+                    </td>
+                    <td className="py-3">
+                      <span className="flex flex-wrap gap-1.5 text-xs text-[var(--brand-text-muted)]">
+                        {v.flyerEmailSentAt && <span>Flyer sent ✓</span>}
+                        {v.flyerLinkClickedAt && <span>Flyer opened ✓</span>}
+                        {v.followUpStatus === "DRAFT" && <span>Draft ready</span>}
+                        {v.followUpStatus === "REVIEWED" && <span>Reviewed</span>}
+                        {v.followUpStatus === "SENT_MANUAL" && <span>Sent</span>}
+                        {!v.flyerEmailSentAt && !v.flyerLinkClickedAt && !v.followUpStatus ? "—" : null}
+                      </span>
                     </td>
                     <td className="py-3 max-w-[160px]">
                       <span
