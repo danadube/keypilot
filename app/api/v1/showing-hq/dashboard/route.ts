@@ -268,21 +268,23 @@ export async function GET() {
       },
     }));
 
-    const shortAddress = (addr: string, max = 22) =>
-      addr.length > max ? addr.slice(0, max).trim() + "…" : addr;
+    const shortAddress = (addr: string | null | undefined, max = 22) => {
+      if (!addr) return "Untitled";
+      return addr.length > max ? addr.slice(0, max).trim() + "…" : addr;
+    };
 
     const calendarEvents = [
       ...openHousesInMonth.map((oh) => ({
         id: `oh-${oh.id}`,
         type: "open_house" as const,
-        title: shortAddress(oh.property.address1),
+        title: shortAddress(oh.property?.address1 ?? "Open house"),
         start: oh.startAt.toISOString(),
         end: oh.endAt.toISOString(),
         backgroundColor: "#0ea5e9",
         borderColor: "#0284c7",
         extendedProps: {
-          address: oh.property.address1,
-          city: oh.property.city,
+          address: oh.property?.address1 ?? "Open house",
+          city: oh.property?.city ?? "",
           eventTypeLabel: "Open House",
         },
       })),
@@ -293,14 +295,14 @@ export async function GET() {
         return {
           id: `s-${s.id}`,
           type: "showing" as const,
-          title: shortAddress(s.property.address1),
+          title: shortAddress(s.property?.address1 ?? "Showing"),
           start: start.toISOString(),
           end: end.toISOString(),
           backgroundColor: "#d97706",
           borderColor: "#b45309",
           extendedProps: {
-            address: s.property.address1,
-            city: s.property.city,
+            address: s.property?.address1 ?? "Showing",
+            city: s.property?.city ?? "",
             eventTypeLabel: "Showing",
           },
         };
@@ -331,6 +333,7 @@ export async function GET() {
         pendingFeedbackRequests: pendingFeedbackRequests.map((fr) => ({
           id: fr.id,
           property: { address1: fr.property.address1 },
+          requestedAt: fr.requestedAt.toISOString(),
         })),
         stats: {
           totalVisitors: totalVisitorsCount,

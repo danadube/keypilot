@@ -3,11 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BrandCard } from "@/components/ui/BrandCard";
-import { BrandButton } from "@/components/ui/BrandButton";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Badge } from "@/components/ui/badge";
-import { LeadStatusBadge } from "@/components/shared/LeadStatusBadge";
 import { Button } from "@/components/ui/button";
 import {
   Users,
@@ -17,7 +15,6 @@ import {
   ChevronRight,
   Building2,
 } from "lucide-react";
-import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
 import { GettingStartedCard, buildGettingStartedSteps } from "@/components/showing-hq/GettingStartedCard";
 import { ShowingHQCalendar } from "@/components/showing-hq/ShowingHQCalendar";
 import type { CalendarEvent } from "@/components/showing-hq/ShowingHQCalendar";
@@ -69,10 +66,12 @@ type DashboardData = {
     id: string;
     subject: string;
     status: string;
+    updatedAt?: string;
+    createdAt?: string;
     contact: { firstName: string; lastName: string };
     openHouse: { id: string; title: string; property?: { address1: string; city: string; state: string } };
   }[];
-  pendingFeedbackRequests?: { id: string; property: { address1: string } }[];
+  pendingFeedbackRequests?: { id: string; property: { address1: string }; requestedAt?: string }[];
   stats: {
     totalVisitors: number;
     totalShowings: number;
@@ -252,6 +251,63 @@ export default function ShowingHQOverviewPage() {
 
   const pendingFeedbackRequests = data?.pendingFeedbackRequests ?? [];
 
+  type ActivityItem = {
+    type: "visitor" | "followup" | "feedback";
+    id: string;
+    label: string;
+    address: string;
+    timestamp: string | null;
+    actionLabel: string;
+    actionHref: string;
+  };
+
+  const activityItemsRaw: ActivityItem[] = [
+    ...recentVisitors.slice(0, 8).map((v) => {
+      const addr =
+        (v.openHouse as { property?: { address1: string; city?: string; state?: string } })
+          ?.property?.address1 ?? v.openHouse.title;
+      return {
+        type: "visitor" as const,
+        id: `visitor-${v.id}`,
+        label: `${v.contact.firstName} ${v.contact.lastName} signed in`,
+        address: addr,
+        timestamp: v.submittedAt ?? null,
+        actionLabel: "View visitor",
+        actionHref: `/showing-hq/visitors/${v.id}`,
+      };
+    }),
+    ...followUpTasks.slice(0, 8).map((t) => {
+      const addr = t.openHouse?.property?.address1 ?? t.openHouse.title;
+      return {
+        type: "followup" as const,
+        id: `draft-${t.id}`,
+        label: "Follow-up draft ready",
+        address: addr,
+        timestamp: t.updatedAt ?? t.createdAt ?? null,
+        actionLabel: "Review draft",
+        actionHref: `/showing-hq/follow-ups/draft/${t.id}`,
+      };
+    }),
+    ...pendingFeedbackRequests.slice(0, 8).map((fr) => ({
+      type: "feedback" as const,
+      id: `feedback-${fr.id}`,
+      label: "Feedback request pending",
+      address: fr.property.address1,
+      timestamp: fr.requestedAt ?? null,
+      actionLabel: "Copy link",
+      actionHref: "/showing-hq/feedback-requests",
+    })),
+  ];
+
+  const activityItems = [...activityItemsRaw].sort((a, b) => {
+    const ta = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+    const tb = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+    if (ta === 0 && tb === 0) return 0;
+    if (ta === 0) return 1;
+    if (tb === 0) return -1;
+    return tb - ta;
+  });
+
   return (
     <div className="min-h-0 flex flex-col gap-6" style={{ backgroundColor: "#f1f5f9" }}>
       {/* Hero — product workspace identity */}
@@ -415,228 +471,127 @@ export default function ShowingHQOverviewPage() {
         </div>
       </div>
 
-      {/* 2-column grid: Recent Visitors | Follow-up Tasks, then Today's OH | Upcoming */}
-      <div className="grid flex-1 min-h-0 gap-3 lg:grid-cols-2 lg:grid-rows-2">
-        {/* Recent Visitors */}
-        <BrandCard padded={false} className="flex flex-col min-h-0 bg-white p-4 shadow-sm ring-1 ring-slate-200/60 transition-shadow hover:shadow-md">
+      {/* Row 2: Activity | Open Houses */}
+      <div className="grid flex-1 min-h-0 gap-3 lg:grid-cols-2">
+        {/* Activity */}
+        <BrandCard
+          padded={false}
+          className="flex flex-col min-h-0 bg-white p-3 shadow-sm ring-1 ring-slate-200/60 transition-shadow hover:shadow-md"
+        >
           <div className="mb-2 flex items-center justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
                 <Users className="h-4 w-4 text-[var(--brand-primary)]" />
-                Recent Visitors
+                Activity
               </h2>
-              <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">Latest sign-ins across open houses</p>
+              <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">
+                Recent sign-ins, follow-ups, and feedback in one stream
+              </p>
             </div>
             <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
               <Link href="/showing-hq/visitors">
-                All <ChevronRight className="h-3 w-3" />
+                All visitors <ChevronRight className="h-3 w-3" />
               </Link>
             </Button>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
-            {recentVisitors.length === 0 ? (
-              <BrandEmptyState
-                compact
-                variant="premium"
-                icon={<Users className="h-5 w-5" />}
-                title="No visitors yet"
-                description="Share your sign-in link at your next open house."
-                action={
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/open-houses/sign-in">Get sign-in link</Link>
-                  </Button>
-                }
-              />
-            ) : (
-              <div className="min-w-0 overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-[var(--brand-border)] text-[10px] font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
-                      <th className="py-1.5 pr-3">Name</th>
-                      <th className="py-1.5 pr-3">Time</th>
-                      <th className="py-1.5 pr-3">Property</th>
-                      <th className="py-1.5 pr-3">Status</th>
-                      <th className="py-1.5 text-right"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentVisitors.slice(0, 6).map((v, idx) => {
-                      const addr = (v.openHouse as { property?: { address1: string } })?.property?.address1 ?? v.openHouse.title;
-                      const isNewest = idx === 0;
-                      return (
-                        <tr
-                          key={v.id}
-                          className={`border-b border-[var(--brand-border)]/50 transition-colors duration-150 hover:bg-blue-50/60 ${isNewest ? "animate-visitor-highlight" : ""}`}
-                        >
-                          <td className="py-1.5 pr-3">
-                            <Link href={`/showing-hq/visitors/${v.id}`} className="font-medium text-[var(--brand-text)] hover:underline">
-                              {v.contact.firstName} {v.contact.lastName}
-                            </Link>
-                          </td>
-                          <td className="py-1.5 pr-3 text-[var(--brand-text-muted)]">{formatTimeContextual(v.submittedAt)}</td>
-                          <td className="py-1.5 pr-3 truncate max-w-[120px] text-[var(--brand-text-muted)]">
-                            <span className="flex items-center gap-1.5">
-                              <Building2 className="h-3.5 w-3.5 shrink-0 text-[var(--brand-text-muted)]" />
-                              {addr}
-                            </span>
-                          </td>
-                          <td className="py-1.5 pr-3">
-                            {v.leadStatus ? <LeadStatusBadge status={v.leadStatus} className="text-[10px]" /> : "—"}
-                          </td>
-                          <td className="py-1.5 text-right">
-                            <Button variant="ghost" size="sm" className="h-6 text-xs" asChild>
-                              <Link href={`/contacts/${v.contact.id}`}>Contact</Link>
-                            </Button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {recentVisitors.length > 0 && (
-              <Button variant="ghost" size="sm" className="mt-2 h-7 text-xs" asChild>
-                <Link href="/showing-hq/visitors">View all visitors</Link>
-              </Button>
-            )}
-          </div>
-        </BrandCard>
-
-        {/* Action Queue — feedback, follow-up drafts, visitors pending (priority order) */}
-        <BrandCard padded={false} className="flex flex-col min-h-0 bg-white p-4 shadow-sm ring-1 ring-slate-200/60 transition-shadow hover:shadow-md">
-          <div className="mb-2 flex items-center justify-between">
-            <div>
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
-                <CheckSquare className="h-4 w-4 text-[var(--brand-secondary)]" />
-                Follow-up &amp; Feedback
-                {(pendingFeedbackRequests.length + followUpTasks.length) > 0 && (
-                  <span className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500/20 px-1.5 text-[10px] font-semibold text-amber-700">
-                    {pendingFeedbackRequests.length + followUpTasks.length}
-                  </span>
-                )}
-              </h2>
-              <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">Actionable items — feedback, drafts, visitors</p>
-            </div>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
-              <Link href="/showing-hq/follow-ups">
-                All <ChevronRight className="h-3 w-3" />
-              </Link>
-            </Button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-auto">
-            {pendingFeedbackRequests.length === 0 && followUpTasks.length === 0 && visitorsToday === 0 ? (
-              <div className="rounded border border-dashed border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/30 p-3">
+            {activityItems.length === 0 ? (
+              <div className="rounded-md border border-dashed border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/40 px-3 py-2">
                 <p className="text-xs text-[var(--brand-text-muted)]">
-                  Feedback requests and follow-up drafts will appear here. Add a showing with feedback required or capture visitors at an open house.
+                  Visitor sign-ins, follow-up drafts, and feedback requests will appear here as they
+                  come in.
                 </p>
                 <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" asChild>
-                  <Link href="/showing-hq/showings/new">Add showing</Link>
+                  <Link href="/open-houses/sign-in">Get sign-in link</Link>
                 </Button>
               </div>
             ) : (
-              <ul className="space-y-1.5">
-                {pendingFeedbackRequests.map((fr) => (
-                  <li
-                    key={`fb-${fr.id}`}
-                    className="flex items-center justify-between gap-3 rounded-md border border-[var(--brand-border)] p-2 transition-colors hover:bg-[var(--brand-surface-alt)]/50"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="flex items-center gap-1.5 text-sm font-medium text-[var(--brand-text)]">
-                        <MessageSquare className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
-                        Feedback request pending
-                      </p>
-                      <p className="truncate text-xs text-[var(--brand-text-muted)]">{fr.property.address1}</p>
-                    </div>
-                    <Button variant="outline" size="sm" className="h-8 shrink-0 text-xs" asChild>
-                      <Link href="/showing-hq/feedback-requests">Copy link</Link>
-                    </Button>
-                  </li>
-                ))}
-                {followUpTasks.slice(0, 8).map((t) => {
-                  const addr = t.openHouse?.property?.address1 ?? t.openHouse.title;
+              <div className="space-y-1.5">
+                {activityItems.map((item) => {
+                  const Icon =
+                    item.type === "visitor"
+                      ? Users
+                      : item.type === "followup"
+                        ? CheckSquare
+                        : MessageSquare;
                   return (
-                    <li
-                      key={t.id}
-                      className="flex items-center justify-between gap-3 rounded-md border border-[var(--brand-border)] p-2 transition-colors hover:bg-[var(--brand-surface-alt)]/50"
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between gap-3 rounded-md border border-[var(--brand-border)] px-2.5 py-1.5 text-xs"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="flex items-center gap-1.5 text-sm font-medium text-[var(--brand-text)]">
-                          <CheckSquare className="h-3.5 w-3.5 shrink-0 text-amber-600" />
-                          Draft ready
+                        <p className="flex items-center gap-1.5 font-medium text-[var(--brand-text)]">
+                          <Icon className="h-3.5 w-3.5 shrink-0 text-[var(--brand-text-muted)]" />
+                          <span className="truncate">{item.label}</span>
                         </p>
-                        <p className="truncate text-xs text-[var(--brand-text-muted)]">{addr}</p>
+                        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[var(--brand-text-muted)]">
+                          <span className="inline-flex items-center gap-1">
+                            <Building2 className="h-3 w-3 shrink-0" />
+                            <span className="truncate max-w-[160px]">{item.address}</span>
+                          </span>
+                          <span className="hidden text-[10px] text-slate-500 sm:inline">
+                            · {item.timestamp ? formatTimeContextual(item.timestamp) : "—"}
+                          </span>
+                        </p>
                       </div>
-                      <BrandButton variant="primary" size="sm" className="h-8 shrink-0 text-xs" asChild>
-                        <Link href={`/showing-hq/follow-ups/draft/${t.id}`}>Review</Link>
-                      </BrandButton>
-                    </li>
+                      <Button variant="outline" size="sm" className="h-7 shrink-0 px-2 text-[11px]" asChild>
+                        <Link href={item.actionHref}>{item.actionLabel}</Link>
+                      </Button>
+                    </div>
                   );
                 })}
-                {visitorsToday > 0 && followUpTasks.length === 0 && (
-                  <li className="flex items-center justify-between gap-3 rounded-md border border-[var(--brand-border)] p-2 transition-colors hover:bg-[var(--brand-surface-alt)]/50">
-                    <div className="min-w-0 flex-1">
-                      <p className="flex items-center gap-1.5 text-sm font-medium text-[var(--brand-text)]">
-                        <Users className="h-3.5 w-3.5 shrink-0 text-blue-600" />
-                        {visitorsToday} visitor{visitorsToday !== 1 ? "s" : ""} captured
-                      </p>
-                      <p className="text-xs text-[var(--brand-text-muted)]">Follow-up pending</p>
-                    </div>
-                    <BrandButton variant="secondary" size="sm" className="h-8 shrink-0 text-xs" asChild>
-                      <Link href="/showing-hq/visitors">Review visitors</Link>
-                    </BrandButton>
-                  </li>
-                )}
-              </ul>
-            )}
-            {(pendingFeedbackRequests.length > 0 || followUpTasks.length > 0) && (
-              <Button variant="ghost" size="sm" className="mt-2 h-7 text-xs" asChild>
-                <Link href="/showing-hq/follow-ups">View all follow-ups</Link>
-              </Button>
+              </div>
             )}
           </div>
         </BrandCard>
 
-        {/* Today's Open Houses */}
-        <BrandCard padded={false} className="flex flex-col min-h-0 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+        {/* Open Houses (today + upcoming) */}
+        <BrandCard
+          padded={false}
+          className="flex flex-col min-h-0 bg-white p-3 shadow-sm transition-shadow hover:shadow-md"
+        >
           <div className="mb-2 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
               <Calendar className="h-4 w-4 text-[var(--brand-accent)]" />
-              Today&apos;s Open Houses
+              Open Houses
             </h2>
             <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
-              <Link href="/open-houses/new">Create</Link>
+              <Link href="/open-houses">View all</Link>
             </Button>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
-            {todaysShowings.length === 0 ? (
-              <BrandEmptyState
-                compact
-                variant="premium"
-                icon={<Calendar className="h-5 w-5" />}
-                title="No open houses today"
-                description="Schedule a public open house."
-                action={
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href="/open-houses/new">Create open house</Link>
-                  </Button>
-                }
-              />
+            {todaysShowings.length === 0 && upcoming.length === 0 ? (
+              <div className="rounded-md border border-dashed border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/40 px-3 py-2">
+                <p className="text-xs font-medium text-[var(--brand-text)]">Today&apos;s Open Houses</p>
+                <p className="text-xs text-[var(--brand-text-muted)]">None scheduled</p>
+                <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" asChild>
+                  <Link href="/open-houses/new">Create open house</Link>
+                </Button>
+              </div>
             ) : (
               <ul className="space-y-1.5">
                 {todaysShowings.map((oh) => (
                   <li
                     key={oh.id}
-                    className="flex items-center justify-between gap-2 rounded-md border border-[var(--brand-border)] p-2"
+                    className="flex items-center justify-between gap-2 rounded-md border border-[var(--brand-border)] px-2.5 py-1.5"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-[var(--brand-text)]">{oh.title}</p>
+                      <p className="truncate text-xs font-medium text-[var(--brand-text)]">
+                        Today · {formatTime(oh.startAt)}
+                      </p>
                       <p className="truncate text-xs text-[var(--brand-text-muted)]">
-                        {oh.property.address1}, {oh.property.city} · {formatTime(oh.startAt)} · {oh._count.visitors} visitors
+                        {oh.property.address1}, {oh.property.city} · {oh._count.visitors} visitors
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      <Badge variant={oh.status === "ACTIVE" || oh.status === "SCHEDULED" ? "default" : "secondary"} className="text-[10px]">
+                      <Badge
+                        variant={
+                          oh.status === "ACTIVE" || oh.status === "SCHEDULED"
+                            ? "default"
+                            : "secondary"
+                        }
+                        className="text-[10px]"
+                      >
                         {oh.status}
                       </Badge>
                       <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
@@ -645,52 +600,17 @@ export default function ShowingHQOverviewPage() {
                     </div>
                   </li>
                 ))}
-              </ul>
-            )}
-            {todaysShowings.length > 0 && (
-              <Button variant="ghost" size="sm" className="mt-2 h-7 text-xs" asChild>
-                <Link href="/open-houses/new">Create open house</Link>
-              </Button>
-            )}
-          </div>
-        </BrandCard>
-
-        {/* Upcoming Open Houses */}
-        <BrandCard padded={false} className="flex flex-col min-h-0 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
-              <Calendar className="h-4 w-4 text-[var(--brand-text-muted)]" />
-              Upcoming Open Houses
-            </h2>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
-              <Link href="/open-houses">View all</Link>
-            </Button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-auto">
-            {upcoming.length === 0 ? (
-              <BrandEmptyState
-                compact
-                variant="premium"
-                icon={<Calendar className="h-5 w-5" />}
-                title="No upcoming open houses"
-                description="Create your first open house."
-                action={
-                  <BrandButton variant="primary" size="sm" asChild>
-                    <Link href="/open-houses/new">Create open house</Link>
-                  </BrandButton>
-                }
-              />
-            ) : (
-              <ul className="space-y-1.5">
                 {upcoming.slice(0, 5).map((oh) => (
                   <li
                     key={oh.id}
-                    className="flex items-center justify-between gap-2 rounded-md border border-[var(--brand-border)] p-2"
+                    className="flex items-center justify-between gap-2 rounded-md border border-[var(--brand-border)] px-2.5 py-1.5"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-[var(--brand-text)]">{oh.title}</p>
+                      <p className="truncate text-xs font-medium text-[var(--brand-text)]">
+                        {formatDate(oh.startAt)} · {formatTime(oh.startAt)}
+                      </p>
                       <p className="truncate text-xs text-[var(--brand-text-muted)]">
-                        {oh.property.address1}, {oh.property.city} · {formatDate(oh.startAt)} · {oh._count.visitors} visitors
+                        {oh.property.address1}, {oh.property.city} · {oh._count.visitors} visitors
                       </p>
                     </div>
                     <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
@@ -699,11 +619,6 @@ export default function ShowingHQOverviewPage() {
                   </li>
                 ))}
               </ul>
-            )}
-            {upcoming.length > 0 && (
-              <Button variant="ghost" size="sm" className="mt-2 h-7 text-xs" asChild>
-                <Link href="/open-houses">View all</Link>
-              </Button>
             )}
           </div>
         </BrandCard>
