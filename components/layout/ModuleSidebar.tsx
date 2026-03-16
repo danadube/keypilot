@@ -57,8 +57,8 @@ export function ModuleSidebar() {
 
   return (
     <aside
-      className="flex shrink-0 flex-col border-r border-[var(--brand-border)] bg-[var(--brand-sidebar-bg, #0B1A3C)] text-slate-100 border-t-2 border-t-[#4BAED8]"
-      style={{ width: SIDEBAR_WIDTH }}
+      className="flex shrink-0 flex-col border-r border-[var(--brand-border)] text-slate-100 border-t-2 border-t-[#4BAED8]"
+      style={{ width: SIDEBAR_WIDTH, backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)" }}
       aria-label={`${mod.name} navigation`}
     >
       {activeId === "showing-hq" ? (

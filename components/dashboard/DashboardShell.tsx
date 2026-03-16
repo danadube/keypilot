@@ -24,8 +24,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       >
         {/* Left: KeyPilot brand area — same width as sidebar, matches dark sidebar */}
         <div
-          className="flex shrink-0 items-center border-r border-[var(--brand-border)] bg-[var(--brand-sidebar-bg, #0B1A3C)] px-5"
-          style={{ width: SIDEBAR_WIDTH }}
+          className="flex shrink-0 items-center border-r border-[var(--brand-border)] px-5"
+          style={{ width: SIDEBAR_WIDTH, backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)" }}
         >
           <Link
             href="/"
