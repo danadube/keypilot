@@ -39,6 +39,7 @@ export async function GET() {
       userProfile,
       privateShowingsTodayCount,
       feedbackRequestsPendingCount,
+      pendingFeedbackRequests,
     ] = await Promise.all([
       prisma.openHouse.findMany({
         where: {
@@ -172,6 +173,12 @@ export async function GET() {
       }),
       prisma.feedbackRequest.count({
         where: { hostUserId: user.id, status: "PENDING" },
+      }),
+      prisma.feedbackRequest.findMany({
+        where: { hostUserId: user.id, status: "PENDING" },
+        include: { property: { select: { address1: true } } },
+        orderBy: { requestedAt: "desc" },
+        take: 20,
       }),
     ]);
 
@@ -321,6 +328,10 @@ export async function GET() {
         upcomingOpenHouses,
         recentVisitors,
         followUpTasks: followUpDrafts,
+        pendingFeedbackRequests: pendingFeedbackRequests.map((fr) => ({
+          id: fr.id,
+          property: { address1: fr.property.address1 },
+        })),
         stats: {
           totalVisitors: totalVisitorsCount,
           totalOpenHouses: openHousesCount,

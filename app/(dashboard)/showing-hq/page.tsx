@@ -26,8 +26,7 @@ import { EditEventModal } from "@/components/showing-hq/EditEventModal";
 import { TodayCommandCenter } from "@/components/showing-hq/TodayCommandCenter";
 import { TodaysScheduleCard } from "@/components/showing-hq/TodaysScheduleCard";
 import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
-import { NextActionsCard } from "@/components/showing-hq/NextActionsCard";
-import type { NextActionItem } from "@/components/showing-hq/NextActionsCard";
+import { MessageSquare } from "lucide-react";
 
 type DashboardData = {
   todaysShowings: {
@@ -73,6 +72,7 @@ type DashboardData = {
     contact: { firstName: string; lastName: string };
     openHouse: { id: string; title: string; property?: { address1: string; city: string; state: string } };
   }[];
+  pendingFeedbackRequests?: { id: string; property: { address1: string } }[];
   stats: {
     totalVisitors: number;
     totalShowings: number;
@@ -246,52 +246,11 @@ export default function ShowingHQOverviewPage() {
         }
       : null;
 
-  const nextActions: NextActionItem[] = [];
   const nextShowing = scheduleItems
     .filter((s) => s.type === "showing" && new Date(s.at) > now)
     .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())[0];
-  if (nextShowing) {
-    const start = new Date(nextShowing.at);
-    const mins = Math.round((start.getTime() - now.getTime()) / 60000);
-    const label =
-      mins <= 30
-        ? `Showing in ${mins} min · ${nextShowing.property.address1}`
-        : `Showing at ${formatTime(nextShowing.at)} · ${nextShowing.property.address1}`;
-    nextActions.push({ id: "next-showing", label, href: "/showing-hq/showings", icon: "clock" });
-  }
-  if (nextOh) {
-    const start = new Date(nextOh.startAt);
-    const mins = Math.round((start.getTime() - now.getTime()) / 60000);
-    const label =
-      mins <= 60
-        ? `Open house in ${mins} min · ${nextOh.property.address1}`
-        : `Open house at ${formatTime(nextOh.startAt)} · ${nextOh.property.address1}`;
-    nextActions.push({ id: "next-oh", label, href: `/open-houses/${nextOh.id}/sign-in`, icon: "clock" });
-  }
-  if (visitorsToday > 0 && followUpTasks.length === 0) {
-    nextActions.push({
-      id: "visitors-pending",
-      label: `${visitorsToday} visitor${visitorsToday !== 1 ? "s" : ""} captured · follow-up pending`,
-      href: "/showing-hq/visitors",
-      icon: "users",
-    });
-  }
-  if ((stats.feedbackRequestsPending ?? 0) > 0) {
-    nextActions.push({
-      id: "feedback",
-      label: `${stats.feedbackRequestsPending} feedback request${stats.feedbackRequestsPending !== 1 ? "s" : ""} pending`,
-      href: "/showing-hq/feedback-requests",
-      icon: "message",
-    });
-  }
-  if (followUpTasks.length > 0) {
-    nextActions.push({
-      id: "follow-ups",
-      label: `Review ${followUpTasks.length} follow-up draft${followUpTasks.length !== 1 ? "s" : ""}`,
-      href: "/showing-hq/follow-ups",
-      icon: "check",
-    });
-  }
+
+  const pendingFeedbackRequests = data?.pendingFeedbackRequests ?? [];
 
   return (
     <div className="min-h-0 flex flex-col gap-6" style={{ backgroundColor: "#f1f5f9" }}>
@@ -338,8 +297,8 @@ export default function ShowingHQOverviewPage() {
         linkCopied={linkCopied}
       />
 
-      {/* Calendar + Today's Schedule + Next Actions — operations workspace row */}
-      <div className="grid min-h-0 gap-4 lg:grid-cols-[1.5fr_0.9fr_0.6fr]" role="region" aria-label="Schedule and actions">
+      {/* Calendar + Today's Schedule — 2-column top row */}
+      <div className="grid min-h-0 gap-4 lg:grid-cols-[1.7fr_0.9fr]" role="region" aria-label="Schedule">
         <ShowingHQCalendar
           events={data?.calendarEvents ?? []}
           height={380}
@@ -364,7 +323,6 @@ export default function ShowingHQOverviewPage() {
           formatTime={formatTime}
           activeOpenHouseId={activeOpenHouse?.id ?? null}
         />
-        <NextActionsCard items={nextActions} />
       </div>
 
       <QuickCreateEventModal
@@ -545,20 +503,20 @@ export default function ShowingHQOverviewPage() {
           </div>
         </BrandCard>
 
-        {/* Follow-up Tasks */}
+        {/* Action Queue — feedback, follow-up drafts, visitors pending (priority order) */}
         <BrandCard padded={false} className="flex flex-col min-h-0 bg-white p-4 shadow-sm ring-1 ring-slate-200/60 transition-shadow hover:shadow-md">
           <div className="mb-2 flex items-center justify-between">
             <div>
               <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
                 <CheckSquare className="h-4 w-4 text-[var(--brand-secondary)]" />
-                Follow-up Tasks
-                {followUpTasks.length > 0 && (
+                Follow-up &amp; Feedback
+                {(pendingFeedbackRequests.length + followUpTasks.length) > 0 && (
                   <span className="ml-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-amber-500/20 px-1.5 text-[10px] font-semibold text-amber-700">
-                    {followUpTasks.length}
+                    {pendingFeedbackRequests.length + followUpTasks.length}
                   </span>
                 )}
               </h2>
-              <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">Draft emails waiting to be reviewed</p>
+              <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">Actionable items — feedback, drafts, visitors</p>
             </div>
             <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
               <Link href="/showing-hq/follow-ups">
@@ -567,34 +525,35 @@ export default function ShowingHQOverviewPage() {
             </Button>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
-            {followUpTasks.length === 0 ? (
-              <div className="space-y-2">
-                {stats.totalVisitors > 0 || recentVisitors.length > 0 ? (
-                  <div className="rounded-lg border border-amber-200/80 bg-amber-50/50 p-3">
-                    <p className="text-sm font-medium text-[var(--brand-text)]">
-                      {stats.totalVisitors} visitor{stats.totalVisitors !== 1 ? "s" : ""} captured.
-                    </p>
-                    <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">
-                      Follow-up drafts will appear here after draft generation runs. Visit Follow-ups to generate or review.
-                    </p>
-                    <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" asChild>
-                      <Link href="/showing-hq/follow-ups">Go to Follow-ups</Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="rounded border border-dashed border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/30 p-3">
-                    <p className="text-xs text-[var(--brand-text-muted)]">
-                      Follow-up drafts appear here after visitors sign in at your open house and drafts are generated.
-                    </p>
-                    <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" asChild>
-                      <Link href="/open-houses/sign-in">Get sign-in link</Link>
-                    </Button>
-                  </div>
-                )}
+            {pendingFeedbackRequests.length === 0 && followUpTasks.length === 0 && visitorsToday === 0 ? (
+              <div className="rounded border border-dashed border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/30 p-3">
+                <p className="text-xs text-[var(--brand-text-muted)]">
+                  Feedback requests and follow-up drafts will appear here. Add a showing with feedback required or capture visitors at an open house.
+                </p>
+                <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" asChild>
+                  <Link href="/showing-hq/showings/new">Add showing</Link>
+                </Button>
               </div>
             ) : (
               <ul className="space-y-1.5">
-                {followUpTasks.slice(0, 6).map((t) => {
+                {pendingFeedbackRequests.map((fr) => (
+                  <li
+                    key={`fb-${fr.id}`}
+                    className="flex items-center justify-between gap-3 rounded-md border border-[var(--brand-border)] p-2 transition-colors hover:bg-[var(--brand-surface-alt)]/50"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-center gap-1.5 text-sm font-medium text-[var(--brand-text)]">
+                        <MessageSquare className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
+                        Feedback request pending
+                      </p>
+                      <p className="truncate text-xs text-[var(--brand-text-muted)]">{fr.property.address1}</p>
+                    </div>
+                    <Button variant="outline" size="sm" className="h-8 shrink-0 text-xs" asChild>
+                      <Link href="/showing-hq/feedback-requests">Copy link</Link>
+                    </Button>
+                  </li>
+                ))}
+                {followUpTasks.slice(0, 8).map((t) => {
                   const addr = t.openHouse?.property?.address1 ?? t.openHouse.title;
                   return (
                     <li
@@ -602,23 +561,35 @@ export default function ShowingHQOverviewPage() {
                       className="flex items-center justify-between gap-3 rounded-md border border-[var(--brand-border)] p-2 transition-colors hover:bg-[var(--brand-surface-alt)]/50"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-[var(--brand-text)]">
-                          {t.contact.firstName} {t.contact.lastName}
+                        <p className="flex items-center gap-1.5 text-sm font-medium text-[var(--brand-text)]">
+                          <CheckSquare className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                          Draft ready
                         </p>
                         <p className="truncate text-xs text-[var(--brand-text-muted)]">{addr}</p>
                       </div>
                       <BrandButton variant="primary" size="sm" className="h-8 shrink-0 text-xs" asChild>
-                        <Link href={`/open-houses/${t.openHouse.id}/follow-ups`}>
-                          <CheckSquare className="mr-1.5 h-3.5 w-3.5" />
-                          Review draft
-                        </Link>
+                        <Link href={`/showing-hq/follow-ups/draft/${t.id}`}>Review</Link>
                       </BrandButton>
                     </li>
                   );
                 })}
+                {visitorsToday > 0 && followUpTasks.length === 0 && (
+                  <li className="flex items-center justify-between gap-3 rounded-md border border-[var(--brand-border)] p-2 transition-colors hover:bg-[var(--brand-surface-alt)]/50">
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-center gap-1.5 text-sm font-medium text-[var(--brand-text)]">
+                        <Users className="h-3.5 w-3.5 shrink-0 text-blue-600" />
+                        {visitorsToday} visitor{visitorsToday !== 1 ? "s" : ""} captured
+                      </p>
+                      <p className="text-xs text-[var(--brand-text-muted)]">Follow-up pending</p>
+                    </div>
+                    <BrandButton variant="secondary" size="sm" className="h-8 shrink-0 text-xs" asChild>
+                      <Link href="/showing-hq/visitors">Review visitors</Link>
+                    </BrandButton>
+                  </li>
+                )}
               </ul>
             )}
-            {followUpTasks.length > 0 && (
+            {(pendingFeedbackRequests.length > 0 || followUpTasks.length > 0) && (
               <Button variant="ghost" size="sm" className="mt-2 h-7 text-xs" asChild>
                 <Link href="/showing-hq/follow-ups">View all follow-ups</Link>
               </Button>
