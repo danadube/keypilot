@@ -75,7 +75,7 @@ export function ModuleSidebar() {
               />
             </div>
             <div className="flex flex-col">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-300">
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--brand-text-muted)]">
                 KeyPilot
               </span>
               <div className="flex items-center gap-2">
@@ -88,7 +88,7 @@ export function ModuleSidebar() {
               </div>
             </div>
           </div>
-          <p className="mt-2 text-xs text-slate-400">
+          <p className="mt-2 text-xs text-[var(--brand-text-muted)]">
             Private showings & open house command center.
           </p>
         </div>
@@ -101,7 +101,7 @@ export function ModuleSidebar() {
         {groups.map(({ section, items: groupItems }) => (
           <div key={section ?? "main"} className="mb-4 last:mb-2">
             {section && (
-              <p className="mb-1.5 px-5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+              <p className="mb-1.5 px-5 text-xs font-semibold uppercase tracking-wide text-[var(--brand-text-muted)]">
                 {section}
               </p>
             )}
@@ -132,7 +132,7 @@ export function ModuleSidebar() {
       </nav>
       {lockedModules.length > 0 && (
         <div className="shrink-0 border-t border-[var(--brand-border)] px-5 py-3">
-          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--brand-text-muted)]">
             Upgrade Your Platform
           </p>
           <ul className="space-y-0.5">

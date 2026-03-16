@@ -1,0 +1,66 @@
+## KeyPilot Token Architecture Rules
+
+Scope:
+
+- Applies to:
+  - `app/**/*.tsx`
+  - `components/**/*.tsx`
+  - `design-system/**/*.ts`
+  - `app/globals.css`
+
+### Structural color rules
+
+- **App canvas**
+  - Must use brand tokens:
+    - `bg-[var(--brand-bg)]` for main content shells (e.g. dashboard main container).
+  - Do **not** use raw Tailwind structural classes such as `bg-slate-*`, `bg-sky-*`, `bg-zinc-*`, `bg-purple-*`, `bg-pink-*` for the overall canvas.
+
+- **Sidebar**
+  - Background must be driven by:
+    - `bg-[var(--brand-sidebar-bg)]`
+  - Do not use slate/gray Tailwind backgrounds for the sidebar rail.
+
+- **Header shell**
+  - Structural header strips must use:
+    - `bg-[var(--brand-surface)]`
+    - `border-[var(--brand-border)]`
+  - The left brand column should align visually with the sidebar background and may use `--brand-sidebar-bg`.
+
+- **Hero / module banner**
+  - Background should be:
+    - `bg-[var(--brand-surface)]` (white)
+  - Accents:
+    - Left accent: `borderLeftColor: "var(--brand-primary)"`
+    - Ring/accent: `ring-[var(--kp-hero-ring)]` (currently sky)
+  - Do not reintroduce `bg-sky-*` / `bg-muted` as the primary hero surface.
+
+- **Cards and panels**
+  - Default card surfaces must use:
+    - `bg-[var(--brand-surface)]`
+    - `border-[var(--brand-border)]`
+  - Alternate surfaces for highlights may use:
+    - `bg-[var(--brand-surface-alt)]` inside cards.
+
+### Interaction and text rules
+
+- **Structure vs interaction**
+  - Use `--brand-primary` and `--brand-sidebar-bg` for structural elements (rails, key accents).
+  - Use `--brand-secondary` for interactive states:
+    - Active nav items, hover states, chips, and interactive highlights.
+
+- **Text**
+  - Prefer:
+    - `--brand-text` for primary text
+    - `--brand-text-muted` for supporting text
+  - Avoid relying on arbitrary slate utility shades for core structural labels when a brand token is available.
+
+### Gradients and off-brand tones
+
+- Gradients:
+  - Only allowed in explicitly designed hero/cover contexts.
+  - The default app shell (canvas, sidebar, header) should not use decorative gradients unless documented.
+
+- Off-brand tones:
+  - Avoid purple, violet, pink, or other non-brand hues for shell surfaces unless explicitly requested.
+  - Micro accents (icons, badges) may use additional utilities, but structural layout must remain token-driven.
+

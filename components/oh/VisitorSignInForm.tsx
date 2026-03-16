@@ -116,11 +116,11 @@ export function VisitorSignInForm({ slug }: { slug: string }) {
   const hasHost = !!(hostName || oh.branding?.brokerageName);
 
   return (
-    <div className="min-h-screen bg-slate-100 md:bg-white">
+    <div className="min-h-screen bg-[var(--brand-bg)] md:bg-[var(--brand-surface)]">
       {/* 2-column grid: image left, form right. Stack on mobile. */}
       <div className="grid min-h-screen grid-cols-1 md:grid-cols-2">
         {/* Left: property image — never overlaps form */}
-        <div className="relative min-h-[200px] overflow-hidden bg-slate-200 md:h-screen">
+        <div className="relative min-h-[200px] overflow-hidden bg-[var(--brand-surface-alt)] md:h-screen">
           {hasImage ? (
             // eslint-disable-next-line @next/next/no-img-element -- external Supabase URL
             <img
@@ -137,7 +137,7 @@ export function VisitorSignInForm({ slug }: { slug: string }) {
 
         {/* Right: sign-in form — centered, max-width 420px, scrolls when needed */}
         <div className="flex min-h-0 flex-col items-center justify-center overflow-y-auto px-4 py-8 md:px-8 md:py-10">
-          <div className="w-full max-w-[420px] rounded-xl border border-slate-200/80 bg-white p-6 shadow-md">
+          <div className="w-full max-w-[420px] rounded-xl border border-[var(--brand-border)] bg-[var(--brand-surface)] p-6 shadow-md">
             {/* Header section */}
             <div className="space-y-4">
               <h1 className="text-xl font-semibold tracking-tight text-slate-600">
@@ -169,7 +169,7 @@ export function VisitorSignInForm({ slug }: { slug: string }) {
                   href={oh.flyerUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="block rounded-lg border border-slate-200 bg-slate-50/80 p-4 transition-colors hover:bg-slate-100"
+                  className="block rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface-alt)] p-4 transition-colors hover:bg-[var(--brand-surface)]"
                 >
                   <p className="text-sm font-medium text-slate-800">
                     Property Details
@@ -181,7 +181,7 @@ export function VisitorSignInForm({ slug }: { slug: string }) {
               )}
 
               {hasHost && (
-                <div className="space-y-2 rounded-lg border border-slate-100 bg-slate-50/50 p-3">
+                <div className="space-y-2 rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface-alt)] p-3">
                   <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                     Hosted by
                   </p>
@@ -199,7 +199,7 @@ export function VisitorSignInForm({ slug }: { slug: string }) {
                         <img src={oh.branding.logoUrl} alt="" className="max-h-9 max-w-full object-contain" />
                       </div>
                     ) : (
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500">
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--brand-surface-alt)] text-slate-600">
                         <span className="text-lg font-medium">
                           {hostName?.charAt(0) ?? "?"}
                         </span>
@@ -228,7 +228,7 @@ export function VisitorSignInForm({ slug }: { slug: string }) {
 
             {/* QR optional on desktop/tablet only — hidden on phones so visitors use the form directly */}
             {oh.qrCodeDataUrl && (
-              <div className="mt-6 hidden md:block rounded-lg border border-slate-200 bg-slate-50/50 p-4">
+              <div className="mt-6 hidden md:block rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface-alt)] p-4">
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-2">
                   Or scan to open on your phone
                 </p>

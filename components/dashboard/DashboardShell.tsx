@@ -52,7 +52,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
         {/* Right: Global controls — fixed width, collision-proof */}
         <div
-          className="flex shrink-0 items-center justify-end gap-3 border-l border-[var(--brand-border)] bg-white pl-4 pr-4"
+          className="flex shrink-0 items-center justify-end gap-3 border-l border-[var(--brand-border)] bg-[var(--brand-surface)] pl-4 pr-4"
           style={{ width: HEADER_RIGHT_WIDTH }}
         >
           <UserButton afterSignOutUrl="/" />
