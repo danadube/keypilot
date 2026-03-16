@@ -24,19 +24,19 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       >
         {/* Left: KeyPilot brand area — same width as sidebar, matches dark sidebar */}
         <div
-          className="flex shrink-0 items-center border-r border-[var(--brand-border)] px-5"
-          style={{ width: SIDEBAR_WIDTH, backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)" }}
+          className="flex shrink-0 items-center border-r border-[var(--brand-border)] overflow-hidden"
+          style={{ width: SIDEBAR_WIDTH, height: HEADER_HEIGHT, backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)" }}
         >
           <Link
             href="/"
-            className="flex items-center transition-opacity hover:opacity-90"
+            className="flex w-full transition-opacity hover:opacity-90"
           >
             <Image
               src="/KeyPilot-logo.png?v=4"
               alt="KeyPilot - The Real Estate Operations Platform"
               width={180}
               height={54}
-              className="h-8 w-auto object-contain"
+              className="w-full h-auto brightness-0 invert"
               priority
             />
           </Link>
