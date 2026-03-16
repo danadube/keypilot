@@ -105,37 +105,37 @@ export function ModuleSidebar() {
             </ul>
           </div>
         ))}
-        {lockedModules.length > 0 && (
-          <div className="mt-6 border-t border-slate-800 pt-4">
-            <p className="mb-1.5 px-5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Upgrade Your Platform
-            </p>
-            <ul className="space-y-0.5">
-              {lockedModules.map((id) => {
-                const cfg = MODULES[id];
-                if (!cfg) return null;
-                const isActive = pathname === `/upgrade/${id}`;
-                return (
-                  <li key={id}>
-                    <Link
-                      href={`/upgrade/${id}`}
-                      className={cn(
-                        "flex items-center gap-3 rounded-md px-5 py-2.5 text-sm transition-colors",
-                        "text-slate-400 hover:bg-slate-800 hover:text-slate-50",
-                        isActive &&
-                          "bg-sky-500/15 font-semibold text-sky-300 border-l-2 border-l-sky-400 -ml-[2px] pl-[calc(1.25rem+2px)]"
-                      )}
-                    >
-                      <Lock className="h-[18px] w-[18px] shrink-0 opacity-70" />
-                      {cfg.name}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
       </nav>
+      {lockedModules.length > 0 && (
+        <div className="shrink-0 border-t border-slate-800 px-5 py-3">
+          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Upgrade Your Platform
+          </p>
+          <ul className="space-y-0.5">
+            {lockedModules.map((id) => {
+              const cfg = MODULES[id];
+              if (!cfg) return null;
+              const isActive = pathname === `/upgrade/${id}`;
+              return (
+                <li key={id}>
+                  <Link
+                    href={`/upgrade/${id}`}
+                    className={cn(
+                      "flex items-center gap-3 rounded-md px-2.5 py-2.5 text-sm transition-colors",
+                      "text-slate-400 hover:bg-slate-800 hover:text-slate-50",
+                      isActive &&
+                        "bg-sky-500/15 font-semibold text-sky-300 border-l-2 border-l-sky-400 -ml-[2px] pl-[calc(0.75rem+2px)]"
+                    )}
+                  >
+                    <Lock className="h-[18px] w-[18px] shrink-0 opacity-70" />
+                    {cfg.name}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
       {activeId === "showing-hq" && (
         <div className="shrink-0 border-t border-slate-800 p-4">
           <FeedbackButton
