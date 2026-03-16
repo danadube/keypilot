@@ -311,13 +311,13 @@ export default function ShowingHQOverviewPage() {
 
   return (
     <div className="min-h-0 flex flex-col gap-6 bg-slate-50">
-      {/* Hero — product workspace identity (stronger than cards) */}
+      {/* Hero — product workspace identity (white, strong accent, no blue wash) */}
       <header
-        className="rounded-2xl border border-sky-100 bg-sky-50 px-6 py-6 shadow-xl ring-1 ring-slate-200/80"
+        className="relative rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-md ring-1 ring-slate-200"
         style={{ borderLeftWidth: "4px", borderLeftColor: "var(--brand-primary)" }}
         role="banner"
       >
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-1.5">
           <h1
             className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl"
             style={{ fontFamily: "var(--font-heading)" }}
@@ -328,8 +328,8 @@ export default function ShowingHQOverviewPage() {
             Manage private showings, open houses, visitors, feedback, and follow-ups in one command center.
           </p>
         </div>
-        {/* Metric chips — semantic color on icon only, neutral surface */}
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        {/* Metric chips — integrated with hero content width */}
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
             <Users className="h-4 w-4 shrink-0 text-blue-600" />
             <div className="min-w-0">

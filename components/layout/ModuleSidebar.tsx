@@ -61,11 +61,14 @@ export function ModuleSidebar() {
       aria-label={`${mod.name} navigation`}
     >
       <div className="border-b border-slate-800 px-5 py-4">
-        <h2 className="text-sm font-semibold text-slate-50">
-          {activeId === "showing-hq" ? "ShowingHQ Beta" : mod.name}
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+          {activeId === "showing-hq" ? "Module" : ""}
+        </p>
+        <h2 className="mt-1 text-base font-bold tracking-tight text-white">
+          {activeId === "showing-hq" ? "ShowingHQ" : mod.name}
         </h2>
         {activeId === "showing-hq" && (
-          <p className="mt-0.5 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-slate-400">
             by KeyPilot · Early Access
           </p>
         )}
@@ -134,8 +137,12 @@ export function ModuleSidebar() {
         )}
       </nav>
       {activeId === "showing-hq" && (
-        <div className="shrink-0 border-t border-[var(--brand-border)] p-4">
-          <FeedbackButton variant="outline" size="sm" className="w-full justify-center">
+        <div className="shrink-0 border-t border-slate-800 p-4">
+          <FeedbackButton
+            variant="outline"
+            size="sm"
+            className="w-full justify-center border-slate-600 bg-slate-800/60 text-slate-200 hover:border-slate-500 hover:bg-slate-700 hover:text-white"
+          >
             Send feedback
           </FeedbackButton>
         </div>

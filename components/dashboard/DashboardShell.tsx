@@ -19,12 +19,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col">
       {/* Header: grid-aligned with sidebar — brand (240px) | module nav | global controls */}
       <header
-        className="sticky top-0 z-20 flex shrink-0 items-center border-b border-[var(--brand-border)] bg-white"
+        className="sticky top-0 z-20 flex shrink-0 items-center border-b border-slate-200 bg-white"
         style={{ height: HEADER_HEIGHT }}
       >
-        {/* Left: KeyPilot brand area — same width as sidebar, platform anchor */}
+        {/* Left: KeyPilot brand area — same width as sidebar, matches dark sidebar */}
         <div
-          className="flex shrink-0 items-center border-r border-[var(--brand-border)] px-6"
+          className="flex shrink-0 items-center border-r border-slate-800 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 px-5"
           style={{ width: SIDEBAR_WIDTH }}
         >
           <Link
@@ -34,9 +34,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <Image
               src="/KeyPilot-logo.png?v=4"
               alt="KeyPilot - The Real Estate Operations Platform"
-              width={140}
-              height={42}
-              className="h-11 w-auto object-contain"
+              width={180}
+              height={54}
+              className="h-12 w-auto max-h-12 object-contain object-left brightness-0 invert"
               priority
             />
           </Link>
