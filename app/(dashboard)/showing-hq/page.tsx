@@ -160,8 +160,9 @@ export default function ShowingHQOverviewPage() {
 
   if (loading) return <PageLoading message="Loading dashboard..." />;
   if (error) return <ErrorMessage message={error} onRetry={() => window.location.reload()} />;
+  if (!data) return <PageLoading message="Loading dashboard..." />;
 
-  const stats = data?.stats ?? {
+  const stats = data.stats ?? {
     totalVisitors: 0,
     totalShowings: 0,
     totalOpenHouses: 0,
@@ -170,11 +171,11 @@ export default function ShowingHQOverviewPage() {
     privateShowingsToday: 0,
     feedbackRequestsPending: 0,
   };
-  const todaysShowings = data?.todaysShowings ?? [];
-  const upcoming = data?.upcomingOpenHouses ?? [];
-  const recentVisitors = data?.recentVisitors ?? [];
-  const followUpTasks = data?.followUpTasks ?? [];
-  const connections = data?.connections ?? { hasCalendar: false, hasGmail: false, hasBranding: false };
+  const todaysShowings = Array.isArray(data.todaysShowings) ? data.todaysShowings : [];
+  const upcoming = Array.isArray(data.upcomingOpenHouses) ? data.upcomingOpenHouses : [];
+  const recentVisitors = Array.isArray(data.recentVisitors) ? data.recentVisitors : [];
+  const followUpTasks = Array.isArray(data.followUpTasks) ? data.followUpTasks : [];
+  const connections = data.connections ?? { hasCalendar: false, hasGmail: false, hasBranding: false };
   const hasBranding = connections.hasBranding ?? false;
 
   const showGettingStarted =
@@ -225,7 +226,7 @@ export default function ShowingHQOverviewPage() {
   todayStart.setHours(0, 0, 0, 0);
   const visitorsToday = recentVisitors.filter((v) => new Date(v.submittedAt) >= todayStart).length;
 
-  const scheduleItems: ScheduleItem[] = (data?.todaysSchedule ?? []).map((s) => ({
+  const scheduleItems: ScheduleItem[] = (Array.isArray(data.todaysSchedule) ? data.todaysSchedule : []).map((s) => ({
     type: s.type,
     id: s.id,
     title: s.title,
@@ -234,7 +235,7 @@ export default function ShowingHQOverviewPage() {
     property: s.property,
   }));
   const tomorrowItem: ScheduleItem | null =
-    data?.tomorrowFirstEvent != null
+    data.tomorrowFirstEvent != null
       ? {
           type: data.tomorrowFirstEvent.type,
           id: data.tomorrowFirstEvent.id,
@@ -249,7 +250,7 @@ export default function ShowingHQOverviewPage() {
     .filter((s) => s.type === "showing" && new Date(s.at) > now)
     .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())[0];
 
-  const pendingFeedbackRequests = data?.pendingFeedbackRequests ?? [];
+  const pendingFeedbackRequests = Array.isArray(data.pendingFeedbackRequests) ? data.pendingFeedbackRequests : [];
 
   type ActivityItem = {
     type: "visitor" | "followup" | "feedback";
@@ -262,22 +263,22 @@ export default function ShowingHQOverviewPage() {
   };
 
   const activityItemsRaw: ActivityItem[] = [
-    ...recentVisitors.slice(0, 8).map((v) => {
+    ...(recentVisitors ?? []).slice(0, 8).map((v) => {
       const addr =
         (v.openHouse as { property?: { address1: string; city?: string; state?: string } })
-          ?.property?.address1 ?? v.openHouse.title;
+          ?.property?.address1 ?? v.openHouse?.title ?? "";
       return {
         type: "visitor" as const,
         id: `visitor-${v.id}`,
-        label: `${v.contact.firstName} ${v.contact.lastName} signed in`,
+        label: `${v.contact?.firstName ?? ""} ${v.contact?.lastName ?? ""}`.trim() || "Visitor signed in",
         address: addr,
         timestamp: v.submittedAt ?? null,
         actionLabel: "View visitor",
         actionHref: `/showing-hq/visitors/${v.id}`,
       };
     }),
-    ...followUpTasks.slice(0, 8).map((t) => {
-      const addr = t.openHouse?.property?.address1 ?? t.openHouse.title;
+    ...(followUpTasks ?? []).slice(0, 8).map((t) => {
+      const addr = t.openHouse?.property?.address1 ?? t.openHouse?.title ?? "";
       return {
         type: "followup" as const,
         id: `draft-${t.id}`,
@@ -288,11 +289,11 @@ export default function ShowingHQOverviewPage() {
         actionHref: `/showing-hq/follow-ups/draft/${t.id}`,
       };
     }),
-    ...pendingFeedbackRequests.slice(0, 8).map((fr) => ({
+    ...(pendingFeedbackRequests ?? []).slice(0, 8).map((fr) => ({
       type: "feedback" as const,
       id: `feedback-${fr.id}`,
       label: "Feedback request pending",
-      address: fr.property.address1,
+      address: fr.property?.address1 ?? "",
       timestamp: fr.requestedAt ?? null,
       actionLabel: "Copy link",
       actionHref: "/showing-hq/feedback-requests",
@@ -356,7 +357,7 @@ export default function ShowingHQOverviewPage() {
       {/* Calendar + Today's Schedule — 2-column top row */}
       <div className="grid min-h-0 gap-5 lg:grid-cols-[1.7fr_0.9fr]" role="region" aria-label="Schedule">
         <ShowingHQCalendar
-          events={data?.calendarEvents ?? []}
+          events={Array.isArray(data.calendarEvents) ? data.calendarEvents : []}
           height={380}
           activeOpenHouseId={activeOpenHouse?.id ?? null}
           onDateClick={(dateStr) => {
