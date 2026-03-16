@@ -57,14 +57,14 @@ export function ModuleSidebar() {
 
   return (
     <aside
-      className="flex shrink-0 flex-col border-r border-[var(--brand-border)] bg-[var(--brand-sidebar-bg, #0B1A3C)] text-slate-100"
+      className="flex shrink-0 flex-col border-r border-[var(--brand-border)] bg-[var(--brand-sidebar-bg, #0B1A3C)] text-slate-100 border-t-2 border-t-[#4BAED8]"
       style={{ width: SIDEBAR_WIDTH }}
       aria-label={`${mod.name} navigation`}
     >
       {activeId === "showing-hq" ? (
         <div className="border-b border-white/10 px-4 py-5">
           <div className="mb-3 flex items-center gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/10">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/15 ring-1 ring-white/20">
               <Image
                 src="/KeyPilot-logo.png?v=4"
                 alt="KeyPilot"
@@ -115,7 +115,7 @@ export function ModuleSidebar() {
                         "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
                         "text-slate-400 hover:text-white hover:bg-white/5",
                         active &&
-                          "bg-white/15 font-semibold text-white border-l-[3px] border-l-[#4BAED8] pl-[calc(0.75rem+3px)]"
+                          "bg-[#4BAED8]/20 font-semibold text-white border-l-4 border-l-[#4BAED8] pl-[calc(0.75rem+4px)]"
                       )}
                     >
                       {Icon && <Icon className="h-[18px] w-[18px] shrink-0 opacity-85" />}
@@ -146,7 +146,7 @@ export function ModuleSidebar() {
                       "flex items-center gap-3 rounded-md px-2.5 py-2.5 text-sm transition-colors",
                       "text-slate-400 hover:text-white hover:bg-white/5",
                       isActive &&
-                        "bg-white/15 font-semibold text-white border-l-[3px] border-l-[#4BAED8] pl-[calc(0.75rem+3px)]"
+                        "bg-[#4BAED8]/20 font-semibold text-white border-l-4 border-l-[#4BAED8] pl-[calc(0.75rem+4px)]"
                     )}
                   >
                     <Lock className="h-[18px] w-[18px] shrink-0 opacity-80" />

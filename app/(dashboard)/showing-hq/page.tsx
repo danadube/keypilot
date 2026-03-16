@@ -480,17 +480,17 @@ export default function ShowingHQOverviewPage() {
           padded={false}
           className="flex flex-col min-h-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
         >
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-                <Users className="h-4 w-4 text-slate-500" />
+              <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                <Users className="h-4 w-4 text-[#4BAED8]" />
                 Activity
               </h2>
               <p className="mt-0.5 text-xs text-slate-500">
                 Recent sign-ins, follow-ups, and feedback in one stream
               </p>
             </div>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+            <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0" asChild>
               <Link href="/showing-hq/visitors">
                 All visitors <ChevronRight className="h-3 w-3" />
               </Link>
@@ -522,7 +522,7 @@ export default function ShowingHQOverviewPage() {
                     >
                       <div className="min-w-0 flex-1">
                         <p className="flex items-center gap-1.5 font-medium text-slate-800">
-                          <Icon className="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                          <Icon className="h-3.5 w-3.5 shrink-0 text-[#4BAED8]" />
                           <span className="truncate">{item.label}</span>
                         </p>
                         <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
@@ -551,12 +551,12 @@ export default function ShowingHQOverviewPage() {
           padded={false}
           className="flex flex-col min-h-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
         >
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-              <Calendar className="h-4 w-4 text-slate-500" />
+          <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+              <Calendar className="h-4 w-4 text-[#4BAED8]" />
               Open Houses
             </h2>
-            <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+            <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0" asChild>
               <Link href="/open-houses">View all</Link>
             </Button>
           </div>
