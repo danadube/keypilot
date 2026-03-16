@@ -18,7 +18,7 @@ export const keypilotTheme: BrandTheme = {
     secondaryHover: "#3A93B9",
     accent: "#4BAED8",
     // Surfaces
-    background: "#F8FAFC", // main canvas
+    background: "#EFF6FF", // main canvas — soft pale blue
     surface: "#FFFFFF", // cards
     surfaceAlt: "#EDF2F8", // light navy-tinted surface
     border: "#D3E2F0", // very light navy/gray
