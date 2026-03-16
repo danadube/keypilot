@@ -63,13 +63,13 @@ export function ModuleSidebar() {
       aria-label={`${mod.name} navigation`}
     >
       {/* Sidebar header: ShowingHQ as primary product identity (or module name) */}
-      <div className="shrink-0 border-b border-white/10 px-4 py-4">
+      <div className="shrink-0 border-b border-white/10 px-4 pt-4 pb-5">
         {activeId === "showing-hq" ? (
           <>
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap">
               <h2
-                className="text-[21px] font-bold tracking-tight text-white leading-none"
-                style={{ letterSpacing: "-0.02em" }}
+                className="text-[24px] font-bold tracking-tight text-white leading-none"
+                style={{ letterSpacing: "-0.01em" }}
               >
                 Showing<span className="text-[#4BAED8]">HQ</span>
               </h2>
@@ -162,15 +162,15 @@ export function ModuleSidebar() {
       <footer className="shrink-0 border-t border-white/10 px-4 py-3">
         <Link
           href="/"
-          className="mb-2 block w-full opacity-60 hover:opacity-85 transition-opacity"
+          className="mb-2 block w-full transition-opacity hover:opacity-90"
           aria-label="KeyPilot home"
         >
           <Image
             src="/KeyPilot-logo.png?v=4"
             alt=""
-            width={160}
-            height={48}
-            className="h-6 w-auto max-w-full object-contain object-left brightness-0 invert"
+            width={180}
+            height={54}
+            className="h-8 w-auto max-w-full object-contain object-left"
           />
         </Link>
         <p className="text-[10px] text-slate-500" aria-label="App version">
