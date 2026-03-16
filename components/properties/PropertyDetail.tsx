@@ -13,6 +13,7 @@ import {
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { FileText, Upload, Trash2, ExternalLink } from "lucide-react";
+import { PropertyFeedbackSummary } from "@/components/properties/PropertyFeedbackSummary";
 
 type Property = {
   id: string;
@@ -270,6 +271,8 @@ export function PropertyDetail({ id }: { id: string }) {
           </Button>
         </CardContent>
       </Card>
+
+      <PropertyFeedbackSummary propertyId={id} />
     </div>
   );
 }

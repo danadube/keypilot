@@ -355,6 +355,7 @@ model FeedbackRequest {
   hostUser User     @relation(fields: [hostUserId], references: [id])
 
   @@index([showingId])
+  @@index([propertyId])
   @@index([hostUserId])
   @@index([token])
   @@index([status])
