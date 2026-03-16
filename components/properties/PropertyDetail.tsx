@@ -14,6 +14,7 @@ import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { FileText, Upload, Trash2, ExternalLink } from "lucide-react";
 import { PropertyFeedbackSummary } from "@/components/properties/PropertyFeedbackSummary";
+import { PropertySellerReport } from "@/components/properties/PropertySellerReport";
 
 type Property = {
   id: string;
@@ -273,6 +274,11 @@ export function PropertyDetail({ id }: { id: string }) {
       </Card>
 
       <PropertyFeedbackSummary propertyId={id} />
+
+      <PropertySellerReport
+        propertyId={id}
+        propertyAddress={property ? [property.address1, property.city, property.state, property.zip].filter(Boolean).join(", ") : undefined}
+      />
     </div>
   );
 }
