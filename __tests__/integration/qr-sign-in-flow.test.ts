@@ -6,10 +6,15 @@
 import { GET as getBySlug } from "@/app/api/v1/open-houses/by-slug/[slug]/route";
 import { POST as postVisitorSignIn } from "@/app/api/v1/visitor-signin/route";
 
+jest.mock("@/lib/id", () => ({ generateId: () => "mock-flyer-token-24chars-------" }));
+
 const mockOpenHouseFindFirst = jest.fn();
 const mockFindOrCreateContact = jest.fn();
 const mockVisitorCreate = jest.fn();
 const mockActivityCreate = jest.fn();
+const mockUserFindUnique = jest.fn();
+const mockFollowUpDraftCreate = jest.fn();
+const mockVisitorUpdate = jest.fn();
 
 jest.mock("@/lib/db", () => ({
   prisma: {
@@ -18,10 +23,13 @@ jest.mock("@/lib/db", () => ({
     },
     openHouseVisitor: {
       create: (...args: unknown[]) => mockVisitorCreate(...args),
+      update: (...args: unknown[]) => mockVisitorUpdate(...args),
     },
     activity: {
       create: (...args: unknown[]) => mockActivityCreate(...args),
     },
+    user: { findUnique: (...args: unknown[]) => mockUserFindUnique(...args) },
+    followUpDraft: { create: (...args: unknown[]) => mockFollowUpDraftCreate(...args) },
   },
 }));
 
@@ -81,6 +89,9 @@ beforeEach(() => {
     submittedAt: new Date(),
   });
   mockActivityCreate.mockResolvedValue({ id: "activity-1" });
+  mockUserFindUnique.mockResolvedValue({ id: "user-1", name: "Jane Agent", profile: null });
+  mockFollowUpDraftCreate.mockResolvedValue({ id: "draft-1" });
+  mockVisitorUpdate.mockResolvedValue({});
 });
 
 describe("QR sign-in flow", () => {

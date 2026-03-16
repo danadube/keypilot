@@ -5,6 +5,8 @@
 
 import { POST } from "@/app/api/v1/visitor-signin/route";
 
+jest.mock("@/lib/id", () => ({ generateId: () => "mock-flyer-token-24chars-------" }));
+
 const mockFindOrCreateContact = jest.fn();
 jest.mock("@/lib/contact-dedupe", () => ({
   findOrCreateContact: (...args: unknown[]) => mockFindOrCreateContact(...args),
@@ -13,11 +15,19 @@ jest.mock("@/lib/contact-dedupe", () => ({
 const mockOpenHouseFindFirst = jest.fn();
 const mockVisitorCreate = jest.fn();
 const mockActivityCreate = jest.fn();
+const mockUserFindUnique = jest.fn();
+const mockFollowUpDraftCreate = jest.fn();
+const mockVisitorUpdate = jest.fn();
 jest.mock("@/lib/db", () => ({
   prisma: {
     openHouse: { findFirst: (...args: unknown[]) => mockOpenHouseFindFirst(...args) },
-    openHouseVisitor: { create: (...args: unknown[]) => mockVisitorCreate(...args) },
+    openHouseVisitor: {
+      create: (...args: unknown[]) => mockVisitorCreate(...args),
+      update: (...args: unknown[]) => mockVisitorUpdate(...args),
+    },
     activity: { create: (...args: unknown[]) => mockActivityCreate(...args) },
+    user: { findUnique: (...args: unknown[]) => mockUserFindUnique(...args) },
+    followUpDraft: { create: (...args: unknown[]) => mockFollowUpDraftCreate(...args) },
   },
 }));
 
@@ -73,6 +83,9 @@ beforeEach(() => {
     submittedAt: new Date(),
   });
   mockActivityCreate.mockResolvedValue({ id: "activity-123" });
+  mockUserFindUnique.mockResolvedValue({ id: "user-123", name: "Host", profile: null });
+  mockFollowUpDraftCreate.mockResolvedValue({ id: "draft-123" });
+  mockVisitorUpdate.mockResolvedValue({});
 });
 
 function jsonRequest(body: unknown) {
@@ -128,7 +141,19 @@ describe("POST /api/v1/visitor-signin", () => {
 
     expect(mockOpenHouseFindFirst).toHaveBeenCalledWith({
       where: { id: validBody.openHouseId, deletedAt: null },
-      include: { property: true },
+      include: {
+        property: {
+          select: {
+            address1: true,
+            address2: true,
+            city: true,
+            state: true,
+            zip: true,
+            flyerUrl: true,
+            flyerEnabled: true,
+          },
+        },
+      },
     });
     expect(mockFindOrCreateContact).toHaveBeenCalledWith(
       expect.objectContaining({

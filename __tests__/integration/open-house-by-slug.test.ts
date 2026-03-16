@@ -16,12 +16,15 @@ jest.mock("@/lib/db", () => ({
 
 const mockOpenHouse = {
   id: "oh-123",
+  qrSlug: "abc123",
   title: "Sunday Open House",
   startAt: new Date("2025-03-16T14:00:00Z"),
   endAt: new Date("2025-03-16T17:00:00Z"),
   agentName: "Jane Smith",
   agentEmail: null,
   agentPhone: null,
+  flyerOverrideUrl: null,
+  flyerUrl: null,
   property: {
     address1: "456 Oak Ave",
     address2: "Unit 2",
@@ -29,6 +32,8 @@ const mockOpenHouse = {
     state: "TX",
     zip: "78702",
     imageUrl: null,
+    flyerUrl: null,
+    flyerEnabled: false,
   },
   hostUser: {
     id: "user-1",
@@ -63,7 +68,18 @@ describe("GET /api/v1/open-houses/by-slug/[slug]", () => {
         status: { in: ["SCHEDULED", "ACTIVE"] },
       },
       include: {
-        property: true,
+        property: {
+          select: {
+            address1: true,
+            address2: true,
+            city: true,
+            state: true,
+            zip: true,
+            imageUrl: true,
+            flyerUrl: true,
+            flyerEnabled: true,
+          },
+        },
         hostUser: { include: { profile: true } },
       },
     });

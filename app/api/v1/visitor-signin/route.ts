@@ -6,8 +6,8 @@ import { trackUsageEvent } from "@/lib/track-usage";
 import { sendFlyerEmail } from "@/lib/email/flyer";
 import { generateFollowUpDraft } from "@/lib/follow-up-template";
 import { getEffectiveFlyerUrl } from "@/lib/flyer-effective";
+import { generateId } from "@/lib/id";
 import { ActivityType } from "@prisma/client";
-import { nanoid } from "nanoid";
 
 export async function POST(request: Request) {
   try {
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
     });
 
     if (effectiveFlyerUrl?.trim() && contact.email?.trim()) {
-      const flyerLinkToken = nanoid(24);
+      const flyerLinkToken = generateId(24);
       const origin =
         process.env.NEXT_PUBLIC_APP_URL?.trim() ||
         process.env.VERCEL_URL
