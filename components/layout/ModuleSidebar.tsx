@@ -159,7 +159,7 @@ export function ModuleSidebar() {
           </FeedbackButton>
         </div>
       )}
-      <footer className="shrink-0 border-t border-white/10 px-4 py-3">
+      <footer className="shrink-0 border-t border-white/10 px-4 pt-5 pb-3">
         <Link
           href="/"
           className="mb-2 block w-full transition-opacity hover:opacity-90"
@@ -168,9 +168,9 @@ export function ModuleSidebar() {
           <Image
             src="/KeyPilot-logo.png?v=4"
             alt=""
-            width={180}
-            height={54}
-            className="h-8 w-auto max-w-full object-contain object-left"
+            width={200}
+            height={60}
+            className="h-14 w-auto max-w-full object-contain object-left"
           />
         </Link>
         <p className="text-[10px] text-slate-500" aria-label="App version">
