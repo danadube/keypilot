@@ -57,44 +57,44 @@ export function ModuleSidebar() {
 
   return (
     <aside
-      className="flex shrink-0 flex-col border-r border-[var(--brand-border)] text-slate-100 border-t-2 border-t-[#4BAED8]"
+      className="flex shrink-0 flex-col border-r border-[var(--brand-border)] text-slate-100"
       style={{ width: SIDEBAR_WIDTH, backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)" }}
       aria-label={`${mod.name} navigation`}
     >
-      {activeId === "showing-hq" ? (
-        <div className="border-b border-white/10 px-4 py-5">
-          <div className="mb-3 flex items-center gap-2.5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/15 ring-1 ring-white/20">
-              <Image
-                src="/KeyPilot-logo.png?v=4"
-                alt="KeyPilot"
-                width={24}
-                height={24}
-                className="h-4 w-auto object-contain brightness-0 invert"
-                priority
-              />
+      {/* One clean branded header block: logo + module title */}
+      <div className="shrink-0 border-b border-white/10 px-4 py-4">
+        <Link
+          href="/"
+          className="mb-4 block w-full transition-opacity hover:opacity-90"
+          aria-label="KeyPilot home"
+        >
+          <Image
+            src="/KeyPilot-logo.png?v=4"
+            alt="KeyPilot"
+            width={200}
+            height={60}
+            className="h-8 w-auto max-w-full object-contain object-left brightness-0 invert"
+            priority
+          />
+        </Link>
+        {activeId === "showing-hq" ? (
+          <>
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-xl font-extrabold tracking-tight text-white leading-none">
+                ShowingHQ
+              </h2>
+              <span className="shrink-0 rounded-full border border-[#4BAED8]/60 bg-[#4BAED8]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#7DD3F5]">
+                Beta
+              </span>
             </div>
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">
-              KeyPilot
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-xl font-extrabold tracking-tight text-white leading-none">
-              ShowingHQ
-            </h2>
-            <span className="shrink-0 rounded-full border border-[#4BAED8]/60 bg-[#4BAED8]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#7DD3F5]">
-              Beta
-            </span>
-          </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
-            Private showings & open house command center.
-          </p>
-        </div>
-      ) : (
-        <div className="border-b border-[var(--brand-border)] px-5 py-4">
+            <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
+              Private showings & open house command center.
+            </p>
+          </>
+        ) : (
           <h2 className="text-sm font-semibold text-slate-50">{mod.name}</h2>
-        </div>
-      )}
+        )}
+      </div>
       <nav className="flex-1 overflow-auto py-3">
         {groups.map(({ section, items: groupItems }) => (
           <div key={section ?? "main"} className="mb-4 last:mb-2">
