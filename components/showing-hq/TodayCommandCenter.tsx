@@ -136,11 +136,11 @@ export function TodayCommandCenter({
 
   const containerClass =
     scenario === "showing_soon"
-      ? "border-amber-300 bg-amber-50/80 shadow-md"
+      ? "border-amber-300 bg-white shadow-md"
       : scenario === "active_oh"
-        ? "border-emerald-500 bg-emerald-50/80 shadow-md"
+        ? "border-emerald-500 bg-white shadow-md"
         : scenario === "oh_soon"
-          ? "border-sky-400 bg-sky-50/70 shadow-sm"
+          ? "border-sky-400 bg-white shadow-sm"
           : "border-slate-200 bg-white shadow-sm";
 
   return (

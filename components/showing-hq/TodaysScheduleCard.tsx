@@ -56,9 +56,9 @@ export function TodaysScheduleCard({
               key={`today-${item.type}-${item.id}`}
               className={`flex items-start gap-2 rounded-md border-b border-slate-100 p-2.5 last:border-b-0 transition-colors ${
                 item.type === "open_house"
-                  ? "bg-sky-50/50"
-                  : "bg-amber-50/40"
-              } ${isLive ? "ring-2 ring-emerald-500/60 ring-offset-1" : "hover:bg-slate-50/50"}`}
+                  ? ""
+                  : ""
+              } ${isLive ? "ring-2 ring-emerald-500/60 ring-offset-1" : "hover:bg-white"}`}
             >
               <div className="shrink-0 text-right text-xs font-medium tabular-nums text-slate-800" style={{ minWidth: "5rem" }}>
                 {timeRange(item.at, item.endAt)}
@@ -100,7 +100,7 @@ export function TodaysScheduleCard({
           })}
           {tomorrowItem && (
             <li
-              className="flex items-start gap-2 rounded-md border-b border-slate-100 bg-slate-50/50 p-2.5 last:border-b-0"
+              className="flex items-start gap-2 rounded-md border-b border-slate-100 bg-white p-2.5 last:border-b-0"
             >
               <div className="shrink-0 text-right text-xs font-medium tabular-nums text-slate-500" style={{ minWidth: "5rem" }}>
                 {timeRange(tomorrowItem.at, tomorrowItem.endAt)}

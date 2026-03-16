@@ -310,10 +310,10 @@ export default function ShowingHQOverviewPage() {
   });
 
   return (
-    <div className="min-h-0 flex flex-col gap-5 bg-zinc-100">
+    <div className="min-h-0 flex flex-col gap-5 bg-slate-50">
       {/* Hero — product workspace identity (stronger than cards) */}
       <header
-        className="rounded-xl border border-slate-200 bg-white px-5 py-5 shadow-lg ring-1 ring-slate-200/60"
+        className="rounded-2xl border border-slate-200 bg-gradient-to-r from-sky-50 via-slate-50 to-indigo-50 px-6 py-6 shadow-xl ring-1 ring-slate-200/80"
         style={{ borderLeftWidth: "4px", borderLeftColor: "var(--brand-primary)" }}
         role="banner"
       >
