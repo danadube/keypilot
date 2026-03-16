@@ -39,12 +39,12 @@ export function TodaysScheduleCard({
       : formatTime(at);
 
   return (
-    <BrandCard className="flex h-full min-h-0 flex-col bg-white p-4">
-      <h2 className="mb-0.5 flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
-        <Calendar className="h-4 w-4 text-[var(--brand-primary)]" />
+    <BrandCard className="flex h-full min-h-0 flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <h2 className="mb-0.5 flex items-center gap-2 text-sm font-semibold text-slate-900">
+        <Calendar className="h-4 w-4 text-slate-500" />
         Today&apos;s Schedule
       </h2>
-      <p className="mb-2 text-[11px] text-[var(--brand-text-muted)]">
+      <p className="mb-3 text-[11px] text-slate-500">
         Timeline of today and next tomorrow
       </p>
       {hasItems ? (
@@ -54,11 +54,11 @@ export function TodaysScheduleCard({
             return (
             <li
               key={`today-${item.type}-${item.id}`}
-              className={`flex items-start gap-2 rounded-lg border p-2.5 transition-colors hover:bg-slate-50/80 ${
+              className={`flex items-start gap-2 rounded-lg border border-slate-200 p-2.5 transition-colors ${
                 item.type === "open_house"
-                  ? "border-blue-200/80 bg-blue-50/40"
-                  : "border-amber-200/80 bg-amber-50/30"
-              } ${isLive ? "ring-2 ring-emerald-500/60 ring-offset-1" : ""}`}
+                  ? "bg-sky-50/70"
+                  : "bg-amber-50/50"
+              } ${isLive ? "ring-2 ring-emerald-500/60 ring-offset-1" : "hover:bg-slate-50/80"}`}
             >
               <div className="shrink-0 text-right text-xs font-medium tabular-nums text-[var(--brand-text)]" style={{ minWidth: "5rem" }}>
                 {timeRange(item.at, item.endAt)}
@@ -80,7 +80,7 @@ export function TodaysScheduleCard({
                     <Badge className="bg-emerald-600 text-[10px] hover:bg-emerald-600">LIVE</Badge>
                   )}
                 </div>
-                <p className="mt-0.5 truncate font-medium text-[var(--brand-text)]">
+                <p className="mt-0.5 truncate font-medium text-slate-800">
                   {item.property.address1}
                 </p>
               </div>
@@ -100,9 +100,9 @@ export function TodaysScheduleCard({
           })}
           {tomorrowItem && (
             <li
-              className="flex items-start gap-2 rounded-lg border border-slate-200/80 bg-slate-50/50 p-2.5"
+              className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50/60 p-2.5"
             >
-              <div className="shrink-0 text-right text-xs font-medium tabular-nums text-[var(--brand-text-muted)]" style={{ minWidth: "5rem" }}>
+              <div className="shrink-0 text-right text-xs font-medium tabular-nums text-slate-500" style={{ minWidth: "5rem" }}>
                 {timeRange(tomorrowItem.at, tomorrowItem.endAt)}
               </div>
               <div className="min-w-0 flex-1">
@@ -116,7 +116,7 @@ export function TodaysScheduleCard({
                     Tomorrow
                   </Badge>
                 </div>
-                <p className="mt-0.5 truncate font-medium text-[var(--brand-text)]">
+                <p className="mt-0.5 truncate font-medium text-slate-800">
                   {tomorrowItem.property.address1}
                 </p>
               </div>
@@ -135,8 +135,8 @@ export function TodaysScheduleCard({
           )}
         </ul>
       ) : (
-        <div className="flex flex-1 flex-col items-center justify-center rounded-lg border border-dashed border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/20 px-4 py-8 text-center">
-          <p className="text-sm text-[var(--brand-text-muted)]">
+        <div className="flex flex-1 flex-col items-center justify-center py-8 text-center">
+          <p className="text-sm text-slate-500">
             Nothing on the schedule for today.
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">

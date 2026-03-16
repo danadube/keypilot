@@ -309,32 +309,32 @@ export default function ShowingHQOverviewPage() {
   });
 
   return (
-    <div className="min-h-0 flex flex-col gap-6" style={{ backgroundColor: "#f1f5f9" }}>
+    <div className="min-h-0 flex flex-col gap-5 bg-slate-100">
       {/* Hero — product workspace identity */}
       <header
-        className="rounded-xl border border-slate-200/90 bg-white px-5 py-4 shadow-sm"
-        style={{ borderLeft: "4px solid var(--brand-primary)" }}
+        className="rounded-xl border border-slate-200 bg-white px-5 py-5 shadow-md"
+        style={{ borderLeftWidth: "4px", borderLeftColor: "var(--brand-primary)" }}
         role="banner"
       >
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5">
           <h1
-            className="text-xl font-bold tracking-tight text-[var(--brand-text)] md:text-2xl"
+            className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl"
             style={{ fontFamily: "var(--font-heading)" }}
           >
             Welcome to ShowingHQ
           </h1>
-          <p className="max-w-2xl text-sm text-[var(--brand-text-muted)] md:text-base">
+          <p className="max-w-2xl text-sm text-slate-600 md:text-base">
             Manage private showings, open houses, visitors, feedback, and follow-ups in one command center.
           </p>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-0.5 text-xs text-[var(--brand-text-muted)]">
-          <span className="font-medium text-[var(--brand-text)]">Showings today</span>
+        <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-slate-500">
+          <span className="font-medium text-slate-700">Showings today</span>
           <span>{stats.privateShowingsToday ?? 0}</span>
-          <span className="font-medium text-[var(--brand-text)]">Open houses today</span>
+          <span className="font-medium text-slate-700">Open houses today</span>
           <span>{todaysShowings.length}</span>
-          <span className="font-medium text-[var(--brand-text)]">Visitors today</span>
+          <span className="font-medium text-slate-700">Visitors today</span>
           <span>{visitorsToday}</span>
-          <span className="font-medium text-[var(--brand-text)]">Follow-ups pending</span>
+          <span className="font-medium text-slate-700">Follow-ups pending</span>
           <span>{stats.followUpTasks ?? followUpTasks.length}</span>
         </div>
       </header>
@@ -354,7 +354,7 @@ export default function ShowingHQOverviewPage() {
       />
 
       {/* Calendar + Today's Schedule — 2-column top row */}
-      <div className="grid min-h-0 gap-4 lg:grid-cols-[1.7fr_0.9fr]" role="region" aria-label="Schedule">
+      <div className="grid min-h-0 gap-5 lg:grid-cols-[1.7fr_0.9fr]" role="region" aria-label="Schedule">
         <ShowingHQCalendar
           events={data?.calendarEvents ?? []}
           height={380}
@@ -403,7 +403,7 @@ export default function ShowingHQOverviewPage() {
       />
       {rescheduleToast && (
         <div
-          className="fixed bottom-4 right-4 z-50 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-[var(--brand-text)] shadow-lg"
+          className="fixed bottom-4 right-4 z-50 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 shadow-lg"
           role="status"
         >
           Calendar updated
@@ -417,74 +417,74 @@ export default function ShowingHQOverviewPage() {
         />
       )}
 
-      {/* Metric chips — compact */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-blue-200/60 bg-blue-50 px-2.5">
+      {/* Metric chips — semantic color on icon only, neutral surface */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 shadow-sm">
           <Users className="h-4 w-4 shrink-0 text-blue-600" />
           <div className="min-w-0">
-            <span className="text-[10px] font-medium text-blue-700/80">Visitors</span>
-            <span className="text-xs font-semibold text-[var(--brand-text)]">{stats.totalVisitors}</span>
+            <span className="text-[10px] font-medium text-slate-500">Visitors</span>
+            <span className="text-xs font-semibold text-slate-800">{stats.totalVisitors}</span>
           </div>
         </div>
-        <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-purple-200/60 bg-purple-50 px-2.5">
-          <Calendar className="h-3.5 w-3.5 shrink-0 text-purple-600" />
+        <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 shadow-sm">
+          <Calendar className="h-3.5 w-3.5 shrink-0 text-sky-600" />
           <div className="flex items-baseline gap-1">
-            <span className="text-[10px] font-medium text-purple-700/80">Open houses</span>
-            <span className="text-xs font-semibold text-[var(--brand-text)]">{todaysShowings.length}</span>
+            <span className="text-[10px] font-medium text-slate-500">Open houses</span>
+            <span className="text-xs font-semibold text-slate-800">{todaysShowings.length}</span>
           </div>
         </div>
         <Button variant="ghost" size="sm" className="h-8 px-2.5" asChild>
           <Link href="/showing-hq/showings">
-            <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-amber-200/60 bg-amber-50 px-2.5">
+            <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 shadow-sm">
               <Calendar className="h-3.5 w-3.5 shrink-0 text-amber-600" />
               <div className="flex items-baseline gap-1">
-                <span className="text-[10px] font-medium text-amber-700/80">Showings</span>
-                <span className="text-xs font-semibold text-[var(--brand-text)]">{stats.privateShowingsToday ?? 0}</span>
+                <span className="text-[10px] font-medium text-slate-500">Showings</span>
+                <span className="text-xs font-semibold text-slate-800">{stats.privateShowingsToday ?? 0}</span>
               </div>
             </div>
           </Link>
         </Button>
         <Button variant="ghost" size="sm" className="h-8 px-2.5" asChild>
           <Link href="/showing-hq/feedback-requests">
-            <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-indigo-200/60 bg-indigo-50 px-2.5">
+            <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 shadow-sm">
               <CheckSquare className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
               <div className="flex items-baseline gap-1">
-                <span className="text-[10px] font-medium text-indigo-700/80">Feedback</span>
-                <span className="text-xs font-semibold text-[var(--brand-text)]">{stats.feedbackRequestsPending ?? 0}</span>
+                <span className="text-[10px] font-medium text-slate-500">Feedback</span>
+                <span className="text-xs font-semibold text-slate-800">{stats.feedbackRequestsPending ?? 0}</span>
               </div>
             </div>
           </Link>
         </Button>
-        <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-teal-200/60 bg-teal-50 px-2.5">
-          <UserPlus className="h-3.5 w-3.5 shrink-0 text-teal-600" />
+        <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 shadow-sm">
+          <UserPlus className="h-3.5 w-3.5 shrink-0 text-slate-600" />
           <div className="flex items-baseline gap-1">
-            <span className="text-[10px] font-medium text-teal-700/80">Contacts</span>
-            <span className="text-xs font-semibold text-[var(--brand-text)]">{stats.contactsCaptured}</span>
+            <span className="text-[10px] font-medium text-slate-500">Contacts</span>
+            <span className="text-xs font-semibold text-slate-800">{stats.contactsCaptured}</span>
           </div>
         </div>
-        <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-green-200/60 bg-green-50 px-2.5">
-          <CheckSquare className="h-3.5 w-3.5 shrink-0 text-green-600" />
+        <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 shadow-sm">
+          <CheckSquare className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
           <div className="flex items-baseline gap-1">
-            <span className="text-[10px] font-medium text-green-700/80">Follow-ups</span>
-            <span className="text-xs font-semibold text-[var(--brand-text)]">{stats.followUpTasks ?? followUpTasks.length}</span>
+            <span className="text-[10px] font-medium text-slate-500">Follow-ups</span>
+            <span className="text-xs font-semibold text-slate-800">{stats.followUpTasks ?? followUpTasks.length}</span>
           </div>
         </div>
       </div>
 
       {/* Row 2: Activity | Open Houses */}
-      <div className="grid flex-1 min-h-0 gap-3 lg:grid-cols-2">
+      <div className="grid flex-1 min-h-0 gap-5 lg:grid-cols-2">
         {/* Activity */}
         <BrandCard
           padded={false}
-          className="flex flex-col min-h-0 bg-white p-3 shadow-sm ring-1 ring-slate-200/60 transition-shadow hover:shadow-md"
+          className="flex flex-col min-h-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
         >
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-3 flex items-center justify-between">
             <div>
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
-                <Users className="h-4 w-4 text-[var(--brand-primary)]" />
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <Users className="h-4 w-4 text-slate-500" />
                 Activity
               </h2>
-              <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">
+              <p className="mt-0.5 text-xs text-slate-500">
                 Recent sign-ins, follow-ups, and feedback in one stream
               </p>
             </div>
@@ -496,12 +496,11 @@ export default function ShowingHQOverviewPage() {
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
             {activityItems.length === 0 ? (
-              <div className="rounded-md border border-dashed border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/40 px-3 py-2">
-                <p className="text-xs text-[var(--brand-text-muted)]">
-                  Visitor sign-ins, follow-up drafts, and feedback requests will appear here as they
-                  come in.
+              <div className="py-6 text-center">
+                <p className="text-xs text-slate-500">
+                  Visitor sign-ins, follow-up drafts, and feedback requests will appear here.
                 </p>
-                <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" asChild>
+                <Button variant="outline" size="sm" className="mt-3 h-7 text-xs" asChild>
                   <Link href="/open-houses/sign-in">Get sign-in link</Link>
                 </Button>
               </div>
@@ -517,19 +516,19 @@ export default function ShowingHQOverviewPage() {
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between gap-3 rounded-md border border-[var(--brand-border)] px-2.5 py-1.5 text-xs"
+                      className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5 text-xs"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="flex items-center gap-1.5 font-medium text-[var(--brand-text)]">
-                          <Icon className="h-3.5 w-3.5 shrink-0 text-[var(--brand-text-muted)]" />
+                        <p className="flex items-center gap-1.5 font-medium text-slate-800">
+                          <Icon className="h-3.5 w-3.5 shrink-0 text-slate-500" />
                           <span className="truncate">{item.label}</span>
                         </p>
-                        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-[var(--brand-text-muted)]">
+                        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
                           <span className="inline-flex items-center gap-1">
                             <Building2 className="h-3 w-3 shrink-0" />
                             <span className="truncate max-w-[160px]">{item.address}</span>
                           </span>
-                          <span className="hidden text-[10px] text-slate-500 sm:inline">
+                          <span className="hidden text-[10px] sm:inline">
                             · {item.timestamp ? formatTimeContextual(item.timestamp) : "—"}
                           </span>
                         </p>
@@ -548,11 +547,11 @@ export default function ShowingHQOverviewPage() {
         {/* Open Houses (today + upcoming) */}
         <BrandCard
           padded={false}
-          className="flex flex-col min-h-0 bg-white p-3 shadow-sm transition-shadow hover:shadow-md"
+          className="flex flex-col min-h-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
         >
-          <div className="mb-2 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-[var(--brand-text)]">
-              <Calendar className="h-4 w-4 text-[var(--brand-accent)]" />
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+              <Calendar className="h-4 w-4 text-slate-500" />
               Open Houses
             </h2>
             <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
@@ -561,10 +560,10 @@ export default function ShowingHQOverviewPage() {
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
             {todaysShowings.length === 0 && upcoming.length === 0 ? (
-              <div className="rounded-md border border-dashed border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/40 px-3 py-2">
-                <p className="text-xs font-medium text-[var(--brand-text)]">Today&apos;s Open Houses</p>
-                <p className="text-xs text-[var(--brand-text-muted)]">None scheduled</p>
-                <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" asChild>
+              <div className="py-6 text-center">
+                <p className="text-xs font-medium text-slate-800">Today&apos;s Open Houses</p>
+                <p className="text-xs text-slate-500">None scheduled</p>
+                <Button variant="outline" size="sm" className="mt-3 h-7 text-xs" asChild>
                   <Link href="/open-houses/new">Create open house</Link>
                 </Button>
               </div>
@@ -573,13 +572,13 @@ export default function ShowingHQOverviewPage() {
                 {todaysShowings.map((oh) => (
                   <li
                     key={oh.id}
-                    className="flex items-center justify-between gap-2 rounded-md border border-[var(--brand-border)] px-2.5 py-1.5"
+                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium text-[var(--brand-text)]">
+                      <p className="truncate text-xs font-medium text-slate-800">
                         Today · {formatTime(oh.startAt)}
                       </p>
-                      <p className="truncate text-xs text-[var(--brand-text-muted)]">
+                      <p className="truncate text-xs text-slate-500">
                         {oh.property.address1}, {oh.property.city} · {oh._count.visitors} visitors
                       </p>
                     </div>
@@ -603,13 +602,13 @@ export default function ShowingHQOverviewPage() {
                 {upcoming.slice(0, 5).map((oh) => (
                   <li
                     key={oh.id}
-                    className="flex items-center justify-between gap-2 rounded-md border border-[var(--brand-border)] px-2.5 py-1.5"
+                    className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/50 px-2.5 py-1.5"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium text-[var(--brand-text)]">
+                      <p className="truncate text-xs font-medium text-slate-800">
                         {formatDate(oh.startAt)} · {formatTime(oh.startAt)}
                       </p>
-                      <p className="truncate text-xs text-[var(--brand-text-muted)]">
+                      <p className="truncate text-xs text-slate-500">
                         {oh.property.address1}, {oh.property.city} · {oh._count.visitors} visitors
                       </p>
                     </div>

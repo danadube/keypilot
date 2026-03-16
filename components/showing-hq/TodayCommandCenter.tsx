@@ -136,43 +136,41 @@ export function TodayCommandCenter({
 
   const containerClass =
     scenario === "showing_soon"
-      ? "border-amber-500/70 bg-amber-50/95 shadow-md"
+      ? "border-amber-400 bg-amber-50/90 shadow-md"
       : scenario === "active_oh"
-        ? "border-emerald-500/70 bg-emerald-50/95 shadow-md"
+        ? "border-emerald-500 bg-emerald-50/90 shadow-md"
         : scenario === "oh_soon"
-          ? "border-blue-500/60 bg-blue-50/90 shadow-sm"
-          : scenario === "visitors_captured" || scenario === "feedback_pending"
-            ? "border-slate-300 bg-white shadow-md"
-            : "border-slate-200 bg-slate-50/90 shadow-sm";
+          ? "border-sky-400 bg-sky-50/80 shadow-sm"
+          : "border-slate-200 bg-white shadow-sm";
 
   return (
     <section
-      className={`rounded-xl border-2 px-5 py-4 ${containerClass}`}
+      className={`rounded-xl border px-5 py-4 ${containerClass}`}
       role="region"
       aria-label="Today command center"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="min-w-0 flex-1">
           <p
-            className="text-[10px] font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]"
+            className="text-[10px] font-semibold uppercase tracking-wider text-slate-500"
             style={{ letterSpacing: "0.08em" }}
           >
             Now
           </p>
           <h2
-            className="mt-0.5 text-lg font-bold tracking-tight text-[var(--brand-text)] sm:text-xl"
+            className="mt-0.5 text-lg font-bold tracking-tight text-slate-900 sm:text-xl"
             style={{ fontFamily: "var(--font-heading)" }}
           >
             {heading}
           </h2>
           {address && (
-            <p className="mt-0.5 text-sm font-medium text-[var(--brand-text)]">{address}</p>
+            <p className="mt-0.5 text-sm font-medium text-slate-800">{address}</p>
           )}
           {supportingLine && (
-            <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">{supportingLine}</p>
+            <p className="mt-0.5 text-xs text-slate-600">{supportingLine}</p>
           )}
           {scenario === "active_oh" && (
-            <p className="mt-0.5 text-xs text-[var(--brand-text-muted)]">
+            <p className="mt-0.5 text-xs text-slate-600">
               {activeOpenHouse?._count.visitors === 0
                 ? "No visitors yet"
                 : `${activeOpenHouse?._count.visitors} visitor${activeOpenHouse?._count.visitors !== 1 ? "s" : ""} checked in`}
