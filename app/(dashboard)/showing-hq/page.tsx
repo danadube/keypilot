@@ -328,17 +328,17 @@ export default function ShowingHQOverviewPage() {
             Manage private showings, open houses, visitors, feedback, and follow-ups in one command center.
           </p>
         </div>
-        {/* Metric chips — integrated with hero content width */}
+        {/* Metric chips — integrated with hero content width, using brand accent colors */}
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
-            <Users className="h-4 w-4 shrink-0 text-blue-600" />
+            <Users className="h-4 w-4 shrink-0 text-[var(--brand-secondary)]" />
             <div className="min-w-0">
               <span className="text-[10px] font-medium text-slate-500">Visitors</span>
               <span className="text-xs font-semibold text-slate-800">{stats.totalVisitors}</span>
             </div>
           </div>
           <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
-            <Calendar className="h-3.5 w-3.5 shrink-0 text-sky-600" />
+            <Calendar className="h-3.5 w-3.5 shrink-0 text-[var(--brand-secondary)]" />
             <div className="flex items-baseline gap-1">
               <span className="text-[10px] font-medium text-slate-500">Open houses</span>
               <span className="text-xs font-semibold text-slate-800">{todaysShowings.length}</span>
@@ -347,7 +347,7 @@ export default function ShowingHQOverviewPage() {
           <Button variant="ghost" size="sm" className="h-8 px-2.5" asChild>
             <Link href="/showing-hq/showings">
               <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
-                <Calendar className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                <Calendar className="h-3.5 w-3.5 shrink-0 text-[var(--brand-secondary)]" />
                 <div className="flex items-baseline gap-1">
                   <span className="text-[10px] font-medium text-slate-500">Showings</span>
                   <span className="text-xs font-semibold text-slate-800">
@@ -360,7 +360,7 @@ export default function ShowingHQOverviewPage() {
           <Button variant="ghost" size="sm" className="h-8 px-2.5" asChild>
             <Link href="/showing-hq/feedback-requests">
               <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
-                <CheckSquare className="h-3.5 w-3.5 shrink-0 text-indigo-600" />
+                <CheckSquare className="h-3.5 w-3.5 shrink-0 text-[var(--brand-secondary)]" />
                 <div className="flex items-baseline gap-1">
                   <span className="text-[10px] font-medium text-slate-500">Feedback</span>
                   <span className="text-xs font-semibold text-slate-800">
@@ -371,7 +371,7 @@ export default function ShowingHQOverviewPage() {
             </Link>
           </Button>
           <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
-            <UserPlus className="h-3.5 w-3.5 shrink-0 text-slate-600" />
+            <UserPlus className="h-3.5 w-3.5 shrink-0 text-[var(--brand-secondary)]" />
             <div className="flex items-baseline gap-1">
               <span className="text-[10px] font-medium text-slate-500">Contacts</span>
               <span className="text-xs font-semibold text-slate-800">
@@ -380,7 +380,7 @@ export default function ShowingHQOverviewPage() {
             </div>
           </div>
           <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
-            <CheckSquare className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+            <CheckSquare className="h-3.5 w-3.5 shrink-0 text-[var(--brand-secondary)]" />
             <div className="flex items-baseline gap-1">
               <span className="text-[10px] font-medium text-slate-500">Follow-ups</span>
               <span className="text-xs font-semibold text-slate-800">

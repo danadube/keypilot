@@ -64,7 +64,7 @@ export function ModuleSidebar() {
       {activeId === "showing-hq" ? (
         <div className="border-b border-[var(--brand-border)] px-4 py-3.5">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[color-mix(in srgb, var(--brand-sidebar-bg, #0B1A3C) 85%, #FFFFFF 15%)] ring-1 ring-[color-mix(in srgb, var(--brand-border) 80%, #000000 20%)]">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--brand-surface)] ring-1 ring-[var(--brand-border)]">
               <Image
                 src="/KeyPilot-logo.png?v=4"
                 alt="KeyPilot"
@@ -82,7 +82,7 @@ export function ModuleSidebar() {
                 <h2 className="text-sm font-semibold tracking-tight text-white">
                   ShowingHQ
                 </h2>
-                <span className="rounded-full border border-[var(--brand-border)] bg-[color-mix(in srgb, var(--brand-sidebar-bg, #0B1A3C) 90%, #FFFFFF 10%)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-100">
+                <span className="inline-flex items-center gap-1 rounded-full border border-[var(--brand-secondary)] bg-[var(--brand-secondary)]/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--brand-secondary)]">
                   Beta
                 </span>
               </div>
@@ -115,7 +115,7 @@ export function ModuleSidebar() {
                       href={item.href}
                       className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                        "text-slate-200 hover:bg-[color-mix(in srgb, var(--brand-sidebar-bg, #0B1A3C) 80%, #FFFFFF 20%)] hover:text-white",
+                        "text-slate-200 hover:text-white",
                         active &&
                           "bg-[var(--brand-secondary)]/10 font-semibold text-[var(--brand-secondary)] border-l-2 border-l-[var(--brand-secondary)] pl-[calc(0.75rem+2px)]"
                       )}
@@ -146,7 +146,7 @@ export function ModuleSidebar() {
                     href={`/upgrade/${id}`}
                     className={cn(
                       "flex items-center gap-3 rounded-md px-2.5 py-2.5 text-sm transition-colors",
-                      "text-slate-300 hover:bg-[color-mix(in srgb, var(--brand-sidebar-bg, #0B1A3C) 80%, #FFFFFF 20%)] hover:text-white",
+                      "text-slate-300 hover:text-white",
                       isActive &&
                         "bg-[var(--brand-secondary)]/10 font-semibold text-[var(--brand-secondary)] border-l-2 border-l-[var(--brand-secondary)] -ml-[2px] pl-[calc(0.75rem+2px)]"
                     )}
@@ -165,7 +165,7 @@ export function ModuleSidebar() {
           <FeedbackButton
             variant="outline"
             size="sm"
-            className="w-full justify-center border-slate-600 bg-slate-800/60 text-slate-200 hover:border-slate-500 hover:bg-slate-700 hover:text-white"
+            className="w-full justify-center border-[var(--brand-border)] bg-[var(--brand-sidebar-bg, #0B1A3C)] text-slate-100 hover:bg-[var(--brand-primary)] hover:text-white"
           >
             Send feedback
           </FeedbackButton>
