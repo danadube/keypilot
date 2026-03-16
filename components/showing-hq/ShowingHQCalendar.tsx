@@ -48,10 +48,12 @@ export type CalendarEvent = {
 type ShowingHQCalendarProps = {
   events: CalendarEvent[];
   height?: string | number;
-  /** When set, the matching open house event gets live (ring/pulse) styling */
   activeOpenHouseId?: string | null;
   onDateClick?: (dateStr: string) => void;
+  /** Called when an event is rescheduled (drag) or resized (open house only) or after edit modal save */
   onEventRescheduled?: () => void;
+  /** When user clicks an event, open edit modal instead of navigating */
+  onEventClick?: (eventId: string, eventType: "open_house" | "showing") => void;
 };
 
 export function ShowingHQCalendar({
@@ -60,6 +62,7 @@ export function ShowingHQCalendar({
   activeOpenHouseId = null,
   onDateClick,
   onEventRescheduled,
+  onEventClick,
 }: ShowingHQCalendarProps) {
   const fcEvents: EventInput[] = useMemo(
     () =>
@@ -108,11 +111,13 @@ export function ShowingHQCalendar({
           }
         }}
         eventClick={(info) => {
-          const id = info.event.id;
-          if (id?.startsWith("oh-")) {
-            window.location.href = `/showing-hq/open-houses/${id.replace("oh-", "")}`;
-          } else if (id?.startsWith("s-")) {
-            window.location.href = "/showing-hq/showings";
+          const id = info.event.id ?? "";
+          if (onEventClick) {
+            if (id.startsWith("oh-")) onEventClick(id.replace("oh-", ""), "open_house");
+            else if (id.startsWith("s-")) onEventClick(id.replace("s-", ""), "showing");
+          } else {
+            if (id.startsWith("oh-")) window.location.href = `/showing-hq/open-houses/${id.replace("oh-", "")}`;
+            else if (id.startsWith("s-")) window.location.href = "/showing-hq/showings";
           }
         }}
         eventDidMount={(info) => {
@@ -175,6 +180,39 @@ export function ShowingHQCalendar({
             }
           } else {
             revert();
+          }
+        }}
+        eventResize={async (info) => {
+          const id = info.event.id ?? "";
+          if (id.startsWith("s-")) {
+            info.revert();
+            return;
+          }
+          if (!id.startsWith("oh-")) {
+            info.revert();
+            return;
+          }
+          const ohId = id.replace("oh-", "");
+          const start = info.event.start;
+          const end = info.event.end;
+          if (!start || !end) {
+            info.revert();
+            return;
+          }
+          try {
+            const res = await fetch(`/api/v1/open-houses/${ohId}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                startAt: start.toISOString(),
+                endAt: end.toISOString(),
+              }),
+            });
+            const json = await res.json();
+            if (json.error) throw new Error(json.error.message);
+            onEventRescheduled?.();
+          } catch {
+            info.revert();
           }
         }}
       />

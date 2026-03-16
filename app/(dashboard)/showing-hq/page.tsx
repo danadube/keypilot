@@ -22,6 +22,7 @@ import { GettingStartedCard, buildGettingStartedSteps } from "@/components/showi
 import { ShowingHQCalendar } from "@/components/showing-hq/ShowingHQCalendar";
 import type { CalendarEvent } from "@/components/showing-hq/ShowingHQCalendar";
 import { QuickCreateEventModal } from "@/components/showing-hq/QuickCreateEventModal";
+import { EditEventModal } from "@/components/showing-hq/EditEventModal";
 import { TodayCommandCenter } from "@/components/showing-hq/TodayCommandCenter";
 import { TodaysScheduleCard } from "@/components/showing-hq/TodaysScheduleCard";
 import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
@@ -112,6 +113,9 @@ export default function ShowingHQOverviewPage() {
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickCreateDate, setQuickCreateDate] = useState<string | null>(null);
   const [rescheduleToast, setRescheduleToast] = useState(false);
+  const [editEventOpen, setEditEventOpen] = useState(false);
+  const [editEventId, setEditEventId] = useState<string | null>(null);
+  const [editEventType, setEditEventType] = useState<"open_house" | "showing">("open_house");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -348,6 +352,11 @@ export default function ShowingHQOverviewPage() {
             setRescheduleToast(true);
             refetchDashboard();
           }}
+          onEventClick={(eventId, eventType) => {
+            setEditEventId(eventId);
+            setEditEventType(eventType);
+            setEditEventOpen(true);
+          }}
         />
         <TodaysScheduleCard
           scheduleItems={scheduleItems}
@@ -364,12 +373,26 @@ export default function ShowingHQOverviewPage() {
         initialDateStr={quickCreateDate}
         onSaved={() => refetchDashboard()}
       />
+      <EditEventModal
+        open={editEventOpen}
+        onOpenChange={setEditEventOpen}
+        eventType={editEventType}
+        eventId={editEventId}
+        onSaved={() => {
+          setRescheduleToast(true);
+          refetchDashboard();
+        }}
+        onDeleted={() => {
+          setRescheduleToast(true);
+          refetchDashboard();
+        }}
+      />
       {rescheduleToast && (
         <div
           className="fixed bottom-4 right-4 z-50 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-[var(--brand-text)] shadow-lg"
           role="status"
         >
-          Rescheduled
+          Calendar updated
         </div>
       )}
 

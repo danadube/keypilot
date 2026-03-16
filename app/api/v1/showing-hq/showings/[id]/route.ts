@@ -1,12 +1,36 @@
 /**
- * PATCH /api/v1/showing-hq/showings/[id] — reschedule a showing (e.g. from calendar drag).
+ * GET /api/v1/showing-hq/showings/[id] — fetch one showing for edit modal.
+ * PATCH — reschedule and/or update property, notes.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { RescheduleShowingSchema } from "@/lib/validations/showing";
+import { UpdateShowingSchema } from "@/lib/validations/showing";
 import { apiErrorFromCaught } from "@/lib/api-response";
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getCurrentUser();
+    const { id } = await params;
+    const showing = await prisma.showing.findFirst({
+      where: { id, hostUserId: user.id, deletedAt: null },
+      include: { property: true },
+    });
+    if (!showing) {
+      return NextResponse.json(
+        { error: { message: "Showing not found" } },
+        { status: 404 }
+      );
+    }
+    return NextResponse.json({ data: showing });
+  } catch (e) {
+    return apiErrorFromCaught(e);
+  }
+}
 
 export async function PATCH(
   req: NextRequest,
@@ -16,7 +40,7 @@ export async function PATCH(
     const user = await getCurrentUser();
     const { id } = await params;
     const body = await req.json();
-    const parsed = RescheduleShowingSchema.safeParse(body);
+    const parsed = UpdateShowingSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         { error: { message: "Validation failed", code: "VALIDATION_ERROR" } },
@@ -34,9 +58,14 @@ export async function PATCH(
       );
     }
 
+    const updateData: { scheduledAt?: Date; propertyId?: string; notes?: string | null } = {};
+    if (parsed.data.scheduledAt !== undefined) updateData.scheduledAt = parsed.data.scheduledAt;
+    if (parsed.data.propertyId !== undefined) updateData.propertyId = parsed.data.propertyId;
+    if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes ?? null;
+
     const showing = await prisma.showing.update({
       where: { id },
-      data: { scheduledAt: parsed.data.scheduledAt },
+      data: updateData,
       include: { property: true },
     });
 

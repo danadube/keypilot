@@ -14,5 +14,13 @@ export const RescheduleShowingSchema = z.object({
   scheduledAt: z.coerce.date(),
 });
 
+/** PATCH body for editing a showing (date/time, property, notes) */
+export const UpdateShowingSchema = z.object({
+  scheduledAt: z.coerce.date().optional(),
+  propertyId: z.string().uuid().optional(),
+  notes: z.string().max(5000).optional().nullable(),
+});
+
 export type CreateShowingInput = z.infer<typeof CreateShowingSchema>;
 export type RescheduleShowingInput = z.infer<typeof RescheduleShowingSchema>;
+export type UpdateShowingInput = z.infer<typeof UpdateShowingSchema>;
