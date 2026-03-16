@@ -62,33 +62,31 @@ export function ModuleSidebar() {
       aria-label={`${mod.name} navigation`}
     >
       {activeId === "showing-hq" ? (
-        <div className="border-b border-[var(--brand-border)] px-4 py-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--brand-surface)] ring-1 ring-[var(--brand-border)]">
+        <div className="border-b border-white/10 px-4 py-5">
+          <div className="mb-3 flex items-center gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/10">
               <Image
                 src="/KeyPilot-logo.png?v=4"
                 alt="KeyPilot"
-                width={28}
-                height={28}
-                className="h-5 w-auto object-contain"
+                width={24}
+                height={24}
+                className="h-4 w-auto object-contain brightness-0 invert"
                 priority
               />
             </div>
-            <div className="min-w-0 flex-1">
-              <span className="block text-[10px] font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
-                KeyPilot
-              </span>
-              <div className="mt-0.5 flex items-center gap-2">
-                <h2 className="text-base font-bold tracking-tight text-white">
-                  ShowingHQ
-                </h2>
-                <span className="shrink-0 rounded-full border border-[var(--brand-secondary)] bg-[var(--brand-secondary)]/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--brand-secondary)]">
-                  Beta
-                </span>
-              </div>
-            </div>
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+              KeyPilot
+            </span>
           </div>
-          <p className="mt-3 text-xs leading-relaxed text-[var(--brand-text-muted)]">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-xl font-extrabold tracking-tight text-white leading-none">
+              ShowingHQ
+            </h2>
+            <span className="shrink-0 rounded-full border border-[#4BAED8]/60 bg-[#4BAED8]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#7DD3F5]">
+              Beta
+            </span>
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
             Private showings & open house command center.
           </p>
         </div>
@@ -101,7 +99,7 @@ export function ModuleSidebar() {
         {groups.map(({ section, items: groupItems }) => (
           <div key={section ?? "main"} className="mb-4 last:mb-2">
             {section && (
-              <p className="mb-1.5 px-5 text-xs font-semibold uppercase tracking-wide text-[var(--brand-text-muted)]">
+              <p className="mb-1.5 px-5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
                 {section}
               </p>
             )}
@@ -115,9 +113,9 @@ export function ModuleSidebar() {
                       href={item.href}
                       className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                        "text-slate-300 hover:text-white",
+                        "text-slate-400 hover:text-white hover:bg-white/5",
                         active &&
-                          "bg-[var(--brand-secondary)]/15 font-bold text-[var(--brand-secondary)] border-l-4 border-l-[var(--brand-secondary)] pl-[calc(0.75rem+4px)]"
+                          "bg-white/15 font-semibold text-white border-l-[3px] border-l-[#4BAED8] pl-[calc(0.75rem+3px)]"
                       )}
                     >
                       {Icon && <Icon className="h-[18px] w-[18px] shrink-0 opacity-85" />}
@@ -131,8 +129,8 @@ export function ModuleSidebar() {
         ))}
       </nav>
       {lockedModules.length > 0 && (
-        <div className="shrink-0 border-t border-[var(--brand-border)] px-5 py-3">
-          <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-[var(--brand-text-muted)]">
+        <div className="shrink-0 border-t border-white/10 px-5 py-3">
+          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
             Upgrade Your Platform
           </p>
           <ul className="space-y-0.5">
@@ -146,9 +144,9 @@ export function ModuleSidebar() {
                     href={`/upgrade/${id}`}
                     className={cn(
                       "flex items-center gap-3 rounded-md px-2.5 py-2.5 text-sm transition-colors",
-                      "text-slate-300 hover:text-white",
+                      "text-slate-400 hover:text-white hover:bg-white/5",
                       isActive &&
-                        "bg-[var(--brand-secondary)]/15 font-bold text-[var(--brand-secondary)] border-l-4 border-l-[var(--brand-secondary)] -ml-[2px] pl-[calc(0.75rem+4px)]"
+                        "bg-white/15 font-semibold text-white border-l-[3px] border-l-[#4BAED8] pl-[calc(0.75rem+3px)]"
                     )}
                   >
                     <Lock className="h-[18px] w-[18px] shrink-0 opacity-80" />
@@ -161,11 +159,11 @@ export function ModuleSidebar() {
         </div>
       )}
       {activeId === "showing-hq" && (
-        <div className="shrink-0 border-t border-[var(--brand-border)] p-4">
+        <div className="shrink-0 border-t border-white/10 p-4">
           <FeedbackButton
             variant="outline"
             size="sm"
-            className="w-full justify-center border-[var(--brand-border)] bg-[var(--brand-sidebar-bg, #0B1A3C)] text-slate-100 hover:bg-[var(--brand-primary)] hover:text-white"
+            className="w-full justify-center border-white/15 bg-white/5 text-slate-300 hover:bg-white/15 hover:text-white"
           >
             Send feedback
           </FeedbackButton>

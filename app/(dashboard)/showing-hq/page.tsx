@@ -311,25 +311,29 @@ export default function ShowingHQOverviewPage() {
 
   return (
     <div className="min-h-0 flex flex-col gap-6 bg-transparent">
-      {/* Hero — product workspace identity (white surface, strong brand accents) */}
+      {/* Hero — dark branded banner, strong contrast against page canvas */}
       <header
-        className="relative rounded-2xl bg-[var(--brand-surface)] px-6 py-6 shadow-xl ring-2 ring-[var(--kp-hero-ring, #4BAED8)]"
-        style={{ borderLeftWidth: "4px", borderLeftColor: "var(--brand-primary)" }}
+        className="relative rounded-2xl bg-[#0B1A3C] px-8 py-8 shadow-2xl"
         role="banner"
       >
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-[#4BAED8]/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#7DD3F5] ring-1 ring-[#4BAED8]/40">
+              ShowingHQ
+            </span>
+          </div>
           <h1
-            className="text-xl font-bold tracking-tight text-slate-900 md:text-2xl"
-            style={{ fontFamily: "var(--font-heading)" }}
+            className="text-3xl font-extrabold tracking-tight text-white md:text-4xl"
+            style={{ fontFamily: "var(--font-heading)", lineHeight: 1.1 }}
           >
-            Welcome to ShowingHQ
+            Your Showing Command Center
           </h1>
-          <p className="max-w-2xl text-sm text-slate-600 md:text-base">
-            Manage private showings, open houses, visitors, feedback, and follow-ups in one command center.
+          <p className="max-w-2xl text-sm text-slate-300 md:text-base">
+            Manage private showings, open houses, visitors, feedback, and follow-ups in one place.
           </p>
         </div>
-        {/* Metric chips — integrated with hero content width, using brand accent colors */}
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        {/* Metric chips — white chips pop on dark bg */}
+        <div className="mt-5 flex flex-wrap items-center gap-2">
           <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
             <Users className="h-4 w-4 shrink-0 text-[var(--brand-secondary)]" />
             <div className="min-w-0">
