@@ -66,6 +66,8 @@ export function PropertiesList() {
     return isNaN(n) ? "—" : `$${n.toLocaleString()}`;
   };
 
+  const totalOpenHouses = properties.reduce((sum, p) => sum + (p._count?.openHouses ?? 0), 0);
+
   return (
     <div className="flex flex-col gap-[var(--space-lg)]">
       <BrandPageHeader
@@ -77,6 +79,24 @@ export function PropertiesList() {
           </BrandButton>
         }
       />
+
+      {/* Summary metrics */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="rounded-lg border bg-card px-4 py-3">
+          <p className="text-xs font-medium text-muted-foreground">Total properties</p>
+          <p className="text-2xl font-semibold">{properties.length}</p>
+        </div>
+        <div className="rounded-lg border bg-card px-4 py-3">
+          <p className="text-xs font-medium text-muted-foreground">Open houses linked</p>
+          <p className="text-2xl font-semibold">{totalOpenHouses}</p>
+        </div>
+        <div className="rounded-lg border bg-card px-4 py-3 sm:col-span-2 lg:col-span-1">
+          <p className="text-xs font-medium text-muted-foreground">Quick action</p>
+          <Button variant="outline" size="sm" className="mt-1" asChild>
+            <Link href="/open-houses/new">Schedule open house</Link>
+          </Button>
+        </div>
+      </div>
 
       <Card>
         <CardHeader>

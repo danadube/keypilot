@@ -81,6 +81,11 @@ export function OpenHousesList() {
     return "outline";
   };
 
+  const activeCount = openHouses.filter(
+    (oh) => oh.status === "ACTIVE" || oh.status === "SCHEDULED"
+  ).length;
+  const totalVisitors = openHouses.reduce((sum, oh) => sum + oh._count.visitors, 0);
+
   return (
     <div className="flex flex-col gap-[var(--space-lg)]">
       <BrandPageHeader
@@ -92,6 +97,28 @@ export function OpenHousesList() {
           </BrandButton>
         }
       />
+
+      {/* Summary / status blocks */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-lg border bg-card px-4 py-3">
+          <p className="text-xs font-medium text-muted-foreground">Total events</p>
+          <p className="text-2xl font-semibold">{openHouses.length}</p>
+        </div>
+        <div className="rounded-lg border bg-card px-4 py-3">
+          <p className="text-xs font-medium text-muted-foreground">Active / upcoming</p>
+          <p className="text-2xl font-semibold">{activeCount}</p>
+        </div>
+        <div className="rounded-lg border bg-card px-4 py-3">
+          <p className="text-xs font-medium text-muted-foreground">Total visitors</p>
+          <p className="text-2xl font-semibold">{totalVisitors}</p>
+        </div>
+        <div className="rounded-lg border bg-card px-4 py-3">
+          <p className="text-xs font-medium text-muted-foreground">Quick action</p>
+          <Button variant="outline" size="sm" className="mt-1" asChild>
+            <Link href="/open-houses/sign-in">Open sign-in page</Link>
+          </Button>
+        </div>
+      </div>
 
       <Card>
         <CardHeader>
