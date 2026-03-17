@@ -23,6 +23,10 @@ import { EditEventModal } from "@/components/showing-hq/EditEventModal";
 import { TodayCommandCenter } from "@/components/showing-hq/TodayCommandCenter";
 import { TodaysScheduleCard } from "@/components/showing-hq/TodaysScheduleCard";
 import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
+import {
+  TodaysActionsCard,
+  type TodaysActionItem,
+} from "@/components/showing-hq/TodaysActionsCard";
 import { MessageSquare } from "lucide-react";
 
 type DashboardData = {
@@ -309,6 +313,37 @@ export default function ShowingHQOverviewPage() {
     return tb - ta;
   });
 
+  const todaysActionItems: TodaysActionItem[] = [
+    ...pendingFeedbackRequests.slice(0, 5).map((fr) => ({
+      id: `feedback-${fr.id}`,
+      description: `Feedback request for ${fr.property?.address1 ?? "property"}`,
+      propertyOrAddress: fr.property?.address1 ?? "",
+      actionLabel: "Send",
+      actionHref: "/showing-hq/feedback-requests",
+      type: "feedback" as const,
+    })),
+    ...followUpTasks.slice(0, 5).map((t) => ({
+      id: `draft-${t.id}`,
+      description: `Follow up with open house visitors`,
+      propertyOrAddress: t.openHouse?.property?.address1 ?? t.openHouse?.title ?? "",
+      actionLabel: "Review",
+      actionHref: `/showing-hq/follow-ups/draft/${t.id}`,
+      type: "follow_up" as const,
+    })),
+    ...(tomorrowItem?.type === "showing"
+      ? [
+          {
+            id: `confirm-${tomorrowItem.id}`,
+            description: "Confirm showing for tomorrow",
+            propertyOrAddress: tomorrowItem.property?.address1 ?? "",
+            actionLabel: "Confirm",
+            actionHref: "/showing-hq/showings",
+            type: "confirm_showing" as const,
+          } as TodaysActionItem,
+        ]
+      : []),
+  ];
+
   return (
     <div className="min-h-0 flex flex-col gap-6 bg-transparent">
       {/* Hero — dark branded banner, strong contrast against page canvas */}
@@ -394,6 +429,9 @@ export default function ShowingHQOverviewPage() {
           </div>
         </div>
       </header>
+
+      {/* Today's Actions — tasks that need attention today */}
+      <TodaysActionsCard items={todaysActionItems} />
 
       {/* Today Command Center — single primary state: now / next urgent / what to do */}
       <TodayCommandCenter
