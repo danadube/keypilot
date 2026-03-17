@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { QrCode, Tablet, Printer, ArrowRight, List, Plus } from "lucide-react";
+import { BrandButton } from "@/components/ui/BrandButton";
 
 type OpenHouse = {
   id: string;
@@ -160,124 +161,150 @@ export default function OpenSignInPage() {
   );
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-      {/* Primary: launch host sign-in */}
-      <div className="min-w-0 flex-1 space-y-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/open-houses">← Back</Link>
+    <div className="flex flex-col gap-6">
+      {/* Hero — match dashboard hero system */}
+      <header
+        className="relative rounded-2xl bg-[#0B1A3C] px-8 py-8 shadow-2xl"
+        role="banner"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#7DD3F5]">
+              Sign-in & QR
+            </p>
+            <h1
+              className="text-3xl font-extrabold tracking-tight text-white md:text-4xl"
+              style={{ fontFamily: "var(--font-heading)", lineHeight: 1.1 }}
+            >
+              Sign-in & QR
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm text-slate-300 md:text-base">
+              Launch host sign-in for your tablet or print QR posters.
+            </p>
+          </div>
+          <div className="mt-4 flex shrink-0 flex-wrap items-center gap-2 sm:mt-0">
+            <BrandButton variant="primary" size="sm" asChild>
+              <Link href="#host-sign-in">Open host sign-in</Link>
+            </BrandButton>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-slate-300 bg-white/5 text-white hover:bg-white/10"
+              asChild
+            >
+              <Link href="/open-houses">View open houses</Link>
             </Button>
-            <div>
-              <h1 className="text-2xl font-semibold">Sign-in & QR</h1>
-              <p className="text-sm text-muted-foreground">Launch host sign-in for your tablet or print the QR poster.</p>
-            </div>
           </div>
         </div>
+      </header>
 
-        {active.length === 0 && recentOthers.length === 0 ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>No open houses yet</CardTitle>
-              <CardDescription>
-                Create an open house first. Then return here to open the host sign-in page on a tablet or print the QR poster for visitors.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4">
-              <Button asChild>
-                <Link href="/open-houses/new">New open house</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/open-houses">View open houses</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-6">
-            {active.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Launch host sign-in</CardTitle>
-                  <CardDescription>
-                    Select an open house to open the host page (tablet check-in and QR). Each event has its own link.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {active.map((oh) => (
-                    <div
-                      key={oh.id}
-                      className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium">{oh.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {oh.property.address1}, {oh.property.city} · {formatDate(oh.startAt)} {formatTime(oh.startAt)}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {oh._count.visitors} visitor{oh._count.visitors !== 1 ? "s" : ""} signed in
-                        </p>
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        {/* Primary: launch host sign-in */}
+        <div className="min-w-0 flex-1 space-y-6">
+          {active.length === 0 && recentOthers.length === 0 ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>No open houses yet</CardTitle>
+                <CardDescription>
+                  Create an open house first. Then return here to open the host sign-in page on a tablet or print the QR poster for visitors.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4">
+                <Button asChild>
+                  <Link href="/open-houses/new">New open house</Link>
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link href="/open-houses">View open houses</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {active.length > 0 && (
+                <Card id="host-sign-in">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Launch host sign-in</CardTitle>
+                    <CardDescription>
+                      Select an open house to open the host page (tablet check-in and QR). Each event has its own link.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {active.map((oh) => (
+                      <div
+                        key={oh.id}
+                        className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium">{oh.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {oh.property.address1}, {oh.property.city} · {formatDate(oh.startAt)} {formatTime(oh.startAt)}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {oh._count.visitors} visitor{oh._count.visitors !== 1 ? "s" : ""} signed in
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button asChild size="sm">
+                            <Link href={`/open-houses/${oh.id}/sign-in`}>
+                              <Tablet className="mr-2 h-4 w-4" />
+                              Host sign-in
+                            </Link>
+                          </Button>
+                          <Button variant="outline" size="sm" asChild>
+                            <Link href={`/open-houses/${oh.id}/sign-in/print`}>
+                              <Printer className="mr-2 h-4 w-4" />
+                              Print QR
+                            </Link>
+                          </Button>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/open-houses/${oh.id}`}>
+                              View <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                            </Link>
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        <Button asChild size="sm">
-                          <Link href={`/open-houses/${oh.id}/sign-in`}>
-                            <Tablet className="mr-2 h-4 w-4" />
-                            Host sign-in
-                          </Link>
-                        </Button>
-                        <Button variant="outline" size="sm" asChild>
-                          <Link href={`/open-houses/${oh.id}/sign-in/print`}>
-                            <Printer className="mr-2 h-4 w-4" />
-                            Print QR
-                          </Link>
-                        </Button>
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/open-houses/${oh.id}`}>
-                            View <ArrowRight className="ml-1 h-3.5 w-3.5" />
-                          </Link>
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
 
-            {recentOthers.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Past events</CardTitle>
-                  <CardDescription>Reopen sign-in for a completed or cancelled event if needed.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {recentOthers.map((oh) => (
-                    <div
-                      key={oh.id}
-                      className="flex items-center justify-between rounded-lg border p-3"
-                    >
-                      <div>
-                        <p className="font-medium text-sm">{oh.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {oh.property.address1}, {oh.property.city} · {formatDate(oh.startAt)}
-                        </p>
+              {recentOthers.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Past events</CardTitle>
+                    <CardDescription>Reopen sign-in for a completed or cancelled event if needed.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {recentOthers.map((oh) => (
+                      <div
+                        key={oh.id}
+                        className="flex items-center justify-between rounded-lg border p-3"
+                      >
+                        <div>
+                          <p className="font-medium text-sm">{oh.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {oh.property.address1}, {oh.property.city} · {formatDate(oh.startAt)}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-xs">{oh.status}</Badge>
+                          <Button asChild variant="outline" size="sm">
+                            <Link href={`/open-houses/${oh.id}/sign-in`}>Open</Link>
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs">{oh.status}</Badge>
-                        <Button asChild variant="outline" size="sm">
-                          <Link href={`/open-houses/${oh.id}/sign-in`}>Open</Link>
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
-      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+        </div>
 
-      {/* Right: workflow + shortcuts + status */}
-      <div className="shrink-0 lg:w-[320px] lg:sticky lg:top-6">
-        {rightPanel}
+        {/* Right: workflow + shortcuts + status */}
+        <div className="shrink-0 lg:w-[320px] lg:sticky lg:top-6">
+          {rightPanel}
+        </div>
       </div>
     </div>
   );

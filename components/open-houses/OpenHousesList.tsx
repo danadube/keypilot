@@ -20,7 +20,6 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { BrandButton } from "@/components/ui/BrandButton";
-import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Calendar, QrCode, Plus, Users, LayoutGrid } from "lucide-react";
@@ -94,15 +93,39 @@ export function OpenHousesList() {
 
   return (
     <div className="flex flex-col gap-6">
-      <BrandPageHeader
-        title="Open Houses"
-        description="Create and manage your public open house events"
-        actions={
-          <BrandButton asChild>
-            <Link href="/open-houses/new">New Open House</Link>
-          </BrandButton>
-        }
-      />
+      {/* Hero — match dashboard hero system */}
+      <header
+        className="relative rounded-2xl bg-[#0B1A3C] px-8 py-8 shadow-2xl"
+        role="banner"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#7DD3F5]">
+              Open House Ops
+            </p>
+            <h1
+              className="text-3xl font-extrabold tracking-tight text-white md:text-4xl"
+              style={{ fontFamily: "var(--font-heading)", lineHeight: 1.1 }}
+            >
+              Open Houses
+            </h1>
+            <p className="mt-1 max-w-2xl text-sm text-slate-300 md:text-base">
+              Create and manage your public open house events.
+            </p>
+          </div>
+          <div className="mt-4 flex shrink-0 flex-wrap items-center gap-2 sm:mt-0">
+            <BrandButton variant="primary" size="sm" asChild>
+              <Link href="/open-houses/new">New Open House</Link>
+            </BrandButton>
+            <Button variant="outline" size="sm" className="border-slate-300 bg-white/5 text-white hover:bg-white/10" asChild>
+              <Link href="/open-houses/sign-in">
+                <QrCode className="mr-2 h-4 w-4" />
+                Open sign-in page
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </header>
 
       {/* Summary strip — control center at a glance */}
       <div className="rounded-xl border bg-card p-4 shadow-sm">
