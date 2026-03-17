@@ -15,7 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
-import { QrCode } from "lucide-react";
+import { QrCode, Tablet, Printer, ArrowRight, List, Plus } from "lucide-react";
 
 type OpenHouse = {
   id: string;
@@ -86,11 +86,64 @@ export default function OpenSignInPage() {
     return <PageLoading message="Opening sign-in..." />;
   }
 
-  const statusPanel = (
+  const rightPanel = (
     <div className="space-y-4">
       <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Status</CardTitle>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <QrCode className="h-4 w-4" />
+            Sign-in workflow
+          </CardTitle>
+          <CardDescription>How host sign-in and QR work</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <div className="flex gap-3">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">1</span>
+            <div>
+              <p className="font-medium">Choose an open house</p>
+              <p className="text-muted-foreground">Select the event you’re running today (left).</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">2</span>
+            <div>
+              <p className="font-medium">Open host sign-in</p>
+              <p className="text-muted-foreground">Use on a tablet at the door to check visitors in.</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">3</span>
+            <div>
+              <p className="font-medium">QR or print poster</p>
+              <p className="text-muted-foreground">Visitors scan QR or use the link; you can print a poster from the host page.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Shortcuts</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Button variant="outline" className="w-full justify-start" size="sm" asChild>
+            <Link href="/open-houses">
+              <List className="mr-2 h-4 w-4" />
+              All open houses
+            </Link>
+          </Button>
+          <Button variant="outline" className="w-full justify-start" size="sm" asChild>
+            <Link href="/open-houses/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New open house
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">At a glance</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           <div className="flex justify-between">
@@ -98,21 +151,9 @@ export default function OpenSignInPage() {
             <span className="font-medium">{active.length}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Total open houses</span>
+            <span className="text-muted-foreground">Total events</span>
             <span className="font-medium">{openHouses.length}</span>
           </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">How to use</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>Open the host sign-in page on a tablet at your open house, or print the QR poster for visitors to scan.</p>
-          <p>Each open house has its own QR link and check-in list.</p>
-          <Button variant="outline" size="sm" className="mt-2 w-full" asChild>
-            <Link href="/open-houses">View all open houses</Link>
-          </Button>
         </CardContent>
       </Card>
     </div>
@@ -120,12 +161,18 @@ export default function OpenSignInPage() {
 
   return (
     <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
-      <div className="min-w-0 flex-1 space-y-6 lg:max-w-2xl">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/open-houses">← Back</Link>
-          </Button>
-          <h1 className="text-2xl font-semibold">Sign-in & QR</h1>
+      {/* Primary: launch host sign-in */}
+      <div className="min-w-0 flex-1 space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/open-houses">← Back</Link>
+            </Button>
+            <div>
+              <h1 className="text-2xl font-semibold">Sign-in & QR</h1>
+              <p className="text-sm text-muted-foreground">Launch host sign-in for your tablet or print the QR poster.</p>
+            </div>
+          </div>
         </div>
 
         {active.length === 0 && recentOthers.length === 0 ? (
@@ -133,71 +180,88 @@ export default function OpenSignInPage() {
             <CardHeader>
               <CardTitle>No open houses yet</CardTitle>
               <CardDescription>
-                Create an open house first, then open the host sign-in page for your tablet or print the QR poster.
+                Create an open house first. Then return here to open the host sign-in page on a tablet or print the QR poster for visitors.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col gap-4">
               <Button asChild>
                 <Link href="/open-houses/new">New open house</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/open-houses">View open houses</Link>
               </Button>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {active.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Active / upcoming</CardTitle>
-                  <CardDescription>Select an open house to open the host sign-in page (QR + check-in)</CardDescription>
+                  <CardTitle className="text-lg">Launch host sign-in</CardTitle>
+                  <CardDescription>
+                    Select an open house to open the host page (tablet check-in and QR). Each event has its own link.
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent className="space-y-3">
                   {active.map((oh) => (
                     <div
                       key={oh.id}
-                      className="flex items-center justify-between rounded-lg border p-4"
+                      className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
                     >
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="font-medium">{oh.title}</p>
                         <p className="text-sm text-muted-foreground">
-                          {oh.property.address1}, {oh.property.city} ·{" "}
-                          {formatDate(oh.startAt)} {formatTime(oh.startAt)}
+                          {oh.property.address1}, {oh.property.city} · {formatDate(oh.startAt)} {formatTime(oh.startAt)}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {oh._count.visitors} visitor{oh._count.visitors !== 1 ? "s" : ""}
+                          {oh._count.visitors} visitor{oh._count.visitors !== 1 ? "s" : ""} signed in
                         </p>
                       </div>
-                      <Button asChild size="sm">
-                        <Link href={`/open-houses/${oh.id}/sign-in`}>
-                          <QrCode className="mr-2 h-4 w-4" />
-                          Host sign-in
-                        </Link>
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button asChild size="sm">
+                          <Link href={`/open-houses/${oh.id}/sign-in`}>
+                            <Tablet className="mr-2 h-4 w-4" />
+                            Host sign-in
+                          </Link>
+                        </Button>
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={`/open-houses/${oh.id}/sign-in/print`}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            Print QR
+                          </Link>
+                        </Button>
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/open-houses/${oh.id}`}>
+                            View <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                          </Link>
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </CardContent>
               </Card>
             )}
+
             {recentOthers.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Recent</CardTitle>
-                  <CardDescription>Past open houses</CardDescription>
+                  <CardTitle className="text-base">Past events</CardTitle>
+                  <CardDescription>Reopen sign-in for a completed or cancelled event if needed.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {recentOthers.map((oh) => (
                     <div
                       key={oh.id}
-                      className="flex items-center justify-between rounded-lg border p-4"
+                      className="flex items-center justify-between rounded-lg border p-3"
                     >
                       <div>
-                        <p className="font-medium">{oh.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {oh.property.address1}, {oh.property.city} ·{" "}
-                          {formatDate(oh.startAt)}
+                        <p className="font-medium text-sm">{oh.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {oh.property.address1}, {oh.property.city} · {formatDate(oh.startAt)}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary">{oh.status}</Badge>
+                        <Badge variant="secondary" className="text-xs">{oh.status}</Badge>
                         <Button asChild variant="outline" size="sm">
                           <Link href={`/open-houses/${oh.id}/sign-in`}>Open</Link>
                         </Button>
@@ -211,8 +275,10 @@ export default function OpenSignInPage() {
         )}
       </div>
 
-      {/* Supporting context panel */}
-      <div className="shrink-0 lg:w-64 lg:sticky lg:top-6">{statusPanel}</div>
+      {/* Right: workflow + shortcuts + status */}
+      <div className="shrink-0 lg:w-[320px] lg:sticky lg:top-6">
+        {rightPanel}
+      </div>
     </div>
   );
 }
