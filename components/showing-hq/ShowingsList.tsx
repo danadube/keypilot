@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
+import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
 import { BrandCard } from "@/components/ui/BrandCard";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
@@ -53,15 +53,15 @@ export function ShowingsList() {
     new Date(d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
   return (
-    <div className="flex flex-col gap-[var(--space-xl)]">
-      <BrandPageHeader
+    <div className="min-h-0 flex flex-col gap-6 bg-transparent">
+      <ShowingHQPageHero
         title="All Showings"
         description="Single private appointments — separate from open houses."
-        actions={
+        action={
           <BrandButton variant="primary" size="sm" asChild>
             <Link href="/showing-hq/showings/new">
               <Plus className="mr-2 h-4 w-4" />
-              Add Showing
+              Schedule Showing
             </Link>
           </BrandButton>
         }

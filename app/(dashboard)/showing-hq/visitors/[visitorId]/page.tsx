@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
+import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
 import { BrandCard } from "@/components/ui/BrandCard";
 import { BrandSectionHeader } from "@/components/ui/BrandSectionHeader";
 import { BrandButton } from "@/components/ui/BrandButton";
@@ -164,11 +164,11 @@ export default function VisitorProfilePage() {
   const hasFollowUpSent = followUpDrafts.some((d) => d.status === "SENT_MANUAL");
 
   return (
-    <div className="flex flex-col gap-[var(--space-xl)]">
-      <BrandPageHeader
+    <div className="min-h-0 flex flex-col gap-6 bg-transparent">
+      <ShowingHQPageHero
         title={fullName}
         description={visitor.openHouse.title}
-        actions={
+        action={
           <div className="flex flex-wrap gap-2">
             {contact.email && (
               <BrandButton

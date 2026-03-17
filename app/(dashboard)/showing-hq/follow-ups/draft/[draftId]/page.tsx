@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
+import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
 import { BrandCard } from "@/components/ui/BrandCard";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { Button } from "@/components/ui/button";
@@ -144,11 +144,11 @@ export default function DraftReviewPage() {
   const contactName = [draft.contact.firstName, draft.contact.lastName].filter(Boolean).join(" ") || "Unknown";
 
   return (
-    <div className="flex flex-col gap-6">
-      <BrandPageHeader
+    <div className="min-h-0 flex flex-col gap-6 bg-transparent">
+      <ShowingHQPageHero
         title="Review draft"
         description={`Follow-up for ${contactName} · ${draft.openHouse.property?.address1 ?? draft.openHouse.title}`}
-        actions={
+        action={
           <div className="flex flex-wrap gap-2">
             <FollowUpStatusBadge status={draft.status} />
             <BrandButton variant="secondary" asChild>

@@ -1,15 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
+import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
 import { BrandCard } from "@/components/ui/BrandCard";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { Inbox } from "lucide-react";
 
 export default function SupraInboxPage() {
   return (
-    <div className="flex flex-col gap-[var(--space-xl)]">
-      <BrandPageHeader
+    <div className="min-h-0 flex flex-col gap-6 bg-transparent">
+      <ShowingHQPageHero
         title="Supra Inbox"
         description="Showing notifications parsed from Supra email scraps."
       />

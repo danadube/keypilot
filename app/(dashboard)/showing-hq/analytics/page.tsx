@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
 import { BrandCard } from "@/components/ui/BrandCard";
 import { BrandSectionHeader } from "@/components/ui/BrandSectionHeader";
 import { PageLoading } from "@/components/shared/PageLoading";
@@ -49,29 +50,24 @@ export default function ShowingHQAnalyticsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-[var(--space-2xl)]">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/showing-hq">
-            <ChevronLeft className="mr-1 h-4 w-4" />
-            Back
-          </Link>
-        </Button>
-        <h1
-          className="font-bold text-[var(--brand-text)]"
-          style={{
-            fontFamily: "var(--font-heading)",
-            fontSize: "var(--text-h2-size)",
-          }}
-        >
-          Beta analytics
-        </h1>
-      </div>
+    <div className="min-h-0 flex flex-col gap-6 bg-transparent">
+      <ShowingHQPageHero
+        title="Beta analytics"
+        description="ShowingHQ beta event counts. Internal use."
+        action={
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/showing-hq">
+              <ChevronLeft className="mr-1 h-4 w-4" />
+              Back
+            </Link>
+          </Button>
+        }
+      />
 
       <BrandCard elevated padded>
         <BrandSectionHeader
           title="Usage summary"
-          description="ShowingHQ beta event counts. Internal use."
+          description="Event counts across open houses, visitors, and follow-ups."
         />
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div className="flex items-center gap-3 rounded-lg border border-[var(--brand-border)] p-4">

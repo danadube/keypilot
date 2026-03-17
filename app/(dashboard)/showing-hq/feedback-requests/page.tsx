@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
+import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
 import { BrandCard } from "@/components/ui/BrandCard";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
@@ -57,8 +57,8 @@ export default function FeedbackRequestsPage() {
   const expired = requests.filter((r) => r.status === "EXPIRED");
 
   return (
-    <div className="flex flex-col gap-[var(--space-xl)]">
-      <BrandPageHeader
+    <div className="min-h-0 flex flex-col gap-6 bg-transparent">
+      <ShowingHQPageHero
         title="Feedback Requests"
         description="Private showing feedback — share the link with the buyer agent to capture quick feedback."
       />

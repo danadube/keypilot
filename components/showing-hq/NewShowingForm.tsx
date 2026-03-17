@@ -7,13 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
+import { BrandCard } from "@/components/ui/BrandCard";
 import {
   Select,
   SelectContent,
@@ -97,23 +92,19 @@ export function NewShowingForm() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/showing-hq/showings">← Back</Link>
-        </Button>
-        <h1 className="text-2xl font-semibold">Add Single Showing</h1>
-      </div>
+    <div className="min-h-0 flex flex-col gap-6 bg-transparent">
+      <ShowingHQPageHero
+        title="Schedule Showing"
+        description="Create a single private showing (different from an open house)."
+        action={
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/showing-hq/showings">← Back</Link>
+          </Button>
+        }
+      />
 
-      <Card className="max-w-xl">
-        <CardHeader>
-          <CardTitle>New Showing</CardTitle>
-          <CardDescription>
-            Create a single private showing (different from an open house).
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+      <BrandCard elevated padded className="max-w-xl">
+        <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                 {error}
@@ -203,8 +194,7 @@ export function NewShowingForm() {
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
+      </BrandCard>
     </div>
   );
 }

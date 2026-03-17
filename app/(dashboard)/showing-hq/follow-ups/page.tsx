@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
+import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
 import { BrandCard } from "@/components/ui/BrandCard";
 import { BrandSectionHeader } from "@/components/ui/BrandSectionHeader";
 import { BrandButton } from "@/components/ui/BrandButton";
@@ -99,13 +99,13 @@ export default function ShowingHQFollowUpsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-[var(--space-xl)]">
-      <BrandPageHeader
+    <div className="min-h-0 flex flex-col gap-6 bg-transparent">
+      <ShowingHQPageHero
         title="Follow-ups"
         description="AI suggested tasks, email follow-ups, and call reminders."
       />
 
-      <div className="grid gap-[var(--space-lg)] lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
         <BrandCard elevated padded>
           <BrandSectionHeader
             eyebrow="NEEDS REPLY"
