@@ -161,71 +161,73 @@ export default function ShowingHQVisitorsPage() {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto -mx-1 px-1">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[var(--brand-border)]">
-                  <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
+                <tr className="border-b-2 border-[var(--brand-border)]">
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
                     Name
                   </th>
-                  <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
                     Email
                   </th>
-                  <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
                     Phone
                   </th>
-                  <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
                     Interest
                   </th>
-                  <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
                     Open House
                   </th>
-                  <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
                     Property
                   </th>
-                  <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
                     Sign-in
                   </th>
-                  <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
                     Lead status
                   </th>
-                  <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
                     Conversion
                   </th>
-                  <th className="pb-3 text-left font-semibold text-[var(--brand-text)]">
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
                     Notes
                   </th>
-                  <th className="pb-3 w-[80px]"></th>
+                  <th className="pb-2.5 pt-0.5 w-[1%] whitespace-nowrap text-right text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--brand-border)]">
                 {visitors.map((v) => (
-                  <tr key={v.id} className="hover:bg-[var(--brand-surface-alt)]/50">
-                    <td className="py-3 font-medium text-[var(--brand-text)]">
+                  <tr key={v.id} className="hover:bg-[var(--brand-surface-alt)]/50 transition-colors">
+                    <td className="py-2.5 font-medium text-[var(--brand-text)]">
                       {fullName(v.contact)}
                     </td>
-                    <td className="py-3 text-[var(--brand-text-muted)]">
+                    <td className="py-2.5 text-[var(--brand-text-muted)]">
                       {v.contact.email ?? "—"}
                     </td>
-                    <td className="py-3 text-[var(--brand-text-muted)]">
+                    <td className="py-2.5 text-[var(--brand-text-muted)]">
                       {v.contact.phone ?? "—"}
                     </td>
-                    <td className="py-3">
+                    <td className="py-2.5">
                       <InterestBadge interestLevel={v.interestLevel} />
                     </td>
-                    <td className="py-3 text-[var(--brand-text-muted)]">
+                    <td className="py-2.5 text-[var(--brand-text-muted)]">
                       {v.openHouse.title}
                     </td>
-                    <td className="py-3 text-[var(--brand-text-muted)]">
+                    <td className="py-2.5 text-[var(--brand-text-muted)] max-w-[140px] truncate" title={formatAddress(v.openHouse.property)}>
                       {formatAddress(v.openHouse.property)}
                     </td>
-                    <td className="py-3 text-[var(--brand-text-muted)]">
+                    <td className="py-2.5 text-[var(--brand-text-muted)] whitespace-nowrap">
                       {formatDateTime(v.submittedAt)}
                     </td>
-                    <td className="py-3">
+                    <td className="py-2.5">
                       <LeadStatusBadge status={v.leadStatus} />
                     </td>
-                    <td className="py-3">
+                    <td className="py-2.5">
                       <span className="flex flex-wrap gap-1.5 text-xs text-[var(--brand-text-muted)]">
                         {v.flyerEmailSentAt && <span>Flyer sent ✓</span>}
                         {v.flyerLinkClickedAt && <span>Flyer opened ✓</span>}
@@ -235,7 +237,7 @@ export default function ShowingHQVisitorsPage() {
                         {!v.flyerEmailSentAt && !v.flyerLinkClickedAt && !v.followUpStatus ? "—" : null}
                       </span>
                     </td>
-                    <td className="py-3 max-w-[160px]">
+                    <td className="py-2.5 max-w-[160px]">
                       <span
                         className="block truncate text-[var(--brand-text-muted)]"
                         title={v.contact.notes ?? undefined}
@@ -247,17 +249,13 @@ export default function ShowingHQVisitorsPage() {
                           : "—"}
                       </span>
                     </td>
-                    <td className="py-3">
-                      <div className="flex gap-2">
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/showing-hq/visitors/${v.id}`}>
-                            View profile
-                          </Link>
+                    <td className="py-2.5 text-right">
+                      <div className="flex justify-end gap-1.5">
+                        <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                          <Link href={`/showing-hq/visitors/${v.id}`}>View</Link>
                         </Button>
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/contacts/${v.contact.id}`}>
-                            Contact
-                          </Link>
+                        <Button variant="ghost" size="sm" className="h-7 text-xs" asChild>
+                          <Link href={`/contacts/${v.contact.id}`}>Contact</Link>
                         </Button>
                       </div>
                     </td>

@@ -57,13 +57,13 @@ export default function ShowingHQFollowUpsPage() {
     if (task.type === "draft") {
       const addr = task.openHouse.property?.address1 ?? task.openHouse.title;
       return (
-        <li className="flex items-center justify-between gap-4 rounded-lg border border-[var(--brand-border)] p-4">
+        <li className="flex items-center justify-between gap-4 rounded-lg border border-[var(--brand-border)] p-3.5 transition-colors hover:bg-[var(--brand-surface-alt)]/30">
           <div className="min-w-0 flex-1">
             <p className="font-medium text-[var(--brand-text)]">{task.subject}</p>
-            <p className="text-sm text-[var(--brand-text-muted)]">
+            <p className="mt-0.5 text-sm text-[var(--brand-text-muted)]">
               {fullName(task.contact)} · {addr}
             </p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
               <FollowUpStatusBadge status={task.status} className="text-xs" />
               {"leadStatus" in task && task.leadStatus && (
                 <LeadStatusBadge status={task.leadStatus} />
@@ -77,21 +77,21 @@ export default function ShowingHQFollowUpsPage() {
               )}
             </div>
           </div>
-          <Button variant="outline" size="sm" className="shrink-0" asChild>
+          <Button variant="outline" size="sm" className="h-7 shrink-0 text-xs" asChild>
             <Link href={`/showing-hq/follow-ups/draft/${task.id}`}>Review</Link>
           </Button>
         </li>
       );
     }
     return (
-      <li className="flex items-center justify-between rounded-lg border border-[var(--brand-border)] p-4">
-        <div>
+      <li className="flex items-center justify-between gap-4 rounded-lg border border-[var(--brand-border)] p-3.5 transition-colors hover:bg-[var(--brand-surface-alt)]/30">
+        <div className="min-w-0 flex-1">
           <p className="font-medium text-[var(--brand-text)]">{task.body}</p>
-          <p className="text-sm text-[var(--brand-text-muted)]">
+          <p className="mt-0.5 text-sm text-[var(--brand-text-muted)]">
             {fullName(task.contact)} · Due {formatDateTime(task.dueAt)}
           </p>
         </div>
-        <Button variant="outline" size="sm" asChild>
+        <Button variant="outline" size="sm" className="h-7 shrink-0 text-xs" asChild>
           <Link href={`/contacts/${task.contact.id}`}>View contact</Link>
         </Button>
       </li>
@@ -139,7 +139,7 @@ export default function ShowingHQFollowUpsPage() {
                 />
               </div>
             ) : (
-              <ul className="space-y-3">
+              <ul className="space-y-2.5">
                 {needsReply.map((t) => (
                   <TaskItem key={`${t.type}-${t.id}`} task={t} />
                 ))}
@@ -164,7 +164,7 @@ export default function ShowingHQFollowUpsPage() {
                 description="Call and follow-up reminders will appear here when scheduled."
               />
             ) : (
-              <ul className="space-y-3">
+              <ul className="space-y-2.5">
                 {upcoming.map((t) => (
                   <TaskItem key={`${t.type}-${t.id}`} task={t} />
                 ))}
@@ -189,7 +189,7 @@ export default function ShowingHQFollowUpsPage() {
                 description="Completed follow-ups and sent emails will appear here."
               />
             ) : (
-              <ul className="space-y-3">
+              <ul className="space-y-2.5">
                 {completed.slice(0, 10).map((t) => (
                   <TaskItem key={`${t.type}-${t.id}`} task={t} />
                 ))}

@@ -80,33 +80,34 @@ export default function FeedbackRequestsPage() {
           <div className="space-y-6">
             {pending.length > 0 && (
               <div>
-                <h3 className="mb-2 text-sm font-semibold text-[var(--brand-text)]">Pending</h3>
-                <div className="overflow-x-auto">
+                <h3 className="mb-3 text-sm font-semibold text-[var(--brand-text)]">Pending</h3>
+                <div className="overflow-x-auto -mx-1 px-1">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-[var(--brand-border)]">
-                        <th className="pb-3 text-left font-semibold">Property</th>
-                        <th className="pb-3 text-left font-semibold">Date</th>
-                        <th className="pb-3 text-left font-semibold">Buyer Agent</th>
-                        <th className="pb-3 text-left font-semibold">Link</th>
+                      <tr className="border-b-2 border-[var(--brand-border)]">
+                        <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">Property</th>
+                        <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">Date</th>
+                        <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">Buyer Agent</th>
+                        <th className="pb-2.5 pt-0.5 w-[1%] whitespace-nowrap text-right text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">Link</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--brand-border)]">
                       {pending.map((r) => (
-                        <tr key={r.id} className="hover:bg-[var(--brand-surface-alt)]/50">
-                          <td className="py-3 font-medium">
+                        <tr key={r.id} className="hover:bg-[var(--brand-surface-alt)]/50 transition-colors">
+                          <td className="py-2.5 font-medium text-[var(--brand-text)]">
                             {r.property.address1}, {r.property.city}
                           </td>
-                          <td className="py-3 text-[var(--brand-text-muted)]">
+                          <td className="py-2.5 text-[var(--brand-text-muted)] whitespace-nowrap">
                             {new Date(r.showing.scheduledAt).toLocaleDateString()}
                           </td>
-                          <td className="py-3 text-[var(--brand-text-muted)]">
+                          <td className="py-2.5 text-[var(--brand-text-muted)]">
                             {r.showing.buyerAgentName ?? r.showing.buyerAgentEmail ?? "—"}
                           </td>
-                          <td className="py-3">
+                          <td className="py-2.5 text-right">
                             <Button
                               variant="outline"
                               size="sm"
+                              className="h-7 text-xs"
                               onClick={() => copyLink(r.id, r.token)}
                             >
                               {copiedId === r.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -122,30 +123,30 @@ export default function FeedbackRequestsPage() {
             )}
             {responded.length > 0 && (
               <div>
-                <h3 className="mb-2 text-sm font-semibold text-[var(--brand-text)]">Responded</h3>
-                <div className="overflow-x-auto">
+                <h3 className="mb-3 text-sm font-semibold text-[var(--brand-text)]">Responded</h3>
+                <div className="overflow-x-auto -mx-1 px-1">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-[var(--brand-border)]">
-                        <th className="pb-3 text-left font-semibold">Property</th>
-                        <th className="pb-3 text-left font-semibold">Date</th>
-                        <th className="pb-3 text-left font-semibold">Interest</th>
-                        <th className="pb-3 text-left font-semibold">Responded</th>
+                      <tr className="border-b-2 border-[var(--brand-border)]">
+                        <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">Property</th>
+                        <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">Date</th>
+                        <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">Interest</th>
+                        <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">Responded</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--brand-border)]">
                       {responded.map((r) => (
-                        <tr key={r.id} className="hover:bg-[var(--brand-surface-alt)]/50">
-                          <td className="py-3 font-medium">
+                        <tr key={r.id} className="hover:bg-[var(--brand-surface-alt)]/50 transition-colors">
+                          <td className="py-2.5 font-medium text-[var(--brand-text)]">
                             {r.property.address1}, {r.property.city}
                           </td>
-                          <td className="py-3 text-[var(--brand-text-muted)]">
+                          <td className="py-2.5 text-[var(--brand-text-muted)] whitespace-nowrap">
                             {new Date(r.showing.scheduledAt).toLocaleDateString()}
                           </td>
-                          <td className="py-3 text-[var(--brand-text-muted)]">
+                          <td className="py-2.5 text-[var(--brand-text-muted)]">
                             {r.interestLevel ? r.interestLevel.replace(/_/g, " ").toLowerCase() : "—"}
                           </td>
-                          <td className="py-3 text-[var(--brand-text-muted)]">
+                          <td className="py-2.5 text-[var(--brand-text-muted)] whitespace-nowrap">
                             {r.respondedAt ? new Date(r.respondedAt).toLocaleDateString() : "—"}
                           </td>
                         </tr>

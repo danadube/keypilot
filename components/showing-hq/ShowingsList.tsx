@@ -97,40 +97,52 @@ export function ShowingsList() {
             }
           />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto -mx-1 px-1">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[var(--brand-border)]">
-                  <th className="pb-3 text-left font-semibold">Property</th>
-                  <th className="pb-3 text-left font-semibold">Date & Time</th>
-                  <th className="pb-3 text-left font-semibold">Buyer Agent</th>
-                  <th className="pb-3 text-left font-semibold">Buyer</th>
-                  <th className="pb-3 text-left font-semibold">Feedback</th>
-                  <th className="pb-3 text-left font-semibold">Source</th>
+                <tr className="border-b-2 border-[var(--brand-border)]">
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
+                    Property
+                  </th>
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
+                    Date & Time
+                  </th>
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
+                    Buyer Agent
+                  </th>
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
+                    Buyer
+                  </th>
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
+                    Feedback
+                  </th>
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-[var(--brand-text-muted)]">
+                    Source
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--brand-border)]">
                 {showings.map((s) => (
-                  <tr key={s.id} className="hover:bg-[var(--brand-surface-alt)]/50">
-                    <td className="py-3 font-medium">{s.property.address1}</td>
-                    <td className="py-3 text-[var(--brand-text-muted)]">
+                  <tr key={s.id} className="hover:bg-[var(--brand-surface-alt)]/50 transition-colors">
+                    <td className="py-2.5 font-medium text-[var(--brand-text)]">{s.property.address1}</td>
+                    <td className="py-2.5 whitespace-nowrap text-[var(--brand-text-muted)]">
                       {formatDate(s.scheduledAt)} · {formatTime(s.scheduledAt)}
                     </td>
-                    <td className="py-3 text-[var(--brand-text-muted)]">
+                    <td className="py-2.5 text-[var(--brand-text-muted)]">
                       {s.buyerAgentName ?? "—"}
                       {s.buyerAgentEmail && (
                         <span className="block text-xs">{s.buyerAgentEmail}</span>
                       )}
                     </td>
-                    <td className="py-3 text-[var(--brand-text-muted)]">{s.buyerName ?? "—"}</td>
-                    <td className="py-3">
+                    <td className="py-2.5 text-[var(--brand-text-muted)]">{s.buyerName ?? "—"}</td>
+                    <td className="py-2.5">
                       {s.feedbackRequired ? (
                         <Badge variant="outline" className="text-xs">Requested</Badge>
                       ) : (
                         "—"
                       )}
                     </td>
-                    <td className="py-3">
+                    <td className="py-2.5">
                       <Badge variant="secondary" className="text-xs">
                         {s.source}
                       </Badge>

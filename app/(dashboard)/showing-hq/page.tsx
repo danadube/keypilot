@@ -545,7 +545,7 @@ export default function ShowingHQOverviewPage() {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-0">
                 {activityItems.map((item) => {
                   const Icon =
                     item.type === "visitor"
@@ -556,7 +556,7 @@ export default function ShowingHQOverviewPage() {
                   return (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between gap-3 rounded-md border-b border-slate-100 bg-white py-2 last:border-b-0 text-xs"
+                      className="flex items-center justify-between gap-3 rounded-md border-b border-slate-100 py-2.5 last:border-b-0 text-xs transition-colors hover:bg-slate-50/80"
                     >
                       <div className="min-w-0 flex-1">
                         <p className="flex items-center gap-1.5 font-medium text-slate-800">
@@ -608,11 +608,11 @@ export default function ShowingHQOverviewPage() {
                 </Button>
               </div>
             ) : (
-              <ul className="space-y-1.5">
+              <ul className="space-y-0">
                 {todaysShowings.map((oh) => (
                   <li
                     key={oh.id}
-                    className="flex items-center justify-between gap-2 border-b border-slate-100 bg-white py-2 last:border-b-0"
+                    className="flex items-center justify-between gap-2 border-b border-slate-100 py-2.5 last:border-b-0 transition-colors hover:bg-slate-50/80"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium text-slate-800">
@@ -642,7 +642,7 @@ export default function ShowingHQOverviewPage() {
                 {upcoming.slice(0, 5).map((oh) => (
                   <li
                     key={oh.id}
-                    className="flex items-center justify-between gap-2 border-b border-slate-100 bg-white py-2 last:border-b-0"
+                    className="flex items-center justify-between gap-2 border-b border-slate-100 py-2.5 last:border-b-0 transition-colors hover:bg-slate-50/80"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium text-slate-800">
