@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { LeadStatusBadge } from "@/components/shared/LeadStatusBadge";
 import { InterestBadge } from "@/components/shared/InterestBadge";
-import { Users, Search } from "lucide-react";
+import { Users, Search, QrCode, Calendar, Mail } from "lucide-react";
 
 type Visitor = {
   id: string;
@@ -62,6 +62,7 @@ export default function ShowingHQVisitorsPage() {
   const [search, setSearch] = useState("");
   const [filterOpenHouseId, setFilterOpenHouseId] = useState<string>("all");
   const [searchDebounce, setSearchDebounce] = useState("");
+  const [sort, setSort] = useState<string>("date-desc");
 
   const loadData = useCallback(() => {
     setError(null);
@@ -70,6 +71,7 @@ export default function ShowingHQVisitorsPage() {
     if (searchDebounce) params.set("q", searchDebounce);
     if (filterOpenHouseId && filterOpenHouseId !== "all")
       params.set("openHouseId", filterOpenHouseId);
+    params.set("sort", sort);
     fetch(`/api/v1/showing-hq/visitors?${params}`)
       .then((res) => res.json())
       .then((json) => {
@@ -81,7 +83,7 @@ export default function ShowingHQVisitorsPage() {
       })
       .catch(() => setError("Failed to load visitors"))
       .finally(() => setLoading(false));
-  }, [searchDebounce, filterOpenHouseId]);
+  }, [searchDebounce, filterOpenHouseId, sort]);
 
   useEffect(() => {
     loadData();
@@ -116,35 +118,60 @@ export default function ShowingHQVisitorsPage() {
         description="Review open house visitors, search leads, and connect sign-ins to contacts."
       />
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--brand-text-muted)]" />
-          <Input
-            placeholder="Search by name, email, phone..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+      {/* Summary strip */}
+      <div className="rounded-xl border border-[var(--brand-border)] bg-[var(--brand-surface)] p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--brand-surface-alt)]">
+              <Users className="h-5 w-5 text-[var(--brand-text-muted)]" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-[var(--brand-text-muted)]">Showing</p>
+              <p className="text-xl font-semibold text-[var(--brand-text)]">
+                {loading ? "…" : visitors.length} visitor{visitors.length !== 1 ? "s" : ""}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--brand-text-muted)]" />
+              <Input
+                placeholder="Search name, email, phone..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-9"
+              />
+            </div>
+            <Select value={filterOpenHouseId} onValueChange={setFilterOpenHouseId}>
+              <SelectTrigger className="w-[200px] h-9">
+                <SelectValue placeholder="All events" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All open houses</SelectItem>
+                {openHouses.map((oh) => (
+                  <SelectItem key={oh.id} value={oh.id}>
+                    {oh.title} · {formatAddress(oh.property)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={sort} onValueChange={setSort}>
+              <SelectTrigger className="w-[140px] h-9">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date-desc">Newest first</SelectItem>
+                <SelectItem value="date-asc">Oldest first</SelectItem>
+                <SelectItem value="name-asc">Name A–Z</SelectItem>
+                <SelectItem value="name-desc">Name Z–A</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <Select
-          value={filterOpenHouseId}
-          onValueChange={setFilterOpenHouseId}
-        >
-          <SelectTrigger className="w-full sm:w-[220px]">
-            <SelectValue placeholder="All open houses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All open houses</SelectItem>
-            {openHouses.map((oh) => (
-              <SelectItem key={oh.id} value={oh.id}>
-                {oh.title} · {formatAddress(oh.property)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
-      <BrandCard elevated padded>
+      <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
+      <BrandCard elevated padded className="min-w-0">
         {loading ? (
           <PageLoading message="Loading visitors..." />
         ) : visitors.length === 0 ? (
@@ -266,6 +293,34 @@ export default function ShowingHQVisitorsPage() {
           </div>
         )}
       </BrandCard>
+
+        {/* Right-side action panel */}
+        <div className="space-y-4 lg:sticky lg:top-6">
+          <BrandCard elevated padded>
+            <h3 className="text-sm font-semibold text-[var(--brand-text)] mb-2">Quick actions</h3>
+            <div className="space-y-2">
+              <Button variant="outline" size="sm" className="w-full justify-start" asChild>
+                <Link href="/open-houses/sign-in">
+                  <QrCode className="mr-2 h-4 w-4" />
+                  Set up sign-in page
+                </Link>
+              </Button>
+              <Button variant="outline" size="sm" className="w-full justify-start" asChild>
+                <Link href="/open-houses">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  Open houses
+                </Link>
+              </Button>
+              <Button variant="outline" size="sm" className="w-full justify-start" asChild>
+                <Link href="/showing-hq/follow-ups">
+                  <Mail className="mr-2 h-4 w-4" />
+                  Follow-ups
+                </Link>
+              </Button>
+            </div>
+          </BrandCard>
+        </div>
+      </div>
     </div>
   );
 }

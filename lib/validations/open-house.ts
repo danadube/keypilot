@@ -34,12 +34,15 @@ export const HostFeedbackSchema = z.object({
   hostNotes: z.string().max(2000).optional().nullable(),
 });
 
+export const OPEN_HOUSE_STATUSES = ["SCHEDULED", "ACTIVE", "COMPLETED", "CANCELLED"] as const;
+
 export const UpdateOpenHouseSchema = z
   .object({
     propertyId: z.string().uuid().optional(),
     title: z.string().min(1).optional(),
     startAt: z.coerce.date().optional(),
     endAt: z.coerce.date().optional(),
+    status: z.enum(OPEN_HOUSE_STATUSES).optional(),
     listingAgentId: z.string().uuid().optional().nullable(),
     hostAgentId: z.string().uuid().optional().nullable(),
     agentName: z.string().optional().nullable(),

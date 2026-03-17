@@ -109,6 +109,7 @@ export async function PUT(
       title,
       startAt,
       endAt,
+      status,
       listingAgentId,
       hostAgentId,
       agentName,
@@ -124,6 +125,7 @@ export async function PUT(
     if (title !== undefined) updateData.title = title;
     if (startAt !== undefined) updateData.startAt = startAt;
     if (endAt !== undefined) updateData.endAt = endAt;
+    if (status !== undefined) updateData.status = status;
     if (listingAgentId !== undefined) updateData.listingAgentId = listingAgentId;
     if (hostAgentId !== undefined) updateData.hostAgentId = hostAgentId;
     if (agentName !== undefined) updateData.agentName = agentName?.trim() || null;

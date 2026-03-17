@@ -13,8 +13,15 @@ import { LeadStatusBadge } from "@/components/shared/LeadStatusBadge";
 import { InterestBadge } from "@/components/shared/InterestBadge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, UserPlus, CheckSquare, QrCode, Copy, RefreshCw } from "lucide-react";
+import { Users, UserPlus, CheckSquare, QrCode, Copy, RefreshCw, FileText } from "lucide-react";
 import { InviteHostDialog } from "@/components/open-houses/InviteHostDialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type OpenHouseData = {
   hostUserId?: string;
@@ -58,6 +65,7 @@ export default function ShowingHQOpenHouseDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [regenerating, setRegenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   const loadData = useCallback(() => {
     setError(null);
@@ -75,6 +83,26 @@ export default function ShowingHQOpenHouseDetailPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const handleStatusChange = useCallback(
+    (newStatus: string) => {
+      if (!openHouseId || newStatus === data?.status) return;
+      setUpdatingStatus(true);
+      fetch(`/api/v1/open-houses/${openHouseId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      })
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.error) throw new Error(json.error.message);
+          loadData();
+        })
+        .catch(() => setError("Failed to update status"))
+        .finally(() => setUpdatingStatus(false));
+    },
+    [openHouseId, data?.status, loadData]
+  );
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("en-US", {
@@ -152,12 +180,33 @@ export default function ShowingHQOpenHouseDetailPage() {
         title={data.title}
         description={`${address} · ${formatDate(data.startAt)}`}
         action={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Select
+              value={data.status}
+              onValueChange={handleStatusChange}
+              disabled={updatingStatus}
+            >
+              <SelectTrigger className="w-[140px] border-[var(--brand-border)] bg-white">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="COMPLETED">Completed</SelectItem>
+                <SelectItem value="CANCELLED">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+            <BrandButton variant="secondary" size="sm" asChild>
+              <Link href={`/open-houses/${openHouseId}/report`}>
+                <FileText className="mr-2 h-4 w-4" />
+                Seller report
+              </Link>
+            </BrandButton>
             <InviteHostDialog openHouseId={openHouseId} onInviteSent={loadData} />
-            <BrandButton variant="secondary" asChild>
+            <BrandButton variant="secondary" size="sm" asChild>
               <Link href="/showing-hq">← Dashboard</Link>
             </BrandButton>
-            <BrandButton variant="secondary" asChild>
+            <BrandButton variant="secondary" size="sm" asChild>
               <Link href="/open-houses">All open houses</Link>
             </BrandButton>
           </div>

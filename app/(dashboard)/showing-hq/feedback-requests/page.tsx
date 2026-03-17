@@ -62,6 +62,37 @@ export default function FeedbackRequestsPage() {
         title="Feedback Requests"
         description="Private showing feedback — share the link with the buyer agent to capture quick feedback."
       />
+
+      {/* Summary strip */}
+      {requests.length > 0 && (
+        <div className="rounded-xl border border-[var(--brand-border)] bg-[var(--brand-surface)] p-4 shadow-sm">
+          <div className="flex flex-wrap items-center gap-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100">
+                <ClipboardCheck className="h-5 w-5 text-amber-700" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-[var(--brand-text-muted)]">Pending</p>
+                <p className="text-xl font-semibold text-[var(--brand-text)]">{pending.length}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--brand-surface-alt)]">
+                <Check className="h-5 w-5 text-[var(--brand-text-muted)]" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-[var(--brand-text-muted)]">Responded</p>
+                <p className="text-xl font-semibold text-[var(--brand-text)]">{responded.length}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <p className="text-xs font-medium text-[var(--brand-text-muted)]">Total requests</p>
+              <p className="text-xl font-semibold text-[var(--brand-text)]">{requests.length}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <BrandCard elevated padded>
         {requests.length === 0 ? (
           <BrandEmptyState

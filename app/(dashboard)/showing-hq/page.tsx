@@ -27,7 +27,7 @@ import {
   TodaysActionsCard,
   type TodaysActionItem,
 } from "@/components/showing-hq/TodaysActionsCard";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, FileText } from "lucide-react";
 
 type DashboardData = {
   todaysShowings: {
@@ -76,6 +76,13 @@ type DashboardData = {
     openHouse: { id: string; title: string; property?: { address1: string; city: string; state: string } };
   }[];
   pendingFeedbackRequests?: { id: string; property: { address1: string }; requestedAt?: string }[];
+  recentReports?: Array<{
+    id: string;
+    title: string;
+    endAt: string;
+    property: { address1: string; city?: string };
+    visitorCount: number;
+  }>;
   stats: {
     totalVisitors: number;
     totalShowings: number;
@@ -255,6 +262,7 @@ export default function ShowingHQOverviewPage() {
     .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())[0];
 
   const pendingFeedbackRequests = Array.isArray(data.pendingFeedbackRequests) ? data.pendingFeedbackRequests : [];
+  const recentReports = Array.isArray(data.recentReports) ? data.recentReports : [];
 
   type ActivityItem = {
     type: "visitor" | "followup" | "feedback";
@@ -662,6 +670,41 @@ export default function ShowingHQOverviewPage() {
           </div>
         </BrandCard>
       </div>
+
+      {/* Recent reports */}
+      {recentReports.length > 0 && (
+        <BrandCard
+          padded={false}
+          className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+        >
+          <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
+              <FileText className="h-4 w-4 text-[#4BAED8]" />
+              Recent reports
+            </h2>
+            <p className="text-xs text-slate-500">Seller reports for completed open houses</p>
+          </div>
+          <ul className="space-y-0">
+            {recentReports.map((r) => (
+              <li
+                key={r.id}
+                className="flex items-center justify-between gap-2 border-b border-slate-100 py-2.5 last:border-b-0 transition-colors hover:bg-slate-50/80"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium text-slate-800">{r.title}</p>
+                  <p className="truncate text-xs text-slate-500">
+                    {r.property.address1}
+                    {r.property.city ? `, ${r.property.city}` : ""} · {r.visitorCount} visitors
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" className="h-7 text-xs shrink-0" asChild>
+                  <Link href={`/open-houses/${r.id}/report`}>View report</Link>
+                </Button>
+              </li>
+            ))}
+          </ul>
+        </BrandCard>
+      )}
     </div>
   );
 }

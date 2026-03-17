@@ -17,6 +17,7 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const q = searchParams.get("q")?.trim() ?? "";
     const openHouseId = searchParams.get("openHouseId")?.trim();
+    const sort = searchParams.get("sort")?.trim() || "date-desc"; // date-desc | date-asc | name-asc | name-desc
 
     const where: Prisma.OpenHouseVisitorWhereInput = {
       openHouse: {
@@ -38,6 +39,15 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const orderBy: Prisma.OpenHouseVisitorOrderByWithRelationInput[] =
+      sort === "date-asc"
+        ? [{ submittedAt: "asc" }]
+        : sort === "name-asc"
+          ? [{ contact: { lastName: "asc" } }, { contact: { firstName: "asc" } }]
+          : sort === "name-desc"
+            ? [{ contact: { lastName: "desc" } }, { contact: { firstName: "desc" } }]
+            : [{ submittedAt: "desc" }];
+
     const visitors = await prisma.openHouseVisitor.findMany({
       where,
       include: {
@@ -46,7 +56,7 @@ export async function GET(req: NextRequest) {
           include: { property: true },
         },
       },
-      orderBy: { submittedAt: "desc" },
+      orderBy,
       take: 100,
     });
 

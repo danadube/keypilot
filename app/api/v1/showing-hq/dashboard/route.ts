@@ -40,6 +40,7 @@ export async function GET() {
       privateShowingsTodayCount,
       feedbackRequestsPendingCount,
       pendingFeedbackRequests,
+      recentReportsOpenHouses,
     ] = await Promise.all([
       prisma.openHouse.findMany({
         where: {
@@ -179,6 +180,19 @@ export async function GET() {
         include: { property: { select: { address1: true } } },
         orderBy: { requestedAt: "desc" },
         take: 20,
+      }),
+      prisma.openHouse.findMany({
+        where: {
+          hostUserId: user.id,
+          deletedAt: null,
+          status: "COMPLETED",
+        },
+        orderBy: { endAt: "desc" },
+        take: 5,
+        include: {
+          property: { select: { address1: true, city: true } },
+          _count: { select: { visitors: true } },
+        },
       }),
     ]);
 
@@ -334,6 +348,13 @@ export async function GET() {
           id: fr.id,
           property: { address1: fr.property.address1 },
           requestedAt: fr.requestedAt.toISOString(),
+        })),
+        recentReports: recentReportsOpenHouses.map((oh) => ({
+          id: oh.id,
+          title: oh.title,
+          endAt: oh.endAt.toISOString(),
+          property: oh.property,
+          visitorCount: (oh as { _count?: { visitors: number } })._count?.visitors ?? 0,
         })),
         stats: {
           totalVisitors: totalVisitorsCount,

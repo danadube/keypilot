@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +10,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 
@@ -37,8 +43,9 @@ export function OpenHouseDetail({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [flyerUploading, setFlyerUploading] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
-  const refresh = () => {
+  const refresh = useCallback(() => {
     return fetch(`/api/v1/open-houses/${id}`)
       .then((res) => res.json())
       .then((json) => {
@@ -47,13 +54,30 @@ export function OpenHouseDetail({ id }: { id: string }) {
       })
       .catch(() => setError("Failed to load"))
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
     refresh();
-  }, [id]);
+  }, [id, refresh]);
+
+  const handleStatusChange = (newStatus: string) => {
+    if (!id || newStatus === oh?.status) return;
+    setUpdatingStatus(true);
+    fetch(`/api/v1/open-houses/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.error) throw new Error(json.error.message);
+        setOh((prev) => (prev ? { ...prev, status: newStatus } : null));
+      })
+      .catch(() => setError("Failed to update status"))
+      .finally(() => setUpdatingStatus(false));
+  };
 
   const handleFlyerUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -131,17 +155,21 @@ export function OpenHouseDetail({ id }: { id: string }) {
             </p>
           </div>
         </div>
-        <Badge
-          variant={
-            oh.status === "ACTIVE" || oh.status === "SCHEDULED"
-              ? "default"
-              : oh.status === "COMPLETED"
-                ? "secondary"
-                : "outline"
-          }
+        <Select
+          value={oh.status}
+          onValueChange={handleStatusChange}
+          disabled={updatingStatus}
         >
-          {oh.status}
-        </Badge>
+          <SelectTrigger className="w-[130px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="SCHEDULED">Scheduled</SelectItem>
+            <SelectItem value="ACTIVE">Active</SelectItem>
+            <SelectItem value="COMPLETED">Completed</SelectItem>
+            <SelectItem value="CANCELLED">Cancelled</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
