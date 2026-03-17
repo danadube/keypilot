@@ -159,7 +159,7 @@ export function ModuleSidebar() {
           </FeedbackButton>
         </div>
       )}
-      <footer className="shrink-0 border-t border-white/10 px-4 pt-5 pb-3">
+      <footer className="shrink-0 border-t border-slate-700/40 px-4 pt-5 pb-3">
         <Link
           href="/"
           className="mb-2 block w-full transition-opacity hover:opacity-90"
@@ -173,7 +173,7 @@ export function ModuleSidebar() {
             className="h-14 w-auto max-w-full object-contain object-left"
           />
         </Link>
-        <p className="text-[10px] text-slate-500" aria-label="App version">
+        <p className="text-xs text-slate-400" aria-label="App version">
           KeyPilot v{APP_VERSION}
           {APP_COMMIT ? ` • ${APP_COMMIT}` : null}
         </p>
