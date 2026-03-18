@@ -361,22 +361,29 @@ export default function ShowingHQOverviewPage() {
 
   return (
     <div className="flex min-h-0 flex-col gap-4 bg-transparent">
-      {/* Compact utility header — tool surface, not marketing */}
+      {/* Control bar: title | reserved context | actions */}
       <header
-        className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-3"
+        className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-slate-200 py-1.5 md:flex-nowrap md:gap-4 md:py-2"
         data-workbench-card
       >
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">ShowingHQ</p>
+        <div className="min-w-0 max-w-[min(100%,18rem)] shrink-0 md:max-w-[280px]">
           <h1
-            className="mt-0.5 text-xl font-bold tracking-tight text-slate-900 md:text-2xl"
-            style={{ fontFamily: "var(--font-heading)", lineHeight: 1.15 }}
+            className="text-base font-bold leading-tight tracking-tight text-slate-900 md:text-[1.0625rem]"
+            style={{ fontFamily: "var(--font-heading)" }}
           >
-            Workbench
+            ShowingHQ Workbench
           </h1>
-          <p className="mt-0.5 text-xs text-slate-500">{contextLine}</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{contextLine}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div
+          className="hidden min-h-[34px] min-w-0 flex-1 items-center rounded-md border border-dashed border-slate-200 bg-slate-50/80 px-3 md:flex"
+          aria-label="Reserved for search and filters"
+        >
+          <span className="truncate text-[11px] text-slate-400">
+            Search, filters & context — coming soon
+          </span>
+        </div>
+        <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
           <Button variant="outline" size="sm" className="h-8 text-xs" asChild>
             <Link href="/properties/new">
               <Building2 className="mr-1.5 h-3.5 w-3.5" />
