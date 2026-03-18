@@ -11,7 +11,6 @@ import {
   Users,
   Calendar,
   ChevronRight,
-  Building2,
   CalendarDays,
   CheckSquare,
   FileText,
@@ -359,45 +358,8 @@ export default function ShowingHQOverviewPage() {
     return tb - ta;
   });
 
-  const contextLine = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-
   return (
     <div className="flex min-h-0 flex-col gap-3 bg-transparent">
-      {/* Control bar: title | reserved context | actions */}
-      <header
-        className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-slate-200 py-1.5 md:py-2"
-        data-workbench-card
-      >
-        <div className="min-w-0 max-w-[min(100%,20rem)] shrink-0">
-          <h1
-            className="text-base font-bold leading-tight tracking-tight text-slate-900 md:text-[1.0625rem]"
-            style={{ fontFamily: "var(--font-heading)" }}
-          >
-            ShowingHQ Workbench
-          </h1>
-          <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{contextLine}</p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          <Button variant="outline" size="sm" className="h-8 text-xs" asChild>
-            <Link href="/properties/new">
-              <Building2 className="mr-1.5 h-3.5 w-3.5" />
-              New property
-            </Link>
-          </Button>
-          <Button size="sm" className="h-8 bg-[#0B1A3C] text-xs hover:bg-[#0B1A3C]/90" asChild>
-            <Link href="/open-houses/new">
-              <Calendar className="mr-1.5 h-3.5 w-3.5" />
-              Create open house
-            </Link>
-          </Button>
-        </div>
-      </header>
-
       {/* KPI strip */}
       <section
         className="grid grid-cols-2 gap-2 lg:grid-cols-4"

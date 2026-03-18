@@ -63,7 +63,14 @@ export function ModuleSidebar() {
       aria-label={`${mod.name} navigation`}
     >
       {/* Sidebar header: ShowingHQ as primary product identity (or module name) */}
-      <div className="shrink-0 border-b border-white/10 px-4 pt-4 pb-5">
+      <div
+        className={cn(
+          "shrink-0 border-b border-white/10 px-4",
+          activeId === "showing-hq"
+            ? "flex min-h-[88px] flex-col justify-center py-3"
+            : "pt-4 pb-5"
+        )}
+      >
         {activeId === "showing-hq" ? (
           <>
             <div className="flex items-center gap-3 flex-wrap">

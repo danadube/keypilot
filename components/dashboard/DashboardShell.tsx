@@ -1,11 +1,15 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
+import { Building2, Calendar } from "lucide-react";
 import { ProductTierProvider } from "@/components/ProductTierProvider";
 import { TopModuleNav } from "@/components/layout/TopModuleNav";
 import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /** ShowingHQ + open-houses use sidebar-first nav; hide module tab bar there */
 function useHideTopModuleNav(): boolean {
@@ -17,12 +21,25 @@ function useHideTopModuleNav(): boolean {
   );
 }
 
-const HEADER_HEIGHT = 64;
-/** Fixed width for profile/actions — prevents overlap with module tabs */
-const HEADER_RIGHT_WIDTH = 80;
+const HEADER_HEIGHT_DEFAULT = 64;
+/** Align with ShowingHQ sidebar header block (~ pt-4 + title + tagline + pb-5) */
+const HEADER_HEIGHT_SHOWING_HQ_WORKBENCH = 88;
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname() ?? "";
   const hideTopNav = useHideTopModuleNav();
+  const isShowingHQWorkbench = pathname === "/showing-hq";
+  const workbenchDateLine = React.useMemo(
+    () =>
+      new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      }),
+    []
+  );
+
   return (
     <ProductTierProvider>
     <div className="flex min-h-screen bg-[var(--brand-bg)]">
@@ -32,23 +49,63 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       {/* Right: header bar + content */}
       <div className="flex min-h-0 flex-1 flex-col">
         <header
-          className="sticky top-0 z-20 flex shrink-0 items-center border-b border-[var(--brand-border)] bg-[var(--brand-surface)]"
-          style={{ height: HEADER_HEIGHT }}
+          className="sticky top-0 z-20 flex w-full shrink-0 items-center border-b border-[var(--brand-border)] bg-[var(--brand-surface)]"
+          style={{
+            minHeight: isShowingHQWorkbench
+              ? HEADER_HEIGHT_SHOWING_HQ_WORKBENCH
+              : HEADER_HEIGHT_DEFAULT,
+          }}
         >
           <div
-            className="flex min-w-0 flex-1 items-center overflow-hidden pl-6 pr-4"
-            style={{ maxWidth: `calc(100% - ${HEADER_RIGHT_WIDTH}px)` }}
+            className={cn(
+              "flex min-w-0 flex-1 items-center overflow-hidden pl-6 pr-4 md:pl-8 md:pr-6",
+              isShowingHQWorkbench ? "py-2" : "h-full"
+            )}
           >
-            {hideTopNav ? (
-              <span className="truncate text-sm font-medium text-slate-600" aria-hidden />
+            {isShowingHQWorkbench ? (
+              <div className="min-w-0">
+                <h1
+                  className="truncate text-base font-bold leading-tight tracking-tight text-slate-900 md:text-lg"
+                  style={{ fontFamily: "var(--font-heading)" }}
+                >
+                  ShowingHQ Workbench
+                </h1>
+                <p className="mt-0.5 truncate text-[11px] leading-snug text-slate-500">
+                  {workbenchDateLine}
+                </p>
+              </div>
+            ) : hideTopNav ? (
+              <span className="sr-only">Navigation</span>
             ) : (
               <TopModuleNav />
             )}
           </div>
           <div
-            className="flex shrink-0 items-center justify-end gap-3 border-l border-[var(--brand-border)] bg-[var(--brand-surface)] pl-4 pr-4"
-            style={{ width: HEADER_RIGHT_WIDTH }}
+            className={cn(
+              "flex shrink-0 items-center gap-2 border-l border-[var(--brand-border)] bg-[var(--brand-surface)] px-3 py-2 md:gap-3 md:px-4",
+              isShowingHQWorkbench ? "min-h-[88px]" : "min-h-[64px]"
+            )}
           >
+            {isShowingHQWorkbench ? (
+              <>
+                <Button variant="outline" size="sm" className="h-8 shrink-0 text-xs" asChild>
+                  <Link href="/properties/new">
+                    <Building2 className="mr-1.5 h-3.5 w-3.5" />
+                    New property
+                  </Link>
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-8 shrink-0 bg-[#0B1A3C] text-xs hover:bg-[#0B1A3C]/90"
+                  asChild
+                >
+                  <Link href="/open-houses/new">
+                    <Calendar className="mr-1.5 h-3.5 w-3.5" />
+                    Create open house
+                  </Link>
+                </Button>
+              </>
+            ) : null}
             <UserButton afterSignOutUrl="/" />
           </div>
         </header>
