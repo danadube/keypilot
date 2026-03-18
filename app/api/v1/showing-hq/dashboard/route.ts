@@ -20,10 +20,14 @@ export async function GET() {
     todayEnd.setDate(todayEnd.getDate() + 1);
     const weekEnd = new Date(today);
     weekEnd.setDate(weekEnd.getDate() + 14);
-    const horizon7End = new Date(todayStart);
-    horizon7End.setDate(horizon7End.getDate() + 7);
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
+    const thirtyDaysAgo = new Date(todayStart);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const sevenDaysAgo = new Date(todayStart);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const followUpStaleBefore = new Date();
+    followUpStaleBefore.setDate(followUpStaleBefore.getDate() - 5);
 
     const [
       todaysOpenHouses,
@@ -43,10 +47,11 @@ export async function GET() {
       feedbackRequestsPendingCount,
       pendingFeedbackRequests,
       recentReportsOpenHouses,
-      visitorsThisMonthCount,
-      upcomingEventsOh7d,
-      upcomingEventsShowings7d,
-      newContactsThisMonthCount,
+      upcomingOpenHousesFromTodayCount,
+      nextOpenHouseSoon,
+      visitorsLast30dCount,
+      visitorsLast7dCount,
+      followUpsOverdueCount,
     ] = await Promise.all([
       prisma.openHouse.findMany({
         where: {
@@ -200,41 +205,42 @@ export async function GET() {
           _count: { select: { visitors: true } },
         },
       }),
-      prisma.openHouseVisitor.count({
-        where: {
-          submittedAt: { gte: monthStart },
-          openHouse: { hostUserId: user.id, deletedAt: null },
-        },
-      }),
       prisma.openHouse.count({
         where: {
           hostUserId: user.id,
           deletedAt: null,
           status: { in: ["SCHEDULED", "ACTIVE"] },
-          startAt: { gte: todayStart, lt: horizon7End },
+          startAt: { gte: todayStart },
         },
       }),
-      prisma.showing.count({
+      prisma.openHouse.findFirst({
         where: {
           hostUserId: user.id,
           deletedAt: null,
-          scheduledAt: { gte: todayStart, lt: horizon7End },
+          status: { in: ["SCHEDULED", "ACTIVE"] },
+          startAt: { gte: new Date() },
+        },
+        orderBy: { startAt: "asc" },
+        select: { startAt: true },
+      }),
+      prisma.openHouseVisitor.count({
+        where: {
+          submittedAt: { gte: thirtyDaysAgo },
+          openHouse: { hostUserId: user.id, deletedAt: null },
         },
       }),
-      prisma.contact.count({
+      prisma.openHouseVisitor.count({
         where: {
+          submittedAt: { gte: sevenDaysAgo },
+          openHouse: { hostUserId: user.id, deletedAt: null },
+        },
+      }),
+      prisma.followUpDraft.count({
+        where: {
+          openHouse: { hostUserId: user.id, deletedAt: null },
           deletedAt: null,
-          createdAt: { gte: monthStart },
-          OR: [
-            { assignedToUserId: user.id },
-            {
-              openHouseVisits: {
-                some: {
-                  openHouse: { hostUserId: user.id, deletedAt: null },
-                },
-              },
-            },
-          ],
+          status: { in: ["DRAFT", "REVIEWED"] },
+          createdAt: { lt: followUpStaleBefore },
         },
       }),
     ]);
@@ -400,11 +406,31 @@ export async function GET() {
           visitorCount: (oh as { _count?: { visitors: number } })._count?.visitors ?? 0,
         })),
         workbenchKpis: {
-          upcomingEvents7d: upcomingEventsOh7d + upcomingEventsShowings7d,
-          visitorsThisMonth: visitorsThisMonthCount,
-          newContactsThisMonth: newContactsThisMonthCount,
-          followUpsPending: followUpTasksCount,
-          reportsReady: recentReportsOpenHouses.length,
+          upcomingOpenHouses: {
+            count: upcomingOpenHousesFromTodayCount,
+            nextLabel: nextOpenHouseSoon
+              ? (() => {
+                  const d = nextOpenHouseSoon.startAt;
+                  const day = d.toLocaleDateString("en-US", { weekday: "short" });
+                  const time = d.toLocaleTimeString("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  });
+                  return `Next: ${day} ${time}`;
+                })()
+              : null,
+          },
+          visitors: {
+            count30d: visitorsLast30dCount,
+            thisWeekCount: visitorsLast7dCount,
+          },
+          followUps: {
+            pending: followUpTasksCount,
+            overdue: followUpsOverdueCount,
+          },
+          reports: {
+            ready: recentReportsOpenHouses.length,
+          },
         },
         stats: {
           totalVisitors: totalVisitorsCount,

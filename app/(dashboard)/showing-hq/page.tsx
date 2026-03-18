@@ -18,7 +18,10 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { GettingStartedCard, buildGettingStartedSteps } from "@/components/showing-hq/GettingStartedCard";
-import { ShowingHQCalendar } from "@/components/showing-hq/ShowingHQCalendar";
+import {
+  ShowingHQCalendar,
+  type WorkbenchCalendarView,
+} from "@/components/showing-hq/ShowingHQCalendar";
 import type { CalendarEvent } from "@/components/showing-hq/ShowingHQCalendar";
 import { QuickCreateEventModal } from "@/components/showing-hq/QuickCreateEventModal";
 import { EditEventModal } from "@/components/showing-hq/EditEventModal";
@@ -80,11 +83,10 @@ type DashboardData = {
     visitorCount: number;
   }>;
   workbenchKpis?: {
-    upcomingEvents7d: number;
-    visitorsThisMonth: number;
-    newContactsThisMonth: number;
-    followUpsPending: number;
-    reportsReady: number;
+    upcomingOpenHouses: { count: number; nextLabel: string | null };
+    visitors: { count30d: number; thisWeekCount: number };
+    followUps: { pending: number; overdue: number };
+    reports: { ready: number };
   };
   stats: {
     totalVisitors: number;
@@ -117,25 +119,27 @@ type DashboardData = {
 
 const GETTING_STARTED_DISMISSED_KEY = "showinghq-getting-started-dismissed";
 
-function KpiCell({
+function KpiWorkbenchCard({
   label,
   value,
+  context,
   href,
 }: {
   label: string;
-  value: number;
+  value: number | string;
+  context: string;
   href: string;
 }) {
   return (
     <Link
       href={href}
-      className="group flex min-w-0 flex-col justify-center border border-slate-200 bg-white px-3 py-2.5 transition-colors hover:bg-slate-50"
+      className="group flex min-h-[88px] min-w-0 flex-col justify-between border border-slate-200 bg-white px-3 py-2 transition-colors hover:border-slate-300 hover:bg-slate-50/90"
     >
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
-      <span className="mt-0.5 font-mono text-xl font-bold tabular-nums text-slate-900">{value}</span>
-      <span className="mt-0.5 text-[10px] font-medium text-[#4BAED8] opacity-0 transition-opacity group-hover:opacity-100">
-        View →
+      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">{label}</span>
+      <span className="text-2xl font-bold tabular-nums leading-none tracking-tight text-slate-900">
+        {value}
       </span>
+      <span className="line-clamp-2 text-[11px] leading-snug text-slate-500">{context}</span>
     </Link>
   );
 }
@@ -152,6 +156,7 @@ export default function ShowingHQOverviewPage() {
   const [editEventOpen, setEditEventOpen] = useState(false);
   const [editEventId, setEditEventId] = useState<string | null>(null);
   const [editEventType, setEditEventType] = useState<"open_house" | "showing">("open_house");
+  const [calWorkbenchView, setCalWorkbenchView] = useState<WorkbenchCalendarView>("week");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -208,13 +213,15 @@ export default function ShowingHQOverviewPage() {
     privateShowingsToday: 0,
     feedbackRequestsPending: 0,
   };
-  const kpis = data.workbenchKpis ?? {
-    upcomingEvents7d: 0,
-    visitorsThisMonth: 0,
-    newContactsThisMonth: 0,
-    followUpsPending: stats.followUpTasks ?? 0,
-    reportsReady: Array.isArray(data.recentReports) ? data.recentReports.length : 0,
+  const recentReportsEarly = Array.isArray(data.recentReports) ? data.recentReports : [];
+  const kpi = data.workbenchKpis;
+  const kpiUpcoming = kpi?.upcomingOpenHouses ?? { count: 0, nextLabel: null };
+  const kpiVisitors = kpi?.visitors ?? { count30d: 0, thisWeekCount: 0 };
+  const kpiFollowUps = kpi?.followUps ?? {
+    pending: stats.followUpTasks ?? 0,
+    overdue: 0,
   };
+  const kpiReports = kpi?.reports ?? { ready: recentReportsEarly.length };
   const todaysShowings = Array.isArray(data.todaysShowings) ? data.todaysShowings : [];
   const upcoming = Array.isArray(data.upcomingOpenHouses) ? data.upcomingOpenHouses : [];
   const recentVisitors = Array.isArray(data.recentVisitors) ? data.recentVisitors : [];
@@ -293,7 +300,7 @@ export default function ShowingHQOverviewPage() {
   const pendingFeedbackRequests = Array.isArray(data.pendingFeedbackRequests)
     ? data.pendingFeedbackRequests
     : [];
-  const recentReports = Array.isArray(data.recentReports) ? data.recentReports : [];
+  const recentReports = recentReportsEarly;
 
   type ActivityItem = {
     type: "visitor" | "followup" | "feedback";
@@ -360,13 +367,13 @@ export default function ShowingHQOverviewPage() {
   });
 
   return (
-    <div className="flex min-h-0 flex-col gap-4 bg-transparent">
+    <div className="flex min-h-0 flex-col gap-3 bg-transparent">
       {/* Control bar: title | reserved context | actions */}
       <header
-        className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-slate-200 py-1.5 md:flex-nowrap md:gap-4 md:py-2"
+        className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b border-slate-200 py-1.5 md:py-2"
         data-workbench-card
       >
-        <div className="min-w-0 max-w-[min(100%,18rem)] shrink-0 md:max-w-[280px]">
+        <div className="min-w-0 max-w-[min(100%,20rem)] shrink-0">
           <h1
             className="text-base font-bold leading-tight tracking-tight text-slate-900 md:text-[1.0625rem]"
             style={{ fontFamily: "var(--font-heading)" }}
@@ -375,15 +382,7 @@ export default function ShowingHQOverviewPage() {
           </h1>
           <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{contextLine}</p>
         </div>
-        <div
-          className="hidden min-h-[34px] min-w-0 flex-1 items-center rounded-md border border-dashed border-slate-200 bg-slate-50/80 px-3 md:flex"
-          aria-label="Reserved for search and filters"
-        >
-          <span className="truncate text-[11px] text-slate-400">
-            Search, filters & context — coming soon
-          </span>
-        </div>
-        <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <Button variant="outline" size="sm" className="h-8 text-xs" asChild>
             <Link href="/properties/new">
               <Building2 className="mr-1.5 h-3.5 w-3.5" />
@@ -399,41 +398,78 @@ export default function ShowingHQOverviewPage() {
         </div>
       </header>
 
-      {/* KPI strip — operational density */}
+      {/* KPI strip */}
       <section
-        className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
+        className="grid grid-cols-2 gap-2 lg:grid-cols-4"
         aria-label="Operational metrics"
         data-workbench-card
       >
-        <KpiCell label="Upcoming (7d)" value={kpis.upcomingEvents7d} href="/open-houses" />
-        <KpiCell label="Visitors (mo)" value={kpis.visitorsThisMonth} href="/showing-hq/visitors" />
-        <KpiCell label="New contacts (mo)" value={kpis.newContactsThisMonth} href="/contacts" />
-        <KpiCell label="Follow-ups pending" value={kpis.followUpsPending} href="/showing-hq/follow-ups" />
-        <KpiCell
+        <KpiWorkbenchCard
+          label="Upcoming open houses"
+          value={kpiUpcoming.count}
+          context={
+            kpiUpcoming.nextLabel ??
+            (kpiUpcoming.count === 0 ? "None on the calendar" : "See schedule →")
+          }
+          href="/open-houses"
+        />
+        <KpiWorkbenchCard
+          label="Visitors (30d)"
+          value={kpiVisitors.count30d}
+          context={
+            kpiVisitors.thisWeekCount > 0
+              ? `+${kpiVisitors.thisWeekCount} in last 7 days`
+              : "No sign-ins in the last 7 days"
+          }
+          href="/showing-hq/visitors"
+        />
+        <KpiWorkbenchCard
+          label="Follow-ups"
+          value={kpiFollowUps.pending}
+          context={
+            kpiFollowUps.overdue > 0
+              ? `${kpiFollowUps.overdue} overdue (5d+)`
+              : kpiFollowUps.pending > 0
+                ? "All within 5 days"
+                : "Nothing pending"
+          }
+          href="/showing-hq/follow-ups"
+        />
+        <KpiWorkbenchCard
           label="Reports ready"
-          value={kpis.reportsReady}
-          href={recentReports[0] ? `/open-houses/${recentReports[0].id}/report` : "/open-houses"}
+          value={kpiReports.ready}
+          context={
+            kpiReports.ready > 0 ? "Send to sellers" : "Complete an open house first"
+          }
+          href={
+            recentReports[0] ? `/open-houses/${recentReports[0].id}/report` : "/open-houses"
+          }
         />
       </section>
 
-      {/* Main workbench row: 7-day horizon + unified queue */}
+      {/* Main row: schedule dominates + queue */}
       <div
-        className="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]"
+        className="grid min-h-0 items-stretch gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(300px,380px)]"
         role="region"
         aria-label="Schedule and queue"
       >
-        <div className="flex min-h-0 flex-col rounded-lg border border-slate-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-slate-700">
-              Near-term · 7 days
-            </h2>
+        <div className="flex min-h-[400px] flex-col rounded-lg border-2 border-slate-200/90 bg-white shadow-md lg:min-h-[460px]">
+          <div className="flex flex-wrap items-end justify-between gap-2 border-b border-slate-100 bg-slate-50/50 px-3 py-2">
+            <div>
+              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-800">Schedule</h2>
+              <p className="text-[10px] text-slate-500">
+                Week · planning · Month · open houses & showings
+              </p>
+            </div>
             <Button variant="ghost" size="sm" className="h-7 text-[11px] text-[#4BAED8]" asChild>
-              <Link href="/open-houses">Open houses</Link>
+              <Link href="/open-houses">All open houses</Link>
             </Button>
           </div>
-          <div className="min-h-0 flex-1 p-0">
+          <div className="min-h-0 flex-1 overflow-hidden p-0">
             <ShowingHQCalendar
-              variant="workbenchWeek"
+              workbenchToolbar
+              workbenchView={calWorkbenchView}
+              onWorkbenchViewChange={setCalWorkbenchView}
               events={Array.isArray(data.calendarEvents) ? data.calendarEvents : []}
               activeOpenHouseId={activeOpenHouse?.id ?? null}
               onDateClick={(dateStr) => {
@@ -504,33 +540,32 @@ export default function ShowingHQOverviewPage() {
         <GettingStartedCard steps={gettingStartedSteps} onDismiss={handleDismissGettingStarted} />
       )}
 
-      {/* Lower modular cards — drag/reorder friendly structure */}
-      <div className="grid gap-4 xl:grid-cols-3">
+      {/* Lower row — compressed secondary cards */}
+      <div className="grid gap-2 xl:grid-cols-3">
         <BrandCard
           padded={false}
-          className="flex min-h-[220px] flex-col rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+          className="flex min-h-[130px] flex-col rounded-md border border-slate-200/90 bg-white p-2 shadow-sm"
           data-workbench-card
         >
-          <div className="mb-2 flex items-center justify-between border-b border-slate-100 pb-2">
+          <div className="mb-1 flex items-center justify-between border-b border-slate-100 pb-1.5">
             <div>
-              <h2 className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-                <Users className="h-3.5 w-3.5 text-[#4BAED8]" />
+              <h2 className="flex items-center gap-1 text-[11px] font-bold text-slate-800">
+                <Users className="h-3 w-3 text-[#4BAED8]" />
                 Recent activity
               </h2>
-              <p className="text-[10px] text-slate-500">Sign-ins, drafts, feedback</p>
             </div>
-            <Button variant="ghost" size="sm" className="h-7 text-[11px] shrink-0" asChild>
+            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] shrink-0" asChild>
               <Link href="/showing-hq/visitors">
-                All <ChevronRight className="h-3 w-3" />
+                All <ChevronRight className="h-2.5 w-2.5" />
               </Link>
             </Button>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
             {activityItems.length === 0 ? (
-              <p className="py-4 text-center text-[11px] text-slate-500">No recent activity.</p>
+              <p className="py-2 text-center text-[10px] text-slate-500">No recent activity.</p>
             ) : (
               <ul className="space-y-0">
-                {activityItems.slice(0, 8).map((item) => {
+                {activityItems.slice(0, 5).map((item) => {
                   const Icon =
                     item.type === "visitor"
                       ? Users
@@ -540,19 +575,19 @@ export default function ShowingHQOverviewPage() {
                   return (
                     <li
                       key={item.id}
-                      className="flex items-center justify-between gap-2 border-b border-slate-50 py-2 text-[11px] last:border-b-0 hover:bg-slate-50/80"
+                      className="flex items-center justify-between gap-1.5 border-b border-slate-50 py-1.5 text-[10px] last:border-b-0 hover:bg-slate-50/60"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="flex items-center gap-1 font-medium text-slate-800">
-                          <Icon className="h-3 w-3 shrink-0 text-[#4BAED8]" />
+                        <p className="flex items-center gap-0.5 font-medium text-slate-800">
+                          <Icon className="h-2.5 w-2.5 shrink-0 text-[#4BAED8]" />
                           <span className="truncate">{item.label}</span>
                         </p>
-                        <p className="mt-0.5 truncate pl-4 text-[10px] text-slate-500">
+                        <p className="truncate pl-3 text-[9px] text-slate-500">
                           {item.address}
                           {item.timestamp ? ` · ${formatTimeContextual(item.timestamp)}` : ""}
                         </p>
                       </div>
-                      <Button variant="outline" size="sm" className="h-6 shrink-0 px-2 text-[10px]" asChild>
+                      <Button variant="outline" size="sm" className="h-5 shrink-0 px-1.5 text-[9px]" asChild>
                         <Link href={item.actionHref}>{item.actionLabel}</Link>
                       </Button>
                     </li>
@@ -565,23 +600,23 @@ export default function ShowingHQOverviewPage() {
 
         <BrandCard
           padded={false}
-          className="flex min-h-[220px] flex-col rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+          className="flex min-h-[130px] flex-col rounded-md border border-slate-200/90 bg-white p-2 shadow-sm"
           data-workbench-card
         >
-          <div className="mb-2 flex items-center justify-between border-b border-slate-100 pb-2">
-            <h2 className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-              <Calendar className="h-3.5 w-3.5 text-[#4BAED8]" />
+          <div className="mb-1 flex items-center justify-between border-b border-slate-100 pb-1.5">
+            <h2 className="flex items-center gap-1 text-[11px] font-bold text-slate-800">
+              <Calendar className="h-3 w-3 text-[#4BAED8]" />
               Open houses
             </h2>
-            <Button variant="ghost" size="sm" className="h-7 text-[11px]" asChild>
+            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px]" asChild>
               <Link href="/open-houses">All</Link>
             </Button>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
             {todaysShowings.length === 0 && upcoming.length === 0 ? (
-              <div className="py-4 text-center">
-                <p className="text-[11px] text-slate-500">None scheduled</p>
-                <Button variant="outline" size="sm" className="mt-2 h-7 text-[11px]" asChild>
+              <div className="py-2 text-center">
+                <p className="text-[10px] text-slate-500">None scheduled</p>
+                <Button variant="outline" size="sm" className="mt-1 h-6 text-[10px]" asChild>
                   <Link href="/open-houses/new">Create</Link>
                 </Button>
               </div>
@@ -590,40 +625,39 @@ export default function ShowingHQOverviewPage() {
                 {todaysShowings.map((oh) => (
                   <li
                     key={oh.id}
-                    className="flex items-center justify-between gap-2 border-b border-slate-50 py-2 text-[11px] last:border-b-0"
+                    className="flex items-center justify-between gap-1.5 border-b border-slate-50 py-1.5 text-[10px] last:border-b-0"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium text-slate-800">
-                        Today {formatTime(oh.startAt)}
-                      </p>
-                      <p className="truncate text-[10px] text-slate-500">
+                      <p className="font-medium text-slate-800">Today {formatTime(oh.startAt)}</p>
+                      <p className="truncate text-[9px] text-slate-500">
                         {oh.property.address1} · {oh._count.visitors} in
                       </p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <Badge variant={oh.status === "ACTIVE" ? "default" : "secondary"} className="text-[9px]">
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <Badge
+                        variant={oh.status === "ACTIVE" ? "default" : "secondary"}
+                        className="px-1 text-[8px]"
+                      >
                         {oh.status}
                       </Badge>
-                      <Button variant="outline" size="sm" className="h-6 px-2 text-[10px]" asChild>
+                      <Button variant="outline" size="sm" className="h-5 px-1.5 text-[9px]" asChild>
                         <Link href={`/showing-hq/open-houses/${oh.id}`}>View</Link>
                       </Button>
                     </div>
                   </li>
                 ))}
-                {upcoming.slice(0, 4).map((oh) => (
+                {upcoming.slice(0, 3).map((oh) => (
                   <li
                     key={oh.id}
-                    className="flex items-center justify-between gap-2 border-b border-slate-50 py-2 text-[11px] last:border-b-0"
+                    className="flex items-center justify-between gap-1.5 border-b border-slate-50 py-1.5 text-[10px] last:border-b-0"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-slate-800">
                         {formatDate(oh.startAt)} {formatTime(oh.startAt)}
                       </p>
-                      <p className="truncate text-[10px] text-slate-500">
-                        {oh.property.address1}
-                      </p>
+                      <p className="truncate text-[9px] text-slate-500">{oh.property.address1}</p>
                     </div>
-                    <Button variant="outline" size="sm" className="h-6 px-2 text-[10px]" asChild>
+                    <Button variant="outline" size="sm" className="h-5 px-1.5 text-[9px]" asChild>
                       <Link href={`/showing-hq/open-houses/${oh.id}`}>View</Link>
                     </Button>
                   </li>
@@ -635,30 +669,29 @@ export default function ShowingHQOverviewPage() {
 
         <BrandCard
           padded={false}
-          className="flex min-h-[220px] flex-col rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+          className="flex min-h-[130px] flex-col rounded-md border border-slate-200/90 bg-white p-2 shadow-sm"
           data-workbench-card
         >
-          <div className="mb-2 border-b border-slate-100 pb-2">
-            <h2 className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
-              <FileText className="h-3.5 w-3.5 text-[#4BAED8]" />
+          <div className="mb-1 border-b border-slate-100 pb-1.5">
+            <h2 className="flex items-center gap-1 text-[11px] font-bold text-slate-800">
+              <FileText className="h-3 w-3 text-[#4BAED8]" />
               Reports & feedback
             </h2>
-            <p className="text-[10px] text-slate-500">Seller reports and pending requests</p>
           </div>
-          <div className="min-h-0 flex-1 space-y-3 overflow-auto">
+          <div className="min-h-0 flex-1 space-y-2 overflow-auto text-[10px]">
             <div>
-              <p className="mb-1 text-[10px] font-semibold uppercase text-slate-500">Reports</p>
+              <p className="mb-0.5 text-[9px] font-semibold uppercase text-slate-500">Reports</p>
               {recentReports.length === 0 ? (
-                <p className="text-[11px] text-slate-500">No completed reports yet.</p>
+                <p className="text-[10px] text-slate-500">None yet.</p>
               ) : (
                 <ul>
-                  {recentReports.slice(0, 3).map((r) => (
+                  {recentReports.slice(0, 2).map((r) => (
                     <li
                       key={r.id}
-                      className="flex items-center justify-between gap-2 border-b border-slate-50 py-1.5 text-[11px] last:border-0"
+                      className="flex items-center justify-between gap-1 border-b border-slate-50 py-1 last:border-0"
                     >
                       <span className="min-w-0 truncate text-slate-700">{r.property.address1}</span>
-                      <Button variant="outline" size="sm" className="h-6 shrink-0 px-2 text-[10px]" asChild>
+                      <Button variant="outline" size="sm" className="h-5 shrink-0 px-1.5 text-[9px]" asChild>
                         <Link href={`/open-houses/${r.id}/report`}>Report</Link>
                       </Button>
                     </li>
@@ -667,18 +700,18 @@ export default function ShowingHQOverviewPage() {
               )}
             </div>
             <div>
-              <p className="mb-1 text-[10px] font-semibold uppercase text-slate-500">Feedback</p>
+              <p className="mb-0.5 text-[9px] font-semibold uppercase text-slate-500">Feedback</p>
               {pendingFeedbackRequests.length === 0 ? (
-                <p className="text-[11px] text-slate-500">No pending requests.</p>
+                <p className="text-[10px] text-slate-500">None pending.</p>
               ) : (
                 <ul>
-                  {pendingFeedbackRequests.slice(0, 4).map((fr) => (
+                  {pendingFeedbackRequests.slice(0, 2).map((fr) => (
                     <li
                       key={fr.id}
-                      className="flex items-center justify-between gap-2 border-b border-slate-50 py-1.5 text-[11px] last:border-0"
+                      className="flex items-center justify-between gap-1 border-b border-slate-50 py-1 last:border-0"
                     >
                       <span className="min-w-0 truncate text-slate-700">{fr.property.address1}</span>
-                      <Button variant="outline" size="sm" className="h-6 shrink-0 px-2 text-[10px]" asChild>
+                      <Button variant="outline" size="sm" className="h-5 shrink-0 px-1.5 text-[9px]" asChild>
                         <Link href="/showing-hq/feedback-requests">Open</Link>
                       </Button>
                     </li>
@@ -686,14 +719,12 @@ export default function ShowingHQOverviewPage() {
                 </ul>
               )}
             </div>
-            <div className="pt-1">
-              <Button variant="ghost" size="sm" className="h-7 w-full text-[11px]" asChild>
-                <Link href="/showing-hq/feedback-requests">
-                  <CalendarDays className="mr-1 h-3.5 w-3.5" />
-                  Feedback queue
-                </Link>
-              </Button>
-            </div>
+            <Button variant="ghost" size="sm" className="h-6 w-full text-[10px]" asChild>
+              <Link href="/showing-hq/feedback-requests">
+                <CalendarDays className="mr-1 h-3 w-3" />
+                Queue
+              </Link>
+            </Button>
           </div>
         </BrandCard>
       </div>
