@@ -48,6 +48,8 @@ export type CalendarEvent = {
 type ShowingHQCalendarProps = {
   events: CalendarEvent[];
   height?: string | number;
+  /** Dense 7-day horizon for workbench dashboard */
+  variant?: "month" | "workbenchWeek";
   activeOpenHouseId?: string | null;
   onDateClick?: (dateStr: string) => void;
   /** Called when an event is rescheduled (drag) or resized (open house only) or after edit modal save */
@@ -58,12 +60,16 @@ type ShowingHQCalendarProps = {
 
 export function ShowingHQCalendar({
   events,
-  height = 320,
+  height,
+  variant = "month",
   activeOpenHouseId = null,
   onDateClick,
   onEventRescheduled,
   onEventClick,
 }: ShowingHQCalendarProps) {
+  const resolvedHeight =
+    height ?? (variant === "workbenchWeek" ? 248 : 320);
+  const initialView = variant === "workbenchWeek" ? "dayGridWeek" : "dayGridMonth";
   const fcEvents: EventInput[] = useMemo(
     () =>
       events.map((e) => ({
@@ -79,19 +85,27 @@ export function ShowingHQCalendar({
   );
 
   return (
-    <div className="showing-hq-calendar rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div
+      className={`showing-hq-calendar rounded-lg border border-slate-200 bg-white shadow-sm ${
+        variant === "workbenchWeek" ? "p-2" : "p-4"
+      }`}
+    >
       <FullCalendar
         plugins={[dayGridPlugin, interactionPlugin]}
-        initialView="dayGridMonth"
+        initialView={initialView}
         events={fcEvents}
-        height={height}
+        height={resolvedHeight}
         editable={true}
         headerToolbar={{
           left: "title",
           center: "",
           right: "prev,next",
         }}
-        titleFormat={{ month: "short", year: "numeric" }}
+        titleFormat={
+          variant === "workbenchWeek"
+            ? { month: "short", day: "numeric", year: "numeric" }
+            : { month: "short", year: "numeric" }
+        }
         dayHeaderFormat={{ weekday: "short" }}
         firstDay={0}
         eventDisplay="block"

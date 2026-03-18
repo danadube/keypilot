@@ -6,6 +6,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
+  Home,
   Building2,
   Calendar,
   Users,
@@ -109,6 +110,8 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     available: true,
     sidebar: [
       { label: "Dashboard", href: "/showing-hq", icon: LayoutDashboard, section: "OVERVIEW" },
+      { label: "PropertyVault", href: "/property-vault", icon: Building2, section: "PLATFORM" },
+      { label: "Home", href: "/", icon: Home, section: "PLATFORM" },
       { label: "All Showings", href: "/showing-hq/showings", icon: Calendar, section: "SHOWINGS" },
       { label: "Supra Inbox", href: "/showing-hq/supra-inbox", icon: Inbox, section: "SHOWINGS" },
       { label: "Feedback Requests", href: "/showing-hq/feedback-requests", icon: ClipboardCheck, section: "SHOWINGS" },

@@ -10,24 +10,20 @@ import { Button } from "@/components/ui/button";
 import {
   Users,
   Calendar,
-  UserPlus,
-  CheckSquare,
   ChevronRight,
   Building2,
+  CalendarDays,
+  CheckSquare,
+  FileText,
+  MessageSquare,
 } from "lucide-react";
 import { GettingStartedCard, buildGettingStartedSteps } from "@/components/showing-hq/GettingStartedCard";
 import { ShowingHQCalendar } from "@/components/showing-hq/ShowingHQCalendar";
 import type { CalendarEvent } from "@/components/showing-hq/ShowingHQCalendar";
 import { QuickCreateEventModal } from "@/components/showing-hq/QuickCreateEventModal";
 import { EditEventModal } from "@/components/showing-hq/EditEventModal";
-import { TodayCommandCenter } from "@/components/showing-hq/TodayCommandCenter";
-import { TodaysScheduleCard } from "@/components/showing-hq/TodaysScheduleCard";
 import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
-import {
-  TodaysActionsCard,
-  type TodaysActionItem,
-} from "@/components/showing-hq/TodaysActionsCard";
-import { MessageSquare, FileText } from "lucide-react";
+import { ShowingHQWorkbenchQueue } from "@/components/showing-hq/ShowingHQWorkbenchQueue";
 
 type DashboardData = {
   todaysShowings: {
@@ -63,7 +59,7 @@ type DashboardData = {
       id: string;
       title: string;
       startAt: string;
-      property?: { address1: string; city: string; state: string };
+      property?: { address1: string; city?: string; state?: string };
     };
   }[];
   followUpTasks: {
@@ -73,7 +69,7 @@ type DashboardData = {
     updatedAt?: string;
     createdAt?: string;
     contact: { firstName: string; lastName: string };
-    openHouse: { id: string; title: string; property?: { address1: string; city: string; state: string } };
+    openHouse: { id: string; title: string; property?: { address1: string; city?: string; state?: string } };
   }[];
   pendingFeedbackRequests?: { id: string; property: { address1: string }; requestedAt?: string }[];
   recentReports?: Array<{
@@ -83,6 +79,13 @@ type DashboardData = {
     property: { address1: string; city?: string };
     visitorCount: number;
   }>;
+  workbenchKpis?: {
+    upcomingEvents7d: number;
+    visitorsThisMonth: number;
+    newContactsThisMonth: number;
+    followUpsPending: number;
+    reportsReady: number;
+  };
   stats: {
     totalVisitors: number;
     totalShowings: number;
@@ -113,6 +116,29 @@ type DashboardData = {
 };
 
 const GETTING_STARTED_DISMISSED_KEY = "showinghq-getting-started-dismissed";
+
+function KpiCell({
+  label,
+  value,
+  href,
+}: {
+  label: string;
+  value: number;
+  href: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group flex min-w-0 flex-col justify-center border border-slate-200 bg-white px-3 py-2.5 transition-colors hover:bg-slate-50"
+    >
+      <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">{label}</span>
+      <span className="mt-0.5 font-mono text-xl font-bold tabular-nums text-slate-900">{value}</span>
+      <span className="mt-0.5 text-[10px] font-medium text-[#4BAED8] opacity-0 transition-opacity group-hover:opacity-100">
+        View →
+      </span>
+    </Link>
+  );
+}
 
 export default function ShowingHQOverviewPage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -182,6 +208,13 @@ export default function ShowingHQOverviewPage() {
     privateShowingsToday: 0,
     feedbackRequestsPending: 0,
   };
+  const kpis = data.workbenchKpis ?? {
+    upcomingEvents7d: 0,
+    visitorsThisMonth: 0,
+    newContactsThisMonth: 0,
+    followUpsPending: stats.followUpTasks ?? 0,
+    reportsReady: Array.isArray(data.recentReports) ? data.recentReports.length : 0,
+  };
   const todaysShowings = Array.isArray(data.todaysShowings) ? data.todaysShowings : [];
   const upcoming = Array.isArray(data.upcomingOpenHouses) ? data.upcomingOpenHouses : [];
   const recentVisitors = Array.isArray(data.recentVisitors) ? data.recentVisitors : [];
@@ -189,8 +222,7 @@ export default function ShowingHQOverviewPage() {
   const connections = data.connections ?? { hasCalendar: false, hasGmail: false, hasBranding: false };
   const hasBranding = connections.hasBranding ?? false;
 
-  const showGettingStarted =
-    stats.totalShowings < 2 && stats.totalVisitors === 0;
+  const showGettingStarted = stats.totalShowings < 2 && stats.totalVisitors === 0;
   const gettingStartedSteps = buildGettingStartedSteps({
     hasOpenHouse: stats.totalShowings > 0,
     hasCalendar: connections.hasCalendar,
@@ -202,10 +234,11 @@ export default function ShowingHQOverviewPage() {
 
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const formatDateShort = (d: string) =>
+    new Date(d).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   const formatTime = (d: string) =>
     new Date(d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
-  /** Contextual time for visitor table: "4:30 PM · today" or "4:12 PM · 15m ago" */
   const formatTimeContextual = (d: string) => {
     const date = new Date(d);
     const now = new Date();
@@ -225,7 +258,9 @@ export default function ShowingHQOverviewPage() {
   const now = new Date();
   const activeOpenHouse = todaysShowings.find((oh) => oh.status === "ACTIVE") ?? null;
   const nextOh = todaysShowings.find((oh) => new Date(oh.startAt) > now && oh.status !== "ACTIVE");
-  const primaryOpenHouse = activeOpenHouse ?? nextOh ?? todaysShowings[0] ?? upcoming[0];
+  const scheduledTodayForSignIn =
+    todaysShowings.find((oh) => oh.status === "SCHEDULED") ?? todaysShowings[0] ?? null;
+  const primaryOpenHouse = activeOpenHouse ?? nextOh ?? scheduledTodayForSignIn ?? upcoming[0];
   const signInUrl =
     typeof window !== "undefined" && primaryOpenHouse?.qrSlug
       ? `${window.location.origin}/oh/${primaryOpenHouse.qrSlug}`
@@ -233,18 +268,16 @@ export default function ShowingHQOverviewPage() {
         ? `/oh/${primaryOpenHouse.qrSlug}`
         : null;
 
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-  const visitorsToday = recentVisitors.filter((v) => new Date(v.submittedAt) >= todayStart).length;
-
-  const scheduleItems: ScheduleItem[] = (Array.isArray(data.todaysSchedule) ? data.todaysSchedule : []).map((s) => ({
-    type: s.type,
-    id: s.id,
-    title: s.title,
-    at: s.at,
-    endAt: s.endAt,
-    property: s.property,
-  }));
+  const scheduleItems: ScheduleItem[] = (Array.isArray(data.todaysSchedule) ? data.todaysSchedule : []).map(
+    (s) => ({
+      type: s.type,
+      id: s.id,
+      title: s.title,
+      at: s.at,
+      endAt: s.endAt,
+      property: s.property,
+    })
+  );
   const tomorrowItem: ScheduleItem | null =
     data.tomorrowFirstEvent != null
       ? {
@@ -257,11 +290,9 @@ export default function ShowingHQOverviewPage() {
         }
       : null;
 
-  const nextShowing = scheduleItems
-    .filter((s) => s.type === "showing" && new Date(s.at) > now)
-    .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())[0];
-
-  const pendingFeedbackRequests = Array.isArray(data.pendingFeedbackRequests) ? data.pendingFeedbackRequests : [];
+  const pendingFeedbackRequests = Array.isArray(data.pendingFeedbackRequests)
+    ? data.pendingFeedbackRequests
+    : [];
   const recentReports = Array.isArray(data.recentReports) ? data.recentReports : [];
 
   type ActivityItem = {
@@ -275,39 +306,39 @@ export default function ShowingHQOverviewPage() {
   };
 
   const activityItemsRaw: ActivityItem[] = [
-    ...(recentVisitors ?? []).slice(0, 8).map((v) => {
+    ...recentVisitors.slice(0, 10).map((v) => {
       const addr =
-        (v.openHouse as { property?: { address1: string; city?: string; state?: string } })
-          ?.property?.address1 ?? v.openHouse?.title ?? "";
+        (v.openHouse as { property?: { address1: string; city?: string; state?: string } })?.property
+          ?.address1 ?? v.openHouse?.title ?? "";
       return {
         type: "visitor" as const,
         id: `visitor-${v.id}`,
         label: `${v.contact?.firstName ?? ""} ${v.contact?.lastName ?? ""}`.trim() || "Visitor signed in",
         address: addr,
         timestamp: v.submittedAt ?? null,
-        actionLabel: "View visitor",
+        actionLabel: "View",
         actionHref: `/showing-hq/visitors/${v.id}`,
       };
     }),
-    ...(followUpTasks ?? []).slice(0, 8).map((t) => {
+    ...followUpTasks.slice(0, 6).map((t) => {
       const addr = t.openHouse?.property?.address1 ?? t.openHouse?.title ?? "";
       return {
         type: "followup" as const,
         id: `draft-${t.id}`,
-        label: "Follow-up draft ready",
+        label: "Follow-up draft",
         address: addr,
         timestamp: t.updatedAt ?? t.createdAt ?? null,
-        actionLabel: "Review draft",
+        actionLabel: "Review",
         actionHref: `/showing-hq/follow-ups/draft/${t.id}`,
       };
     }),
-    ...(pendingFeedbackRequests ?? []).slice(0, 8).map((fr) => ({
+    ...pendingFeedbackRequests.slice(0, 6).map((fr) => ({
       type: "feedback" as const,
       id: `feedback-${fr.id}`,
-      label: "Feedback request pending",
+      label: "Feedback pending",
       address: fr.property?.address1 ?? "",
       timestamp: fr.requestedAt ?? null,
-      actionLabel: "Copy link",
+      actionLabel: "Queue",
       actionHref: "/showing-hq/feedback-requests",
     })),
   ];
@@ -321,165 +352,115 @@ export default function ShowingHQOverviewPage() {
     return tb - ta;
   });
 
-  const todaysActionItems: TodaysActionItem[] = [
-    ...pendingFeedbackRequests.slice(0, 5).map((fr) => ({
-      id: `feedback-${fr.id}`,
-      description: `Feedback request for ${fr.property?.address1 ?? "property"}`,
-      propertyOrAddress: fr.property?.address1 ?? "",
-      actionLabel: "Send",
-      actionHref: "/showing-hq/feedback-requests",
-      type: "feedback" as const,
-    })),
-    ...followUpTasks.slice(0, 5).map((t) => ({
-      id: `draft-${t.id}`,
-      description: `Follow up with open house visitors`,
-      propertyOrAddress: t.openHouse?.property?.address1 ?? t.openHouse?.title ?? "",
-      actionLabel: "Review",
-      actionHref: `/showing-hq/follow-ups/draft/${t.id}`,
-      type: "follow_up" as const,
-    })),
-    ...(tomorrowItem?.type === "showing"
-      ? [
-          {
-            id: `confirm-${tomorrowItem.id}`,
-            description: "Confirm showing for tomorrow",
-            propertyOrAddress: tomorrowItem.property?.address1 ?? "",
-            actionLabel: "Confirm",
-            actionHref: "/showing-hq/showings",
-            type: "confirm_showing" as const,
-          } as TodaysActionItem,
-        ]
-      : []),
-  ];
+  const contextLine = new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
 
   return (
-    <div className="min-h-0 flex flex-col gap-6 bg-transparent">
-      {/* Hero — dark branded banner, strong contrast against page canvas */}
+    <div className="flex min-h-0 flex-col gap-4 bg-transparent">
+      {/* Compact utility header — tool surface, not marketing */}
       <header
-        className="relative rounded-2xl bg-[#0B1A3C] px-8 py-8 shadow-2xl"
-        role="banner"
+        className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-3"
+        data-workbench-card
       >
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-[#4BAED8]/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#7DD3F5] ring-1 ring-[#4BAED8]/40">
-              ShowingHQ
-            </span>
-          </div>
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">ShowingHQ</p>
           <h1
-            className="text-3xl font-extrabold tracking-tight text-white md:text-4xl"
-            style={{ fontFamily: "var(--font-heading)", lineHeight: 1.1 }}
+            className="mt-0.5 text-xl font-bold tracking-tight text-slate-900 md:text-2xl"
+            style={{ fontFamily: "var(--font-heading)", lineHeight: 1.15 }}
           >
-            Your Showing Command Center
+            Workbench
           </h1>
-          <p className="max-w-2xl text-sm text-slate-300 md:text-base">
-            Manage private showings, open houses, visitors, feedback, and follow-ups in one place.
-          </p>
+          <p className="mt-0.5 text-xs text-slate-500">{contextLine}</p>
         </div>
-        {/* Metric chips — white chips pop on dark bg */}
-        <div className="mt-5 flex flex-wrap items-center gap-2">
-          <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
-            <Users className="h-4 w-4 shrink-0 text-[var(--brand-secondary)]" />
-            <div className="min-w-0">
-              <span className="text-[10px] font-medium text-slate-500">Visitors</span>
-              <span className="text-xs font-semibold text-slate-800">{stats.totalVisitors}</span>
-            </div>
-          </div>
-          <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
-            <Calendar className="h-3.5 w-3.5 shrink-0 text-[var(--brand-secondary)]" />
-            <div className="flex items-baseline gap-1">
-              <span className="text-[10px] font-medium text-slate-500">Open houses</span>
-              <span className="text-xs font-semibold text-slate-800">{todaysShowings.length}</span>
-            </div>
-          </div>
-          <Button variant="ghost" size="sm" className="h-8 px-2.5" asChild>
-            <Link href="/showing-hq/showings">
-              <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
-                <Calendar className="h-3.5 w-3.5 shrink-0 text-[var(--brand-secondary)]" />
-                <div className="flex items-baseline gap-1">
-                  <span className="text-[10px] font-medium text-slate-500">Showings</span>
-                  <span className="text-xs font-semibold text-slate-800">
-                    {stats.privateShowingsToday ?? 0}
-                  </span>
-                </div>
-              </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" className="h-8 text-xs" asChild>
+            <Link href="/properties/new">
+              <Building2 className="mr-1.5 h-3.5 w-3.5" />
+              New property
             </Link>
           </Button>
-          <Button variant="ghost" size="sm" className="h-8 px-2.5" asChild>
-            <Link href="/showing-hq/feedback-requests">
-              <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
-                <CheckSquare className="h-3.5 w-3.5 shrink-0 text-[var(--brand-secondary)]" />
-                <div className="flex items-baseline gap-1">
-                  <span className="text-[10px] font-medium text-slate-500">Feedback</span>
-                  <span className="text-xs font-semibold text-slate-800">
-                    {stats.feedbackRequestsPending ?? 0}
-                  </span>
-                </div>
-              </div>
+          <Button size="sm" className="h-8 bg-[#0B1A3C] text-xs hover:bg-[#0B1A3C]/90" asChild>
+            <Link href="/open-houses/new">
+              <Calendar className="mr-1.5 h-3.5 w-3.5" />
+              Create open house
             </Link>
           </Button>
-          <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
-            <UserPlus className="h-3.5 w-3.5 shrink-0 text-[var(--brand-secondary)]" />
-            <div className="flex items-baseline gap-1">
-              <span className="text-[10px] font-medium text-slate-500">Contacts</span>
-              <span className="text-xs font-semibold text-slate-800">
-                {stats.contactsCaptured}
-              </span>
-            </div>
-          </div>
-          <div className="inline-flex h-8 items-center gap-1.5 rounded-full border border-slate-200/70 bg-white px-2.5 shadow-sm">
-            <CheckSquare className="h-3.5 w-3.5 shrink-0 text-[var(--brand-secondary)]" />
-            <div className="flex items-baseline gap-1">
-              <span className="text-[10px] font-medium text-slate-500">Follow-ups</span>
-              <span className="text-xs font-semibold text-slate-800">
-                {stats.followUpTasks ?? followUpTasks.length}
-              </span>
-            </div>
-          </div>
         </div>
       </header>
 
-      {/* Today's Actions — tasks that need attention today */}
-      <TodaysActionsCard items={todaysActionItems} />
-
-      {/* Today Command Center — single primary state: now / next urgent / what to do */}
-      <TodayCommandCenter
-        activeOpenHouse={activeOpenHouse}
-        nextOpenHouse={nextOh ?? null}
-        nextShowing={nextShowing ?? null}
-        followUpCount={followUpTasks.length}
-        visitorsToday={visitorsToday}
-        feedbackRequestsPending={stats.feedbackRequestsPending ?? 0}
-        signInUrl={signInUrl}
-        formatTime={formatTime}
-        onCopyLink={handleCopyLink}
-        linkCopied={linkCopied}
-      />
-
-      {/* Calendar + Today's Schedule — 2-column top row */}
-      <div className="grid min-h-0 gap-5 lg:grid-cols-[1.7fr_0.9fr]" role="region" aria-label="Schedule">
-        <ShowingHQCalendar
-          events={Array.isArray(data.calendarEvents) ? data.calendarEvents : []}
-          height={380}
-          activeOpenHouseId={activeOpenHouse?.id ?? null}
-          onDateClick={(dateStr) => {
-            setQuickCreateDate(dateStr);
-            setQuickCreateOpen(true);
-          }}
-          onEventRescheduled={() => {
-            setRescheduleToast(true);
-            refetchDashboard();
-          }}
-          onEventClick={(eventId, eventType) => {
-            setEditEventId(eventId);
-            setEditEventType(eventType);
-            setEditEventOpen(true);
-          }}
+      {/* KPI strip — operational density */}
+      <section
+        className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5"
+        aria-label="Operational metrics"
+        data-workbench-card
+      >
+        <KpiCell label="Upcoming (7d)" value={kpis.upcomingEvents7d} href="/open-houses" />
+        <KpiCell label="Visitors (mo)" value={kpis.visitorsThisMonth} href="/showing-hq/visitors" />
+        <KpiCell label="New contacts (mo)" value={kpis.newContactsThisMonth} href="/contacts" />
+        <KpiCell label="Follow-ups pending" value={kpis.followUpsPending} href="/showing-hq/follow-ups" />
+        <KpiCell
+          label="Reports ready"
+          value={kpis.reportsReady}
+          href={recentReports[0] ? `/open-houses/${recentReports[0].id}/report` : "/open-houses"}
         />
-        <TodaysScheduleCard
+      </section>
+
+      {/* Main workbench row: 7-day horizon + unified queue */}
+      <div
+        className="grid min-h-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]"
+        role="region"
+        aria-label="Schedule and queue"
+      >
+        <div className="flex min-h-0 flex-col rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
+            <h2 className="text-xs font-bold uppercase tracking-wide text-slate-700">
+              Near-term · 7 days
+            </h2>
+            <Button variant="ghost" size="sm" className="h-7 text-[11px] text-[#4BAED8]" asChild>
+              <Link href="/open-houses">Open houses</Link>
+            </Button>
+          </div>
+          <div className="min-h-0 flex-1 p-0">
+            <ShowingHQCalendar
+              variant="workbenchWeek"
+              events={Array.isArray(data.calendarEvents) ? data.calendarEvents : []}
+              activeOpenHouseId={activeOpenHouse?.id ?? null}
+              onDateClick={(dateStr) => {
+                setQuickCreateDate(dateStr);
+                setQuickCreateOpen(true);
+              }}
+              onEventRescheduled={() => {
+                setRescheduleToast(true);
+                refetchDashboard();
+              }}
+              onEventClick={(eventId, eventType) => {
+                setEditEventId(eventId);
+                setEditEventType(eventType);
+                setEditEventOpen(true);
+              }}
+            />
+          </div>
+        </div>
+
+        <ShowingHQWorkbenchQueue
+          activeOpenHouse={activeOpenHouse}
+          scheduledTodayOpenHouse={scheduledTodayForSignIn}
+          signInUrl={signInUrl}
+          linkCopied={linkCopied}
+          onCopySignIn={handleCopyLink}
+          followUpDraftCount={followUpTasks.length}
+          firstFollowUpDraftId={followUpTasks[0]?.id ?? null}
+          feedbackPendingCount={stats.feedbackRequestsPending ?? pendingFeedbackRequests.length}
+          reportsReadyCount={recentReports.length}
+          firstReportId={recentReports[0]?.id ?? null}
           scheduleItems={scheduleItems}
           tomorrowItem={tomorrowItem}
           formatTime={formatTime}
-          activeOpenHouseId={activeOpenHouse?.id ?? null}
+          formatDateShort={formatDateShort}
         />
       </div>
 
@@ -513,48 +494,36 @@ export default function ShowingHQOverviewPage() {
       )}
 
       {showGettingStarted && !gettingStartedDismissed && (
-        <GettingStartedCard
-          steps={gettingStartedSteps}
-          onDismiss={handleDismissGettingStarted}
-        />
+        <GettingStartedCard steps={gettingStartedSteps} onDismiss={handleDismissGettingStarted} />
       )}
 
-      {/* Row 2: Activity | Open Houses */}
-      <div className="grid flex-1 min-h-0 gap-5 lg:grid-cols-2">
-        {/* Activity */}
+      {/* Lower modular cards — drag/reorder friendly structure */}
+      <div className="grid gap-4 xl:grid-cols-3">
         <BrandCard
           padded={false}
-          className="flex flex-col min-h-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+          className="flex min-h-[220px] flex-col rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+          data-workbench-card
         >
-          <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="mb-2 flex items-center justify-between border-b border-slate-100 pb-2">
             <div>
-              <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                <Users className="h-4 w-4 text-[#4BAED8]" />
-                Activity
+              <h2 className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+                <Users className="h-3.5 w-3.5 text-[#4BAED8]" />
+                Recent activity
               </h2>
-              <p className="mt-0.5 text-xs text-slate-500">
-                Recent sign-ins, follow-ups, and feedback in one stream
-              </p>
+              <p className="text-[10px] text-slate-500">Sign-ins, drafts, feedback</p>
             </div>
-            <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0" asChild>
+            <Button variant="ghost" size="sm" className="h-7 text-[11px] shrink-0" asChild>
               <Link href="/showing-hq/visitors">
-                All visitors <ChevronRight className="h-3 w-3" />
+                All <ChevronRight className="h-3 w-3" />
               </Link>
             </Button>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
             {activityItems.length === 0 ? (
-              <div className="py-6 text-center">
-                <p className="text-xs text-slate-500">
-                  Visitor sign-ins, follow-up drafts, and feedback requests will appear here.
-                </p>
-                <Button variant="outline" size="sm" className="mt-3 h-7 text-xs" asChild>
-                  <Link href="/open-houses/sign-in">Get sign-in link</Link>
-                </Button>
-              </div>
+              <p className="py-4 text-center text-[11px] text-slate-500">No recent activity.</p>
             ) : (
-              <div className="space-y-0">
-                {activityItems.map((item) => {
+              <ul className="space-y-0">
+                {activityItems.slice(0, 8).map((item) => {
                   const Icon =
                     item.type === "visitor"
                       ? Users
@@ -562,57 +531,51 @@ export default function ShowingHQOverviewPage() {
                         ? CheckSquare
                         : MessageSquare;
                   return (
-                    <div
+                    <li
                       key={item.id}
-                      className="flex items-center justify-between gap-3 rounded-md border-b border-slate-100 py-2.5 last:border-b-0 text-xs transition-colors hover:bg-slate-50/80"
+                      className="flex items-center justify-between gap-2 border-b border-slate-50 py-2 text-[11px] last:border-b-0 hover:bg-slate-50/80"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="flex items-center gap-1.5 font-medium text-slate-800">
-                          <Icon className="h-3.5 w-3.5 shrink-0 text-[#4BAED8]" />
+                        <p className="flex items-center gap-1 font-medium text-slate-800">
+                          <Icon className="h-3 w-3 shrink-0 text-[#4BAED8]" />
                           <span className="truncate">{item.label}</span>
                         </p>
-                        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-slate-500">
-                          <span className="inline-flex items-center gap-1">
-                            <Building2 className="h-3 w-3 shrink-0" />
-                            <span className="truncate max-w-[160px]">{item.address}</span>
-                          </span>
-                          <span className="hidden text-[10px] sm:inline">
-                            · {item.timestamp ? formatTimeContextual(item.timestamp) : "—"}
-                          </span>
+                        <p className="mt-0.5 truncate pl-4 text-[10px] text-slate-500">
+                          {item.address}
+                          {item.timestamp ? ` · ${formatTimeContextual(item.timestamp)}` : ""}
                         </p>
                       </div>
-                      <Button variant="outline" size="sm" className="h-7 shrink-0 px-2 text-[11px]" asChild>
+                      <Button variant="outline" size="sm" className="h-6 shrink-0 px-2 text-[10px]" asChild>
                         <Link href={item.actionHref}>{item.actionLabel}</Link>
                       </Button>
-                    </div>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
             )}
           </div>
         </BrandCard>
 
-        {/* Open Houses (today + upcoming) */}
         <BrandCard
           padded={false}
-          className="flex flex-col min-h-0 rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+          className="flex min-h-[220px] flex-col rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+          data-workbench-card
         >
-          <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3">
-            <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
-              <Calendar className="h-4 w-4 text-[#4BAED8]" />
-              Open Houses
+          <div className="mb-2 flex items-center justify-between border-b border-slate-100 pb-2">
+            <h2 className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+              <Calendar className="h-3.5 w-3.5 text-[#4BAED8]" />
+              Open houses
             </h2>
-            <Button variant="ghost" size="sm" className="h-7 text-xs shrink-0" asChild>
-              <Link href="/open-houses">View all</Link>
+            <Button variant="ghost" size="sm" className="h-7 text-[11px]" asChild>
+              <Link href="/open-houses">All</Link>
             </Button>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
             {todaysShowings.length === 0 && upcoming.length === 0 ? (
-              <div className="py-6 text-center">
-                <p className="text-xs font-medium text-slate-800">Today&apos;s Open Houses</p>
-                <p className="text-xs text-slate-500">None scheduled</p>
-                <Button variant="outline" size="sm" className="mt-3 h-7 text-xs" asChild>
-                  <Link href="/open-houses/new">Create open house</Link>
+              <div className="py-4 text-center">
+                <p className="text-[11px] text-slate-500">None scheduled</p>
+                <Button variant="outline" size="sm" className="mt-2 h-7 text-[11px]" asChild>
+                  <Link href="/open-houses/new">Create</Link>
                 </Button>
               </div>
             ) : (
@@ -620,47 +583,40 @@ export default function ShowingHQOverviewPage() {
                 {todaysShowings.map((oh) => (
                   <li
                     key={oh.id}
-                    className="flex items-center justify-between gap-2 border-b border-slate-100 py-2.5 last:border-b-0 transition-colors hover:bg-slate-50/80"
+                    className="flex items-center justify-between gap-2 border-b border-slate-50 py-2 text-[11px] last:border-b-0"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium text-slate-800">
-                        Today · {formatTime(oh.startAt)}
+                      <p className="font-medium text-slate-800">
+                        Today {formatTime(oh.startAt)}
                       </p>
-                      <p className="truncate text-xs text-slate-500">
-                        {oh.property.address1}, {oh.property.city} · {oh._count.visitors} visitors
+                      <p className="truncate text-[10px] text-slate-500">
+                        {oh.property.address1} · {oh._count.visitors} in
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      <Badge
-                        variant={
-                          oh.status === "ACTIVE" || oh.status === "SCHEDULED"
-                            ? "default"
-                            : "secondary"
-                        }
-                        className="text-[10px]"
-                      >
+                      <Badge variant={oh.status === "ACTIVE" ? "default" : "secondary"} className="text-[9px]">
                         {oh.status}
                       </Badge>
-                      <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                      <Button variant="outline" size="sm" className="h-6 px-2 text-[10px]" asChild>
                         <Link href={`/showing-hq/open-houses/${oh.id}`}>View</Link>
                       </Button>
                     </div>
                   </li>
                 ))}
-                {upcoming.slice(0, 5).map((oh) => (
+                {upcoming.slice(0, 4).map((oh) => (
                   <li
                     key={oh.id}
-                    className="flex items-center justify-between gap-2 border-b border-slate-100 py-2.5 last:border-b-0 transition-colors hover:bg-slate-50/80"
+                    className="flex items-center justify-between gap-2 border-b border-slate-50 py-2 text-[11px] last:border-b-0"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-medium text-slate-800">
-                        {formatDate(oh.startAt)} · {formatTime(oh.startAt)}
+                      <p className="font-medium text-slate-800">
+                        {formatDate(oh.startAt)} {formatTime(oh.startAt)}
                       </p>
-                      <p className="truncate text-xs text-slate-500">
-                        {oh.property.address1}, {oh.property.city} · {oh._count.visitors} visitors
+                      <p className="truncate text-[10px] text-slate-500">
+                        {oh.property.address1}
                       </p>
                     </div>
-                    <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+                    <Button variant="outline" size="sm" className="h-6 px-2 text-[10px]" asChild>
                       <Link href={`/showing-hq/open-houses/${oh.id}`}>View</Link>
                     </Button>
                   </li>
@@ -669,42 +625,71 @@ export default function ShowingHQOverviewPage() {
             )}
           </div>
         </BrandCard>
-      </div>
 
-      {/* Recent reports */}
-      {recentReports.length > 0 && (
         <BrandCard
           padded={false}
-          className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+          className="flex min-h-[220px] flex-col rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+          data-workbench-card
         >
-          <div className="mb-3 flex items-center justify-between border-b border-slate-100 pb-3">
-            <h2 className="flex items-center gap-2 text-sm font-bold text-slate-900">
-              <FileText className="h-4 w-4 text-[#4BAED8]" />
-              Recent reports
+          <div className="mb-2 border-b border-slate-100 pb-2">
+            <h2 className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
+              <FileText className="h-3.5 w-3.5 text-[#4BAED8]" />
+              Reports & feedback
             </h2>
-            <p className="text-xs text-slate-500">Seller reports for completed open houses</p>
+            <p className="text-[10px] text-slate-500">Seller reports and pending requests</p>
           </div>
-          <ul className="space-y-0">
-            {recentReports.map((r) => (
-              <li
-                key={r.id}
-                className="flex items-center justify-between gap-2 border-b border-slate-100 py-2.5 last:border-b-0 transition-colors hover:bg-slate-50/80"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-medium text-slate-800">{r.title}</p>
-                  <p className="truncate text-xs text-slate-500">
-                    {r.property.address1}
-                    {r.property.city ? `, ${r.property.city}` : ""} · {r.visitorCount} visitors
-                  </p>
-                </div>
-                <Button variant="outline" size="sm" className="h-7 text-xs shrink-0" asChild>
-                  <Link href={`/open-houses/${r.id}/report`}>View report</Link>
-                </Button>
-              </li>
-            ))}
-          </ul>
+          <div className="min-h-0 flex-1 space-y-3 overflow-auto">
+            <div>
+              <p className="mb-1 text-[10px] font-semibold uppercase text-slate-500">Reports</p>
+              {recentReports.length === 0 ? (
+                <p className="text-[11px] text-slate-500">No completed reports yet.</p>
+              ) : (
+                <ul>
+                  {recentReports.slice(0, 3).map((r) => (
+                    <li
+                      key={r.id}
+                      className="flex items-center justify-between gap-2 border-b border-slate-50 py-1.5 text-[11px] last:border-0"
+                    >
+                      <span className="min-w-0 truncate text-slate-700">{r.property.address1}</span>
+                      <Button variant="outline" size="sm" className="h-6 shrink-0 px-2 text-[10px]" asChild>
+                        <Link href={`/open-houses/${r.id}/report`}>Report</Link>
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <p className="mb-1 text-[10px] font-semibold uppercase text-slate-500">Feedback</p>
+              {pendingFeedbackRequests.length === 0 ? (
+                <p className="text-[11px] text-slate-500">No pending requests.</p>
+              ) : (
+                <ul>
+                  {pendingFeedbackRequests.slice(0, 4).map((fr) => (
+                    <li
+                      key={fr.id}
+                      className="flex items-center justify-between gap-2 border-b border-slate-50 py-1.5 text-[11px] last:border-0"
+                    >
+                      <span className="min-w-0 truncate text-slate-700">{fr.property.address1}</span>
+                      <Button variant="outline" size="sm" className="h-6 shrink-0 px-2 text-[10px]" asChild>
+                        <Link href="/showing-hq/feedback-requests">Open</Link>
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="pt-1">
+              <Button variant="ghost" size="sm" className="h-7 w-full text-[11px]" asChild>
+                <Link href="/showing-hq/feedback-requests">
+                  <CalendarDays className="mr-1 h-3.5 w-3.5" />
+                  Feedback queue
+                </Link>
+              </Button>
+            </div>
+          </div>
         </BrandCard>
-      )}
+      </div>
     </div>
   );
 }

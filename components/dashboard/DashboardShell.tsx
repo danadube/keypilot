@@ -1,16 +1,28 @@
 "use client";
 
 import * as React from "react";
+import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { ProductTierProvider } from "@/components/ProductTierProvider";
 import { TopModuleNav } from "@/components/layout/TopModuleNav";
 import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
+
+/** ShowingHQ + open-houses use sidebar-first nav; hide module tab bar there */
+function useHideTopModuleNav(): boolean {
+  const pathname = usePathname() ?? "";
+  return (
+    pathname === "/showing-hq" ||
+    pathname.startsWith("/showing-hq/") ||
+    pathname.startsWith("/open-houses")
+  );
+}
 
 const HEADER_HEIGHT = 64;
 /** Fixed width for profile/actions — prevents overlap with module tabs */
 const HEADER_RIGHT_WIDTH = 80;
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
+  const hideTopNav = useHideTopModuleNav();
   return (
     <ProductTierProvider>
     <div className="flex min-h-screen bg-[var(--brand-bg)]">
@@ -27,7 +39,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             className="flex min-w-0 flex-1 items-center overflow-hidden pl-6 pr-4"
             style={{ maxWidth: `calc(100% - ${HEADER_RIGHT_WIDTH}px)` }}
           >
-            <TopModuleNav />
+            {hideTopNav ? (
+              <span className="truncate text-sm font-medium text-slate-600" aria-hidden />
+            ) : (
+              <TopModuleNav />
+            )}
           </div>
           <div
             className="flex shrink-0 items-center justify-end gap-3 border-l border-[var(--brand-border)] bg-[var(--brand-surface)] pl-4 pr-4"

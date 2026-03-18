@@ -20,6 +20,8 @@ export async function GET() {
     todayEnd.setDate(todayEnd.getDate() + 1);
     const weekEnd = new Date(today);
     weekEnd.setDate(weekEnd.getDate() + 14);
+    const horizon7End = new Date(todayStart);
+    horizon7End.setDate(horizon7End.getDate() + 7);
     const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
     const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0, 23, 59, 59);
 
@@ -41,6 +43,10 @@ export async function GET() {
       feedbackRequestsPendingCount,
       pendingFeedbackRequests,
       recentReportsOpenHouses,
+      visitorsThisMonthCount,
+      upcomingEventsOh7d,
+      upcomingEventsShowings7d,
+      newContactsThisMonthCount,
     ] = await Promise.all([
       prisma.openHouse.findMany({
         where: {
@@ -192,6 +198,43 @@ export async function GET() {
         include: {
           property: { select: { address1: true, city: true } },
           _count: { select: { visitors: true } },
+        },
+      }),
+      prisma.openHouseVisitor.count({
+        where: {
+          submittedAt: { gte: monthStart },
+          openHouse: { hostUserId: user.id, deletedAt: null },
+        },
+      }),
+      prisma.openHouse.count({
+        where: {
+          hostUserId: user.id,
+          deletedAt: null,
+          status: { in: ["SCHEDULED", "ACTIVE"] },
+          startAt: { gte: todayStart, lt: horizon7End },
+        },
+      }),
+      prisma.showing.count({
+        where: {
+          hostUserId: user.id,
+          deletedAt: null,
+          scheduledAt: { gte: todayStart, lt: horizon7End },
+        },
+      }),
+      prisma.contact.count({
+        where: {
+          deletedAt: null,
+          createdAt: { gte: monthStart },
+          OR: [
+            { assignedToUserId: user.id },
+            {
+              openHouseVisits: {
+                some: {
+                  openHouse: { hostUserId: user.id, deletedAt: null },
+                },
+              },
+            },
+          ],
         },
       }),
     ]);
@@ -356,6 +399,13 @@ export async function GET() {
           property: oh.property,
           visitorCount: (oh as { _count?: { visitors: number } })._count?.visitors ?? 0,
         })),
+        workbenchKpis: {
+          upcomingEvents7d: upcomingEventsOh7d + upcomingEventsShowings7d,
+          visitorsThisMonth: visitorsThisMonthCount,
+          newContactsThisMonth: newContactsThisMonthCount,
+          followUpsPending: followUpTasksCount,
+          reportsReady: recentReportsOpenHouses.length,
+        },
         stats: {
           totalVisitors: totalVisitorsCount,
           totalOpenHouses: openHousesCount,
