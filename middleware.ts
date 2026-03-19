@@ -19,6 +19,13 @@ const isPublicRoute = createRouteMatcher([
 export default clerkMiddleware(async (auth, req) => {
   const pathname = req.nextUrl.pathname;
   const isLocalDebug = process.env.NODE_ENV !== "production";
+
+  // Hard bypass for local diagnostics endpoint so Clerk middleware cannot intercept.
+  // Security remains enforced by the route's x-rls-diagnostics secret-header guard.
+  if (pathname === "/api/v1/debug/rls-context") {
+    return NextResponse.next();
+  }
+
   if (isLocalDebug && pathname === "/api/v1/debug/rls-context") {
     // eslint-disable-next-line no-console
     console.log("[middleware] incoming /api/v1/debug/rls-context", {
