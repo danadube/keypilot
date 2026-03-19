@@ -36,8 +36,10 @@ const TABLES_TO_INSPECT = [
 ] as const;
 
 export async function GET(req: NextRequest) {
-  const isLocalDebug = process.env.NODE_ENV !== "production";
-  if (isLocalDebug) {
+  const isVerboseDebug =
+    process.env.NODE_ENV !== "production" || process.env.VERCEL_ENV === "preview";
+
+  if (isVerboseDebug) {
     // eslint-disable-next-line no-console
     console.log("HIT RLS DEBUG ROUTE", {
       method: req.method,
@@ -68,10 +70,11 @@ export async function GET(req: NextRequest) {
 
   // Guard: missing env secret should only 404 in production.
   if (!secretPresent) {
-    if (isLocalDebug) {
+    if (isVerboseDebug) {
       // eslint-disable-next-line no-console
       console.warn("[rls-context guard] missing_env_secret", {
         nodeEnv: process.env.NODE_ENV,
+        vercelEnv: process.env.VERCEL_ENV,
         providedPresent,
         providedLen: provided?.length ?? 0,
       });
@@ -84,11 +87,12 @@ export async function GET(req: NextRequest) {
   }
 
   if (!providedPresent) {
-    if (isLocalDebug) {
+    if (isVerboseDebug) {
       // eslint-disable-next-line no-console
       console.warn("[rls-context guard] missing_header", {
         secretPresent,
         nodeEnv: process.env.NODE_ENV,
+        vercelEnv: process.env.VERCEL_ENV,
       });
       return NextResponse.json(
         { error: { code: "missing_header", message: "x-rls-diagnostics header is missing" } },
@@ -99,13 +103,14 @@ export async function GET(req: NextRequest) {
   }
 
   if (!match) {
-    if (isLocalDebug) {
+    if (isVerboseDebug) {
       // eslint-disable-next-line no-console
       console.warn("[rls-context guard] header_mismatch", {
         secretPresent,
         providedPresent,
         providedLen: provided?.length ?? 0,
         secretLen: secret?.length ?? 0,
+        vercelEnv: process.env.VERCEL_ENV,
       });
       return NextResponse.json(
         { error: { code: "header_mismatch", message: "x-rls-diagnostics does not match" } },
@@ -115,7 +120,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: { message: "Forbidden" } }, { status: 403 });
   }
 
-  if (isLocalDebug) {
+  if (isVerboseDebug) {
     // eslint-disable-next-line no-console
     console.log("[rls-context guard] passed", {
       secretPresent,
@@ -123,6 +128,7 @@ export async function GET(req: NextRequest) {
       match,
       providedLen: provided?.length ?? 0,
       secretLen: secret?.length ?? 0,
+      vercelEnv: process.env.VERCEL_ENV,
     });
   }
 
