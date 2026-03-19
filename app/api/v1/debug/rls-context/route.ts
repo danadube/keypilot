@@ -37,9 +37,27 @@ const TABLES_TO_INSPECT = [
 
 export async function GET(req: NextRequest) {
   const secret = process.env.RLS_DIAGNOSTICS_SECRET;
+  const provided = req.headers.get("x-rls-diagnostics");
+
+  // Temporary local diagnostics: do not reveal the full secret.
+  // Keep behavior unchanged otherwise (logging only).
+  if (process.env.NODE_ENV !== "production") {
+    const secretPresent = Boolean(secret);
+    const providedPresent = Boolean(provided);
+    const match = Boolean(secret && provided && provided === secret);
+    // Mask by length to avoid leaking.
+    // eslint-disable-next-line no-console
+    console.debug("[rls-context guard]", {
+      secretPresent,
+      providedPresent,
+      providedLen: provided?.length ?? 0,
+      secretLen: secret?.length ?? 0,
+      match,
+    });
+  }
+
   if (!secret) return new NextResponse("Not found", { status: 404 });
 
-  const provided = req.headers.get("x-rls-diagnostics");
   if (!provided || provided !== secret) {
     return NextResponse.json({ error: { message: "Forbidden" } }, { status: 403 });
   }
