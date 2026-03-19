@@ -38,13 +38,15 @@ const TABLES_TO_INSPECT = [
 export async function GET(req: NextRequest) {
   const secret = process.env.RLS_DIAGNOSTICS_SECRET;
   const provided = req.headers.get("x-rls-diagnostics");
+  const isLocalDebug = process.env.NODE_ENV !== "production";
+
+  const secretPresent = Boolean(secret);
+  const providedPresent = Boolean(provided);
+  const match = Boolean(secretPresent && providedPresent && provided === secret);
 
   // Temporary local diagnostics: do not reveal the full secret.
   // Keep behavior unchanged otherwise (logging only).
   if (process.env.NODE_ENV !== "production") {
-    const secretPresent = Boolean(secret);
-    const providedPresent = Boolean(provided);
-    const match = Boolean(secret && provided && provided === secret);
     // Mask by length to avoid leaking.
     // eslint-disable-next-line no-console
     console.debug("[rls-context guard]", {
@@ -56,9 +58,52 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  if (!secret) return new NextResponse("Not found", { status: 404 });
+  // Guard: missing env secret should only 404 in production.
+  if (!secretPresent) {
+    if (isLocalDebug) {
+      // eslint-disable-next-line no-console
+      console.warn("[rls-context guard] missing_env_secret", {
+        nodeEnv: process.env.NODE_ENV,
+        providedPresent,
+        providedLen: provided?.length ?? 0,
+      });
+      return NextResponse.json(
+        { error: { code: "missing_env_secret", message: "RLS_DIAGNOSTICS_SECRET is not set" } },
+        { status: 404 }
+      );
+    }
+    return new NextResponse("Not found", { status: 404 });
+  }
 
-  if (!provided || provided !== secret) {
+  if (!providedPresent) {
+    if (isLocalDebug) {
+      // eslint-disable-next-line no-console
+      console.warn("[rls-context guard] missing_header", {
+        secretPresent,
+        nodeEnv: process.env.NODE_ENV,
+      });
+      return NextResponse.json(
+        { error: { code: "missing_header", message: "x-rls-diagnostics header is missing" } },
+        { status: 403 }
+      );
+    }
+    return NextResponse.json({ error: { message: "Forbidden" } }, { status: 403 });
+  }
+
+  if (!match) {
+    if (isLocalDebug) {
+      // eslint-disable-next-line no-console
+      console.warn("[rls-context guard] header_mismatch", {
+        secretPresent,
+        providedPresent,
+        providedLen: provided?.length ?? 0,
+        secretLen: secret?.length ?? 0,
+      });
+      return NextResponse.json(
+        { error: { code: "header_mismatch", message: "x-rls-diagnostics does not match" } },
+        { status: 403 }
+      );
+    }
     return NextResponse.json({ error: { message: "Forbidden" } }, { status: 403 });
   }
 
