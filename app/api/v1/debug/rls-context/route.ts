@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
     `
       select
         tablename,
-        polname,
+        policyname as polname,
         roles,
         cmd,
         qual,
@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
       from pg_policies
       where schemaname = 'public'
         and tablename in (${inList})
-      order by tablename, polname
+      order by tablename, policyname
     `
   );
 
