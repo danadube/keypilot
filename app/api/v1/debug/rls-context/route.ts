@@ -36,9 +36,17 @@ const TABLES_TO_INSPECT = [
 ] as const;
 
 export async function GET(req: NextRequest) {
+  const isLocalDebug = process.env.NODE_ENV !== "production";
+  if (isLocalDebug) {
+    // eslint-disable-next-line no-console
+    console.log("HIT RLS DEBUG ROUTE", {
+      method: req.method,
+      pathname: req.nextUrl?.pathname ?? null,
+    });
+  }
+
   const secret = process.env.RLS_DIAGNOSTICS_SECRET;
   const provided = req.headers.get("x-rls-diagnostics");
-  const isLocalDebug = process.env.NODE_ENV !== "production";
 
   const secretPresent = Boolean(secret);
   const providedPresent = Boolean(provided);
@@ -105,6 +113,17 @@ export async function GET(req: NextRequest) {
       );
     }
     return NextResponse.json({ error: { message: "Forbidden" } }, { status: 403 });
+  }
+
+  if (isLocalDebug) {
+    // eslint-disable-next-line no-console
+    console.log("[rls-context guard] passed", {
+      secretPresent,
+      providedPresent,
+      match,
+      providedLen: provided?.length ?? 0,
+      secretLen: secret?.length ?? 0,
+    });
   }
 
   const inList = TABLES_TO_INSPECT.map((t) => `'${t}'`).join(", ");

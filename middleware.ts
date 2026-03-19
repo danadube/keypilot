@@ -10,14 +10,32 @@ const isPublicRoute = createRouteMatcher([
   "/api/v1/visitor-signin",
   "/api/v1/auth/webhook",
   "/api/v1/open-houses/by-slug/(.*)",
-  "/api/v1/debug/rls-context",
+  "/api/v1/debug/rls-context(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/styleguide",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isPublicRoute(req)) return;
+  const pathname = req.nextUrl.pathname;
+  const isLocalDebug = process.env.NODE_ENV !== "production";
+  if (isLocalDebug && pathname === "/api/v1/debug/rls-context") {
+    // eslint-disable-next-line no-console
+    console.log("[middleware] incoming /api/v1/debug/rls-context", {
+      pathname,
+      method: req.method,
+      isPublic: isPublicRoute(req),
+    });
+  }
+
+  const isPublic = isPublicRoute(req);
+  if (isPublic) {
+    if (isLocalDebug && pathname === "/api/v1/debug/rls-context") {
+      // eslint-disable-next-line no-console
+      console.log("[middleware] public route — skipping Clerk auth");
+    }
+    return;
+  }
   const { userId } = await auth();
   if (!userId) {
     const signInUrl = new URL("/sign-in", req.url);
