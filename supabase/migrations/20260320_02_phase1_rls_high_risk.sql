@@ -1,40 +1,81 @@
+-- ═══════════════════════════════════════════════════════════════════════════
 -- Phase 1b — RLS policies for highest-risk tables
+-- ═══════════════════════════════════════════════════════════════════════════
 --
--- Tables hardened in this migration:
---   connections      — stores OAuth accessToken + refreshToken in plaintext
---   feedback_requests — stores token column used for public form auth
---   users            — auth identity (email, clerkId, role, productTier)
---   user_profiles    — PII: phone, brokerage, headshot URL
+-- TABLES HARDENED HERE
 --
--- Security model:
---   - Policies target `keypilot_app` role ONLY (not `anon` or `authenticated`).
---   - `postgres` (BYPASSRLS=true) is unaffected; existing routes keep working.
---   - Public routes (feedback form by token) run as `postgres` and bypass RLS.
---   - Authenticated routes using withRLSContext switch to keypilot_app and
---     RLS is enforced for them.
+--   connections        accessToken + refreshToken in plaintext — highest risk
+--   feedback_requests  token column used for public form authentication
+--   users              auth identity: email, clerkId, role, productTier
+--   user_profiles      PII: phone, brokerage name, headshot URL, logo URL
 --
--- Key difference from the old Supabase migration (20260318_rls_deny_by_default_keypilot.sql):
---   - Does NOT use auth.uid() (Supabase-specific, returns null for Prisma/Clerk traffic)
---   - Uses app.current_user_id() — set by Prisma withRLSContext per-transaction
---   - Policies are for keypilot_app, not `authenticated`
+-- SECURITY MODEL
 --
--- Rollback (undo this migration):
+--   Policies target `keypilot_app` ONLY (not `anon`, `authenticated`, or `public`).
+--   `postgres` (rolbypassrls = true) is unaffected — all existing Prisma routes
+--   that have not yet been updated to withRLSContext continue to work unchanged.
+--
+--   Public routes (e.g. feedback form by token, visitor sign-in) run as postgres
+--   and bypass RLS entirely. They are protected by app-level logic and are
+--   outside the scope of these policies.
+--
+--   Authenticated routes that use withRLSContext switch to keypilot_app.
+--   These policies then enforce that the queried rows belong to the caller.
+--
+-- POLICY IDENTITY FUNCTION
+--
+--   All policies use app.current_user_id() instead of auth.uid().
+--   auth.uid() is Supabase-specific and returns NULL for Prisma/Clerk traffic.
+--   app.current_user_id() reads a transaction-local GUC set by withRLSContext.
+--
+-- ─── ROLLBACK ────────────────────────────────────────────────────────────────
+--
+--   Run these statements in order to completely undo this migration:
+--
 --   ALTER TABLE public."connections"       DISABLE ROW LEVEL SECURITY;
 --   ALTER TABLE public."feedback_requests" DISABLE ROW LEVEL SECURITY;
 --   ALTER TABLE public."users"             DISABLE ROW LEVEL SECURITY;
 --   ALTER TABLE public."user_profiles"     DISABLE ROW LEVEL SECURITY;
---   -- All DROP POLICY statements are emitted before each CREATE POLICY below;
---   -- re-running after ALTER TABLE DISABLE removes policy metadata too.
 --
--- Validation (run after applying):
---   SELECT tablename, policyname, roles, cmd
---   FROM pg_policies
---   WHERE schemaname = 'public'
---     AND tablename IN ('connections','feedback_requests','users','user_profiles')
---   ORDER BY tablename, policyname;
---   -- Expected: 4 policies per table (select/insert/update/delete) for connections,
---   --           4 for feedback_requests, 2 for users (no insert — created by webhook),
---   --           4 for user_profiles.
+--   DROP POLICY IF EXISTS connections_select_own       ON public."connections";
+--   DROP POLICY IF EXISTS connections_insert_own       ON public."connections";
+--   DROP POLICY IF EXISTS connections_update_own       ON public."connections";
+--   DROP POLICY IF EXISTS connections_delete_own       ON public."connections";
+--
+--   DROP POLICY IF EXISTS feedback_requests_select_host ON public."feedback_requests";
+--   DROP POLICY IF EXISTS feedback_requests_insert_host ON public."feedback_requests";
+--   DROP POLICY IF EXISTS feedback_requests_update_host ON public."feedback_requests";
+--   DROP POLICY IF EXISTS feedback_requests_delete_host ON public."feedback_requests";
+--
+--   DROP POLICY IF EXISTS users_select_own  ON public."users";
+--   DROP POLICY IF EXISTS users_update_own  ON public."users";
+--
+--   DROP POLICY IF EXISTS user_profiles_select_own  ON public."user_profiles";
+--   DROP POLICY IF EXISTS user_profiles_insert_own  ON public."user_profiles";
+--   DROP POLICY IF EXISTS user_profiles_update_own  ON public."user_profiles";
+--   DROP POLICY IF EXISTS user_profiles_delete_own  ON public."user_profiles";
+--
+-- ─── VALIDATION ──────────────────────────────────────────────────────────────
+--
+--   -- Confirm RLS is enabled and policies exist
+--   SELECT tablename, relrowsecurity, COUNT(policyname) AS policy_count
+--   FROM pg_policies p
+--   JOIN pg_class c ON c.relname = p.tablename
+--   JOIN pg_namespace n ON n.oid = c.relnamespace
+--   WHERE p.schemaname = 'public'
+--     AND p.tablename IN ('connections','feedback_requests','users','user_profiles')
+--     AND n.nspname = 'public'
+--   GROUP BY tablename, relrowsecurity
+--   ORDER BY tablename;
+--
+--   Expected output:
+--     connections        | true | 4
+--     feedback_requests  | true | 4
+--     users              | true | 2
+--     user_profiles      | true | 4
+--
+--   Run scripts/validate-rls-phase1.sql for full cross-user isolation proof.
+-- ═══════════════════════════════════════════════════════════════════════════
 
 begin;
 
@@ -44,43 +85,38 @@ begin;
 
 alter table public."connections" enable row level security;
 
-drop policy if exists connections_select_own    on public."connections";
-drop policy if exists connections_insert_own    on public."connections";
-drop policy if exists connections_update_own    on public."connections";
-drop policy if exists connections_delete_own    on public."connections";
+drop policy if exists connections_select_own on public."connections";
+drop policy if exists connections_insert_own on public."connections";
+drop policy if exists connections_update_own on public."connections";
+drop policy if exists connections_delete_own on public."connections";
 
--- An agent may only see their own connection records.
--- accessToken/refreshToken columns are included — filtered to owner only.
 create policy connections_select_own
   on public."connections"
   for select to keypilot_app
   using ("userId" = app.current_user_id());
 
--- Insert: agent can only create connections for themselves.
 create policy connections_insert_own
   on public."connections"
   for insert to keypilot_app
   with check ("userId" = app.current_user_id());
 
--- Update: agent can only modify their own connections.
 create policy connections_update_own
   on public."connections"
   for update to keypilot_app
   using  ("userId" = app.current_user_id())
   with check ("userId" = app.current_user_id());
 
--- Delete: agent can only disconnect their own accounts.
 create policy connections_delete_own
   on public."connections"
   for delete to keypilot_app
   using ("userId" = app.current_user_id());
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 2) feedback_requests  (contains `token` column used for public form auth)
+-- 2) feedback_requests  (contains token column for public form authentication)
 -- ─────────────────────────────────────────────────────────────────────────────
 --
--- Note: public form routes (feedback/by-token, feedback/submit) run as postgres
--- (BYPASSRLS) and are NOT affected by these policies.
+-- Public form routes (feedback/by-token, feedback/submit) run as postgres
+-- (BYPASSRLS) and are unaffected by these policies.
 
 alter table public."feedback_requests" enable row level security;
 
@@ -111,25 +147,23 @@ create policy feedback_requests_delete_host
   using ("hostUserId" = app.current_user_id());
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 3) users  (auth identity — email, clerkId, role, productTier, moduleAccess)
+-- 3) users  (auth identity: email, clerkId, role, productTier, moduleAccess)
 -- ─────────────────────────────────────────────────────────────────────────────
 --
--- No INSERT policy: user rows are created by the Clerk webhook route which runs
--- as postgres (BYPASSRLS). app code never inserts directly.
--- No DELETE policy: users are never deleted via app logic.
+-- INSERT: omitted intentionally. User rows are created by the Clerk webhook
+--         route, which runs as postgres (BYPASSRLS) and never needs this policy.
+-- DELETE: omitted intentionally. App code never deletes user rows.
 
 alter table public."users" enable row level security;
 
 drop policy if exists users_select_own on public."users";
 drop policy if exists users_update_own on public."users";
 
--- An agent may only read their own user row.
 create policy users_select_own
   on public."users"
   for select to keypilot_app
   using ("id" = app.current_user_id());
 
--- An agent may only update their own user row (e.g. name, email sync).
 create policy users_update_own
   on public."users"
   for update to keypilot_app
@@ -137,7 +171,7 @@ create policy users_update_own
   with check ("id" = app.current_user_id());
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- 4) user_profiles  (branding PII: phone, brokerage, headshot URL, logo URL)
+-- 4) user_profiles  (PII: phone, brokerage, headshot URL, logo URL)
 -- ─────────────────────────────────────────────────────────────────────────────
 
 alter table public."user_profiles" enable row level security;
