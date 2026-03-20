@@ -39,14 +39,15 @@ begin;
 do $$
 declare
   -- Deterministic test user IDs for easy debugging
-  uid_a        uuid := gen_random_uuid();
-  uid_b        uuid := gen_random_uuid();
+  -- All ID columns in this schema are text (Prisma cuid/string), not uuid.
+  uid_a        text := gen_random_uuid()::text;
+  uid_b        text := gen_random_uuid()::text;
 
   -- Supporting FK chain for feedback_requests
-  prop_a       uuid := gen_random_uuid();
-  prop_b       uuid := gen_random_uuid();
-  show_a       uuid := gen_random_uuid();
-  show_b       uuid := gen_random_uuid();
+  prop_a       text := gen_random_uuid()::text;
+  prop_b       text := gen_random_uuid()::text;
+  show_a       text := gen_random_uuid()::text;
+  show_b       text := gen_random_uuid()::text;
 
   n            int;
   pass_count   int := 0;
@@ -58,34 +59,34 @@ begin
   -- SETUP — insert test data as postgres (rolbypassrls = true)
   -- ═══════════════════════════════════════════════════════════════════
 
-  insert into public."users" (id, "clerkId", name, email, role, "productTier")
+  insert into public."users" (id, "clerkId", name, email, role, "productTier", "updatedAt")
   values
-    (uid_a, 'ck_rlstest_a_' || uid_a::text, 'RLS Test A', 'rls-a+' || uid_a::text || '@test.invalid', 'agent', 'OPEN_HOUSE'),
-    (uid_b, 'ck_rlstest_b_' || uid_b::text, 'RLS Test B', 'rls-b+' || uid_b::text || '@test.invalid', 'agent', 'OPEN_HOUSE');
+    (uid_a, 'ck_rlstest_a_' || uid_a, 'RLS Test A', 'rls-a+' || uid_a || '@test.invalid', 'agent', 'OPEN_HOUSE', now()),
+    (uid_b, 'ck_rlstest_b_' || uid_b, 'RLS Test B', 'rls-b+' || uid_b || '@test.invalid', 'agent', 'OPEN_HOUSE', now());
 
-  insert into public."user_profiles" (id, "userId")
-  values (gen_random_uuid(), uid_a), (gen_random_uuid(), uid_b);
+  insert into public."user_profiles" (id, "userId", "updatedAt")
+  values (gen_random_uuid()::text, uid_a, now()), (gen_random_uuid()::text, uid_b, now());
 
-  insert into public."connections" (id, "userId", provider, service, status)
+  insert into public."connections" (id, "userId", provider, service, status, "updatedAt")
   values
-    (gen_random_uuid(), uid_a, 'GOOGLE', 'GMAIL', 'CONNECTED'),
-    (gen_random_uuid(), uid_b, 'GOOGLE', 'GMAIL', 'CONNECTED');
+    (gen_random_uuid()::text, uid_a, 'GOOGLE', 'GMAIL', 'CONNECTED', now()),
+    (gen_random_uuid()::text, uid_b, 'GOOGLE', 'GMAIL', 'CONNECTED', now());
 
   -- FK chain: property → showing → feedback_request
-  insert into public."properties" (id, "createdByUserId", address1, city, state, zip)
+  insert into public."properties" (id, "createdByUserId", address1, city, state, zip, "updatedAt")
   values
-    (prop_a, uid_a, '1 RLS Test Ave', 'Testville', 'CA', '00001'),
-    (prop_b, uid_b, '2 RLS Test Ave', 'Testville', 'CA', '00002');
+    (prop_a, uid_a, '1 RLS Test Ave', 'Testville', 'CA', '00001', now()),
+    (prop_b, uid_b, '2 RLS Test Ave', 'Testville', 'CA', '00002', now());
 
-  insert into public."showings" (id, "propertyId", "hostUserId", "scheduledAt", source)
+  insert into public."showings" (id, "propertyId", "hostUserId", "scheduledAt", "updatedAt")
   values
-    (show_a, prop_a, uid_a, now() + interval '1 day', 'MANUAL'),
-    (show_b, prop_b, uid_b, now() + interval '1 day', 'MANUAL');
+    (show_a, prop_a, uid_a, now() + interval '1 day', now()),
+    (show_b, prop_b, uid_b, now() + interval '1 day', now());
 
-  insert into public."feedback_requests" (id, "showingId", "propertyId", "hostUserId", token, status)
+  insert into public."feedback_requests" (id, "showingId", "propertyId", "hostUserId", token, status, "updatedAt")
   values
-    (gen_random_uuid(), show_a, prop_a, uid_a, 'rlstest-tok-a-' || uid_a::text, 'PENDING'),
-    (gen_random_uuid(), show_b, prop_b, uid_b, 'rlstest-tok-b-' || uid_b::text, 'PENDING');
+    (gen_random_uuid()::text, show_a, prop_a, uid_a, 'rlstest-tok-a-' || uid_a, 'PENDING', now()),
+    (gen_random_uuid()::text, show_b, prop_b, uid_b, 'rlstest-tok-b-' || uid_b, 'PENDING', now());
 
   raise notice '';
   raise notice '══════════════════════════════════════════════════════════';
@@ -99,7 +100,7 @@ begin
   raise notice '';
   raise notice '─── Block 1: User A context ───────────────────────────────';
 
-  perform set_config('app.current_user_id', uid_a::text, true);
+  perform set_config('app.current_user_id', uid_a, true);
   set local role keypilot_app;
 
   -- connections
@@ -187,7 +188,7 @@ begin
   raise notice '';
   raise notice '─── Block 2: User B context ───────────────────────────────';
 
-  perform set_config('app.current_user_id', uid_b::text, true);
+  perform set_config('app.current_user_id', uid_b, true);
   set local role keypilot_app;
 
   select count(*) into n from public."connections" where "userId" = uid_b;
@@ -278,7 +279,7 @@ begin
   raise notice '─── Block 3: Write isolation ──────────────────────────────';
 
   -- Test 3a: user_a cannot INSERT a connection owned by user_b
-  perform set_config('app.current_user_id', uid_a::text, true);
+  perform set_config('app.current_user_id', uid_a, true);
   set local role keypilot_app;
   begin
     insert into public."connections" (id, "userId", provider, service, status)
@@ -292,7 +293,7 @@ begin
   reset role;
 
   -- Test 3b: user_a cannot INSERT a user_profile owned by user_b
-  perform set_config('app.current_user_id', uid_a::text, true);
+  perform set_config('app.current_user_id', uid_a, true);
   set local role keypilot_app;
   begin
     insert into public."user_profiles" (id, "userId")
@@ -308,7 +309,7 @@ begin
   -- Test 3c: user_a cannot UPDATE user_b's users row
   -- UPDATE with a non-matching USING policy silently affects 0 rows (no error).
   -- GET DIAGNOSTICS captures the row count.
-  perform set_config('app.current_user_id', uid_a::text, true);
+  perform set_config('app.current_user_id', uid_a, true);
   set local role keypilot_app;
   update public."users" set name = 'Tampered' where id = uid_b;
   get diagnostics n = row_count;
