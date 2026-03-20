@@ -257,36 +257,38 @@ drop policy if exists contacts_select_own on public."contacts";
 drop policy if exists contacts_update_own on public."contacts";
 drop policy if exists contacts_delete_own on public."contacts";
 
+-- NOTE: Do NOT use EXISTS with a subquery alias here.
+-- Using `exists(select 1 from open_house_visitors ohv where ohv."contactId" = id)`
+-- causes Postgres to resolve unqualified `id` as `ohv.id` (the alias's PK, in scope
+-- inside the subquery), not `contacts.id`. The policy compiles silently but is always
+-- false. Use IN (SELECT ...) instead: `id` is in the outer USING scope = contacts.id.
+
 create policy contacts_select_own
   on public."contacts" for select to keypilot_app
   using (
-    exists (
-      select 1 from public."open_house_visitors" ohv
-      where ohv."contactId" = id
+    id in (
+      select "contactId" from public."open_house_visitors"
     )
   );
 
 create policy contacts_update_own
   on public."contacts" for update to keypilot_app
   using (
-    exists (
-      select 1 from public."open_house_visitors" ohv
-      where ohv."contactId" = id
+    id in (
+      select "contactId" from public."open_house_visitors"
     )
   )
   with check (
-    exists (
-      select 1 from public."open_house_visitors" ohv
-      where ohv."contactId" = id
+    id in (
+      select "contactId" from public."open_house_visitors"
     )
   );
 
 create policy contacts_delete_own
   on public."contacts" for delete to keypilot_app
   using (
-    exists (
-      select 1 from public."open_house_visitors" ohv
-      where ohv."contactId" = id
+    id in (
+      select "contactId" from public."open_house_visitors"
     )
   );
 
