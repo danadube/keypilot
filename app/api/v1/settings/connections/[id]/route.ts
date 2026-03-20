@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { withRLSContext } from "@/lib/db-context";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import { z } from "zod";
 
@@ -26,35 +26,43 @@ export async function PATCH(
     const body = await req.json();
     const data = PATCH_BODY.parse(body);
 
-    const conn = await prisma.connection.findFirst({
-      where: { id, userId: user.id },
+    // withRLSContext runs the entire operation inside one transaction as
+    // keypilot_app, so RLS policies enforce that conn.userId === user.id at
+    // the DB level. The findFirst + updateMany + update are also atomic.
+    const found = await withRLSContext(user.id, async (tx) => {
+      const conn = await tx.connection.findFirst({
+        where: { id, userId: user.id },
+      });
+      if (!conn) return null;
+
+      if (data.isDefault === true) {
+        await tx.connection.updateMany({
+          where: { userId: user.id, provider: conn.provider },
+          data: { isDefault: false },
+        });
+      }
+
+      await tx.connection.update({
+        where: { id },
+        data: {
+          ...(data.isDefault !== undefined && { isDefault: data.isDefault }),
+          ...(data.isEnabled !== undefined && { isEnabled: data.isEnabled }),
+          ...(data.enabledForAi !== undefined && { enabledForAi: data.enabledForAi }),
+          ...(data.enabledForCalendar !== undefined && { enabledForCalendar: data.enabledForCalendar }),
+          ...(data.enabledForPriorityInbox !== undefined && { enabledForPriorityInbox: data.enabledForPriorityInbox }),
+          ...(data.accountLabel !== undefined && { accountLabel: data.accountLabel }),
+        },
+      });
+
+      return true;
     });
 
-    if (!conn) {
+    if (!found) {
       return NextResponse.json(
         { error: { message: "Connection not found" } },
         { status: 404 }
       );
     }
-
-    if (data.isDefault === true) {
-      await prisma.connection.updateMany({
-        where: { userId: user.id, provider: conn.provider },
-        data: { isDefault: false },
-      });
-    }
-
-    await prisma.connection.update({
-      where: { id },
-      data: {
-        ...(data.isDefault !== undefined && { isDefault: data.isDefault }),
-        ...(data.isEnabled !== undefined && { isEnabled: data.isEnabled }),
-        ...(data.enabledForAi !== undefined && { enabledForAi: data.enabledForAi }),
-        ...(data.enabledForCalendar !== undefined && { enabledForCalendar: data.enabledForCalendar }),
-        ...(data.enabledForPriorityInbox !== undefined && { enabledForPriorityInbox: data.enabledForPriorityInbox }),
-        ...(data.accountLabel !== undefined && { accountLabel: data.accountLabel }),
-      },
-    });
 
     return NextResponse.json({ data: { success: true } });
   } catch (e) {
@@ -71,20 +79,22 @@ export async function DELETE(
     const user = await getCurrentUser();
     const { id } = await params;
 
-    const conn = await prisma.connection.findFirst({
-      where: { id, userId: user.id },
+    const found = await withRLSContext(user.id, async (tx) => {
+      const conn = await tx.connection.findFirst({
+        where: { id, userId: user.id },
+      });
+      if (!conn) return null;
+
+      await tx.connection.delete({ where: { id } });
+      return true;
     });
 
-    if (!conn) {
+    if (!found) {
       return NextResponse.json(
         { error: { message: "Connection not found" } },
         { status: 404 }
       );
     }
-
-    await prisma.connection.delete({
-      where: { id },
-    });
 
     return NextResponse.json({ data: { success: true } });
   } catch (e) {
