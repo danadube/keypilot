@@ -74,6 +74,11 @@ export async function POST(req: NextRequest) {
       include: { property: true, listingAgent: true, hostAgent: true },
     });
 
+    // Sync denormalized columns → open_house_hosts junction table.
+    // RLS on open_house_hosts cascades through open_houses, which checks the
+    // denormalized columns (listingAgentId, hostAgentId) as the access authority.
+    // Both columns must be reflected in the junction table so queries against
+    // open_house_hosts (e.g. "who are the hosts?") stay consistent.
     await prisma.openHouseHost.upsert({
       where: {
         openHouseId_userId: { openHouseId: openHouse.id, userId: listingAgentId },
@@ -85,6 +90,19 @@ export async function POST(req: NextRequest) {
       },
       update: { role: "LISTING_AGENT" },
     });
+    if (hostAgentId !== listingAgentId) {
+      await prisma.openHouseHost.upsert({
+        where: {
+          openHouseId_userId: { openHouseId: openHouse.id, userId: hostAgentId },
+        },
+        create: {
+          openHouseId: openHouse.id,
+          userId: hostAgentId,
+          role: "HOST_AGENT",
+        },
+        update: { role: "HOST_AGENT" },
+      });
+    }
     const address = [
       openHouse.property.address1,
       openHouse.property.city,
