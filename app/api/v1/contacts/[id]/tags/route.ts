@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { withRLSContext } from "@/lib/db-context";
 import { getCurrentUser } from "@/lib/auth";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { AddTagToContactSchema } from "@/lib/validations/tag";
@@ -35,10 +36,12 @@ export async function GET(
       return apiError("Contact not found", 404);
     }
 
-    const contactTags = await prisma.contactTag.findMany({
-      where: { contactId },
-      include: { tag: true },
-    });
+    const contactTags = await withRLSContext(user.id, (tx) =>
+      tx.contactTag.findMany({
+        where: { contactId },
+        include: { tag: true },
+      })
+    );
     return NextResponse.json({ data: contactTags.map((ct) => ct.tag) });
   } catch (err) {
     return apiErrorFromCaught(err);
@@ -69,21 +72,18 @@ export async function POST(
       );
     }
 
-    const tag = await prisma.tag.upsert({
-      where: {
-        name_userId: { name: parsed.data.tagName, userId: user.id },
-      },
-      create: { name: parsed.data.tagName, userId: user.id },
-      update: {},
-    });
-
-    const contactTag = await prisma.contactTag.upsert({
-      where: {
-        contactId_tagId: { contactId, tagId: tag.id },
-      },
-      create: { contactId, tagId: tag.id },
-      update: {},
-      include: { tag: true },
+    const contactTag = await withRLSContext(user.id, async (tx) => {
+      const tag = await tx.tag.upsert({
+        where: { name_userId: { name: parsed.data.tagName, userId: user.id } },
+        create: { name: parsed.data.tagName, userId: user.id },
+        update: {},
+      });
+      return tx.contactTag.upsert({
+        where: { contactId_tagId: { contactId, tagId: tag.id } },
+        create: { contactId, tagId: tag.id },
+        update: {},
+        include: { tag: true },
+      });
     });
 
     return NextResponse.json({ data: contactTag.tag });

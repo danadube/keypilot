@@ -140,18 +140,36 @@ export async function PUT(
       data: updateData,
       include: { property: true, listingAgent: true, hostAgent: true },
     });
-    const listingAgentIdToSync = openHouse.listingAgentId ?? openHouse.hostUserId;
+    // Sync denormalized columns → open_house_hosts junction table (Option A: denorm is authority).
+    // When listingAgentId or hostAgentId changes, upsert the new agent's junction record.
+    // Stale records from prior agents are left in the junction table — they are harmless
+    // under Option A because open_house_hosts RLS cascades through open_houses, which
+    // checks the current denormalized columns, not junction rows.
+    const effectiveListingAgentId = openHouse.listingAgentId ?? openHouse.hostUserId;
     await prisma.openHouseHost.upsert({
       where: {
-        openHouseId_userId: { openHouseId: id, userId: listingAgentIdToSync },
+        openHouseId_userId: { openHouseId: id, userId: effectiveListingAgentId },
       },
       create: {
         openHouseId: id,
-        userId: listingAgentIdToSync,
+        userId: effectiveListingAgentId,
         role: "LISTING_AGENT",
       },
       update: { role: "LISTING_AGENT" },
     });
+    if (openHouse.hostAgentId && openHouse.hostAgentId !== effectiveListingAgentId) {
+      await prisma.openHouseHost.upsert({
+        where: {
+          openHouseId_userId: { openHouseId: id, userId: openHouse.hostAgentId },
+        },
+        create: {
+          openHouseId: id,
+          userId: openHouse.hostAgentId,
+          role: "HOST_AGENT",
+        },
+        update: { role: "HOST_AGENT" },
+      });
+    }
     return NextResponse.json({ data: openHouse });
   } catch (e) {
     const zod = (e as { errors?: unknown[] })?.errors;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { withRLSContext } from "@/lib/db-context";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import {
   CONNECTION_CONFIGS,
@@ -16,9 +16,9 @@ export async function GET() {
   try {
     const user = await getCurrentUser();
 
-    const dbConnections = await prisma.connection.findMany({
-      where: { userId: user.id },
-    });
+    const dbConnections = await withRLSContext(user.id, (tx) =>
+      tx.connection.findMany({ where: { userId: user.id } })
+    );
 
     const connections: ConnectionRecord[] = dbConnections
       .filter((c) => PRISMA_TO_SERVICE[c.service])
