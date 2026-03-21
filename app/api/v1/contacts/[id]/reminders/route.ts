@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { withRLSContext } from "@/lib/db-context";
 import { getCurrentUser } from "@/lib/auth";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { CreateReminderSchema } from "@/lib/validations/reminder";
@@ -35,10 +36,12 @@ export async function GET(
       return apiError("Contact not found", 404);
     }
 
-    const reminders = await prisma.followUpReminder.findMany({
-      where: { contactId, userId: user.id },
-      orderBy: { dueAt: "asc" },
-    });
+    const reminders = await withRLSContext(user.id, (tx) =>
+      tx.followUpReminder.findMany({
+        where: { contactId, userId: user.id },
+        orderBy: { dueAt: "asc" },
+      })
+    );
     return NextResponse.json({ data: reminders });
   } catch (err) {
     return apiErrorFromCaught(err);
@@ -69,14 +72,16 @@ export async function POST(
       );
     }
 
-    const reminder = await prisma.followUpReminder.create({
-      data: {
-        contactId,
-        userId: user.id,
-        dueAt: new Date(parsed.data.dueAt),
-        body: parsed.data.body.trim(),
-      },
-    });
+    const reminder = await withRLSContext(user.id, (tx) =>
+      tx.followUpReminder.create({
+        data: {
+          contactId,
+          userId: user.id,
+          dueAt: new Date(parsed.data.dueAt),
+          body: parsed.data.body.trim(),
+        },
+      })
+    );
     return NextResponse.json({ data: reminder });
   } catch (err) {
     return apiErrorFromCaught(err);

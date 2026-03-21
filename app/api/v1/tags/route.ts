@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { CreateTagSchema } from "@/lib/validations/tag";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
@@ -11,10 +11,12 @@ export async function GET() {
     if (!hasCrmAccess(user.productTier)) {
       return apiError("CRM features require Full CRM tier", 403);
     }
-    const tags = await prisma.tag.findMany({
-      where: { userId: user.id },
-      orderBy: { name: "asc" },
-    });
+    const tags = await withRLSContext(user.id, (tx) =>
+      tx.tag.findMany({
+        where: { userId: user.id },
+        orderBy: { name: "asc" },
+      })
+    );
     return NextResponse.json({ data: tags });
   } catch (err) {
     return apiErrorFromCaught(err);
@@ -35,13 +37,13 @@ export async function POST(req: NextRequest) {
         400
       );
     }
-    const tag = await prisma.tag.upsert({
-      where: {
-        name_userId: { name: parsed.data.name, userId: user.id },
-      },
-      create: { name: parsed.data.name, userId: user.id },
-      update: {},
-    });
+    const tag = await withRLSContext(user.id, (tx) =>
+      tx.tag.upsert({
+        where: { name_userId: { name: parsed.data.name, userId: user.id } },
+        create: { name: parsed.data.name, userId: user.id },
+        update: {},
+      })
+    );
     return NextResponse.json({ data: tag });
   } catch (err) {
     return apiErrorFromCaught(err);

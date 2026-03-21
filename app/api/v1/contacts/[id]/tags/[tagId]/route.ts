@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { withRLSContext } from "@/lib/db-context";
 import { getCurrentUser } from "@/lib/auth";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
@@ -34,16 +35,14 @@ export async function DELETE(
       return apiError("Contact not found", 404);
     }
 
-    const tag = await prisma.tag.findFirst({
-      where: { id: tagId, userId: user.id },
+    const deleted = await withRLSContext(user.id, async (tx) => {
+      const tag = await tx.tag.findFirst({ where: { id: tagId, userId: user.id } });
+      if (!tag) return false;
+      await tx.contactTag.deleteMany({ where: { contactId, tagId } });
+      return true;
     });
-    if (!tag) {
-      return apiError("Tag not found", 404);
-    }
 
-    await prisma.contactTag.deleteMany({
-      where: { contactId, tagId },
-    });
+    if (!deleted) return apiError("Tag not found", 404);
 
     return NextResponse.json({ data: { deleted: true } });
   } catch (err) {
