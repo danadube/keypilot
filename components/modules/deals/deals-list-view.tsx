@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { MetricCard } from "@/components/ui/metric-card";
 import { SectionTabs } from "@/components/ui/section-tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { CreateDealModal } from "./create-deal-modal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -357,6 +358,7 @@ function DealsTable({ deals }: { deals: Deal[] }) {
 export function DealsListView() {
   const [statusFilter, setStatusFilter] = useState<StatusTabValue>("__all__");
   const [search, setSearch] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
 
   // viewMode stub — "list" only for now; "kanban" deferred
   const [viewMode] = useState<"list" | "kanban">("list");
@@ -405,6 +407,7 @@ export function DealsListView() {
           </p>
         </div>
         <button
+          onClick={() => setCreateOpen(true)}
           className={cn(
             "mt-1 shrink-0 rounded-lg bg-kp-gold px-4 py-2 text-sm font-semibold text-kp-bg",
             "transition-colors hover:bg-kp-gold-bright"
@@ -498,6 +501,11 @@ export function DealsListView() {
           </div>
         )}
       </div>
+
+      <CreateDealModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
     </div>
   );
 }
