@@ -275,3 +275,40 @@ Contacts are shared between agents who co-hosted or share a visitor. If agent A 
 | `supabase/migrations/20260322_11*–13*` | Phase 4: grants + RLS for activities and usage_events |
 | `scripts/validate-rls-phase2.sql` | 26-assertion validation script for Phase 2 |
 | `scripts/validate-rls-phase4.sql` | 21-assertion validation script for Phase 4 |
+| `scripts/check-prisma-usage.js` | CI safety check — deprecated import detection + advisory warnings |
+| `tests/rls-isolation.test.ts` | 10 API-level isolation tests against preview DB |
+| `.github/workflows/ci.yml` | CI: build + lint + unit tests + safety check + isolation tests |
+
+---
+
+## CI Safety Enforcement
+
+`npm run check:prisma` (runs in CI on every PR) enforces two rules:
+
+### Hard error — deprecated `prisma` import
+```
+import { prisma } from "@/lib/db"   ← ERROR: use prismaAdmin
+```
+All files must import `prismaAdmin`. The `prisma` export in `lib/db.ts` is a
+deprecated backward-compatibility alias. Any new file using it fails CI.
+
+### Advisory warning — auth-gated route without `withRLSContext`
+Routes that call `getCurrentUser()` and use `prismaAdmin` but do not import
+`withRLSContext` are flagged as candidates for RLS migration. These warnings
+do not fail CI — some routes are intentionally BYPASSRLS (analytics, webhooks).
+The warning output is the canonical list of routes not yet migrated to RLS.
+
+To run locally:
+```bash
+npm run check:prisma
+```
+
+### Isolation tests (preview DB)
+```bash
+npm run test:integration   # runs tests/rls-isolation.test.ts against real DB
+npm test                   # unit tests only — no DB required
+```
+
+CI runs isolation tests in a separate job (`isolation-tests`) using the
+`DATABASE_URL` repository secret. The job is skipped on forks that don't
+have the secret. Add it at: GitHub → Settings → Secrets → Actions.
