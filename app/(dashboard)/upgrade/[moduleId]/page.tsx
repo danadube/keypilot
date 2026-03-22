@@ -2,10 +2,8 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { Lock, Check } from "lucide-react";
-import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
-import { BrandCard } from "@/components/ui/BrandCard";
-import { BrandButton } from "@/components/ui/BrandButton";
+import { Lock, Check, ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { getUpgradeConfig } from "@/lib/upgrade-modules";
 import { isUpgradeModule } from "@/lib/module-access";
 import type { ModuleId } from "@/lib/modules";
@@ -17,14 +15,24 @@ export default function UpgradeModulePage() {
 
   if (!config || !isUpgradeModule(moduleId)) {
     return (
-      <div className="flex flex-col gap-[var(--space-xl)]">
-        <BrandPageHeader
-          title="Module not found"
-          description="This upgrade module doesn't exist or isn't available."
-        />
-        <BrandButton variant="secondary" asChild>
-          <Link href="/showing-hq">← Back to ShowingHQ</Link>
-        </BrandButton>
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="text-xl font-bold text-kp-on-surface">Module not found</h1>
+          <p className="mt-1 text-sm text-kp-on-surface-variant">
+            This upgrade module doesn&apos;t exist or isn&apos;t available.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-fit border-kp-outline bg-transparent text-kp-on-surface hover:bg-kp-surface-high"
+          asChild
+        >
+          <Link href="/showing-hq">
+            <ArrowLeft className="mr-1.5 h-4 w-4" />
+            Back to ShowingHQ
+          </Link>
+        </Button>
       </div>
     );
   }
@@ -32,92 +40,76 @@ export default function UpgradeModulePage() {
   const ctaLabel = config.ctaLabel ?? "Upgrade to unlock";
 
   return (
-    <div className="flex flex-col gap-[var(--space-xl)]">
-      <BrandPageHeader
-        title={config.displayName ?? config.name}
-        description={config.description}
-        actions={
-          <BrandButton variant="primary" asChild>
-            <Link href="/settings/modules">{ctaLabel}</Link>
-          </BrandButton>
-        }
-      />
+    <div className="flex flex-col gap-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-kp-on-surface">
+            {config.displayName ?? config.name}
+          </h1>
+          <p className="mt-1 text-sm text-kp-on-surface-variant">{config.description}</p>
+        </div>
+        <Button
+          size="sm"
+          className="h-8 border-0 bg-kp-teal px-4 text-xs text-kp-bg hover:opacity-90"
+          asChild
+        >
+          <Link href="/settings/modules">{ctaLabel}</Link>
+        </Button>
+      </div>
 
-      <BrandCard elevated padded className="max-w-2xl">
+      {/* Content card */}
+      <div className="max-w-2xl rounded-xl border border-kp-outline bg-kp-surface p-5">
         <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[var(--brand-primary)]/10">
-            <Lock
-              className="h-7 w-7 text-[var(--brand-primary)]"
-              aria-hidden
-            />
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-kp-teal/10">
+            <Lock className="h-7 w-7 text-kp-teal" aria-hidden />
           </div>
-          <div>
-            <h2
-              className="mb-2 font-semibold text-[var(--brand-primary)]"
-              style={{
-                fontFamily: "var(--font-heading)",
-                fontSize: "var(--text-h3-size)",
-              }}
-            >
-              {config.headline}
-            </h2>
-            <p
-              className="mb-6 text-[var(--brand-text-muted)]"
-              style={{
-                fontSize: "var(--text-body-size)",
-                lineHeight: "var(--text-body-line)",
-              }}
-            >
-              {config.description}
-            </p>
+          <div className="flex-1">
+            <h2 className="mb-2 text-lg font-semibold text-kp-on-surface">{config.headline}</h2>
+            <p className="mb-6 text-sm text-kp-on-surface-variant">{config.description}</p>
+
             {config.recommendedFor && (
-              <div className="mb-6 rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface-alt)] p-4">
-                <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-[var(--brand-primary)]">
+              <div className="mb-6 rounded-lg border border-kp-outline bg-kp-surface-high p-4">
+                <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-kp-teal">
                   Works with ShowingHQ
                 </h3>
-                <p
-                  className="text-[var(--brand-text-muted)]"
-                  style={{
-                    fontSize: "var(--text-body-size)",
-                    lineHeight: "var(--text-body-line)",
-                  }}
-                >
-                  {config.recommendedFor}
-                </p>
+                <p className="text-sm text-kp-on-surface-variant">{config.recommendedFor}</p>
               </div>
             )}
-            <h3 className="mb-3 font-semibold text-[var(--brand-text)]">
-              Benefits
-            </h3>
+
+            <h3 className="mb-3 text-sm font-semibold text-kp-on-surface">Benefits</h3>
             <ul className="space-y-2">
               {config.benefits.map((benefit, i) => (
-                <li
-                  key={i}
-                  className="flex items-start gap-2 text-[var(--brand-text-muted)]"
-                  style={{
-                    fontSize: "var(--text-body-size)",
-                    lineHeight: "var(--text-body-line)",
-                  }}
-                >
-                  <Check
-                    className="mt-0.5 h-5 w-5 shrink-0 text-[var(--brand-primary)]"
-                    aria-hidden
-                  />
+                <li key={i} className="flex items-start gap-2 text-sm text-kp-on-surface-variant">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" aria-hidden />
                   {benefit}
                 </li>
               ))}
             </ul>
+
             <div className="mt-8 flex flex-wrap gap-3">
-              <BrandButton variant="primary" asChild>
+              <Button
+                size="sm"
+                className="h-8 border-0 bg-kp-teal px-4 text-xs text-kp-bg hover:opacity-90"
+                asChild
+              >
                 <Link href="/settings/modules">{ctaLabel}</Link>
-              </BrandButton>
-              <BrandButton variant="secondary" asChild>
-                <Link href="/showing-hq">← Back to ShowingHQ</Link>
-              </BrandButton>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                asChild
+              >
+                <Link href="/showing-hq">
+                  <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
+                  Back to ShowingHQ
+                </Link>
+              </Button>
             </div>
           </div>
         </div>
-      </BrandCard>
+      </div>
     </div>
   );
 }

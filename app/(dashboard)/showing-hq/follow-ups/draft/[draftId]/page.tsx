@@ -3,9 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
-import { BrandCard } from "@/components/ui/BrandCard";
-import { BrandButton } from "@/components/ui/BrandButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { FollowUpStatusBadge } from "@/components/shared/FollowUpStatusBadge";
+import { ArrowLeft } from "lucide-react";
 
 type Draft = {
   id: string;
@@ -144,59 +142,95 @@ export default function DraftReviewPage() {
   const contactName = [draft.contact.firstName, draft.contact.lastName].filter(Boolean).join(" ") || "Unknown";
 
   return (
-    <div className="min-h-0 flex flex-col gap-6 bg-transparent">
-      <ShowingHQPageHero
-        title="Review draft"
-        description={`Follow-up for ${contactName} · ${draft.openHouse.property?.address1 ?? draft.openHouse.title}`}
-        action={
-          <div className="flex flex-wrap gap-2">
-            <FollowUpStatusBadge status={draft.status} />
-            <BrandButton variant="secondary" asChild>
-              <Link href="/showing-hq/follow-ups">← Follow-ups</Link>
-            </BrandButton>
-            <Button variant="outline" asChild>
-              <Link href={`/contacts/${draft.contact.id}`}>View contact</Link>
-            </Button>
+    <div className="flex flex-col gap-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1.5 px-2 text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+            asChild
+          >
+            <Link href="/showing-hq/follow-ups">
+              <ArrowLeft className="h-4 w-4" />
+              Follow-ups
+            </Link>
+          </Button>
+          <span className="text-kp-outline">/</span>
+          <div>
+            <h1 className="text-xl font-bold text-kp-on-surface">Review draft</h1>
+            <p className="text-sm text-kp-on-surface-variant">
+              Follow-up for {contactName} · {draft.openHouse.property?.address1 ?? draft.openHouse.title}
+            </p>
           </div>
-        }
-      />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <FollowUpStatusBadge status={draft.status} />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+            asChild
+          >
+            <Link href={`/contacts/${draft.contact.id}`}>View contact</Link>
+          </Button>
+        </div>
+      </div>
 
-      <BrandCard elevated padded>
+      {/* Error */}
+      {error && (
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
+
+      {/* Draft editor */}
+      <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="draft-subject">Subject</Label>
+            <Label htmlFor="draft-subject" className="text-sm text-kp-on-surface-variant">
+              Subject
+            </Label>
             <Input
               id="draft-subject"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="Email subject"
-              className="font-medium"
+              className="border-kp-outline bg-kp-surface-high font-medium text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal/30"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="draft-body">Body</Label>
+            <Label htmlFor="draft-body" className="text-sm text-kp-on-surface-variant">
+              Body
+            </Label>
             <Textarea
               id="draft-body"
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Email body"
-              className="min-h-[240px] resize-y font-mono text-sm"
+              className="min-h-[240px] resize-y border-kp-outline bg-kp-surface-high font-mono text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal/30"
             />
           </div>
+
           {sendSuccess && (
-            <p className="text-sm font-medium text-green-600 dark:text-green-400">Email sent.</p>
+            <p className="text-sm font-medium text-emerald-400">Email sent.</p>
           )}
-          <div className="flex flex-wrap items-center gap-2">
-            <BrandButton
-              variant="primary"
+
+          <div className="flex flex-wrap items-center gap-2 border-t border-kp-outline pt-4">
+            <Button
+              size="sm"
+              className="h-8 border-0 bg-kp-teal px-4 text-xs text-kp-bg hover:opacity-90"
               onClick={handleSave}
               disabled={saving || (subject === draft.subject && body === draft.body)}
             >
               {saving ? "Saving…" : "Save changes"}
-            </BrandButton>
+            </Button>
             {draft.status === "DRAFT" && (
               <Button
                 variant="outline"
+                size="sm"
+                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
                 disabled={!!statusAction}
                 onClick={handleMarkReviewed}
               >
@@ -206,6 +240,8 @@ export default function DraftReviewPage() {
             {(draft.status === "DRAFT" || draft.status === "REVIEWED") && (
               <Button
                 variant="outline"
+                size="sm"
+                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
                 disabled={!!statusAction}
                 onClick={handleSendEmail}
               >
@@ -215,21 +251,27 @@ export default function DraftReviewPage() {
             {(draft.status === "DRAFT" || draft.status === "REVIEWED") && (
               <Button
                 variant="ghost"
+                size="sm"
+                className="h-8 text-xs text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
                 disabled={!!statusAction}
                 onClick={handleDismiss}
-                className="text-muted-foreground hover:text-foreground"
               >
                 {statusAction === "dismiss" ? "Dismissing…" : "Dismiss"}
               </Button>
             )}
             {(draft.status === "DRAFT" || draft.status === "REVIEWED") && (
-              <Button variant="outline" asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                asChild
+              >
                 <Link href="/showing-hq/visitors">Back to visitors</Link>
               </Button>
             )}
           </div>
         </div>
-      </BrandCard>
+      </div>
     </div>
   );
 }
