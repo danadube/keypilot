@@ -1,0 +1,421 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import {
+  Calendar,
+  Search,
+  X,
+  Inbox,
+  ClipboardCheck,
+  Plus,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { MetricCard } from "@/components/ui/metric-card";
+import { StatusBadge } from "@/components/ui/status-badge";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type Showing = {
+  id: string;
+  scheduledAt: string;
+  buyerAgentName: string | null;
+  buyerAgentEmail: string | null;
+  buyerName: string | null;
+  notes: string | null;
+  feedbackRequired: boolean;
+  source: string;
+  scrapeStatus: string | null;
+  feedbackRequestStatus: string | null;
+  property: { address1: string; city: string; state: string };
+};
+
+// ── Data fetching ─────────────────────────────────────────────────────────────
+
+function useShowings() {
+  const [showings, setShowings] = useState<Showing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  function load() {
+    setError(null);
+    setLoading(true);
+    fetch("/api/v1/showing-hq/showings")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.error) setError(json.error.message);
+        else setShowings(json.data ?? []);
+      })
+      .catch(() => setError("Failed to load showings"))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  return { showings, loading, error, reload: load };
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function formatTime(d: string) {
+  return new Date(d).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function matchesSearch(s: Showing, q: string): boolean {
+  const lq = q.toLowerCase();
+  return (
+    s.property.address1.toLowerCase().includes(lq) ||
+    s.property.city.toLowerCase().includes(lq) ||
+    (s.buyerAgentName?.toLowerCase().includes(lq) ?? false) ||
+    (s.buyerAgentEmail?.toLowerCase().includes(lq) ?? false) ||
+    (s.buyerName?.toLowerCase().includes(lq) ?? false)
+  );
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function LoadingState() {
+  return (
+    <div className="flex min-h-[280px] items-center justify-center">
+      <Loader2 className="h-5 w-5 animate-spin text-kp-on-surface-variant" />
+    </div>
+  );
+}
+
+function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div className="flex min-h-[280px] flex-col items-center justify-center gap-3">
+      <AlertCircle className="h-5 w-5 text-red-400" />
+      <p className="text-sm text-kp-on-surface-variant">{message}</p>
+      <button
+        onClick={onRetry}
+        className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+
+function EmptyState({
+  isFiltered,
+  onReset,
+}: {
+  isFiltered: boolean;
+  onReset: () => void;
+}) {
+  return (
+    <div className="flex min-h-[240px] flex-col items-center justify-center gap-4 px-4 text-center">
+      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-kp-surface-high">
+        <Calendar className="h-5 w-5 text-kp-on-surface-variant" />
+      </div>
+      <div>
+        {isFiltered ? (
+          <>
+            <p className="text-sm font-medium text-kp-on-surface">No matching showings</p>
+            <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+              Try a different search term.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm font-medium text-kp-on-surface">No showings yet</p>
+            <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+              Add a private showing or check Supra Inbox for scraped notifications.
+            </p>
+          </>
+        )}
+      </div>
+      {isFiltered ? (
+        <button
+          onClick={onReset}
+          className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
+        >
+          Clear search
+        </button>
+      ) : (
+        <Link
+          href="/showing-hq/showings/new"
+          className={cn(
+            "rounded-lg bg-kp-gold px-4 py-2 text-sm font-semibold text-kp-bg",
+            "transition-colors hover:bg-kp-gold-bright"
+          )}
+        >
+          Schedule Showing
+        </Link>
+      )}
+    </div>
+  );
+}
+
+// ── Search input ──────────────────────────────────────────────────────────────
+
+function SearchInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="relative">
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-kp-on-surface-variant" />
+      <input
+        type="text"
+        placeholder="Search by property, agent or buyer…"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          "h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high pl-8 pr-8",
+          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+          "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+        )}
+      />
+      {value && (
+        <button
+          onClick={() => onChange("")}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-kp-on-surface-variant hover:text-kp-on-surface"
+          aria-label="Clear search"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── Table ─────────────────────────────────────────────────────────────────────
+
+const TH =
+  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
+const TD = "px-4 py-3.5 text-sm";
+
+function ShowingsTable({ showings }: { showings: Showing[] }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse">
+        <thead>
+          <tr className="border-b border-kp-outline bg-kp-surface-high">
+            <th className={TH}>Property</th>
+            <th className={cn(TH, "hidden sm:table-cell whitespace-nowrap")}>Date & Time</th>
+            <th className={cn(TH, "hidden md:table-cell")}>Buyer Agent</th>
+            <th className={cn(TH, "hidden lg:table-cell")}>Buyer</th>
+            <th className={cn(TH, "hidden sm:table-cell")}>Feedback</th>
+            <th className={cn(TH, "hidden md:table-cell")}>Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          {showings.map((s, i) => (
+            <tr
+              key={s.id}
+              className={cn(
+                "border-b border-kp-outline-variant transition-colors hover:bg-kp-surface-high",
+                i % 2 === 1 && "bg-kp-surface/40"
+              )}
+            >
+              {/* Property */}
+              <td className={TD}>
+                <p className="font-medium text-kp-on-surface">{s.property.address1}</p>
+                {/* Collapsed date on mobile */}
+                <p className="mt-0.5 text-xs text-kp-on-surface-variant sm:hidden">
+                  {formatDate(s.scheduledAt)} · {formatTime(s.scheduledAt)}
+                </p>
+              </td>
+
+              {/* Date & Time */}
+              <td className={cn(TD, "hidden whitespace-nowrap text-kp-on-surface-variant sm:table-cell")}>
+                {formatDate(s.scheduledAt)} · {formatTime(s.scheduledAt)}
+              </td>
+
+              {/* Buyer Agent */}
+              <td className={cn(TD, "hidden text-kp-on-surface-variant md:table-cell")}>
+                {s.buyerAgentName ?? "—"}
+                {s.buyerAgentEmail && (
+                  <span className="mt-0.5 block text-xs">{s.buyerAgentEmail}</span>
+                )}
+              </td>
+
+              {/* Buyer */}
+              <td className={cn(TD, "hidden text-kp-on-surface-variant lg:table-cell")}>
+                {s.buyerName ?? "—"}
+              </td>
+
+              {/* Feedback */}
+              <td className={cn(TD, "hidden sm:table-cell")}>
+                {s.feedbackRequired ? (
+                  <StatusBadge variant="pending">Requested</StatusBadge>
+                ) : (
+                  <span className="text-kp-on-surface-variant">—</span>
+                )}
+              </td>
+
+              {/* Source */}
+              <td className={cn(TD, "hidden md:table-cell")}>
+                <StatusBadge variant="upcoming">{s.source}</StatusBadge>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+/**
+ * ShowingsListView — dark premium list for private showings.
+ *
+ * API: GET /api/v1/showing-hq/showings (full list, no server-side filter)
+ * Client-side search layered on top.
+ *
+ * Route: app/(dashboard)/showing-hq/showings/page.tsx
+ */
+export function ShowingsListView() {
+  const { showings, loading, error, reload } = useShowings();
+  const [search, setSearch] = useState("");
+
+  const visibleShowings = useMemo(() => {
+    if (!search.trim()) return showings;
+    return showings.filter((s) => matchesSearch(s, search));
+  }, [showings, search]);
+
+  const feedbackCount = useMemo(
+    () => showings.filter((s) => s.feedbackRequired).length,
+    [showings]
+  );
+  const supraCount = useMemo(
+    () => showings.filter((s) => s.source === "supra").length,
+    [showings]
+  );
+
+  const isFiltered = search.trim().length > 0;
+  const showContent = !loading && !error;
+
+  return (
+    <div className="min-h-full rounded-2xl bg-kp-bg">
+      {/* ── Page header ─────────────────────────────────────────────────── */}
+      <div className="flex items-start justify-between gap-4 px-6 pb-5 pt-6 sm:px-8">
+        <div>
+          <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
+            Showings
+          </h1>
+          <p className="mt-0.5 text-sm text-kp-on-surface-variant">
+            Private appointments — separate from open houses
+          </p>
+        </div>
+        <Link
+          href="/showing-hq/showings/new"
+          className={cn(
+            "mt-1 inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-kp-gold px-4 py-2",
+            "text-sm font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright"
+          )}
+        >
+          <Plus className="h-4 w-4" />
+          Schedule Showing
+        </Link>
+      </div>
+
+      {/* ── Metric cards ─────────────────────────────────────────────────── */}
+      <div className="grid gap-3 px-6 pb-4 sm:grid-cols-3 sm:px-8">
+        <MetricCard
+          label="Total showings"
+          value={loading ? "—" : showings.length}
+          accent="teal"
+          sub={!loading && showings.length > 0 ? "All time" : undefined}
+        />
+        <MetricCard
+          label="Feedback requested"
+          value={loading ? "—" : feedbackCount}
+          accent="gold"
+          sub={
+            !loading && feedbackCount > 0
+              ? `${feedbackCount} of ${showings.length}`
+              : undefined
+          }
+        />
+        <MetricCard
+          label="From Supra"
+          value={loading ? "—" : supraCount}
+          accent="default"
+          sub={!loading && supraCount > 0 ? "Auto-imported" : undefined}
+        />
+      </div>
+
+      {/* ── Secondary actions ────────────────────────────────────────────── */}
+      <div className="flex gap-2 px-6 pb-4 sm:px-8">
+        <Link
+          href="/showing-hq/supra-inbox"
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-lg border border-kp-outline px-3 py-1.5",
+            "text-xs font-medium text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high hover:text-kp-on-surface"
+          )}
+        >
+          <Inbox className="h-3.5 w-3.5" />
+          Supra Inbox
+        </Link>
+        <Link
+          href="/showing-hq/feedback-requests"
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-lg border border-kp-outline px-3 py-1.5",
+            "text-xs font-medium text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high hover:text-kp-on-surface"
+          )}
+        >
+          <ClipboardCheck className="h-3.5 w-3.5" />
+          Feedback Requests
+        </Link>
+      </div>
+
+      {/* ── Table panel ─────────────────────────────────────────────────── */}
+      <div className="mx-6 mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
+        {/* Panel header */}
+        <div className="flex items-start justify-between gap-4 border-b border-kp-outline px-5 py-4">
+          <div>
+            <p className="text-sm font-semibold text-kp-on-surface">All showings</p>
+            <p className="text-xs text-kp-on-surface-variant">Private one-on-one appointments</p>
+          </div>
+          {showContent && showings.length > 0 && (
+            <span className="shrink-0 text-xs tabular-nums text-kp-on-surface-variant">
+              {visibleShowings.length}
+              {visibleShowings.length !== showings.length && ` / ${showings.length}`}{" "}
+              {showings.length === 1 ? "showing" : "showings"}
+            </span>
+          )}
+        </div>
+
+        {/* Search bar */}
+        {showContent && showings.length > 0 && (
+          <div className="border-b border-kp-outline-variant px-5 py-3">
+            <SearchInput value={search} onChange={setSearch} />
+          </div>
+        )}
+
+        {/* Content */}
+        {loading ? (
+          <LoadingState />
+        ) : error ? (
+          <ErrorState message={error} onRetry={reload} />
+        ) : visibleShowings.length === 0 ? (
+          <EmptyState isFiltered={isFiltered} onReset={() => setSearch("")} />
+        ) : (
+          <ShowingsTable showings={visibleShowings} />
+        )}
+      </div>
+    </div>
+  );
+}
