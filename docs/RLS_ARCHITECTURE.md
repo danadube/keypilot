@@ -283,7 +283,7 @@ Contacts are shared between agents who co-hosted or share a visitor. If agent A 
 
 ## CI Safety Enforcement
 
-`npm run check:prisma` (runs in CI on every PR) enforces two rules:
+`npm run check:prisma` (runs in CI on every PR) enforces three rules:
 
 ### Hard error — deprecated `prisma` import
 ```
@@ -292,11 +292,38 @@ import { prisma } from "@/lib/db"   ← ERROR: use prismaAdmin
 All files must import `prismaAdmin`. The `prisma` export in `lib/db.ts` is a
 deprecated backward-compatibility alias. Any new file using it fails CI.
 
-### Advisory warning — auth-gated route without `withRLSContext`
-Routes that call `getCurrentUser()` and use `prismaAdmin` but do not import
-`withRLSContext` are flagged as candidates for RLS migration. These warnings
-do not fail CI — some routes are intentionally BYPASSRLS (analytics, webhooks).
-The warning output is the canonical list of routes not yet migrated to RLS.
+### Hard error — unapproved BYPASSRLS route
+Any authenticated route (`getCurrentUser` / `auth(` / `currentUser`) that uses
+`prismaAdmin` without `withRLSContext` **and is not on the allowlist** in
+`scripts/check-prisma-usage.js` fails CI with exit code 1:
+
+```
+❌ Prisma safety check — 1 unapproved BYPASSRLS route(s):
+
+  app/api/v1/widgets/route.ts
+    ↳ authenticated route uses prismaAdmin without withRLSContext —
+      add withRLSContext or add to BYPASSRLS_ALLOWLIST in scripts/check-prisma-usage.js
+
+   Fix: wrap DB queries in withRLSContext, OR add the route to
+   BYPASSRLS_ALLOWLIST in scripts/check-prisma-usage.js with a reason.
+```
+
+**Every new authenticated route must either use `withRLSContext` or be
+explicitly added to the allowlist with a reason comment.** This prevents silent
+BYPASSRLS from accumulating as the codebase grows.
+
+### Allowlist in `scripts/check-prisma-usage.js`
+
+The allowlist has two categories:
+
+| Category | Meaning | Example |
+|----------|---------|---------|
+| `intentional` | Permanently BYPASSRLS by design — do not migrate | `analytics/summary`, `auth/google/callback` |
+| `pendingMigration` | Not yet migrated — acknowledged debt | 36 routes as of Phase 4 completion |
+
+Allowlisted routes print as informational output but do not fail CI.
+When you migrate a `pendingMigration` route to `withRLSContext`, remove it from
+the allowlist — it will start being enforced automatically.
 
 To run locally:
 ```bash
