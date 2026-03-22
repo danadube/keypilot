@@ -194,7 +194,7 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
                         <p className="text-xs text-kp-on-surface-variant">{d.contact.email}</p>
                       )}
                     </td>
-                    <td className="max-w-xs truncate py-2.5 text-kp-on-surface-variant">{d.subject}</td>
+                    <td className="max-w-xs truncate py-2.5 text-kp-on-surface-variant" title={d.subject}>{d.subject}</td>
                     <td className="py-2.5">
                       <span
                         className={cn(

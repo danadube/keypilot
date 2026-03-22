@@ -1,8 +1,6 @@
 "use client";
 
 import { ModuleGate } from "@/components/shared/ModuleGate";
-import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
-import { BrandCard } from "@/components/ui/BrandCard";
 
 export default function SellerPulsePage() {
   return (
@@ -12,16 +10,18 @@ export default function SellerPulsePage() {
       valueProposition="Seller reports and listing performance insights for your sellers."
       backHref="/showing-hq"
     >
-      <div className="flex flex-col gap-[var(--space-xl)]">
-        <BrandPageHeader
-          title="SellerPulse"
-          description="Seller reports and listing performance."
-        />
-        <BrandCard padded elevated>
-          <p className="text-[var(--brand-text-muted)]">
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="text-xl font-bold text-kp-on-surface">SellerPulse</h1>
+          <p className="mt-1 text-sm text-kp-on-surface-variant">
+            Seller reports and listing performance.
+          </p>
+        </div>
+        <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+          <p className="text-sm text-kp-on-surface-variant">
             Coming soon: seller reports and performance dashboards.
           </p>
-        </BrandCard>
+        </div>
       </div>
     </ModuleGate>
   );

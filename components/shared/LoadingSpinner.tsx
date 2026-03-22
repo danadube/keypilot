@@ -5,7 +5,7 @@ export function LoadingSpinner({ className }: { className?: string }) {
     <svg
       width={24}
       height={24}
-      className={cn("h-6 w-6 shrink-0 animate-spin text-muted-foreground", className)}
+      className={cn("h-6 w-6 shrink-0 animate-spin text-kp-on-surface-variant", className)}
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
