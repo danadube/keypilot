@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Home,
   Building2,
+  Briefcase,
   Calendar,
   Users,
   CheckSquare,
@@ -134,6 +135,7 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
       { label: "All Contacts", href: "/contacts", icon: Users, section: "CONTACTS" },
       { label: "Leads", href: "/contacts?status=LEAD", icon: UserCheck, section: "CONTACTS" },
       { label: "Clients", href: "/contacts?status=READY", icon: Users, section: "CONTACTS" },
+      { label: "Deals", href: "/deals", icon: Briefcase, section: "PIPELINE" },
       { label: "Tags", href: "/client-keep/tags", icon: Tag, section: "RELATIONSHIPS" },
       { label: "Communication Log", href: "/client-keep/communications", icon: MessageSquare, section: "RELATIONSHIPS" },
       { label: "Follow-ups", href: "/client-keep/follow-ups", icon: Bell, section: "RELATIONSHIPS" },
@@ -254,7 +256,7 @@ export function getModuleFromPath(pathname: string): ModuleId {
     return "property-vault";
   if (pathname.startsWith("/open-houses") || pathname.startsWith("/showing-hq"))
     return "showing-hq";
-  if (pathname.startsWith("/contacts") || pathname.startsWith("/client-keep"))
+  if (pathname.startsWith("/contacts") || pathname.startsWith("/client-keep") || pathname.startsWith("/deals"))
     return "client-keep";
   if (pathname.startsWith("/farm-trackr")) return "farm-trackr";
   if (pathname.startsWith("/task-pilot")) return "task-pilot";
