@@ -58,7 +58,7 @@ export function ModuleSidebar() {
 
   return (
     <aside
-      className="flex shrink-0 flex-col border-r border-[var(--brand-border)] text-slate-100"
+      className="flex shrink-0 flex-col border-r border-kp-outline text-slate-100"
       style={{ width: SIDEBAR_WIDTH, backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)" }}
       aria-label={`${mod.name} navigation`}
     >

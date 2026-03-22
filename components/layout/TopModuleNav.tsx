@@ -41,15 +41,15 @@ export function TopModuleNav() {
               aria-selected={isActive}
               className={cn(
                 "relative whitespace-nowrap rounded-lg px-3 py-2.5 text-sm transition-all duration-200",
-                "hover:bg-[var(--brand-surface-alt)] hover:text-[var(--brand-text)]",
+                "hover:bg-kp-surface-high hover:text-kp-on-surface",
                 isActive
-                  ? "font-semibold text-[var(--brand-text)] [&_.relative]:text-[var(--brand-primary)]"
-                  : "font-medium text-[var(--brand-text-muted)]"
+                  ? "font-semibold text-kp-on-surface"
+                  : "font-medium text-kp-on-surface-variant"
               )}
             >
               {isActive && (
                 <span
-                  className="absolute bottom-0 left-3 right-3 h-[3px] rounded-full bg-[var(--brand-primary)]"
+                  className="absolute bottom-0 left-3 right-3 h-[3px] rounded-full bg-kp-teal"
                   aria-hidden
                 />
               )}

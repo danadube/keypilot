@@ -42,14 +42,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ProductTierProvider>
-    <div className="flex min-h-screen bg-[var(--brand-bg)]">
+    <div className="flex min-h-screen bg-kp-bg">
       {/* Sidebar: full-height branded rail from top */}
       <ModuleSidebar />
 
       {/* Right: header bar + content */}
       <div className="flex min-h-0 flex-1 flex-col">
         <header
-          className="sticky top-0 z-20 flex w-full shrink-0 items-center border-b border-[var(--brand-border)] bg-[var(--brand-surface)]"
+          className="sticky top-0 z-20 flex w-full shrink-0 items-center border-b border-kp-outline bg-kp-surface"
           style={{
             minHeight: isShowingHQWorkbench
               ? HEADER_HEIGHT_SHOWING_HQ_WORKBENCH
@@ -65,12 +65,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             {isShowingHQWorkbench ? (
               <div className="min-w-0">
                 <h1
-                  className="truncate text-base font-bold leading-tight tracking-tight text-slate-900 md:text-lg"
+                  className="truncate text-base font-bold leading-tight tracking-tight text-kp-on-surface md:text-lg"
                   style={{ fontFamily: "var(--font-heading)" }}
                 >
                   ShowingHQ Workbench
                 </h1>
-                <p className="mt-0.5 truncate text-[11px] leading-snug text-slate-500">
+                <p className="mt-0.5 truncate text-[11px] leading-snug text-kp-on-surface-variant">
                   {workbenchDateLine}
                 </p>
               </div>
@@ -82,13 +82,18 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
           <div
             className={cn(
-              "flex shrink-0 items-center gap-2 border-l border-[var(--brand-border)] bg-[var(--brand-surface)] px-3 py-2 md:gap-3 md:px-4",
+              "flex shrink-0 items-center gap-2 border-l border-kp-outline bg-kp-surface px-3 py-2 md:gap-3 md:px-4",
               isShowingHQWorkbench ? "min-h-[88px]" : "min-h-[64px]"
             )}
           >
             {isShowingHQWorkbench ? (
               <>
-                <Button variant="outline" size="sm" className="h-8 shrink-0 text-xs" asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shrink-0 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high hover:text-kp-on-surface"
+                  asChild
+                >
                   <Link href="/properties/new">
                     <Building2 className="mr-1.5 h-3.5 w-3.5" />
                     New property
@@ -96,7 +101,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 </Button>
                 <Button
                   size="sm"
-                  className="h-8 shrink-0 bg-[#0B1A3C] text-xs hover:bg-[#0B1A3C]/90"
+                  className="h-8 shrink-0 border-0 bg-kp-gold text-xs text-kp-bg hover:bg-kp-gold-bright"
                   asChild
                 >
                   <Link href="/open-houses/new">
@@ -110,7 +115,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-auto p-8 md:p-10">
+        <main className="min-h-0 flex-1 overflow-auto bg-kp-bg p-8 md:p-10">
           <div className="mx-auto min-h-[50vh]" style={{ maxWidth: 1280 }}>
             {children}
           </div>
