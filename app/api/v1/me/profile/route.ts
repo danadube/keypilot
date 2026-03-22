@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import { z } from "zod";
 
@@ -24,7 +24,7 @@ export async function GET() {
   try {
     const user = await getCurrentUser();
 
-    const profile = await prisma.userProfile.findUnique({
+    const profile = await prismaAdmin.userProfile.findUnique({
       where: { userId: user.id },
     });
 
@@ -70,7 +70,7 @@ export async function PATCH(req: NextRequest) {
     if (data.brandPrimaryColor !== undefined) update.brandPrimaryColor = data.brandPrimaryColor || null;
     if (data.brandSecondaryColor !== undefined) update.brandSecondaryColor = data.brandSecondaryColor || null;
 
-    const profile = await prisma.userProfile.upsert({
+    const profile = await prismaAdmin.userProfile.upsert({
       where: { userId: user.id },
       create: {
         userId: user.id,

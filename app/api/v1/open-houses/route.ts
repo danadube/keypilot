@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { CreateOpenHouseSchema } from "@/lib/validations/open-house";
 import { generateQrSlug } from "@/lib/slugify";
 import { ActivityType } from "@prisma/client";
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
     const user = await getCurrentUser();
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
-    const openHouses = await prisma.openHouse.findMany({
+    const openHouses = await prismaAdmin.openHouse.findMany({
       where: {
         OR: [
           { hostUserId: user.id },
@@ -42,21 +42,21 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = CreateOpenHouseSchema.parse(body);
     let qrSlug = generateQrSlug();
-    let exists = await prisma.openHouse.findUnique({
+    let exists = await prismaAdmin.openHouse.findUnique({
       where: { qrSlug },
     });
     while (exists) {
       qrSlug = generateQrSlug();
-      exists = await prisma.openHouse.findUnique({ where: { qrSlug } });
+      exists = await prismaAdmin.openHouse.findUnique({ where: { qrSlug } });
     }
-    const property = await prisma.property.findUnique({
+    const property = await prismaAdmin.property.findUnique({
       where: { id: parsed.propertyId },
     });
     if (!property) return apiError("Property not found", 404);
     const listingAgentId = parsed.listingAgentId ?? property.createdByUserId;
     const hostAgentId = parsed.hostAgentId ?? listingAgentId;
 
-    const openHouse = await prisma.openHouse.create({
+    const openHouse = await prismaAdmin.openHouse.create({
       data: {
         propertyId: parsed.propertyId,
         title: parsed.title,
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     // denormalized columns (listingAgentId, hostAgentId) as the access authority.
     // Both columns must be reflected in the junction table so queries against
     // open_house_hosts (e.g. "who are the hosts?") stay consistent.
-    await prisma.openHouseHost.upsert({
+    await prismaAdmin.openHouseHost.upsert({
       where: {
         openHouseId_userId: { openHouseId: openHouse.id, userId: listingAgentId },
       },
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
       update: { role: "LISTING_AGENT" },
     });
     if (hostAgentId !== listingAgentId) {
-      await prisma.openHouseHost.upsert({
+      await prismaAdmin.openHouseHost.upsert({
         where: {
           openHouseId_userId: { openHouseId: openHouse.id, userId: hostAgentId },
         },
@@ -108,7 +108,7 @@ export async function POST(req: NextRequest) {
       openHouse.property.city,
       openHouse.property.state,
     ].join(", ");
-    await prisma.activity.create({
+    await prismaAdmin.activity.create({
       data: {
         activityType: ActivityType.OPEN_HOUSE_CREATED,
         body: `Showing created for ${address}`,

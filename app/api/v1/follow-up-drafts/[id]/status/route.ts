@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { UpdateFollowUpStatusSchema } from "@/lib/validations/follow-up-draft";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
@@ -12,7 +12,7 @@ export async function PATCH(
     const user = await getCurrentUser();
     const { id } = await params;
 
-    const draft = await prisma.followUpDraft.findFirst({
+    const draft = await prismaAdmin.followUpDraft.findFirst({
       where: {
         id,
         deletedAt: null,
@@ -49,7 +49,7 @@ export async function PATCH(
       );
     }
 
-    const updated = await prisma.followUpDraft.update({
+    const updated = await prismaAdmin.followUpDraft.update({
       where: { id },
       data: { status: newStatus },
     });

@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -135,7 +135,7 @@ export async function GET(req: NextRequest) {
   const inList = TABLES_TO_INSPECT.map((t) => `'${t}'`).join(", ");
 
   // Note: Postgres `current_setting(key, true)` returns NULL when missing.
-  const identityRows = await prisma.$queryRawUnsafe<
+  const identityRows = await prismaAdmin.$queryRawUnsafe<
     Array<{
       current_user: string;
       session_user: string;
@@ -161,7 +161,7 @@ export async function GET(req: NextRequest) {
   let authUid: unknown = null;
   try {
     // Supabase provides auth.uid(). On plain Postgres this might not exist.
-    const rows = await prisma.$queryRawUnsafe<
+    const rows = await prismaAdmin.$queryRawUnsafe<
       Array<{ auth_uid: string | null }>
     >(`select auth.uid() as auth_uid`);
     authUid = rows?.[0]?.auth_uid ?? null;
@@ -169,7 +169,7 @@ export async function GET(req: NextRequest) {
     authUid = null;
   }
 
-  const rlsRows = await prisma.$queryRawUnsafe<
+  const rlsRows = await prismaAdmin.$queryRawUnsafe<
     Array<{ tablename: string; relrowsecurity: boolean }>
   >(
     `
@@ -181,7 +181,7 @@ export async function GET(req: NextRequest) {
     `
   );
 
-  const policyRows = await prisma.$queryRawUnsafe<
+  const policyRows = await prismaAdmin.$queryRawUnsafe<
     Array<{
       tablename: string;
       polname: string;

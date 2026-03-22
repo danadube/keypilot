@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { aggregateFeedbackSummary } from "@/lib/feedback-summary";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
@@ -19,7 +19,7 @@ export async function GET(
     const user = await getCurrentUser();
     const { propertyId } = await params;
 
-    const property = await prisma.property.findFirst({
+    const property = await prismaAdmin.property.findFirst({
       where: {
         id: propertyId,
         createdByUserId: user.id,
@@ -33,7 +33,7 @@ export async function GET(
       );
     }
 
-    const requests = await prisma.feedbackRequest.findMany({
+    const requests = await prismaAdmin.feedbackRequest.findMany({
       where: { propertyId },
       select: {
         id: true,

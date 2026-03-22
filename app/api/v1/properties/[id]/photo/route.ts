@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { nanoid } from "nanoid";
@@ -24,7 +24,7 @@ export async function POST(
       );
     }
 
-    const property = await prisma.property.findFirst({
+    const property = await prismaAdmin.property.findFirst({
       where: {
         id,
         createdByUserId: user.id,
@@ -63,7 +63,7 @@ export async function POST(
     const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
     const imageUrl = urlData.publicUrl;
 
-    await prisma.property.update({
+    await prismaAdmin.property.update({
       where: { id },
       data: { imageUrl },
     });

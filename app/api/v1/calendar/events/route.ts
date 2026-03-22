@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import { fetchGoogleCalendarEvents } from "@/lib/adapters/google-calendar";
 import type { NormalizedCalendarEvent } from "@/lib/adapters/calendar-types";
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     const timeMin = req.nextUrl.searchParams.get("timeMin");
     const timeMax = req.nextUrl.searchParams.get("timeMax");
 
-    const connections = await prisma.connection.findMany({
+    const connections = await prismaAdmin.connection.findMany({
       where: {
         userId: user.id,
         provider: "GOOGLE",

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
 /**
@@ -19,15 +19,15 @@ export async function GET() {
       followupsSent,
       feedbackSubmitted,
     ] = await Promise.all([
-      prisma.usageEvent.count({ where: { eventName: "open_house_created" } }),
-      prisma.usageEvent.count({ where: { eventName: "visitor_captured" } }),
-      prisma.usageEvent.count({ where: { eventName: "gmail_connected" } }),
-      prisma.usageEvent.count({ where: { eventName: "calendar_connected" } }),
-      prisma.usageEvent.count({ where: { eventName: "followup_sent" } }),
-      prisma.usageEvent.count({ where: { eventName: "feedback_submitted" } }),
+      prismaAdmin.usageEvent.count({ where: { eventName: "open_house_created" } }),
+      prismaAdmin.usageEvent.count({ where: { eventName: "visitor_captured" } }),
+      prismaAdmin.usageEvent.count({ where: { eventName: "gmail_connected" } }),
+      prismaAdmin.usageEvent.count({ where: { eventName: "calendar_connected" } }),
+      prismaAdmin.usageEvent.count({ where: { eventName: "followup_sent" } }),
+      prismaAdmin.usageEvent.count({ where: { eventName: "feedback_submitted" } }),
     ]);
 
-    const uniqueUsersWithEvents = await prisma.usageEvent.findMany({
+    const uniqueUsersWithEvents = await prismaAdmin.usageEvent.findMany({
       select: { userId: true },
       distinct: ["userId"],
     });

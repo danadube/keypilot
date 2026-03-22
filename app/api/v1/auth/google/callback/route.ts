@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getGoogleOAuth2Client } from "@/lib/oauth/google";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { trackUsageEvent } from "@/lib/track-usage";
 
 export const dynamic = "force-dynamic";
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
       ? new Date(tokens.expiry_date)
       : new Date(Date.now() + 60 * 60 * 1000);
 
-    const existing = await prisma.connection.findFirst({
+    const existing = await prismaAdmin.connection.findFirst({
       where: {
         userId: user.id,
         provider: "GOOGLE",
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
     });
 
     if (existing) {
-      await prisma.connection.update({
+      await prismaAdmin.connection.update({
         where: { id: existing.id },
         data: {
           status: "CONNECTED",
@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
         },
       });
     } else {
-      await prisma.connection.create({
+      await prismaAdmin.connection.create({
         data: {
           userId: user.id,
           provider: "GOOGLE",

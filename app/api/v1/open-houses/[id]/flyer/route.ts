@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { nanoid } from "nanoid";
@@ -24,7 +24,7 @@ export async function POST(
       );
     }
 
-    const openHouse = await prisma.openHouse.findFirst({
+    const openHouse = await prismaAdmin.openHouse.findFirst({
       where: {
         id,
         hostUserId: user.id,
@@ -62,7 +62,7 @@ export async function POST(
     const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
     const flyerUrl = urlData.publicUrl;
 
-    await prisma.openHouse.update({
+    await prismaAdmin.openHouse.update({
       where: { id },
       data: { flyerUrl },
     });

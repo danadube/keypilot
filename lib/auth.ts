@@ -1,5 +1,5 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
-import { prisma } from "./db";
+import { prismaAdmin } from "./db";
 
 /** Sync user from Clerk into our DB when webhook hasn't run (e.g. local dev or webhook failure). */
 async function syncUserFromClerk(clerkId: string) {
@@ -11,7 +11,7 @@ async function syncUserFromClerk(clerkId: string) {
   const email =
     clerkUser.emailAddresses?.[0]?.emailAddress ??
     `user-${clerkId}@placeholder.local`;
-  const user = await prisma.user.upsert({
+  const user = await prismaAdmin.user.upsert({
     where: { clerkId },
     create: { clerkId, name, email },
     update: { name, email },
@@ -24,7 +24,7 @@ export async function getCurrentUser() {
   if (!userId) {
     throw new Error("Unauthorized");
   }
-  let user = await prisma.user.findUnique({
+  let user = await prismaAdmin.user.findUnique({
     where: { clerkId: userId },
   });
   if (!user) {
@@ -38,7 +38,7 @@ export async function getCurrentUserOrNull() {
   if (!userId) {
     return null;
   }
-  let user = await prisma.user.findUnique({
+  let user = await prismaAdmin.user.findUnique({
     where: { clerkId: userId },
   });
   if (!user) {

@@ -4,7 +4,7 @@
 
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ export async function GET() {
   try {
     const user = await getCurrentUser();
 
-    const requests = await prisma.feedbackRequest.findMany({
+    const requests = await prismaAdmin.feedbackRequest.findMany({
       where: { hostUserId: user.id },
       include: {
         showing: { select: { scheduledAt: true, buyerAgentName: true, buyerAgentEmail: true } },

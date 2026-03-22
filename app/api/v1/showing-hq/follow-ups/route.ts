@@ -4,7 +4,7 @@
 
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export async function GET() {
 
     const [draftsNeedsReply, draftsCompleted, remindersUpcoming, remindersCompleted] =
       await Promise.all([
-        prisma.followUpDraft.findMany({
+        prismaAdmin.followUpDraft.findMany({
           where: {
             openHouse: { hostUserId: user.id, deletedAt: null },
             deletedAt: null,
@@ -27,7 +27,7 @@ export async function GET() {
           },
           orderBy: { updatedAt: "desc" },
         }),
-        prisma.followUpDraft.findMany({
+        prismaAdmin.followUpDraft.findMany({
           where: {
             openHouse: { hostUserId: user.id, deletedAt: null },
             deletedAt: null,
@@ -40,7 +40,7 @@ export async function GET() {
           orderBy: { updatedAt: "desc" },
           take: 20,
         }),
-        prisma.followUpReminder.findMany({
+        prismaAdmin.followUpReminder.findMany({
           where: {
             userId: user.id,
             status: "PENDING",
@@ -50,7 +50,7 @@ export async function GET() {
           orderBy: { dueAt: "asc" },
           take: 20,
         }),
-        prisma.followUpReminder.findMany({
+        prismaAdmin.followUpReminder.findMany({
           where: {
             userId: user.id,
             status: "DONE",
@@ -61,7 +61,7 @@ export async function GET() {
         }),
         (async () => {
           const allDrafts = [
-            ...(await prisma.followUpDraft.findMany({
+            ...(await prismaAdmin.followUpDraft.findMany({
               where: {
                 openHouse: { hostUserId: user.id, deletedAt: null },
                 deletedAt: null,
@@ -70,7 +70,7 @@ export async function GET() {
             })),
           ];
           if (allDrafts.length === 0) return [] as { contactId: string; openHouseId: string; leadStatus: string | null }[];
-          const visitors = await prisma.openHouseVisitor.findMany({
+          const visitors = await prismaAdmin.openHouseVisitor.findMany({
             where: {
               OR: allDrafts.map((d) => ({ contactId: d.contactId, openHouseId: d.openHouseId })),
             },
@@ -86,7 +86,7 @@ export async function GET() {
     ];
     const visitors =
       draftPairs.length > 0
-        ? await prisma.openHouseVisitor.findMany({
+        ? await prismaAdmin.openHouseVisitor.findMany({
             where: {
               OR: draftPairs.map((p) => ({
                 contactId: p.contactId,

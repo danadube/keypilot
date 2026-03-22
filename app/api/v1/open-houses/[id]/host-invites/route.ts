@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { withRLSContext } from "@/lib/db-context";
 import { CreateHostInviteSchema } from "@/lib/validations/host-invite";
 import { sendHostInviteEmail } from "@/lib/email/host-invite";
@@ -86,7 +86,7 @@ export async function POST(
     }
 
     // Fetch property with BYPASSRLS — access to this open house already confirmed above.
-    const property = await prisma.property.findUnique({
+    const property = await prismaAdmin.property.findUnique({
       where: { id: result.openHouse.propertyId },
       select: { address1: true, city: true, state: true },
     });

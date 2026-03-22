@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { generateQrSlug } from "@/lib/slugify";
 import { generateQrCodeDataUrl } from "@/lib/qr";
 import { apiErrorFromCaught } from "@/lib/api-response";
@@ -20,7 +20,7 @@ export async function POST(
     const user = await getCurrentUser();
     const { id } = await params;
 
-    const existing = await prisma.openHouse.findFirst({
+    const existing = await prismaAdmin.openHouse.findFirst({
       where: {
         id,
         hostUserId: user.id,
@@ -36,13 +36,13 @@ export async function POST(
     }
 
     let qrSlug = generateQrSlug();
-    let exists = await prisma.openHouse.findUnique({ where: { qrSlug } });
+    let exists = await prismaAdmin.openHouse.findUnique({ where: { qrSlug } });
     while (exists) {
       qrSlug = generateQrSlug();
-      exists = await prisma.openHouse.findUnique({ where: { qrSlug } });
+      exists = await prismaAdmin.openHouse.findUnique({ where: { qrSlug } });
     }
 
-    const openHouse = await prisma.openHouse.update({
+    const openHouse = await prismaAdmin.openHouse.update({
       where: { id },
       data: { qrSlug },
       include: { property: true },

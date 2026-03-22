@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { UpdateVisitorSchema } from "@/lib/validations/visitor";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
@@ -18,7 +18,7 @@ export async function PATCH(
     const user = await getCurrentUser();
     const visitorId = params.visitorId;
 
-    const existing = await prisma.openHouseVisitor.findFirst({
+    const existing = await prismaAdmin.openHouseVisitor.findFirst({
       where: {
         id: visitorId,
         openHouse: { hostUserId: user.id, deletedAt: null },
@@ -38,7 +38,7 @@ export async function PATCH(
       return apiError(parsed.error.issues[0]?.message ?? "Validation failed", 400);
     }
 
-    const updated = await prisma.openHouseVisitor.update({
+    const updated = await prismaAdmin.openHouseVisitor.update({
       where: { id: visitorId },
       data: parsed.data,
       include: {
@@ -77,7 +77,7 @@ export async function GET(
     const user = await getCurrentUser();
     const visitorId = params.visitorId;
 
-    const visitor = await prisma.openHouseVisitor.findFirst({
+    const visitor = await prismaAdmin.openHouseVisitor.findFirst({
       where: {
         id: visitorId,
         openHouse: {
@@ -98,7 +98,7 @@ export async function GET(
       );
     }
 
-    const allVisits = await prisma.openHouseVisitor.findMany({
+    const allVisits = await prismaAdmin.openHouseVisitor.findMany({
       where: {
         contactId: visitor.contactId,
         openHouse: {
@@ -112,7 +112,7 @@ export async function GET(
       orderBy: { submittedAt: "desc" },
     });
 
-    const followUpDrafts = await prisma.followUpDraft.findMany({
+    const followUpDrafts = await prismaAdmin.followUpDraft.findMany({
       where: {
         contactId: visitor.contactId,
         openHouse: { hostUserId: user.id, deletedAt: null },

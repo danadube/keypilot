@@ -3,7 +3,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { SubmitFeedbackSchema } from "@/lib/validations/feedback";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const request = await prisma.feedbackRequest.findUnique({
+    const request = await prismaAdmin.feedbackRequest.findUnique({
       where: { token: parsed.data.token.trim() },
     });
 
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     const now = new Date();
-    await prisma.feedbackRequest.update({
+    await prismaAdmin.feedbackRequest.update({
       where: { id: request.id },
       data: {
         status: "RESPONDED",
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await prisma.showing.update({
+    await prismaAdmin.showing.update({
       where: { id: request.showingId },
       data: { feedbackRequestStatus: "RECEIVED" },
     });

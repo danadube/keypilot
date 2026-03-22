@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
@@ -11,34 +11,34 @@ export async function GET() {
 
     const [propertiesCount, openHousesCount, contactsCount, recentOpenHouses] =
       await Promise.all([
-        prisma.property.count({
+        prismaAdmin.property.count({
           where: { createdByUserId: user.id, deletedAt: null },
         }),
-        prisma.openHouse.count({
+        prismaAdmin.openHouse.count({
           where: { hostUserId: user.id, deletedAt: null },
         }),
         (async () => {
-          const ohIds = await prisma.openHouse.findMany({
+          const ohIds = await prismaAdmin.openHouse.findMany({
             where: { hostUserId: user.id, deletedAt: null },
             select: { id: true },
           });
           const ids = ohIds.map((o) => o.id);
           if (ids.length === 0) return 0;
-          const visitorContactIds = await prisma.openHouseVisitor.findMany({
+          const visitorContactIds = await prismaAdmin.openHouseVisitor.findMany({
             where: { openHouseId: { in: ids } },
             select: { contactId: true },
             distinct: ["contactId"],
           });
           const contactIds = visitorContactIds.map((v) => v.contactId);
           if (contactIds.length === 0) return 0;
-          return prisma.contact.count({
+          return prismaAdmin.contact.count({
             where: {
               id: { in: contactIds },
               deletedAt: null,
             },
           });
         })(),
-        prisma.openHouse.findMany({
+        prismaAdmin.openHouse.findMany({
           where: { hostUserId: user.id, deletedAt: null },
           take: 5,
           orderBy: { startAt: "desc" },

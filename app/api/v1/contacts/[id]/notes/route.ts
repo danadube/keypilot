@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { requireCrmAccess } from "@/lib/product-tier";
 import { AddNoteSchema } from "@/lib/validations/note";
@@ -8,13 +8,13 @@ import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 export const dynamic = "force-dynamic";
 
 async function getContactIfOwned(contactId: string, userId: string) {
-  const openHouses = await prisma.openHouse.findMany({
+  const openHouses = await prismaAdmin.openHouse.findMany({
     where: { hostUserId: userId, deletedAt: null },
     select: { id: true },
   });
   const openHouseIds = openHouses.map((oh) => oh.id);
 
-  const visitor = await prisma.openHouseVisitor.findFirst({
+  const visitor = await prismaAdmin.openHouseVisitor.findFirst({
     where: {
       contactId,
       openHouseId: { in: openHouseIds },
@@ -23,7 +23,7 @@ async function getContactIfOwned(contactId: string, userId: string) {
 
   if (!visitor) return null;
 
-  return prisma.contact.findFirst({
+  return prismaAdmin.contact.findFirst({
     where: { id: contactId, deletedAt: null },
   });
 }
@@ -51,7 +51,7 @@ export async function POST(
       );
     }
 
-    const activity = await prisma.activity.create({
+    const activity = await prismaAdmin.activity.create({
       data: {
         contactId,
         activityType: "NOTE_ADDED",

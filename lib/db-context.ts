@@ -1,5 +1,6 @@
 import type { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
+import { rlsStore } from "@/lib/rls-guard";
 
 /**
  * Executes `fn` inside a Prisma transaction with DB-enforced RLS context.
@@ -39,11 +40,16 @@ export async function withRLSContext<T>(
   userId: string,
   fn: (tx: Prisma.TransactionClient) => Promise<T>
 ): Promise<T> {
-  return prisma.$transaction(async (tx) => {
-    // Set the user context first (while still postgres, before role switch).
-    await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true)`;
-    // Switch to the constrained role — RLS policies now fire for this transaction.
-    await tx.$executeRawUnsafe(`SET LOCAL ROLE keypilot_app`);
-    return fn(tx);
-  });
+  // rlsStore.run() makes userId available to assertRLSContext() / requireRLS()
+  // anywhere in the call stack inside fn — without requiring it to be threaded
+  // through as a parameter. The scope is automatically cleared on return.
+  return rlsStore.run({ userId }, () =>
+    prismaAdmin.$transaction(async (tx) => {
+      // Set the user context first (while still postgres, before role switch).
+      await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true)`;
+      // Switch to the constrained role — RLS policies now fire for this transaction.
+      await tx.$executeRawUnsafe(`SET LOCAL ROLE keypilot_app`);
+      return fn(tx);
+    })
+  );
 }

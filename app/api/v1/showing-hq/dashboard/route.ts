@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
@@ -53,7 +53,7 @@ export async function GET() {
       visitorsLast7dCount,
       followUpsOverdueCount,
     ] = await Promise.all([
-      prisma.openHouse.findMany({
+      prismaAdmin.openHouse.findMany({
         where: {
           hostUserId: user.id,
           deletedAt: null,
@@ -66,7 +66,7 @@ export async function GET() {
         },
         orderBy: { startAt: "asc" },
       }),
-      prisma.openHouse.findMany({
+      prismaAdmin.openHouse.findMany({
         where: {
           hostUserId: user.id,
           deletedAt: null,
@@ -80,7 +80,7 @@ export async function GET() {
         orderBy: { startAt: "asc" },
         take: 10,
       }),
-      prisma.openHouse.findMany({
+      prismaAdmin.openHouse.findMany({
         where: {
           hostUserId: user.id,
           deletedAt: null,
@@ -90,7 +90,7 @@ export async function GET() {
         include: { property: true },
         orderBy: { startAt: "asc" },
       }),
-      prisma.showing.findMany({
+      prismaAdmin.showing.findMany({
         where: {
           hostUserId: user.id,
           deletedAt: null,
@@ -99,7 +99,7 @@ export async function GET() {
         include: { property: true },
         orderBy: { scheduledAt: "asc" },
       }),
-      prisma.showing.findMany({
+      prismaAdmin.showing.findMany({
         where: {
           hostUserId: user.id,
           deletedAt: null,
@@ -108,7 +108,7 @@ export async function GET() {
         include: { property: true },
         orderBy: { scheduledAt: "asc" },
       }),
-      prisma.openHouseVisitor.findMany({
+      prismaAdmin.openHouseVisitor.findMany({
         where: {
           openHouse: {
             hostUserId: user.id,
@@ -122,7 +122,7 @@ export async function GET() {
         orderBy: { submittedAt: "desc" },
         take: 20,
       }),
-      prisma.followUpDraft.findMany({
+      prismaAdmin.followUpDraft.findMany({
         where: {
           openHouse: { hostUserId: user.id, deletedAt: null },
           deletedAt: null,
@@ -135,15 +135,15 @@ export async function GET() {
         orderBy: { updatedAt: "desc" },
         take: 10,
       }),
-      prisma.openHouseVisitor.count({
+      prismaAdmin.openHouseVisitor.count({
         where: {
           openHouse: { hostUserId: user.id, deletedAt: null },
         },
       }),
-      prisma.openHouse.count({
+      prismaAdmin.openHouse.count({
         where: { hostUserId: user.id, deletedAt: null },
       }),
-      prisma.followUpDraft.count({
+      prismaAdmin.followUpDraft.count({
         where: {
           openHouse: { hostUserId: user.id, deletedAt: null },
           deletedAt: null,
@@ -151,48 +151,48 @@ export async function GET() {
         },
       }),
       (async (): Promise<number> => {
-        const ohIds = await prisma.openHouse.findMany({
+        const ohIds = await prismaAdmin.openHouse.findMany({
           where: { hostUserId: user.id, deletedAt: null },
           select: { id: true },
         });
         const ids = ohIds.map((o) => o.id);
         if (ids.length === 0) return 0;
-        const visitorContactIds = await prisma.openHouseVisitor.findMany({
+        const visitorContactIds = await prismaAdmin.openHouseVisitor.findMany({
           where: { openHouseId: { in: ids } },
           select: { contactId: true },
           distinct: ["contactId"],
         });
         const contactIds = visitorContactIds.map((v) => v.contactId);
         if (contactIds.length === 0) return 0;
-        return prisma.contact.count({
+        return prismaAdmin.contact.count({
           where: { id: { in: contactIds }, deletedAt: null },
         });
       })(),
-      prisma.connection.findMany({
+      prismaAdmin.connection.findMany({
         where: { userId: user.id },
         select: { service: true, enabledForCalendar: true },
       }),
-      prisma.userProfile.findUnique({
+      prismaAdmin.userProfile.findUnique({
         where: { userId: user.id },
         select: { displayName: true, brokerageName: true, headshotUrl: true, logoUrl: true },
       }),
-      prisma.showing.count({
+      prismaAdmin.showing.count({
         where: {
           hostUserId: user.id,
           deletedAt: null,
           scheduledAt: { gte: todayStart, lt: todayEnd },
         },
       }),
-      prisma.feedbackRequest.count({
+      prismaAdmin.feedbackRequest.count({
         where: { hostUserId: user.id, status: "PENDING" },
       }),
-      prisma.feedbackRequest.findMany({
+      prismaAdmin.feedbackRequest.findMany({
         where: { hostUserId: user.id, status: "PENDING" },
         include: { property: { select: { address1: true } } },
         orderBy: { requestedAt: "desc" },
         take: 20,
       }),
-      prisma.openHouse.findMany({
+      prismaAdmin.openHouse.findMany({
         where: {
           hostUserId: user.id,
           deletedAt: null,
@@ -205,7 +205,7 @@ export async function GET() {
           _count: { select: { visitors: true } },
         },
       }),
-      prisma.openHouse.count({
+      prismaAdmin.openHouse.count({
         where: {
           hostUserId: user.id,
           deletedAt: null,
@@ -213,7 +213,7 @@ export async function GET() {
           startAt: { gte: todayStart },
         },
       }),
-      prisma.openHouse.findFirst({
+      prismaAdmin.openHouse.findFirst({
         where: {
           hostUserId: user.id,
           deletedAt: null,
@@ -223,19 +223,19 @@ export async function GET() {
         orderBy: { startAt: "asc" },
         select: { startAt: true },
       }),
-      prisma.openHouseVisitor.count({
+      prismaAdmin.openHouseVisitor.count({
         where: {
           submittedAt: { gte: thirtyDaysAgo },
           openHouse: { hostUserId: user.id, deletedAt: null },
         },
       }),
-      prisma.openHouseVisitor.count({
+      prismaAdmin.openHouseVisitor.count({
         where: {
           submittedAt: { gte: sevenDaysAgo },
           openHouse: { hostUserId: user.id, deletedAt: null },
         },
       }),
-      prisma.followUpDraft.count({
+      prismaAdmin.followUpDraft.count({
         where: {
           openHouse: { hostUserId: user.id, deletedAt: null },
           deletedAt: null,
@@ -274,7 +274,7 @@ export async function GET() {
     const firstOpenHouseTomorrow = upcomingOpenHouses.find(
       (oh) => oh.startAt >= tomorrowStart && oh.startAt < tomorrowEnd
     );
-    const firstShowingTomorrow = await prisma.showing.findFirst({
+    const firstShowingTomorrow = await prismaAdmin.showing.findFirst({
       where: {
         hostUserId: user.id,
         deletedAt: null,

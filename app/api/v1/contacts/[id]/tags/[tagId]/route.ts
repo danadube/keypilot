@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { withRLSContext } from "@/lib/db-context";
 import { getCurrentUser } from "@/lib/auth";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
 async function canAccessContact(contactId: string, userId: string) {
-  const openHouses = await prisma.openHouse.findMany({
+  const openHouses = await prismaAdmin.openHouse.findMany({
     where: { hostUserId: userId, deletedAt: null },
     select: { id: true },
   });
   const openHouseIds = openHouses.map((oh) => oh.id);
-  const visitor = await prisma.openHouseVisitor.findFirst({
+  const visitor = await prismaAdmin.openHouseVisitor.findFirst({
     where: {
       contactId,
       openHouseId: { in: openHouseIds },

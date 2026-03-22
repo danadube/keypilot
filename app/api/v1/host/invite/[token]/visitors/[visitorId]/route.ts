@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { VisitorNotesSchema } from "@/lib/validations/visitor-notes";
 import { apiErrorFromCaught } from "@/lib/api-response";
@@ -16,7 +16,7 @@ export async function PUT(
   try {
     const { token, visitorId } = await params;
 
-    const invite = await prisma.openHouseHostInvite.findFirst({
+    const invite = await prismaAdmin.openHouseHostInvite.findFirst({
       where: { token, acceptedAt: null },
       include: { openHouse: true },
     });
@@ -35,7 +35,7 @@ export async function PUT(
       );
     }
 
-    const visitor = await prisma.openHouseVisitor.findFirst({
+    const visitor = await prismaAdmin.openHouseVisitor.findFirst({
       where: {
         id: visitorId,
         openHouseId: invite.openHouseId,
@@ -58,7 +58,7 @@ export async function PUT(
     }
 
     const { visitorNotes, visitorTags } = parsed.data;
-    await prisma.openHouseVisitor.update({
+    await prismaAdmin.openHouseVisitor.update({
       where: { id: visitorId },
       data: {
         visitorNotes: visitorNotes?.trim() || null,

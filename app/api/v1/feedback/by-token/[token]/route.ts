@@ -3,7 +3,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ export async function GET(
       );
     }
 
-    const request = await prisma.feedbackRequest.findUnique({
+    const request = await prismaAdmin.feedbackRequest.findUnique({
       where: { token: token.trim() },
       include: {
         property: { select: { address1: true, address2: true, city: true, state: true, zip: true } },

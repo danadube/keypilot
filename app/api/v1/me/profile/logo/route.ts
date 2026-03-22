@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { nanoid } from "nanoid";
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
     const logoUrl = urlData.publicUrl;
 
-    await prisma.userProfile.upsert({
+    await prismaAdmin.userProfile.upsert({
       where: { userId: user.id },
       create: { userId: user.id, logoUrl },
       update: { logoUrl },

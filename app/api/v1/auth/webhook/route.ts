@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 
 export async function POST(req: NextRequest) {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET?.trim();
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     const email =
       email_addresses?.[0]?.email_address ?? `user-${id}@placeholder.local`;
     try {
-      await prisma.user.upsert({
+      await prismaAdmin.user.upsert({
         where: { clerkId: id },
         create: { clerkId: id, name, email },
         update: { name, email },
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     const email =
       email_addresses?.[0]?.email_address ?? `user-${id}@placeholder.local`;
     try {
-      await prisma.user.update({
+      await prismaAdmin.user.update({
         where: { clerkId: id },
         data: { name, email },
       });

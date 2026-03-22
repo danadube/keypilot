@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { findOrCreateContact } from "@/lib/contact-dedupe";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { VisitorSignInSchema } from "@/lib/validations/visitor";
 import { trackUsageEvent } from "@/lib/track-usage";
 import { sendFlyerEmail } from "@/lib/email/flyer";
@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     const { openHouseId, firstName, lastName, email, phone, signInMethod } =
       parsed.data;
 
-    const openHouse = await prisma.openHouse.findFirst({
+    const openHouse = await prismaAdmin.openHouse.findFirst({
       where: { id: openHouseId, deletedAt: null },
       include: {
         property: {
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       notes: parsed.data.notes ?? undefined,
     });
 
-    const visitor = await prisma.openHouseVisitor.create({
+    const visitor = await prismaAdmin.openHouseVisitor.create({
       data: {
         openHouseId,
         contactId: contact.id,
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       },
     });
 
-    await prisma.activity.create({
+    await prismaAdmin.activity.create({
       data: {
         contactId: contact.id,
         propertyId: openHouse.propertyId,
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       },
     });
 
-    const hostUser = await prisma.user.findUnique({
+    const hostUser = await prismaAdmin.user.findUnique({
       where: { id: openHouse.hostUserId },
       include: { profile: true },
     });
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
       propertyAddress: propertyAddress || openHouse.property.address1,
     });
 
-    await prisma.followUpDraft.create({
+    await prismaAdmin.followUpDraft.create({
       data: {
         contactId: contact.id,
         openHouseId: openHouse.id,
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
       },
     });
 
-    await prisma.activity.create({
+    await prismaAdmin.activity.create({
       data: {
         contactId: contact.id,
         openHouseId: openHouse.id,
@@ -143,7 +143,7 @@ export async function POST(request: Request) {
           : "https://keypilot.vercel.app";
       const trackableLink = `${origin}/flyer/${flyerLinkToken}`;
 
-      await prisma.openHouseVisitor.update({
+      await prismaAdmin.openHouseVisitor.update({
         where: { id: visitor.id },
         data: { flyerLinkToken, flyerRedirectUrl: effectiveFlyerUrl },
       });
@@ -157,13 +157,13 @@ export async function POST(request: Request) {
           agentName:
             (hostUser?.profile?.displayName?.trim() || hostUser?.name?.trim()) ?? undefined,
         });
-        await prisma.openHouseVisitor.update({
+        await prismaAdmin.openHouseVisitor.update({
           where: { id: visitor.id },
           data: { flyerEmailSentAt: new Date(), flyerEmailStatus: "SENT" },
         });
       } catch (err) {
         console.error("[visitor-signin] flyer email failed", err);
-        await prisma.openHouseVisitor.update({
+        await prismaAdmin.openHouseVisitor.update({
           where: { id: visitor.id },
           data: { flyerEmailStatus: "FAILED" },
         });

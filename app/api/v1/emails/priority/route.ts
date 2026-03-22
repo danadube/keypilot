@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import { fetchGmailMessages } from "@/lib/adapters/gmail";
 import type { NormalizedPriorityEmail } from "@/lib/adapters/email-types";
@@ -12,7 +12,7 @@ export async function GET() {
   try {
     const user = await getCurrentUser();
 
-    const connections = await prisma.connection.findMany({
+    const connections = await prismaAdmin.connection.findMany({
       where: {
         userId: user.id,
         provider: "GOOGLE",

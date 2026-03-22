@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { aggregateFeedbackSummary } from "@/lib/feedback-summary";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import type { SellerReportData } from "@/lib/seller-report";
@@ -21,7 +21,7 @@ export async function GET(
     const user = await getCurrentUser();
     const { propertyId } = await params;
 
-    const property = await prisma.property.findFirst({
+    const property = await prismaAdmin.property.findFirst({
       where: {
         id: propertyId,
         createdByUserId: user.id,
@@ -36,7 +36,7 @@ export async function GET(
       );
     }
 
-    const openHouses = await prisma.openHouse.findMany({
+    const openHouses = await prismaAdmin.openHouse.findMany({
       where: {
         propertyId,
         hostUserId: user.id,
@@ -53,7 +53,7 @@ export async function GET(
     };
 
     if (openHouseIds.length > 0) {
-      const visitors = await prisma.openHouseVisitor.findMany({
+      const visitors = await prismaAdmin.openHouseVisitor.findMany({
         where: { openHouseId: { in: openHouseIds } },
         select: {
           id: true,
@@ -71,7 +71,7 @@ export async function GET(
     const followUpsSentCount =
       openHouseIds.length === 0
         ? 0
-        : await prisma.followUpDraft.count({
+        : await prismaAdmin.followUpDraft.count({
             where: {
               openHouseId: { in: openHouseIds },
               status: "SENT_MANUAL",
@@ -79,7 +79,7 @@ export async function GET(
             },
           });
 
-    const requests = await prisma.feedbackRequest.findMany({
+    const requests = await prismaAdmin.feedbackRequest.findMany({
       where: { propertyId },
       select: {
         id: true,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
@@ -8,13 +8,13 @@ export async function GET(_req: NextRequest) {
     const user = await getCurrentUser();
 
     // Contacts scoped to those created via current user's open houses
-    const openHouses = await prisma.openHouse.findMany({
+    const openHouses = await prismaAdmin.openHouse.findMany({
       where: { hostUserId: user.id, deletedAt: null },
       select: { id: true },
     });
     const openHouseIds = openHouses.map((oh) => oh.id);
 
-    const visitors = await prisma.openHouseVisitor.findMany({
+    const visitors = await prismaAdmin.openHouseVisitor.findMany({
       where: { openHouseId: { in: openHouseIds } },
       select: { contactId: true },
       distinct: ["contactId"],
@@ -29,7 +29,7 @@ export async function GET(_req: NextRequest) {
         ? { status: status as "LEAD" | "CONTACTED" | "NURTURING" | "READY" | "LOST" }
         : {};
 
-    const contacts = await prisma.contact.findMany({
+    const contacts = await prismaAdmin.contact.findMany({
       where: {
         id: { in: contactIds },
         deletedAt: null,

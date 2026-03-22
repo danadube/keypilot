@@ -3,7 +3,7 @@
  * Records events to UsageEvent table. Fire-and-forget; errors are logged, not thrown.
  */
 
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 
 export type UsageEventName =
   | "open_house_created"
@@ -31,7 +31,7 @@ export async function trackUsageEvent(
   metadata?: UsageEventMetadata
 ): Promise<void> {
   try {
-    await prisma.usageEvent.create({
+    await prismaAdmin.usageEvent.create({
       data: {
         userId,
         eventName,

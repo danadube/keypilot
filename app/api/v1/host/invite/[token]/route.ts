@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import { generateQrCodeDataUrl } from "@/lib/qr";
 
@@ -11,7 +11,7 @@ export async function GET(
   try {
     const { token } = await params;
 
-    const invite = await prisma.openHouseHostInvite.findUnique({
+    const invite = await prismaAdmin.openHouseHostInvite.findUnique({
       where: { token },
       include: {
         openHouse: {

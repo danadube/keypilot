@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { UpdateShowingSchema } from "@/lib/validations/showing";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
@@ -16,7 +16,7 @@ export async function GET(
   try {
     const user = await getCurrentUser();
     const { id } = await params;
-    const showing = await prisma.showing.findFirst({
+    const showing = await prismaAdmin.showing.findFirst({
       where: { id, hostUserId: user.id, deletedAt: null },
       include: {
         property: true,
@@ -51,7 +51,7 @@ export async function PATCH(
       );
     }
 
-    const existing = await prisma.showing.findFirst({
+    const existing = await prismaAdmin.showing.findFirst({
       where: { id, hostUserId: user.id, deletedAt: null },
     });
     if (!existing) {
@@ -66,7 +66,7 @@ export async function PATCH(
     if (parsed.data.propertyId !== undefined) updateData.propertyId = parsed.data.propertyId;
     if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes ?? null;
 
-    const showing = await prisma.showing.update({
+    const showing = await prismaAdmin.showing.update({
       where: { id },
       data: updateData,
       include: { property: true },

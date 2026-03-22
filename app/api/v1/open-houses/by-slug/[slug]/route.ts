@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { generateQrCodeDataUrl } from "@/lib/qr";
 import { getEffectiveFlyerUrl } from "@/lib/flyer-effective";
 
@@ -14,7 +14,7 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
-    const openHouse = await prisma.openHouse.findFirst({
+    const openHouse = await prismaAdmin.openHouse.findFirst({
       where: {
         qrSlug: slug,
         deletedAt: null,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { ActivityType } from "@prisma/client";
 import type { SellerReportMetrics } from "@/types";
@@ -13,7 +13,7 @@ export async function GET(
     const user = await getCurrentUser();
     const openHouseId = params.id;
 
-    const openHouse = await prisma.openHouse.findFirst({
+    const openHouse = await prismaAdmin.openHouse.findFirst({
       where: {
         id: openHouseId,
         hostUserId: user.id,
@@ -28,7 +28,7 @@ export async function GET(
       );
     }
 
-    const report = await prisma.sellerReport.findFirst({
+    const report = await prismaAdmin.sellerReport.findFirst({
       where: { openHouseId },
       orderBy: { createdAt: "desc" },
     });
@@ -54,7 +54,7 @@ export async function POST(
     const user = await getCurrentUser();
     const openHouseId = params.id;
 
-    const openHouse = await prisma.openHouse.findFirst({
+    const openHouse = await prismaAdmin.openHouse.findFirst({
       where: {
         id: openHouseId,
         hostUserId: user.id,
@@ -98,7 +98,7 @@ export async function POST(
       visitorComments,
     };
 
-    const report = await prisma.sellerReport.create({
+    const report = await prismaAdmin.sellerReport.create({
       data: {
         openHouseId,
         generatedByUserId: user.id,
@@ -106,7 +106,7 @@ export async function POST(
       },
     });
 
-    await prisma.activity.create({
+    await prismaAdmin.activity.create({
       data: {
         openHouseId,
         activityType: ActivityType.SELLER_REPORT_GENERATED,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 
 /**
  * Public trackable flyer link. GET /flyer/[token]
@@ -15,7 +15,7 @@ export async function GET(
       return NextResponse.redirect(new URL("/", process.env.NEXT_PUBLIC_APP_URL || "https://keypilot.vercel.app"));
     }
 
-    const visitor = await prisma.openHouseVisitor.findFirst({
+    const visitor = await prismaAdmin.openHouseVisitor.findFirst({
       where: { flyerLinkToken: token.trim() },
       select: { id: true, flyerRedirectUrl: true },
     });
@@ -24,7 +24,7 @@ export async function GET(
       return NextResponse.redirect(new URL("/", process.env.NEXT_PUBLIC_APP_URL || "https://keypilot.vercel.app"));
     }
 
-    await prisma.openHouseVisitor.update({
+    await prismaAdmin.openHouseVisitor.update({
       where: { id: visitor.id },
       data: { flyerLinkClickedAt: new Date() },
     });

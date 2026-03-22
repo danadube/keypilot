@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { nanoid } from "nanoid";
@@ -25,7 +25,7 @@ export async function POST(
       return apiError("Flyer upload is not configured (missing Supabase storage)", 503);
     }
 
-    const property = await prisma.property.findFirst({
+    const property = await prismaAdmin.property.findFirst({
       where: { id, createdByUserId: user.id, deletedAt: null },
     });
     if (!property) return apiError("Property not found", 404);
@@ -54,7 +54,7 @@ export async function POST(
     const flyerUrl = urlData.publicUrl;
     const now = new Date();
 
-    await prisma.property.update({
+    await prismaAdmin.property.update({
       where: { id },
       data: {
         flyerUrl,
@@ -83,12 +83,12 @@ export async function DELETE(
     const user = await getCurrentUser();
     const { id } = await params;
 
-    const property = await prisma.property.findFirst({
+    const property = await prismaAdmin.property.findFirst({
       where: { id, createdByUserId: user.id, deletedAt: null },
     });
     if (!property) return apiError("Property not found", 404);
 
-    await prisma.property.update({
+    await prismaAdmin.property.update({
       where: { id },
       data: {
         flyerUrl: null,

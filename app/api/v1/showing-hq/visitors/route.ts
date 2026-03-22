@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
             ? [{ contact: { lastName: "desc" } }, { contact: { firstName: "desc" } }]
             : [{ submittedAt: "desc" }];
 
-    const visitors = await prisma.openHouseVisitor.findMany({
+    const visitors = await prismaAdmin.openHouseVisitor.findMany({
       where,
       include: {
         contact: true,
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
       take: 100,
     });
 
-    const openHouses = await prisma.openHouse.findMany({
+    const openHouses = await prismaAdmin.openHouse.findMany({
       where: { hostUserId: user.id, deletedAt: null },
       select: { id: true, title: true, startAt: true, property: true },
       orderBy: { startAt: "desc" },
@@ -70,7 +70,7 @@ export async function GET(req: NextRequest) {
     const visitorPairs = visitors.map((v) => ({ contactId: v.contactId, openHouseId: v.openHouseId }));
     const draftStatusMap = new Map<string, string>();
     if (visitorPairs.length > 0) {
-      const drafts = await prisma.followUpDraft.findMany({
+      const drafts = await prismaAdmin.followUpDraft.findMany({
         where: {
           OR: visitorPairs.map((p) => ({ contactId: p.contactId, openHouseId: p.openHouseId })),
           deletedAt: null,

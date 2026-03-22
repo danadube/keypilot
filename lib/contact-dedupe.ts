@@ -1,4 +1,4 @@
-import { prisma } from "./db";
+import { prismaAdmin } from "./db";
 import type { Contact } from "@prisma/client";
 
 function normalizePhone(phone: string): string {
@@ -19,7 +19,7 @@ export async function findOrCreateContact(params: {
 
   // Rule 1: If email provided, exact match on email where deletedAt is null
   if (email?.trim()) {
-    const existing = await prisma.contact.findFirst({
+    const existing = await prismaAdmin.contact.findFirst({
       where: { email: email.trim(), deletedAt: null },
     });
     if (existing) {
@@ -31,7 +31,7 @@ export async function findOrCreateContact(params: {
   if (phone?.trim()) {
     const normalized = normalizePhone(phone.trim());
     if (normalized.length >= 10) {
-      const allWithPhone = await prisma.contact.findMany({
+      const allWithPhone = await prismaAdmin.contact.findMany({
         where: { deletedAt: null, phone: { not: null } },
       });
       const existing = allWithPhone.find(
@@ -42,7 +42,7 @@ export async function findOrCreateContact(params: {
   }
 
   // Rule 3: Neither matches — create new contact
-  const contact = await prisma.contact.create({
+  const contact = await prismaAdmin.contact.create({
     data: {
       firstName: firstName.trim(),
       lastName: lastName.trim(),

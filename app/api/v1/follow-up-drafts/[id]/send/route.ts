@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { Resend } from "resend";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import { trackUsageEvent } from "@/lib/track-usage";
@@ -13,7 +13,7 @@ export async function POST(
     const user = await getCurrentUser();
     const { id } = await params;
 
-    const draft = await prisma.followUpDraft.findFirst({
+    const draft = await prismaAdmin.followUpDraft.findFirst({
       where: {
         id,
         deletedAt: null,
@@ -75,7 +75,7 @@ export async function POST(
       );
     }
 
-    await prisma.followUpDraft.update({
+    await prismaAdmin.followUpDraft.update({
       where: { id },
       data: { status: "SENT_MANUAL" },
     });
@@ -85,7 +85,7 @@ export async function POST(
       contactId: draft.contactId,
     });
 
-    await prisma.activity.create({
+    await prismaAdmin.activity.create({
       data: {
         contactId: draft.contactId,
         openHouseId: draft.openHouseId,

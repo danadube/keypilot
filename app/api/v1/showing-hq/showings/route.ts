@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { CreateShowingSchema } from "@/lib/validations/showing";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import { generateId } from "@/lib/id";
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
       ...(feedbackOnly ? { feedbackRequired: true } : {}),
     };
 
-    const showings = await prisma.showing.findMany({
+    const showings = await prismaAdmin.showing.findMany({
       where,
       include: { property: true },
       orderBy: { scheduledAt: "desc" },
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const property = await prisma.property.findFirst({
+    const property = await prismaAdmin.property.findFirst({
       where: {
         id: parsed.data.propertyId,
         createdByUserId: user.id,
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     }
 
     const feedbackRequired = parsed.data.feedbackRequired ?? false;
-    const showing = await prisma.showing.create({
+    const showing = await prismaAdmin.showing.create({
       data: {
         propertyId: parsed.data.propertyId,
         hostUserId: user.id,
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (feedbackRequired) {
-      await prisma.feedbackRequest.create({
+      await prismaAdmin.feedbackRequest.create({
         data: {
           showingId: showing.id,
           propertyId: showing.propertyId,

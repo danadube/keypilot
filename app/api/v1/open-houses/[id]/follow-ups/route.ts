@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
@@ -11,7 +11,7 @@ export async function GET(
     const user = await getCurrentUser();
     const openHouseId = params.id;
 
-    const openHouse = await prisma.openHouse.findFirst({
+    const openHouse = await prismaAdmin.openHouse.findFirst({
       where: {
         id: openHouseId,
         hostUserId: user.id,

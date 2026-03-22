@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { withRLSContext } from "@/lib/db-context";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
@@ -33,7 +33,7 @@ export async function GET() {
     // Access to the data is safe: we confirmed the commission rows above, so we
     // know these transactionIds are legitimately associated with this user.
     const transactionIds = Array.from(new Set(commissions.map((c) => c.transactionId)));
-    const transactions = await prisma.transaction.findMany({
+    const transactions = await prismaAdmin.transaction.findMany({
       where: { id: { in: transactionIds } },
       select: {
         id: true,

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { HostFeedbackSchema } from "@/lib/validations/open-house";
 import { apiErrorFromCaught } from "@/lib/api-response";
@@ -16,7 +16,7 @@ export async function PUT(
   try {
     const { token } = await params;
     const now = new Date();
-    const invite = await prisma.openHouseHostInvite.findFirst({
+    const invite = await prismaAdmin.openHouseHostInvite.findFirst({
       where: { token, acceptedAt: null },
       include: { openHouse: true },
     });
@@ -44,7 +44,7 @@ export async function PUT(
     }
 
     const { trafficLevel, feedbackTags, hostNotes } = parsed.data;
-    await prisma.openHouse.update({
+    await prismaAdmin.openHouse.update({
       where: { id: invite.openHouseId },
       data: {
         trafficLevel: trafficLevel ?? null,

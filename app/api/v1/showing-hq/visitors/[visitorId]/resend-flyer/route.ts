@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { getEffectiveFlyerUrl } from "@/lib/flyer-effective";
 import { sendFlyerEmail } from "@/lib/email/flyer";
 import { nanoid } from "nanoid";
@@ -17,7 +17,7 @@ export async function POST(
     const user = await getCurrentUser();
     const { visitorId } = await params;
 
-    const visitor = await prisma.openHouseVisitor.findFirst({
+    const visitor = await prismaAdmin.openHouseVisitor.findFirst({
       where: {
         id: visitorId,
         openHouse: { hostUserId: user.id, deletedAt: null },
@@ -80,19 +80,19 @@ export async function POST(
     let token = visitor.flyerLinkToken;
     if (!token) {
       token = nanoid(24);
-      await prisma.openHouseVisitor.update({
+      await prismaAdmin.openHouseVisitor.update({
         where: { id: visitorId },
         data: { flyerLinkToken: token, flyerRedirectUrl: effectiveFlyerUrl },
       });
     } else {
-      await prisma.openHouseVisitor.update({
+      await prismaAdmin.openHouseVisitor.update({
         where: { id: visitorId },
         data: { flyerRedirectUrl: effectiveFlyerUrl },
       });
     }
 
     const trackableLink = `${origin}/flyer/${token}`;
-    const hostUser = await prisma.user.findUnique({
+    const hostUser = await prismaAdmin.user.findUnique({
       where: { id: visitor.openHouse.hostUserId },
       include: { profile: true },
     });
@@ -107,14 +107,14 @@ export async function POST(
         firstName: visitor.contact.firstName?.trim() || undefined,
         agentName,
       });
-      await prisma.openHouseVisitor.update({
+      await prismaAdmin.openHouseVisitor.update({
         where: { id: visitorId },
         data: { flyerEmailSentAt: new Date(), flyerEmailStatus: "SENT" },
       });
       return NextResponse.json({ data: { ok: true, message: "Flyer sent" } });
     } catch (err) {
       console.error("[resend-flyer]", err);
-      await prisma.openHouseVisitor.update({
+      await prismaAdmin.openHouseVisitor.update({
         where: { id: visitorId },
         data: { flyerEmailStatus: "FAILED" },
       });

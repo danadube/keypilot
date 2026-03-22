@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { CreatePropertySchema } from "@/lib/validations/property";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
 export async function GET() {
   try {
     const user = await getCurrentUser();
-    const properties = await prisma.property.findMany({
+    const properties = await prismaAdmin.property.findMany({
       where: { createdByUserId: user.id, deletedAt: null },
       orderBy: { createdAt: "desc" },
       include: { _count: { select: { openHouses: true } } },
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const parsed = CreatePropertySchema.parse(body);
     const mls = parsed.mlsNumber?.trim() || null;
-    const property = await prisma.property.create({
+    const property = await prismaAdmin.property.create({
       data: {
         ...parsed,
         mlsNumber: mls,

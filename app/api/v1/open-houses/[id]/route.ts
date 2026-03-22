@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { UpdateOpenHouseSchema } from "@/lib/validations/open-house";
 import { generateQrCodeDataUrl } from "@/lib/qr";
 import { OpenHouseStatus } from "@prisma/client";
@@ -13,7 +13,7 @@ export async function GET(
   try {
     const user = await getCurrentUser();
     const { id } = await params;
-    const openHouse = await prisma.openHouse.findFirst({
+    const openHouse = await prismaAdmin.openHouse.findFirst({
       where: {
         id,
         deletedAt: null,
@@ -85,7 +85,7 @@ export async function PUT(
   try {
     const user = await getCurrentUser();
     const { id } = await params;
-    const existing = await prisma.openHouse.findFirst({
+    const existing = await prismaAdmin.openHouse.findFirst({
       where: {
         id,
         deletedAt: null,
@@ -135,7 +135,7 @@ export async function PUT(
     if (trafficLevel !== undefined) updateData.trafficLevel = trafficLevel;
     if (feedbackTags !== undefined) updateData.feedbackTags = feedbackTags;
     if (hostNotes !== undefined) updateData.hostNotes = hostNotes?.trim() || null;
-    const openHouse = await prisma.openHouse.update({
+    const openHouse = await prismaAdmin.openHouse.update({
       where: { id },
       data: updateData,
       include: { property: true, listingAgent: true, hostAgent: true },
@@ -146,7 +146,7 @@ export async function PUT(
     // under Option A because open_house_hosts RLS cascades through open_houses, which
     // checks the current denormalized columns, not junction rows.
     const effectiveListingAgentId = openHouse.listingAgentId ?? openHouse.hostUserId;
-    await prisma.openHouseHost.upsert({
+    await prismaAdmin.openHouseHost.upsert({
       where: {
         openHouseId_userId: { openHouseId: id, userId: effectiveListingAgentId },
       },
@@ -158,7 +158,7 @@ export async function PUT(
       update: { role: "LISTING_AGENT" },
     });
     if (openHouse.hostAgentId && openHouse.hostAgentId !== effectiveListingAgentId) {
-      await prisma.openHouseHost.upsert({
+      await prismaAdmin.openHouseHost.upsert({
         where: {
           openHouseId_userId: { openHouseId: id, userId: openHouse.hostAgentId },
         },
@@ -185,7 +185,7 @@ export async function DELETE(
   try {
     const user = await getCurrentUser();
     const { id } = await params;
-    const openHouse = await prisma.openHouse.findFirst({
+    const openHouse = await prismaAdmin.openHouse.findFirst({
       where: {
         id,
         deletedAt: null,
@@ -206,12 +206,12 @@ export async function DELETE(
       openHouse.status === OpenHouseStatus.SCHEDULED ||
       openHouse.status === OpenHouseStatus.ACTIVE
     ) {
-      await prisma.openHouse.update({
+      await prismaAdmin.openHouse.update({
         where: { id },
         data: { status: OpenHouseStatus.CANCELLED },
       });
     } else {
-      await prisma.openHouse.update({
+      await prismaAdmin.openHouse.update({
         where: { id },
         data: { deletedAt: new Date() },
       });

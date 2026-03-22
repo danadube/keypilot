@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
+import { prismaAdmin } from "@/lib/db";
 import { UpdatePropertySchema } from "@/lib/validations/property";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
@@ -11,7 +11,7 @@ export async function GET(
   try {
     const user = await getCurrentUser();
     const { id } = await params;
-    const property = await prisma.property.findFirst({
+    const property = await prismaAdmin.property.findFirst({
       where: {
         id,
         createdByUserId: user.id,
@@ -43,7 +43,7 @@ export async function PUT(
   try {
     const user = await getCurrentUser();
     const { id } = await params;
-    const existing = await prisma.property.findFirst({
+    const existing = await prismaAdmin.property.findFirst({
       where: {
         id,
         createdByUserId: user.id,
@@ -58,7 +58,7 @@ export async function PUT(
     }
     const body = await req.json();
     const parsed = UpdatePropertySchema.parse(body);
-    const property = await prisma.property.update({
+    const property = await prismaAdmin.property.update({
       where: { id },
       data: parsed,
     });
@@ -77,7 +77,7 @@ export async function DELETE(
   try {
     const user = await getCurrentUser();
     const { id } = await params;
-    const property = await prisma.property.findFirst({
+    const property = await prismaAdmin.property.findFirst({
       where: {
         id,
         createdByUserId: user.id,
@@ -109,7 +109,7 @@ export async function DELETE(
         { status: 400 }
       );
     }
-    await prisma.property.update({
+    await prismaAdmin.property.update({
       where: { id },
       data: { deletedAt: new Date() },
     });
