@@ -285,8 +285,14 @@ export function SupraInboxView() {
     { id: string; scheduledAt: string; minutesDelta: number }[]
   >([]);
   const [showingSuggestLoading, setShowingSuggestLoading] = useState(false);
+  const [clearingTestInbox, setClearingTestInbox] = useState(false);
 
   const applyReadiness = useMemo(() => getApplyReadiness(detail), [detail]);
+
+  const clearableQueueCount = useMemo(
+    () => items.filter((i) => i.queueState !== QueueStates.APPLIED).length,
+    [items]
+  );
 
   const load = useCallback(async () => {
     setError(null);
@@ -324,6 +330,17 @@ export function SupraInboxView() {
     setReviewRawExpanded(false);
     setReviewAdvancedOpen(false);
   }, [detail?.id]);
+
+  useEffect(() => {
+    if (!modalOpen || !detail?.id) return;
+    if (!items.some((r) => r.id === detail.id)) {
+      setModalOpen(false);
+      setDetail(null);
+      setApplyConflict(null);
+      setApplyDuplicateAck(false);
+      setPastedReviewBannerId(null);
+    }
+  }, [modalOpen, detail?.id, items]);
 
   useEffect(() => {
     if (!pasteModalOpen) return;
@@ -502,6 +519,35 @@ export function SupraInboxView() {
       setError(e instanceof Error ? e.message : "Gmail import failed");
     } finally {
       setGmailImporting(false);
+    }
+  };
+
+  const clearTestInbox = async () => {
+    const confirmed = window.confirm(
+      "Clear all Supra inbox queue rows except items already marked APPLIED?\n\n" +
+        "This only deletes Supra queue rows on your account. It does not remove properties, showings, or any other records."
+    );
+    if (!confirmed) return;
+    setClearingTestInbox(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/v1/showing-hq/supra-queue/clear", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error?.message ?? "Failed to clear queue");
+        return;
+      }
+      const deletedCount =
+        typeof json.data?.deletedCount === "number" ? json.data.deletedCount : 0;
+      await load();
+      setFilterPreset("all");
+      setSuccessMessage(
+        `Removed ${deletedCount} queue row(s). Applied rows were kept. Properties and showings were not changed.`
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to clear queue");
+    } finally {
+      setClearingTestInbox(false);
     }
   };
 
@@ -929,7 +975,7 @@ export function SupraInboxView() {
           </div>
         </div>
 
-        <div className="relative flex flex-col gap-1">
+        <div className="relative flex flex-col gap-2">
           <p className={t.section}>Test data</p>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -1019,6 +1065,23 @@ export function SupraInboxView() {
               ) : null}
             </div>
           </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 self-start text-xs font-medium text-kp-on-surface/55 hover:bg-kp-surface-high hover:text-kp-on-surface/80"
+            disabled={
+              clearingTestInbox || loading || pasting || gmailImporting || clearableQueueCount === 0
+            }
+            title={
+              clearableQueueCount === 0
+                ? "No non-applied queue rows to remove."
+                : "Remove test/import queue rows (keeps applied). Does not delete properties or showings."
+            }
+            onClick={() => void clearTestInbox()}
+          >
+            {clearingTestInbox ? "Clearing…" : "Clear test inbox"}
+          </Button>
         </div>
       </div>
 
