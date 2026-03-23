@@ -120,8 +120,18 @@ type ItemWithRelations = SupraQueueItem & {
     address1: string;
     city: string;
     state: string;
+    zip?: string;
   } | null;
-  matchedShowing: { id: string; scheduledAt: Date } | null;
+  matchedShowing: { id: string; scheduledAt: Date; propertyId: string } | null;
+};
+
+type PropertySuggestionRow = {
+  id: string;
+  address1: string;
+  city: string;
+  state: string;
+  zip: string;
+  matchKind: "exact" | "partial";
 };
 
 /** Same rules as POST …/apply — for disabling the Apply button and list hints */
@@ -195,6 +205,12 @@ export function SupraInboxView() {
   const [pasteReceivedAt, setPasteReceivedAt] = useState("");
   const [pasting, setPasting] = useState(false);
   const [parseDrafting, setParseDrafting] = useState(false);
+  const [propertySuggestions, setPropertySuggestions] = useState<PropertySuggestionRow[]>([]);
+  const [propertySuggestLoading, setPropertySuggestLoading] = useState(false);
+  const [showingSuggestions, setShowingSuggestions] = useState<
+    { id: string; scheduledAt: string; minutesDelta: number }[]
+  >([]);
+  const [showingSuggestLoading, setShowingSuggestLoading] = useState(false);
 
   const applyReadiness = useMemo(() => getApplyReadiness(detail), [detail]);
 
@@ -221,6 +237,81 @@ export function SupraInboxView() {
     const t = setTimeout(() => setSuccessMessage(null), 5000);
     return () => clearTimeout(t);
   }, [successMessage]);
+
+  /* Intentional deps: refetch when parsed address lines change, not on every detail field edit */
+  useEffect(() => {
+    if (!modalOpen || !detail) {
+      setPropertySuggestions([]);
+      return;
+    }
+    const a1 = detail.parsedAddress1?.trim();
+    const city = detail.parsedCity?.trim();
+    const st = detail.parsedState?.trim();
+    if (!a1 || !city || !st) {
+      setPropertySuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    setPropertySuggestLoading(true);
+    const q = new URLSearchParams({ address1: a1, city, state: st });
+    fetch(`/api/v1/showing-hq/properties/suggest?${q.toString()}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (cancelled) return;
+        setPropertySuggestions(Array.isArray(json.data?.suggestions) ? json.data.suggestions : []);
+      })
+      .catch(() => {
+        if (!cancelled) setPropertySuggestions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setPropertySuggestLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see comment above
+  }, [modalOpen, detail?.id, detail?.parsedAddress1, detail?.parsedCity, detail?.parsedState]);
+
+  useEffect(() => {
+    if (!modalOpen || !detail) {
+      setShowingSuggestions([]);
+      return;
+    }
+    const pid = detail.matchedPropertyId?.trim();
+    const at = detail.parsedScheduledAt;
+    if (!pid || !at) {
+      setShowingSuggestions([]);
+      return;
+    }
+    const t = new Date(at).getTime();
+    if (Number.isNaN(t)) {
+      setShowingSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    setShowingSuggestLoading(true);
+    const q = new URLSearchParams({
+      propertyId: pid,
+      scheduledAt: new Date(at).toISOString(),
+      windowHours: "3",
+    });
+    fetch(`/api/v1/showing-hq/showings/suggest?${q.toString()}`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (cancelled) return;
+        setShowingSuggestions(Array.isArray(json.data?.suggestions) ? json.data.suggestions : []);
+      })
+      .catch(() => {
+        if (!cancelled) setShowingSuggestions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setShowingSuggestLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only property + time drive showing hints
+  }, [modalOpen, detail?.id, detail?.matchedPropertyId, detail?.parsedScheduledAt]);
 
   const counts = useMemo(() => {
     let ingested = 0;
@@ -340,6 +431,46 @@ export function SupraInboxView() {
     setApplyDuplicateAck(false);
     setDetail(normalizeItem(row));
     setModalOpen(true);
+  };
+
+  const selectPropertySuggestion = (s: PropertySuggestionRow) => {
+    setDetail((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        matchedPropertyId: s.id,
+        matchedProperty: {
+          id: s.id,
+          address1: s.address1,
+          city: s.city,
+          state: s.state,
+          zip: s.zip,
+        },
+        matchedShowingId: null,
+        matchedShowing: null,
+      };
+    });
+  };
+
+  const selectShowingSuggestion = (s: { id: string; scheduledAt: string }) => {
+    setDetail((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        matchedShowingId: s.id,
+        matchedShowing: {
+          id: s.id,
+          scheduledAt: new Date(s.scheduledAt),
+          propertyId: prev.matchedPropertyId?.trim() ?? "",
+        },
+      };
+    });
+  };
+
+  const clearShowingMatch = () => {
+    setDetail((prev) =>
+      prev ? { ...prev, matchedShowingId: null, matchedShowing: null } : prev
+    );
   };
 
   const handleParseDraft = async () => {
@@ -1315,8 +1446,110 @@ export function SupraInboxView() {
 
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-                Matching (manual in v1)
+                Matching
               </p>
+              <p className="mb-3 text-xs text-kp-on-surface-variant">
+                Suggestions are optional hints — nothing is applied until you save and run Apply. For a new
+                listing, leave property blank if apply will create from parsed address.
+              </p>
+
+              {detail.parsedAddress1?.trim() &&
+              detail.parsedCity?.trim() &&
+              detail.parsedState?.trim() ? (
+                <div
+                  className={cn(
+                    "mb-4 rounded-lg border border-kp-outline bg-kp-surface-high/60 p-3",
+                    detail.parseConfidence === Confidences.LOW && "opacity-80"
+                  )}
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                    Suggested properties
+                  </p>
+                  {propertySuggestLoading ? (
+                    <p className="mt-2 text-xs text-kp-on-surface-variant">Loading…</p>
+                  ) : propertySuggestions.length === 0 ? (
+                    <p className="mt-2 text-xs text-kp-on-surface-variant">
+                      No similar properties in your account (same city/state). Use manual ID below or create on
+                      apply.
+                    </p>
+                  ) : (
+                    <ul className="mt-2 space-y-2">
+                      {propertySuggestions.map((s) => (
+                        <li key={s.id}>
+                          <button
+                            type="button"
+                            className={cn(
+                              "w-full rounded-md border border-kp-outline px-3 py-2 text-left text-xs transition-colors hover:bg-kp-surface",
+                              detail.matchedPropertyId === s.id && "border-kp-teal/60 bg-kp-teal/10"
+                            )}
+                            onClick={() => selectPropertySuggestion(s)}
+                          >
+                            <span className="font-medium text-kp-on-surface">
+                              {s.address1}, {s.city}, {s.state} {s.zip}
+                            </span>
+                            <span className="ml-2 text-[10px] uppercase text-kp-on-surface-variant">
+                              {s.matchKind === "exact" ? "Exact" : "Partial"}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ) : null}
+
+              {detail.matchedPropertyId?.trim() && detail.parsedScheduledAt ? (
+                <div
+                  className={cn(
+                    "mb-4 rounded-lg border border-kp-outline bg-kp-surface-high/60 p-3",
+                    detail.parseConfidence === Confidences.LOW && "opacity-80"
+                  )}
+                >
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                    Possible existing showings
+                  </p>
+                  <p className="mt-1 text-[11px] text-kp-on-surface-variant">
+                    Within ±3h of parsed time — pick one to update, or create a new showing on apply.
+                  </p>
+                  {showingSuggestLoading ? (
+                    <p className="mt-2 text-xs text-kp-on-surface-variant">Loading…</p>
+                  ) : showingSuggestions.length === 0 ? (
+                    <p className="mt-2 text-xs text-kp-on-surface-variant">
+                      No showings in that window. Use manual ID or leave empty for a new showing.
+                    </p>
+                  ) : (
+                    <ul className="mt-2 space-y-2">
+                      {showingSuggestions.map((s) => (
+                        <li key={s.id}>
+                          <button
+                            type="button"
+                            className={cn(
+                              "w-full rounded-md border border-kp-outline px-3 py-2 text-left text-xs transition-colors hover:bg-kp-surface",
+                              detail.matchedShowingId === s.id && "border-kp-teal/60 bg-kp-teal/10"
+                            )}
+                            onClick={() => selectShowingSuggestion(s)}
+                          >
+                            {new Date(s.scheduledAt).toLocaleString()}{" "}
+                            <span className="text-kp-on-surface-variant">
+                              (±{s.minutesDelta} min)
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 h-8 px-2 text-xs text-kp-on-surface-variant hover:text-kp-on-surface"
+                    onClick={clearShowingMatch}
+                  >
+                    Clear showing match (create new showing on apply)
+                  </Button>
+                </div>
+              ) : null}
+
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <Label className="text-kp-on-surface">Matched property id</Label>
@@ -1325,12 +1558,18 @@ export function SupraInboxView() {
                     value={detail.matchedPropertyId ?? ""}
                     placeholder="UUID"
                     onChange={(e) =>
-                      setDetail({ ...detail, matchedPropertyId: e.target.value.trim() || null })
+                      setDetail({
+                        ...detail,
+                        matchedPropertyId: e.target.value.trim() || null,
+                        matchedProperty: null,
+                      })
                     }
                   />
                   {detail.matchedProperty ? (
                     <p className="mt-1 text-xs text-kp-on-surface-variant">
-                      {detail.matchedProperty.address1}, {detail.matchedProperty.city}
+                      {detail.matchedProperty.address1}, {detail.matchedProperty.city},{" "}
+                      {detail.matchedProperty.state}
+                      {detail.matchedProperty.zip ? ` ${detail.matchedProperty.zip}` : ""}
                     </p>
                   ) : null}
                 </div>
@@ -1341,7 +1580,11 @@ export function SupraInboxView() {
                     value={detail.matchedShowingId ?? ""}
                     placeholder="UUID"
                     onChange={(e) =>
-                      setDetail({ ...detail, matchedShowingId: e.target.value.trim() || null })
+                      setDetail({
+                        ...detail,
+                        matchedShowingId: e.target.value.trim() || null,
+                        matchedShowing: null,
+                      })
                     }
                   />
                   {detail.matchedShowing ? (

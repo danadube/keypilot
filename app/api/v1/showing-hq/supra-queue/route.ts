@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 const listInclude = {
   matchedProperty: {
-    select: { id: true, address1: true, city: true, state: true },
+    select: { id: true, address1: true, city: true, state: true, zip: true },
   },
   matchedShowing: {
     select: { id: true, scheduledAt: true },
