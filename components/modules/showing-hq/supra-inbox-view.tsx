@@ -141,15 +141,20 @@ const reviewFormLabel = "text-xs text-kp-on-surface/70 uppercase tracking-wide";
 
 const reviewSectionTitle = "text-sm font-semibold text-kp-on-surface";
 
-const reviewRawBodyTextarea =
-  "min-h-[160px] w-full rounded-md border border-kp-outline bg-kp-bg p-3 font-mono text-[13px] leading-snug text-kp-on-surface placeholder:text-kp-on-surface/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal focus-visible:border-kp-teal";
+/** Preview + expanded editor share the same surface/typography. */
+const reviewRawBodyChrome =
+  "w-full rounded-md border border-kp-outline bg-kp-bg p-3 font-mono text-[13px] leading-snug text-kp-on-surface";
 
-/** Parser / next-step callouts — must not compete with the form. */
-const secondaryMetaPanel =
-  "rounded-lg border border-kp-outline/50 bg-transparent p-2 shadow-none";
+const reviewRawBodyTextarea = cn(
+  reviewRawBodyChrome,
+  "min-h-[160px] placeholder:text-kp-on-surface/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal focus-visible:border-kp-teal"
+);
 
-const secondaryParserPanel =
-  "rounded-lg border border-dashed border-kp-outline/50 bg-transparent p-2 shadow-none";
+/** Subtle workflow rails (review modal). */
+const reviewWorkflowRail =
+  "text-[11px] font-medium uppercase tracking-wide text-kp-on-surface/55";
+
+const reviewRightCard = "rounded-lg border border-kp-outline/70 bg-kp-surface p-3 shadow-sm";
 
 /** Work-queue typography: readable primary + visible secondary (avoid muddy variant stacking) */
 const t = {
@@ -161,6 +166,11 @@ const t = {
   tableCell: "text-xs leading-tight text-kp-on-surface/88",
   tableMuted: "text-[11px] leading-tight text-kp-on-surface/65",
 } as const;
+
+function rawBodyLines(text: string): string[] {
+  if (!text) return [];
+  return text.split(/\r?\n/);
+}
 
 type ItemWithRelations = SupraQueueItem & {
   matchedProperty: {
@@ -265,6 +275,8 @@ export function SupraInboxView() {
   const [highlightQueueRowId, setHighlightQueueRowId] = useState<string | null>(null);
   /** Show “just pasted” strip at top of review modal */
   const [pastedReviewBannerId, setPastedReviewBannerId] = useState<string | null>(null);
+  const [reviewRawExpanded, setReviewRawExpanded] = useState(false);
+  const [reviewAdvancedOpen, setReviewAdvancedOpen] = useState(false);
   const pasteBodyRef = useRef<HTMLTextAreaElement>(null);
   const [parseDrafting, setParseDrafting] = useState(false);
   const [propertySuggestions, setPropertySuggestions] = useState<PropertySuggestionRow[]>([]);
@@ -307,6 +319,11 @@ export function SupraInboxView() {
     const clear = setTimeout(() => setHighlightQueueRowId(null), 7000);
     return () => clearTimeout(clear);
   }, [highlightQueueRowId]);
+
+  useEffect(() => {
+    setReviewRawExpanded(false);
+    setReviewAdvancedOpen(false);
+  }, [detail?.id]);
 
   useEffect(() => {
     if (!pasteModalOpen) return;
@@ -1236,10 +1253,12 @@ export function SupraInboxView() {
             setApplyConflict(null);
             setApplyDuplicateAck(false);
             setPastedReviewBannerId(null);
+            setReviewRawExpanded(false);
+            setReviewAdvancedOpen(false);
           }
         }}
         title="Review queue item"
-        description="Fix parsed fields on the left, match and route on the right, Save, then Apply to write property + showing."
+        description="Review and fix on the left, then match and apply on the right in order. Save before using shortcuts or Apply."
         size="2xl"
         bodyClassName="max-h-[min(85vh,840px)]"
         footer={
@@ -1365,7 +1384,7 @@ export function SupraInboxView() {
                   </div>
                   <p className={cn("mt-1.5", t.meta)}>
                     {detail.queueState === QueueStates.FAILED_PARSE
-                      ? "Treat the body as unusable unless you fix it manually below."
+                      ? "Treat the body as unusable unless you fix it — expand Raw source on the left if needed."
                       : detail.queueState === QueueStates.READY_TO_APPLY
                         ? "Ready to apply — use Apply now on the right to write property and showing."
                         : isAwaitingDecision(detail.queueState)
@@ -1378,8 +1397,8 @@ export function SupraInboxView() {
 
             <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,1fr)_minmax(15.5rem,18rem)] lg:grid-cols-[minmax(0,1fr)_minmax(17.5rem,20rem)] xl:grid-cols-[minmax(0,1fr)_22rem]">
               {/* Left: primary editing column */}
-              <div className="min-w-0 space-y-3">
-            {/* Primary: parsed fields + message (dominant) */}
+              <div className="min-w-0 space-y-2">
+            <p className={reviewWorkflowRail}>Review &amp; fix</p>
             <div className="space-y-3 rounded-lg border border-kp-outline bg-kp-surface p-4">
               <h3 className={reviewSectionTitle}>Parsed fields</h3>
               {detail.parseConfidence === Confidences.LOW ? (
@@ -1524,72 +1543,105 @@ export function SupraInboxView() {
                 </div>
               </div>
 
-              <div className="space-y-1.5">
+              <div className="space-y-1.5 border-t border-kp-outline/60 pt-4">
                 <Label className={reviewFormLabel}>Raw source text</Label>
                 <p className={t.metaQuiet}>
-                  Full message body as captured. Editable when the parser is wrong.
+                  Collapsed preview (first lines). Expand to view or edit the full message.
                 </p>
-                <textarea
-                  className={reviewRawBodyTextarea}
-                  spellCheck={false}
-                  value={detail.rawBodyText}
-                  onChange={(e) => setDetail({ ...detail, rawBodyText: e.target.value })}
-                />
-              </div>
-            </div>
-              </div>
-
-              {/* Right: decisions, matching, routing, apply (sticky on large screens) */}
-              <div className="min-w-0 space-y-3 md:sticky md:top-0 md:z-[1] md:max-h-[min(85vh,840px)] md:self-start md:overflow-y-auto md:pb-1 md:pr-0.5">
-            <div className="space-y-2">
-              <div className={secondaryMetaPanel}>
-                <p className={t.section}>Next step (parser)</p>
-                <p className="mt-1 text-sm font-semibold leading-snug text-kp-on-surface">
-                  {PROPOSED_ACTION_LABELS[detail.proposedAction]}
-                </p>
-                <p className={cn("mt-1 font-mono", t.metaQuiet)}>{detail.proposedAction}</p>
-              </div>
-              <div className={secondaryMetaPanel}>
-                <p className={t.section}>Parse risk</p>
-                <div className="mt-1 flex flex-wrap items-center gap-2">
-                  <StatusBadge variant={confidenceBadgeVariant(detail.parseConfidence)}>
-                    {formatEnumLabel(detail.parseConfidence)}
-                  </StatusBadge>
-                </div>
-                <p className={cn("mt-2 text-xs leading-snug", t.meta)}>
-                  {CONFIDENCE_HINTS[detail.parseConfidence]}
-                </p>
-              </div>
-            </div>
-
-            {detail.queueState !== QueueStates.APPLIED &&
-            detail.queueState !== QueueStates.DISMISSED &&
-            detail.queueState !== QueueStates.DUPLICATE ? (
-              <div className={secondaryParserPanel}>
-                <p className={t.section}>Supra parser (v1)</p>
-                <p className={cn("mt-1 text-xs", t.meta)}>
-                  Runs <code className="rounded bg-kp-surface px-1 py-px font-mono text-[11px]">parse-supra-email</code>{" "}
-                  on subject + body. Verify date, address, and intent before apply.
-                </p>
+                {reviewRawExpanded ? (
+                  <textarea
+                    className={reviewRawBodyTextarea}
+                    spellCheck={false}
+                    value={detail.rawBodyText}
+                    onChange={(e) => setDetail({ ...detail, rawBodyText: e.target.value })}
+                  />
+                ) : (
+                  <div
+                    className={cn(
+                      reviewRawBodyChrome,
+                      "max-h-[6.5rem] overflow-hidden whitespace-pre-wrap break-words"
+                    )}
+                  >
+                    {detail.rawBodyText?.trim()
+                      ? rawBodyLines(detail.rawBodyText)
+                          .slice(0, 5)
+                          .join("\n")
+                      : "— No raw body —"}
+                  </div>
+                )}
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="mt-2 h-8 w-full border-kp-outline/50 font-semibold text-kp-on-surface hover:bg-kp-surface-high/80"
-                  disabled={parseDrafting || saving || applying}
-                  onClick={handleParseDraft}
+                  className="h-8 border-kp-outline/70 text-xs font-medium text-kp-on-surface"
+                  onClick={() => setReviewRawExpanded((x) => !x)}
                 >
-                  {parseDrafting ? "Parsing…" : "Run parser → fill draft"}
+                  {reviewRawExpanded ? "Collapse email" : "Show full email"}
                 </Button>
               </div>
-            ) : null}
+            </div>
+              </div>
 
-            <div className="space-y-3 rounded-lg border border-kp-outline bg-kp-surface p-4">
-              <h3 className={reviewSectionTitle}>Property &amp; showing match</h3>
-              <p className={t.meta}>
-                Suggestions are hints only — choose one or type IDs. New listing: leave property blank if apply
-                creates from parsed address.
-              </p>
+              {/* Right: parse → match → apply → advanced (sticky) */}
+              <div className="min-w-0 space-y-4 md:sticky md:top-0 md:z-[1] md:max-h-[min(85vh,840px)] md:self-start md:overflow-y-auto md:pb-1 md:pr-0.5">
+                <p className={reviewWorkflowRail}>Match · apply</p>
+
+                <section className="space-y-2" aria-label="Parser">
+                  <p className={reviewWorkflowRail}>Parse</p>
+                  <div className={cn(reviewRightCard, "space-y-3")}>
+                    <div>
+                      <p className={t.section}>Next step (parser)</p>
+                      <p className="mt-1 text-sm font-semibold leading-snug text-kp-on-surface">
+                        {PROPOSED_ACTION_LABELS[detail.proposedAction]}
+                      </p>
+                      <p className={cn("mt-1 font-mono", t.metaQuiet)}>{detail.proposedAction}</p>
+                    </div>
+                    <div className="border-t border-kp-outline/40 pt-3">
+                      <p className={t.section}>Parse risk</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <StatusBadge variant={confidenceBadgeVariant(detail.parseConfidence)}>
+                          {formatEnumLabel(detail.parseConfidence)}
+                        </StatusBadge>
+                      </div>
+                      <p className={cn("mt-2 text-xs leading-snug", t.meta)}>
+                        {CONFIDENCE_HINTS[detail.parseConfidence]}
+                      </p>
+                    </div>
+                    {detail.queueState !== QueueStates.APPLIED &&
+                    detail.queueState !== QueueStates.DISMISSED &&
+                    detail.queueState !== QueueStates.DUPLICATE ? (
+                      <div className="border-t border-kp-outline/40 pt-3">
+                        <p className={t.section}>Supra parser (v1)</p>
+                        <p className={cn("mt-1 text-xs", t.meta)}>
+                          Runs{" "}
+                          <code className="rounded bg-kp-surface px-1 py-px font-mono text-[11px]">
+                            parse-supra-email
+                          </code>{" "}
+                          on subject + body. Verify date, address, and intent before apply.
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-2 h-8 w-full border-kp-outline/50 font-semibold text-kp-on-surface hover:bg-kp-surface-high/80"
+                          disabled={parseDrafting || saving || applying}
+                          onClick={handleParseDraft}
+                        >
+                          {parseDrafting ? "Parsing…" : "Run parser → fill draft"}
+                        </Button>
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+
+                <section className="space-y-2" aria-label="Match">
+                  <p className={reviewWorkflowRail}>Match</p>
+                  <div className={cn(reviewRightCard, "space-y-3")}>
+                    <p className="text-xs font-semibold text-kp-on-surface">Property &amp; showing</p>
+                    <p className="text-[11px] leading-snug text-kp-on-surface/68">
+                      Suggestions are hints — pick one or type IDs. New listing: leave property blank if apply creates
+                      from parsed address.
+                    </p>
 
               {detail.parsedAddress1?.trim() &&
               detail.parsedCity?.trim() &&
@@ -1766,78 +1818,12 @@ export function SupraInboxView() {
                   </select>
                 </div>
               </div>
+                  </div>
+                </section>
 
-              <div className="border-t border-kp-outline/60 pt-4">
-                <h3 className={reviewSectionTitle}>Queue &amp; routing</h3>
-                <div className="mt-3 grid grid-cols-1 gap-3">
-                  <div>
-                    <Label className={reviewFormLabel}>Queue state</Label>
-                    <select
-                      className={cn("mt-1", fieldInput)}
-                      value={detail.queueState}
-                      onChange={(e) =>
-                        setDetail({ ...detail, queueState: e.target.value as SupraQueueState })
-                      }
-                    >
-                      {(Object.values(QueueStates) as SupraQueueState[]).map((v) => (
-                        <option key={v} value={v}>
-                          {formatEnumLabel(v)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <Label className={reviewFormLabel}>Parse confidence</Label>
-                    <select
-                      className={cn("mt-1", fieldInput)}
-                      value={detail.parseConfidence}
-                      onChange={(e) =>
-                        setDetail({
-                          ...detail,
-                          parseConfidence: e.target.value as SupraParseConfidence,
-                        })
-                      }
-                    >
-                      {(Object.values(Confidences) as SupraParseConfidence[]).map((v) => (
-                        <option key={v} value={v}>
-                          {formatEnumLabel(v)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <Label className={reviewFormLabel}>Proposed action</Label>
-                    <select
-                      className={cn("mt-1", fieldInput)}
-                      value={detail.proposedAction}
-                      onChange={(e) =>
-                        setDetail({
-                          ...detail,
-                          proposedAction: e.target.value as SupraProposedAction,
-                        })
-                      }
-                    >
-                      {(Object.values(ProposedActions) as SupraProposedAction[]).map((v) => (
-                        <option key={v} value={v}>
-                          {PROPOSED_ACTION_LABELS[v]}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <Label className={reviewFormLabel}>Resolution notes</Label>
-                  <textarea
-                    className={cn("mt-1", fieldTextarea)}
-                    value={detail.resolutionNotes ?? ""}
-                    onChange={(e) => setDetail({ ...detail, resolutionNotes: e.target.value || null })}
-                    placeholder="Optional notes for your team (dismissal reason, etc.)"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {detail && !TERMINAL_STATES.includes(detail.queueState) ? (
+                <section className="space-y-2" aria-label="Apply to KeyPilot">
+                  <p className={reviewWorkflowRail}>Apply</p>
+                  {detail && !TERMINAL_STATES.includes(detail.queueState) ? (
               <div className="rounded-lg border border-kp-teal/40 bg-kp-teal/[0.06] p-3 shadow-sm">
                 <div className="flex items-start gap-2">
                   <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" />
@@ -1899,7 +1885,113 @@ export function SupraInboxView() {
                   {applying ? "Applying…" : "Apply now"}
                 </Button>
               </div>
-            ) : null}
+                  ) : (
+                    <p className="rounded-md border border-kp-outline/35 bg-kp-surface-high/40 px-2.5 py-2 text-[11px] leading-snug text-kp-on-surface/58">
+                      Apply is not available for this queue state.
+                    </p>
+                  )}
+                </section>
+
+                <div className="rounded-lg border border-kp-outline/40 bg-transparent">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-kp-surface-high/35"
+                    onClick={() => setReviewAdvancedOpen((o) => !o)}
+                    aria-expanded={reviewAdvancedOpen}
+                  >
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/50">
+                      Advanced — queue &amp; routing
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 shrink-0 text-kp-on-surface/45 transition-transform",
+                        reviewAdvancedOpen && "rotate-180"
+                      )}
+                    />
+                  </button>
+                  {reviewAdvancedOpen ? (
+                    <div className="space-y-2.5 border-t border-kp-outline/35 px-2.5 pb-3 pt-2.5">
+                      <p className="text-[10px] leading-snug text-kp-on-surface/55">
+                        Queue metadata overrides and internal notes — use when debugging or closing items.
+                      </p>
+                      <div className="grid grid-cols-1 gap-2">
+                        <div>
+                          <Label className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/50">
+                            Queue state
+                          </Label>
+                          <select
+                            className={cn("mt-1", fieldInput)}
+                            value={detail.queueState}
+                            onChange={(e) =>
+                              setDetail({ ...detail, queueState: e.target.value as SupraQueueState })
+                            }
+                          >
+                            {(Object.values(QueueStates) as SupraQueueState[]).map((v) => (
+                              <option key={v} value={v}>
+                                {formatEnumLabel(v)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/50">
+                            Parse confidence
+                          </Label>
+                          <select
+                            className={cn("mt-1", fieldInput)}
+                            value={detail.parseConfidence}
+                            onChange={(e) =>
+                              setDetail({
+                                ...detail,
+                                parseConfidence: e.target.value as SupraParseConfidence,
+                              })
+                            }
+                          >
+                            {(Object.values(Confidences) as SupraParseConfidence[]).map((v) => (
+                              <option key={v} value={v}>
+                                {formatEnumLabel(v)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <Label className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/50">
+                            Proposed action
+                          </Label>
+                          <select
+                            className={cn("mt-1", fieldInput)}
+                            value={detail.proposedAction}
+                            onChange={(e) =>
+                              setDetail({
+                                ...detail,
+                                proposedAction: e.target.value as SupraProposedAction,
+                              })
+                            }
+                          >
+                            {(Object.values(ProposedActions) as SupraProposedAction[]).map((v) => (
+                              <option key={v} value={v}>
+                                {PROPOSED_ACTION_LABELS[v]}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/50">
+                          Resolution notes
+                        </Label>
+                        <textarea
+                          className={cn("mt-1 min-h-[56px] text-xs", fieldTextarea)}
+                          value={detail.resolutionNotes ?? ""}
+                          onChange={(e) =>
+                            setDetail({ ...detail, resolutionNotes: e.target.value || null })
+                          }
+                          placeholder="Optional notes for your team (dismissal reason, etc.)"
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
