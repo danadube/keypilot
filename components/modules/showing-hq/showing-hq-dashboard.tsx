@@ -27,6 +27,7 @@ import { QuickCreateEventModal } from "@/components/showing-hq/QuickCreateEventM
 import { EditEventModal } from "@/components/showing-hq/EditEventModal";
 import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
 import { ShowingHQWorkbenchQueue } from "@/components/showing-hq/ShowingHQWorkbenchQueue";
+import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 
 // ── Types (mirrored exactly from API response) ────────────────────────────────
 
@@ -745,10 +746,25 @@ export function ShowingHQDashboardView() {
     return tb - ta;
   });
 
+  const scheduleCount = scheduleItems.length;
+  const scheduleSubtitle =
+    scheduleCount > 0
+      ? `${scheduleCount} event${scheduleCount === 1 ? "" : "s"} on today's schedule`
+      : "Nothing on today's schedule yet";
+  const followSubtitle =
+    kpiFollowUps.overdue > 0
+      ? `${kpiFollowUps.overdue} follow-up${kpiFollowUps.overdue === 1 ? "" : "s"} overdue`
+      : kpiFollowUps.pending > 0
+        ? `${kpiFollowUps.pending} follow-up${kpiFollowUps.pending === 1 ? "" : "s"} pending review`
+        : "No follow-ups pending — you're caught up";
+  const dashboardContextSubtitle = `${scheduleSubtitle} · ${followSubtitle}`;
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex min-h-0 flex-col gap-6 bg-transparent">
+    <div className="flex min-h-0 flex-col gap-4 bg-transparent">
+      <DashboardContextStrip title="ShowingHQ" subtitle={dashboardContextSubtitle} />
+
       {/* ── KPI strip (title lives in shell header) ─────────────────────── */}
       <section
         className="grid grid-cols-2 gap-4 lg:grid-cols-4"

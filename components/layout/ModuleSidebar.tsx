@@ -145,7 +145,7 @@ export function ModuleSidebar() {
             alt="KeyPilot"
             width={200}
             height={60}
-            className="h-8 max-h-9 w-auto max-w-full object-contain object-left"
+            className="h-9 w-auto max-w-full object-contain object-left"
           />
         </Link>
       </div>

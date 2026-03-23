@@ -13,6 +13,7 @@ import {
 import { Building2, Calendar, List, Plus } from "lucide-react";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
+import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 
 type DashboardStats = {
   propertiesCount: number;
@@ -39,11 +40,22 @@ export default function PropertyVaultOverviewPage() {
   if (loading) return <PageLoading message="Loading..." />;
   if (error) return <ErrorMessage message={error} onRetry={() => window.location.reload()} />;
 
+  const propertiesCount = stats?.propertiesCount ?? 0;
+  const openHousesCount = stats?.openHousesCount ?? 0;
+  const vaultSubtitle =
+    propertiesCount === 0 && openHousesCount === 0
+      ? "Add a property to start open houses and capturing visitors."
+      : `You have ${propertiesCount} propert${propertiesCount === 1 ? "y" : "ies"} on file and ${openHousesCount} open house ${openHousesCount === 1 ? "event" : "events"} linked.`;
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">PropertyVault</h1>
-        <Button asChild>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <DashboardContextStrip
+          title="PropertyVault"
+          subtitle={vaultSubtitle}
+          className="min-w-0 flex-1 sm:max-w-2xl"
+        />
+        <Button asChild className="w-full shrink-0 sm:w-auto">
           <Link href="/properties/new">Add property</Link>
         </Button>
       </div>
