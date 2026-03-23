@@ -19,7 +19,7 @@ import { MODULES, getModuleFromPath } from "@/lib/modules";
 import { UPGRADE_MODULES } from "@/lib/module-access";
 import { useProductTier } from "@/components/ProductTierProvider";
 import { APP_VERSION, APP_COMMIT } from "@/lib/app-version";
-import type { ModuleId, ModuleSidebarItem } from "@/lib/modules";
+import type { ModuleConfig, ModuleId, ModuleSidebarItem } from "@/lib/modules";
 
 const SIDEBAR_WIDTH = 200;
 
@@ -45,6 +45,16 @@ const MODULE_ICON: Partial<Record<ModuleId, React.ComponentType<{ className?: st
   "market-pilot": Megaphone,
 };
 
+/**
+ * Child links under an expanded module: exclude Settings (System section only).
+ * Some legacy sidebar items use href /settings without section: "SYSTEM".
+ */
+function getModuleChildNavItems(moduleConfig: ModuleConfig): ModuleSidebarItem[] {
+  return moduleConfig.sidebar.filter(
+    (item) => item.section !== "SYSTEM" && item.href !== "/settings"
+  );
+}
+
 function isItemActive(pathname: string, item: ModuleSidebarItem): boolean {
   if (pathname === item.href) return true;
   if (item.href !== "/" && !item.href.includes("?") && pathname.startsWith(item.href))
@@ -57,12 +67,10 @@ function isItemActive(pathname: string, item: ModuleSidebarItem): boolean {
 export function ModuleSidebar() {
   const pathname = usePathname();
   const activeId = getModuleFromPath(pathname);
-  const mod = MODULES[activeId];
   const { hasModuleAccess: checkAccess, isLoading } = useProductTier();
 
-  const subItems = mod.sidebar.filter(
-    (item) => item.section !== "OVERVIEW" && item.section !== "SYSTEM"
-  );
+  const settingsMod = MODULES.settings;
+  const settingsChildItems = getModuleChildNavItems(settingsMod);
 
   const dashboardActive = pathname === "/" || activeId === "home";
 
@@ -113,10 +121,12 @@ export function ModuleSidebar() {
               const cfg = MODULES[id];
               if (!cfg) return null;
               const Icon = MODULE_ICON[id];
-              const isActive = activeId === id;
+              const isActiveModule = activeId === id;
               const isUpgrade = UPGRADE_MODULES.includes(id);
               const hasAccess = isLoading || checkAccess(id);
-              const isLocked = isUpgrade && !hasAccess && !isActive;
+              const isLocked = isUpgrade && !hasAccess && !isActiveModule;
+              const childItems = getModuleChildNavItems(cfg);
+              const showChildren = isActiveModule && !isLocked && childItems.length > 0;
 
               if (isLocked) {
                 return (
@@ -138,13 +148,13 @@ export function ModuleSidebar() {
               }
 
               return (
-                <li key={id}>
+                <li key={id} className="space-y-0.5">
                   <Link
                     href={cfg.href}
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                       "text-slate-400 hover:bg-white/5 hover:text-white",
-                      isActive &&
+                      isActiveModule &&
                         "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
                     )}
                   >
@@ -155,61 +165,151 @@ export function ModuleSidebar() {
                     )}
                     {cfg.name}
                   </Link>
+
+                  {showChildren ? (
+                    <ul
+                      className="ml-2 space-y-0.5 border-l border-white/15 py-0.5 pl-3"
+                      aria-label={`${cfg.name} pages`}
+                    >
+                      {childItems.map((item) => {
+                        const SubIcon = item.icon;
+                        const subActive = isItemActive(pathname, item);
+                        return (
+                          <li key={item.href + item.label}>
+                            <Link
+                              href={item.href}
+                              className={cn(
+                                "flex items-center gap-2 rounded-md py-1.5 pl-2 pr-2 text-[13px] transition-colors",
+                                "text-slate-400 hover:bg-white/5 hover:text-slate-100",
+                                subActive &&
+                                  "bg-[#4BAED8]/10 font-medium text-white ring-1 ring-[#4BAED8]/25"
+                              )}
+                            >
+                              {SubIcon ? (
+                                <SubIcon className="h-[15px] w-[15px] shrink-0 opacity-80" />
+                              ) : null}
+                              <span className="min-w-0 truncate">{item.label}</span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : null}
                 </li>
               );
             })}
+
+            {/* Routes like /transactions, /insight not listed above — keep one inline row + children */}
+            {(() => {
+              if (
+                activeId === "home" ||
+                activeId === "settings" ||
+                PLATFORM_MODULE_IDS.includes(activeId)
+              ) {
+                return null;
+              }
+              const orphan = MODULES[activeId];
+              if (!orphan) return null;
+              const childItems = getModuleChildNavItems(orphan);
+              return (
+                <li key={orphan.id} className="space-y-0.5">
+                  <Link
+                    href={orphan.href}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                      "text-slate-400 hover:bg-white/5 hover:text-white",
+                      "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
+                    )}
+                  >
+                    <LayoutDashboard className="h-[18px] w-[18px] shrink-0 opacity-85" />
+                    {orphan.name}
+                  </Link>
+                  {childItems.length > 0 ? (
+                    <ul
+                      className="ml-2 space-y-0.5 border-l border-white/15 py-0.5 pl-3"
+                      aria-label={`${orphan.name} pages`}
+                    >
+                      {childItems.map((item) => {
+                        const SubIcon = item.icon;
+                        const subActive = isItemActive(pathname, item);
+                        return (
+                          <li key={item.href + item.label}>
+                            <Link
+                              href={item.href}
+                              className={cn(
+                                "flex items-center gap-2 rounded-md py-1.5 pl-2 pr-2 text-[13px] transition-colors",
+                                "text-slate-400 hover:bg-white/5 hover:text-slate-100",
+                                subActive &&
+                                  "bg-[#4BAED8]/10 font-medium text-white ring-1 ring-[#4BAED8]/25"
+                              )}
+                            >
+                              {SubIcon ? (
+                                <SubIcon className="h-[15px] w-[15px] shrink-0 opacity-80" />
+                              ) : null}
+                              <span className="min-w-0 truncate">{item.label}</span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : null}
+                </li>
+              );
+            })()}
           </ul>
         </div>
-
-        {subItems.length > 0 && (
-          <div className="mt-2 border-t border-white/10 pt-3">
-            <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              {mod.name}
-            </p>
-            <ul className="space-y-0.5 px-2">
-              {subItems.map((item) => {
-                const Icon = item.icon;
-                const active = isItemActive(pathname, item);
-                return (
-                  <li key={item.href + item.label}>
-                    <Link
-                      href={item.href}
-                      className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                        "text-slate-400 hover:bg-white/5 hover:text-white",
-                        active &&
-                          "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
-                      )}
-                    >
-                      {Icon && (
-                        <Icon className="h-[18px] w-[18px] shrink-0 opacity-85" />
-                      )}
-                      {item.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
       </nav>
 
       <div className="shrink-0 border-t border-white/10 px-2 py-2">
         <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
           System
         </p>
-        <Link
-          href="/settings"
-          className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-            "text-slate-400 hover:bg-white/5 hover:text-white",
-            pathname.startsWith("/settings") &&
-              "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
-          )}
-        >
-          <Settings className="h-[18px] w-[18px] shrink-0 opacity-85" />
-          Settings
-        </Link>
+        <ul className="space-y-0.5">
+          <li className="space-y-0.5">
+            <Link
+              href="/settings"
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                "text-slate-400 hover:bg-white/5 hover:text-white",
+                pathname.startsWith("/settings") &&
+                  "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
+              )}
+            >
+              <Settings className="h-[18px] w-[18px] shrink-0 opacity-85" />
+              Settings
+            </Link>
+
+            {activeId === "settings" && settingsChildItems.length > 0 ? (
+              <ul
+                className="ml-2 space-y-0.5 border-l border-white/15 py-0.5 pl-3"
+                aria-label="Settings pages"
+              >
+                {settingsChildItems.map((item) => {
+                  const SubIcon = item.icon;
+                  const subActive = isItemActive(pathname, item);
+                  return (
+                    <li key={item.href + item.label}>
+                      <Link
+                        href={item.href}
+                        className={cn(
+                          "flex items-center gap-2 rounded-md py-1.5 pl-2 pr-2 text-[13px] transition-colors",
+                          "text-slate-400 hover:bg-white/5 hover:text-slate-100",
+                          subActive &&
+                            "bg-[#4BAED8]/10 font-medium text-white ring-1 ring-[#4BAED8]/25"
+                        )}
+                      >
+                        {SubIcon ? (
+                          <SubIcon className="h-[15px] w-[15px] shrink-0 opacity-80" />
+                        ) : null}
+                        <span className="min-w-0 truncate">{item.label}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+          </li>
+        </ul>
       </div>
 
       <footer className="shrink-0 border-t border-slate-700/40 px-4 py-3">
