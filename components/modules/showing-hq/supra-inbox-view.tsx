@@ -1239,75 +1239,11 @@ export function SupraInboxView() {
           }
         }}
         title="Review queue item"
-        description="Fix parsed fields if needed, Save, then Apply to write property + showing. Nothing commits until you apply."
+        description="Fix parsed fields on the left, match and route on the right, Save, then Apply to write property + showing."
         size="2xl"
         bodyClassName="max-h-[min(85vh,840px)]"
         footer={
           <div className="flex w-full flex-col gap-3">
-            {detail && !TERMINAL_STATES.includes(detail.queueState) ? (
-              <div className="rounded-lg border border-kp-teal/40 bg-kp-teal/[0.06] p-3 shadow-sm">
-                <div className="flex items-start gap-2">
-                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-kp-on-surface">Apply to KeyPilot</p>
-                    <p className={cn("mt-1 text-xs", t.meta)}>
-                      Creates a property if needed, then creates or updates a showing (source: Supra). The queue
-                      item is marked applied.
-                    </p>
-                    {!applyReadiness.ok ? (
-                      <ul className="mt-2 list-inside list-disc text-xs font-medium leading-snug text-kp-gold-bright">
-                        {applyReadiness.reasons.map((r) => (
-                          <li key={r}>{r}</li>
-                        ))}
-                      </ul>
-                    ) : null}
-                    {applyConflict && applyConflict.length > 0 ? (
-                      <div className="mt-2 rounded-md border border-kp-outline/90 bg-kp-surface-high p-2.5">
-                        <p className="text-sm font-semibold text-kp-on-surface">Conflicting showings (±2h)</p>
-                        <p className={cn("mt-0.5", t.metaQuiet)}>Another showing exists near this time.</p>
-                        <ul className="mt-1.5 space-y-1 font-mono text-[11px] text-kp-on-surface/80">
-                          {applyConflict.map((c) => (
-                            <li key={c.id}>
-                              {c.id.slice(0, 8)}… @ {new Date(c.scheduledAt).toLocaleString()}
-                            </li>
-                          ))}
-                        </ul>
-                        <label className="mt-2 flex cursor-pointer items-center gap-2 text-kp-on-surface">
-                          <input
-                            type="checkbox"
-                            className="h-3.5 w-3.5 rounded border-kp-outline"
-                            checked={applyDuplicateAck}
-                            onChange={(e) => setApplyDuplicateAck(e.target.checked)}
-                          />
-                          <span>I understand — apply anyway</span>
-                        </label>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="mt-3 w-full bg-kp-teal font-semibold text-kp-bg hover:bg-kp-teal/90 sm:w-auto"
-                  disabled={
-                    applying ||
-                    !applyReadiness.ok ||
-                    Boolean(applyConflict?.length && !applyDuplicateAck)
-                  }
-                  title={
-                    !applyReadiness.ok
-                      ? "Fix the items above before applying."
-                      : applyConflict?.length && !applyDuplicateAck
-                        ? "Confirm override when a duplicate exists."
-                        : undefined
-                  }
-                  onClick={handleApply}
-                >
-                  {applying ? "Applying…" : "Apply now"}
-                </Button>
-              </div>
-            ) : null}
-
             <div className="flex flex-wrap gap-2 border-b border-kp-outline/80 pb-2.5">
               <span className={cn("w-full", t.section)}>Queue shortcuts (save first)</span>
               <Button
@@ -1395,12 +1331,9 @@ export function SupraInboxView() {
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-kp-on-surface">Just pasted — raw email only</p>
                   <p className={cn("mt-0.5", t.meta)}>
-                    This row is <strong className="text-kp-on-surface">Ingested</strong>. Scroll to{" "}
-                    <strong className="text-kp-on-surface">Supra parser</strong> to run{" "}
-                    <code className="rounded bg-kp-surface px-1 py-px font-mono text-[11px]">
-                      parse-supra-email
-                    </code>
-                    , or edit subject/body below, then <strong className="text-kp-on-surface">Save</strong>.
+                    This row is <strong className="text-kp-on-surface">Ingested</strong>. On larger screens, use{" "}
+                    <strong className="text-kp-on-surface">Run parser → fill draft</strong> in the right column, or
+                    edit subject/body on the left, then <strong className="text-kp-on-surface">Save</strong>.
                   </p>
                 </div>
               </div>
@@ -1434,7 +1367,7 @@ export function SupraInboxView() {
                     {detail.queueState === QueueStates.FAILED_PARSE
                       ? "Treat the body as unusable unless you fix it manually below."
                       : detail.queueState === QueueStates.READY_TO_APPLY
-                        ? "Ready to apply — use Apply now in the footer to write property and showing."
+                        ? "Ready to apply — use Apply now on the right to write property and showing."
                         : isAwaitingDecision(detail.queueState)
                           ? "This item is waiting for a human decision — edit fields, then save or use quick actions."
                           : "This item is closed in the queue."}
@@ -1443,6 +1376,9 @@ export function SupraInboxView() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,1fr)_minmax(15.5rem,18rem)] lg:grid-cols-[minmax(0,1fr)_minmax(17.5rem,20rem)] xl:grid-cols-[minmax(0,1fr)_22rem]">
+              {/* Left: primary editing column */}
+              <div className="min-w-0 space-y-3">
             {/* Primary: parsed fields + message (dominant) */}
             <div className="space-y-3 rounded-lg border border-kp-outline bg-kp-surface p-4">
               <h3 className={reviewSectionTitle}>Parsed fields</h3>
@@ -1601,9 +1537,11 @@ export function SupraInboxView() {
                 />
               </div>
             </div>
+              </div>
 
-            {/* Secondary: parser metadata (quiet) */}
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {/* Right: decisions, matching, routing, apply (sticky on large screens) */}
+              <div className="min-w-0 space-y-3 md:sticky md:top-0 md:z-[1] md:max-h-[min(85vh,840px)] md:self-start md:overflow-y-auto md:pb-1 md:pr-0.5">
+            <div className="space-y-2">
               <div className={secondaryMetaPanel}>
                 <p className={t.section}>Next step (parser)</p>
                 <p className="mt-1 text-sm font-semibold leading-snug text-kp-on-surface">
@@ -1637,7 +1575,7 @@ export function SupraInboxView() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="mt-2 h-8 border-kp-outline/50 font-semibold text-kp-on-surface hover:bg-kp-surface-high/80"
+                  className="mt-2 h-8 w-full border-kp-outline/50 font-semibold text-kp-on-surface hover:bg-kp-surface-high/80"
                   disabled={parseDrafting || saving || applying}
                   onClick={handleParseDraft}
                 >
@@ -1746,7 +1684,7 @@ export function SupraInboxView() {
                 </div>
               ) : null}
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3">
                 <div>
                   <Label className={reviewFormLabel}>Matched property id</Label>
                   <Input
@@ -1831,7 +1769,7 @@ export function SupraInboxView() {
 
               <div className="border-t border-kp-outline/60 pt-4">
                 <h3 className={reviewSectionTitle}>Queue &amp; routing</h3>
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="mt-3 grid grid-cols-1 gap-3">
                   <div>
                     <Label className={reviewFormLabel}>Queue state</Label>
                     <select
@@ -1896,6 +1834,72 @@ export function SupraInboxView() {
                     placeholder="Optional notes for your team (dismissal reason, etc.)"
                   />
                 </div>
+              </div>
+            </div>
+
+            {detail && !TERMINAL_STATES.includes(detail.queueState) ? (
+              <div className="rounded-lg border border-kp-teal/40 bg-kp-teal/[0.06] p-3 shadow-sm">
+                <div className="flex items-start gap-2">
+                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-kp-on-surface">Apply to KeyPilot</p>
+                    <p className={cn("mt-1 text-xs", t.meta)}>
+                      Creates a property if needed, then creates or updates a showing (source: Supra). The queue item
+                      is marked applied.
+                    </p>
+                    {!applyReadiness.ok ? (
+                      <ul className="mt-2 list-inside list-disc text-xs font-medium leading-snug text-kp-gold-bright">
+                        {applyReadiness.reasons.map((r) => (
+                          <li key={r}>{r}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {applyConflict && applyConflict.length > 0 ? (
+                      <div className="mt-2 rounded-md border border-kp-outline/90 bg-kp-surface-high p-2.5">
+                        <p className="text-sm font-semibold text-kp-on-surface">Conflicting showings (±2h)</p>
+                        <p className={cn("mt-0.5", t.metaQuiet)}>Another showing exists near this time.</p>
+                        <ul className="mt-1.5 space-y-1 font-mono text-[11px] text-kp-on-surface/80">
+                          {applyConflict.map((c) => (
+                            <li key={c.id}>
+                              {c.id.slice(0, 8)}… @ {new Date(c.scheduledAt).toLocaleString()}
+                            </li>
+                          ))}
+                        </ul>
+                        <label className="mt-2 flex cursor-pointer items-center gap-2 text-kp-on-surface">
+                          <input
+                            type="checkbox"
+                            className="h-3.5 w-3.5 rounded border-kp-outline"
+                            checked={applyDuplicateAck}
+                            onChange={(e) => setApplyDuplicateAck(e.target.checked)}
+                          />
+                          <span className="text-xs">I understand — apply anyway</span>
+                        </label>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="mt-3 w-full bg-kp-teal font-semibold text-kp-bg hover:bg-kp-teal/90"
+                  disabled={
+                    applying ||
+                    !applyReadiness.ok ||
+                    Boolean(applyConflict?.length && !applyDuplicateAck)
+                  }
+                  title={
+                    !applyReadiness.ok
+                      ? "Fix the items above before applying."
+                      : applyConflict?.length && !applyDuplicateAck
+                        ? "Confirm override when a duplicate exists."
+                        : undefined
+                  }
+                  onClick={handleApply}
+                >
+                  {applying ? "Applying…" : "Apply now"}
+                </Button>
+              </div>
+            ) : null}
               </div>
             </div>
           </div>
