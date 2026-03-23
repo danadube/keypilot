@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent } from "react";
 import type {
   SupraQueueItem,
   SupraQueueState,
@@ -18,6 +18,11 @@ import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { cn } from "@/lib/utils";
 import {
+  pastedBlobHasDetectedFields,
+  splitPastedEmailBlob,
+} from "@/lib/manual-ingest/split-pasted-email-blob";
+import type { SplitPastedEmailBlobDetected } from "@/lib/manual-ingest/split-pasted-email-blob";
+import {
   SupraQueueState as QueueStates,
   SupraParseConfidence as Confidences,
   SupraProposedAction as ProposedActions,
@@ -25,6 +30,12 @@ import {
   SupraShowingMatchStatus as ShowMatch,
 } from "@prisma/client";
 import { AlertCircle, CheckCircle2, ClipboardPaste, Inbox, ChevronDown, Sparkles } from "lucide-react";
+
+/** Local value for `<input type="datetime-local" />` */
+function dateToDatetimeLocalInputValue(d: Date): string {
+  const z = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}T${z(d.getHours())}:${z(d.getMinutes())}`;
+}
 
 function formatEnumLabel(value: string): string {
   return value
@@ -221,6 +232,8 @@ export function SupraInboxView() {
   const [pasteReceivedAt, setPasteReceivedAt] = useState("");
   const [pasting, setPasting] = useState(false);
   const [pasteModalError, setPasteModalError] = useState<string | null>(null);
+  /** Which intake fields were filled from a smart paste (for reviewer clarity). */
+  const [pasteSplitDetected, setPasteSplitDetected] = useState<SplitPastedEmailBlobDetected | null>(null);
   /** Brief table row emphasis after manual paste */
   const [highlightQueueRowId, setHighlightQueueRowId] = useState<string | null>(null);
   /** Show “just pasted” strip at top of review modal */
@@ -424,8 +437,24 @@ export function SupraInboxView() {
     setPasteBody("");
     setPasteSender("");
     setPasteModalError(null);
+    setPasteSplitDetected(null);
     setPasteReceivedAt(new Date().toISOString().slice(0, 16));
     setPasteModalOpen(true);
+  };
+
+  const handlePasteEmailBlob = (e: ClipboardEvent<HTMLTextAreaElement>) => {
+    const text = e.clipboardData.getData("text/plain");
+    if (!text?.trim()) return;
+    const result = splitPastedEmailBlob(text);
+    if (!pastedBlobHasDetectedFields(result)) return;
+    e.preventDefault();
+    setPasteBody(result.fullText);
+    if (result.detected.subject && result.subject) setPasteSubject(result.subject);
+    if (result.detected.sender && result.sender) setPasteSender(result.sender);
+    if (result.detected.receivedAt && result.receivedAt) {
+      setPasteReceivedAt(dateToDatetimeLocalInputValue(result.receivedAt));
+    }
+    setPasteSplitDetected({ ...result.detected });
   };
 
   const submitManualPaste = async () => {
@@ -1785,7 +1814,10 @@ export function SupraInboxView() {
         open={pasteModalOpen}
         onOpenChange={(open) => {
           setPasteModalOpen(open);
-          if (!open) setPasteModalError(null);
+          if (!open) {
+            setPasteModalError(null);
+            setPasteSplitDetected(null);
+          }
         }}
         title="Paste email (manual test)"
         description="No mailbox connection — raw text only. Saving adds an Ingested row and opens Review so you can run the parser immediately."
@@ -1831,12 +1863,22 @@ export function SupraInboxView() {
           <div className="rounded-lg border border-kp-teal/35 bg-kp-teal/[0.08] px-3 py-2.5">
             <p className={t.section}>Quick test loop</p>
             <ol className="mt-1.5 list-decimal space-y-1 pl-4 text-sm leading-snug text-kp-on-surface/88">
-              <li>Paste <strong className="text-kp-on-surface">subject</strong> and full message below.</li>
               <li>
-                <strong className="text-kp-on-surface">Add to queue</strong> — filter switches to Ingested and Review
-                opens.
+                Paste a <strong className="text-kp-on-surface">full copied email</strong> into the box below (headers
+                first) <em className="text-kp-on-surface/75">or</em> type subject + body separately.
               </li>
-              <li>Run <strong className="text-kp-on-surface">parser</strong> or edit raw text, Save, then Apply when ready.</li>
+              <li>
+                When headers are recognized, <strong className="text-kp-on-surface">Subject</strong>,{" "}
+                <strong className="text-kp-on-surface">From</strong>, and{" "}
+                <strong className="text-kp-on-surface">Received</strong> fill automatically — full text is still stored
+                for the parser.
+              </li>
+              <li>
+                <strong className="text-kp-on-surface">Add to queue</strong> — Ingested filter + Review opens.
+              </li>
+              <li>
+                Run <strong className="text-kp-on-surface">parser</strong>, edit if needed, Save, then Apply when ready.
+              </li>
             </ol>
           </div>
 
@@ -1849,11 +1891,46 @@ export function SupraInboxView() {
             </div>
           ) : null}
 
+          {pasteSplitDetected &&
+          (pasteSplitDetected.subject || pasteSplitDetected.sender || pasteSplitDetected.receivedAt) ? (
+            <div
+              className="flex flex-wrap items-center gap-2 rounded-lg border border-kp-teal/40 bg-kp-teal/[0.1] px-3 py-2"
+              role="status"
+            >
+              <span className="text-sm font-semibold text-kp-on-surface">Detected from paste:</span>
+              <div className="flex flex-wrap gap-1.5">
+                {pasteSplitDetected.subject ? (
+                  <span className="rounded-md border border-kp-teal/35 bg-kp-surface-high px-2 py-0.5 text-xs font-medium text-kp-on-surface">
+                    Subject
+                  </span>
+                ) : null}
+                {pasteSplitDetected.sender ? (
+                  <span className="rounded-md border border-kp-teal/35 bg-kp-surface-high px-2 py-0.5 text-xs font-medium text-kp-on-surface">
+                    From (email)
+                  </span>
+                ) : null}
+                {pasteSplitDetected.receivedAt ? (
+                  <span className="rounded-md border border-kp-teal/35 bg-kp-surface-high px-2 py-0.5 text-xs font-medium text-kp-on-surface">
+                    Date / Sent → Received
+                  </span>
+                ) : null}
+              </div>
+              <span className={cn("w-full text-xs sm:w-auto sm:pl-1", t.meta)}>
+                Everything below is editable. Raw message field keeps the <strong>complete</strong> paste for parser
+                testing.
+              </span>
+            </div>
+          ) : null}
+
           <div>
             <Label className={t.label} htmlFor="supra-paste-subject">
               Subject
             </Label>
-            <p className={cn("mt-0.5", t.metaQuiet)}>Same line as in your inbox (required).</p>
+            <p className={cn("mt-0.5", t.metaQuiet)}>
+              Required. Filled automatically when your paste includes a{" "}
+              <code className="rounded bg-kp-surface-high px-1 font-mono text-[11px]">Subject:</code> line; otherwise
+              type it here.
+            </p>
             <Input
               id="supra-paste-subject"
               className={cn("mt-1", fieldInput)}
@@ -1869,7 +1946,10 @@ export function SupraInboxView() {
               Raw message for parser
             </Label>
             <p className={cn("mt-0.5", t.meta)}>
-              Paste the full body. Headers at the top are fine — everything is stored for Supra v1 parsing.
+              Paste a <strong className="font-medium text-kp-on-surface">full email</strong> (Show original, Forward as
+              plain text, etc.) or only the body. The entire field is saved as{" "}
+              <code className="rounded bg-kp-surface px-1 font-mono text-[11px]">rawBodyText</code> — nothing is
+              stripped at save time.
             </p>
             <textarea
               ref={pasteBodyRef}
@@ -1880,7 +1960,11 @@ export function SupraInboxView() {
               )}
               spellCheck={false}
               value={pasteBody}
-              onChange={(e) => setPasteBody(e.target.value)}
+              onChange={(e) => {
+                setPasteBody(e.target.value);
+                if (!e.target.value.trim()) setPasteSplitDetected(null);
+              }}
+              onPaste={handlePasteEmailBlob}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault();
