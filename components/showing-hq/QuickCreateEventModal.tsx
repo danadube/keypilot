@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { kpCalendarModalField } from "@/components/showing-hq/calendar-modal-field-classes";
+import { cn } from "@/lib/utils";
 
 type Property = {
   id: string;
@@ -153,24 +154,34 @@ export function QuickCreateEventModal({
       description="Choose event type, property, and time."
       size="md"
       footer={
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        <div className="flex w-full flex-wrap items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className={kpCalendarModalField.buttonCancel}
+            onClick={() => onOpenChange(false)}
+          >
             Cancel
           </Button>
-          <Button type="submit" form="quick-create-form" disabled={!canSave || submitting}>
-            {submitting ? "Saving…" : "Save"}
+          <Button
+            type="submit"
+            form="quick-create-form"
+            disabled={!canSave || submitting}
+            className={kpCalendarModalField.buttonSave}
+          >
+            {submitting ? "Saving…" : "Save event"}
           </Button>
         </div>
       }
     >
-      <form id="quick-create-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form id="quick-create-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
         {error && (
           <p className={kpCalendarModalField.error} role="alert">
             {error}
           </p>
         )}
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <Label className={kpCalendarModalField.label}>Event type</Label>
           <Select
             value={eventType}
@@ -195,7 +206,7 @@ export function QuickCreateEventModal({
           </Select>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <Label className={kpCalendarModalField.label}>Property</Label>
           {loading ? (
             <p className={kpCalendarModalField.mutedHelp}>Loading properties…</p>
@@ -219,40 +230,47 @@ export function QuickCreateEventModal({
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-2">
-            <Label className={kpCalendarModalField.label}>Date</Label>
-            <Input
-              type="date"
-              value={dateStr}
-              onChange={(e) => setDateStr(e.target.value)}
-              disabled={!typeOpt?.enabled}
-              className={kpCalendarModalField.input}
-            />
+        <div
+          className={cn(
+            kpCalendarModalField.scheduleChrome,
+            "kp-calendar-modal-datetime space-y-3"
+          )}
+        >
+          <p className={kpCalendarModalField.scheduleTitle}>Date & time</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className={kpCalendarModalField.label}>Date</Label>
+              <Input
+                type="date"
+                value={dateStr}
+                onChange={(e) => setDateStr(e.target.value)}
+                disabled={!typeOpt?.enabled}
+                className={kpCalendarModalField.inputNativePicker}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className={kpCalendarModalField.label}>Start time</Label>
+              <Input
+                type="time"
+                value={startTimeStr}
+                onChange={(e) => setStartTimeStr(e.target.value)}
+                disabled={!typeOpt?.enabled}
+                className={kpCalendarModalField.inputNativePicker}
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label className={kpCalendarModalField.label}>Start time</Label>
-            <Input
-              type="time"
-              value={startTimeStr}
-              onChange={(e) => setStartTimeStr(e.target.value)}
-              disabled={!typeOpt?.enabled}
-              className={kpCalendarModalField.input}
-            />
-          </div>
+          {eventType === "open_house" && (
+            <div className="space-y-1.5 sm:max-w-[calc(50%-0.375rem)]">
+              <Label className={kpCalendarModalField.label}>End time</Label>
+              <Input
+                type="time"
+                value={endTimeStr}
+                onChange={(e) => setEndTimeStr(e.target.value)}
+                className={kpCalendarModalField.inputNativePicker}
+              />
+            </div>
+          )}
         </div>
-
-        {eventType === "open_house" && (
-          <div className="space-y-2">
-            <Label className={kpCalendarModalField.label}>End time</Label>
-            <Input
-              type="time"
-              value={endTimeStr}
-              onChange={(e) => setEndTimeStr(e.target.value)}
-              className={kpCalendarModalField.input}
-            />
-          </div>
-        )}
       </form>
     </BrandModal>
   );

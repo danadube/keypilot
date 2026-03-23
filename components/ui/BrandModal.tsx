@@ -84,12 +84,12 @@ export function BrandModal({
         )}
       >
         {(title || description || onOpenChange) && (
-          <div className="flex items-start justify-between gap-4 border-b border-kp-outline p-5">
-            <div>
+          <div className="flex items-start justify-between gap-3 border-b border-kp-outline px-4 pb-3 pt-4">
+            <div className="min-w-0 pr-2">
               {title && (
                 <h2
                   id="brand-modal-title"
-                  className="text-base font-semibold text-kp-on-surface"
+                  className="text-base font-semibold leading-tight text-kp-on-surface"
                 >
                   {title}
                 </h2>
@@ -97,7 +97,7 @@ export function BrandModal({
               {description && (
                 <p
                   id="brand-modal-desc"
-                  className="mt-1 text-sm text-kp-on-surface-variant"
+                  className="mt-1 text-sm leading-snug text-kp-on-surface/80"
                 >
                   {description}
                 </p>
@@ -117,11 +117,11 @@ export function BrandModal({
             )}
           </div>
         )}
-        <div className="max-h-[min(70vh,400px)] overflow-y-auto p-5">
+        <div className="max-h-[min(72vh,520px)] overflow-y-auto px-4 py-4">
           {children}
         </div>
         {footer && (
-          <div className="flex justify-end gap-3 border-t border-kp-outline p-5">
+          <div className="flex justify-end gap-2 border-t border-kp-outline bg-kp-surface-high/40 px-4 py-3">
             {footer}
           </div>
         )}

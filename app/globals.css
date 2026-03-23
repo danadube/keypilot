@@ -285,6 +285,17 @@ body {
   50% { box-shadow: 0 0 0 3px hsl(142 71% 45% / 0.8); }
 }
 
+/* ShowingHQ calendar modals: native date/time on dark surfaces (still browser pickers) */
+.kp-calendar-modal-datetime input[type="date"],
+.kp-calendar-modal-datetime input[type="time"] {
+  color-scheme: dark;
+}
+.kp-calendar-modal-datetime input[type="date"]::-webkit-calendar-picker-indicator,
+.kp-calendar-modal-datetime input[type="time"]::-webkit-calendar-picker-indicator {
+  opacity: 0.75;
+  filter: invert(1);
+}
+
 /* Printable QR poster: hide everything except .print-qr-poster when printing */
 @media print {
   body * {
