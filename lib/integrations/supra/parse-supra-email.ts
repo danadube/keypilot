@@ -76,6 +76,141 @@ const CITY_ST_LINE = /^(.+?),\s*([A-Za-z]{2})\s*$/;
 const LABELED_ADDRESS =
   /^(?:property|property address|listing address|subject property|address|location)\s*[:#]\s*(.+)$/i;
 
+/** US street suffix — line should include a number + (suffix or enough tokens) */
+const STREET_SUFFIX_RE =
+  /\b(st|street|dr|drive|ave|avenue|rd|road|blvd|boulevard|ln|lane|ct|court|way|cir|circle|pl|place|pkwy|parkway|ter|terrace|trl|trail|run|path|hwy|highway)\b/i;
+
+/** Lines we must never treat as street address (Supra noise, times, KeyBox, etc.) */
+const ADDRESS_LINE_NOISE_RE =
+  /\b(keybox|began|ended|supraweb|estimated\s+showing|duration\s+is|login\s+to|opt\s+out)\b|@\w+\.|the\s+showing\s+by|supra\s+system\s+detected|\(\s*keybox/i;
+
+const MDY_LEADING_RE = /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/;
+const TIME_LIKE_LEADING_RE = /^\d{1,2}:\d{2}\s*(am|pm)\b/i;
+
+/**
+ * True if the line plausibly looks like US street line 1 (conservative).
+ * Exported for unit tests / regression fixtures.
+ */
+export function isPlausibleStreetAddressLine(line: string): boolean {
+  const t = line.trim().replace(/\s+/g, " ");
+  if (t.length < 4 || t.length > 120) return false;
+  if (ADDRESS_LINE_NOISE_RE.test(t)) return false;
+  if (MDY_LEADING_RE.test(t) || TIME_LIKE_LEADING_RE.test(t)) return false;
+  if (EMAIL_RE_ONE.test(t)) return false;
+
+  const hasLeadNumber = /^\d+/.test(t);
+  const poBox = /\bpo\s*box\b/i.test(t);
+  if (!hasLeadNumber && !poBox) return false;
+
+  if (STREET_SUFFIX_RE.test(t)) return true;
+
+  const tokenCount = t.split(/\s+/).length;
+  return tokenCount >= 3;
+}
+
+function isPlausibleCityField(s: string): boolean {
+  const t = s.trim().replace(/\s+/g, " ");
+  if (t.length < 2 || t.length > 60) return false;
+  if (ADDRESS_LINE_NOISE_RE.test(t)) return false;
+  if (EMAIL_RE_ONE.test(t) || /@/.test(t)) return false;
+  if (/^\d+$/.test(t)) return false;
+  if (MDY_LEADING_RE.test(t) || TIME_LIKE_LEADING_RE.test(t)) return false;
+  if (/\b(keybox|began|ended)\b/i.test(t)) return false;
+  return true;
+}
+
+/**
+ * Supra often breaks as: "... at 500 Oak Drive" / "Austin, TX 78701" (no comma before city).
+ * Merge into one line so `at …, City, ST ZIP` regex still sees the full sentence (keeps "the showing by" for anchor).
+ */
+function tryMergeSupraTailWithCityLine(cur: string, next: string): string | null {
+  const n = next.trim();
+  if (!CITY_ST_ZIP_LINE.test(n)) return null;
+  const lower = cur.toLowerCase();
+  const atIdx = lower.lastIndexOf(" at ");
+  if (atIdx < 0) return null;
+  const tail = cur.slice(atIdx + 4).trim();
+  if (tail.includes(",") || /\bkeybox\b/i.test(tail)) return null;
+  if (!isPlausibleStreetAddressLine(tail)) return null;
+  return `${cur.trim()}, ${n}`;
+}
+
+/**
+ * Join orphan street-only line + "City, ST ZIP", or Supra "... at Street" + city line.
+ */
+function joinOrphanStreetWithCityZipLine(lines: string[]): string[] {
+  const out: string[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const cur = lines[i];
+    const next = lines[i + 1];
+    if (next) {
+      const mergedTail = tryMergeSupraTailWithCityLine(cur, next);
+      if (mergedTail) {
+        out.push(mergedTail);
+        i += 2;
+        continue;
+      }
+    }
+    if (
+      next &&
+      CITY_ST_ZIP_LINE.test(next.trim()) &&
+      !cur.includes(",") &&
+      isPlausibleStreetAddressLine(cur) &&
+      !/\bkeybox\b/i.test(cur)
+    ) {
+      out.push(`${cur}, ${next.trim()}`);
+      i += 2;
+      continue;
+    }
+    out.push(cur);
+    i += 1;
+  }
+  return out;
+}
+
+/**
+ * Scan all `at …, City, ST ZIP` segments; validate captures; prefer match after "the showing by".
+ */
+function findBestSupraInlineAddress(norm: string): {
+  address1: string;
+  city: string;
+  state: string;
+  zip: string;
+} | null {
+  const re =
+    /\bat\s+(.+?),\s*([^,\n]{1,80}),\s*([A-Za-z]{2})\s+(\d{5})(?:-(\d{4}))?\b/gi;
+  type Hit = {
+    index: number;
+    address1: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
+  const hits: Hit[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(norm)) !== null) {
+    const address1 = m[1].trim().replace(/\s+/g, " ");
+    const city = m[2].trim().replace(/\s+/g, " ");
+    const state = m[3].toUpperCase();
+    const zip = m[4] + (m[5] ? `-${m[5]}` : "");
+    if (!isPlausibleStreetAddressLine(address1)) continue;
+    if (!isPlausibleCityField(city)) continue;
+    hits.push({ index: m.index, address1, city, state, zip });
+  }
+  if (hits.length === 0) return null;
+  const lower = norm.toLowerCase();
+  const anchor = lower.indexOf("the showing by");
+  const pick =
+    anchor >= 0 ? hits.find((h) => h.index >= anchor) ?? hits[0] : hits[0];
+  return {
+    address1: pick.address1,
+    city: pick.city,
+    state: pick.state,
+    zip: pick.zip,
+  };
+}
+
 function stripHtmlNoise(s: string): string {
   return s
     .replace(/<br\s*\/?>/gi, "\n")
@@ -88,25 +223,6 @@ function stripHtmlNoise(s: string): string {
 /** "at 123 Main St, City, ST 12345" — common in Supra notifications (often one line) */
 function normalizeCommasAcrossBreaks(s: string): string {
   return stripHtmlNoise(s).replace(/,\s*\n\s*/g, ", ");
-}
-
-function extractSupraInlineAddress(text: string): {
-  address1: string;
-  city: string;
-  state: string;
-  zip: string;
-} | null {
-  const norm = normalizeCommasAcrossBreaks(text);
-  const m = norm.match(
-    /\bat\s+(.+?),\s*([^,]+),\s*([A-Za-z]{2})\s+(\d{5})(?:-(\d{4}))?\b/i
-  );
-  if (!m) return null;
-  return {
-    address1: m[1].trim().slice(0, 500),
-    city: m[2].trim(),
-    state: m[3].toUpperCase(),
-    zip: m[4] + (m[5] ? `-${m[5]}` : ""),
-  };
 }
 
 /**
@@ -170,7 +286,20 @@ function extractAddress(text: string): {
   kind: SupraAddressParseKind;
 } {
   const rawLines = stripHtmlNoise(text).split(/\r?\n/);
-  const lines = rawLines.map((l) => l.trim()).filter(Boolean);
+  const trimmed = rawLines.map((l) => l.trim()).filter(Boolean);
+  const lines = joinOrphanStreetWithCityZipLine(trimmed);
+  const norm = normalizeCommasAcrossBreaks(lines.join("\n"));
+
+  const inline = findBestSupraInlineAddress(norm);
+  if (inline) {
+    return {
+      address1: inline.address1.slice(0, 500),
+      city: inline.city,
+      state: inline.state,
+      zip: inline.zip,
+      kind: "supra_inline",
+    };
+  }
 
   for (let i = 0; i < lines.length; i++) {
     const labeled = lines[i].match(LABELED_ADDRESS);
@@ -180,9 +309,13 @@ function extractAddress(text: string): {
         /^(.+?),\s*([^,]+),\s*([A-Za-z]{2})\s+(\d{5})(?:-(\d{4}))?$/i
       );
       if (oneline) {
+        const a1 = oneline[1].trim();
+        if (!isPlausibleStreetAddressLine(a1)) continue;
+        const c = oneline[2].trim();
+        if (!isPlausibleCityField(c)) continue;
         return {
-          address1: oneline[1].trim().slice(0, 500),
-          city: oneline[2].trim(),
+          address1: a1.slice(0, 500),
+          city: c,
           state: oneline[3].toUpperCase(),
           zip: oneline[4] + (oneline[5] ? `-${oneline[5]}` : ""),
           kind: "labeled",
@@ -191,7 +324,7 @@ function extractAddress(text: string): {
       const next = lines[i + 1];
       if (next) {
         const csz = next.match(CITY_ST_ZIP_LINE);
-        if (csz && /^\d/.test(rest)) {
+        if (csz && isPlausibleStreetAddressLine(rest)) {
           return {
             address1: rest.slice(0, 500),
             city: csz[1].trim(),
@@ -201,7 +334,7 @@ function extractAddress(text: string): {
           };
         }
       }
-      if (/^\d/.test(rest) && rest.length >= 4) {
+      if (isPlausibleStreetAddressLine(rest)) {
         return {
           address1: rest.slice(0, 500),
           city: null,
@@ -213,22 +346,16 @@ function extractAddress(text: string): {
     }
   }
 
-  const inline = extractSupraInlineAddress(text);
-  if (inline) {
-    return {
-      address1: inline.address1,
-      city: inline.city,
-      state: inline.state,
-      zip: inline.zip,
-      kind: "supra_inline",
-    };
-  }
-
   for (let i = 1; i < lines.length; i++) {
     const prev = lines[i - 1];
     const csz = lines[i].match(CITY_ST_ZIP_LINE);
     if (csz) {
-      if (/^\d[\dA-Za-z]/.test(prev) && !/^\d{1,2}[\/\-]\d/.test(prev)) {
+      if (
+        isPlausibleStreetAddressLine(prev) &&
+        !MDY_LEADING_RE.test(prev) &&
+        !TIME_LIKE_LEADING_RE.test(prev) &&
+        !ADDRESS_LINE_NOISE_RE.test(prev)
+      ) {
         return {
           address1: prev.slice(0, 500),
           city: csz[1].trim(),
@@ -243,12 +370,16 @@ function extractAddress(text: string): {
     if (
       csOnly &&
       !/\d{5}/.test(lines[i]) &&
-      /^\d[\dA-Za-z]/.test(prev) &&
-      !/^\d{1,2}[\/\-]\d/.test(prev)
+      isPlausibleStreetAddressLine(prev) &&
+      !MDY_LEADING_RE.test(prev) &&
+      !TIME_LIKE_LEADING_RE.test(prev) &&
+      !ADDRESS_LINE_NOISE_RE.test(prev)
     ) {
+      const c = csOnly[1].trim();
+      if (!isPlausibleCityField(c)) continue;
       return {
         address1: prev.slice(0, 500),
-        city: csOnly[1].trim(),
+        city: c,
         state: csOnly[2].toUpperCase(),
         zip: null,
         kind: "line_pair",

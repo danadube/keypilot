@@ -6,6 +6,7 @@
 export {
   parseSupraEmailToDraft,
   detectIntent,
+  isPlausibleStreetAddressLine,
   type SupraParseDraft,
   type SupraEventIntent,
   type SupraAddressParseKind,

@@ -113,4 +113,53 @@ Showing on March 20, 2025 at 4:00 PM`,
     expect(r.parsedAgentEmail).toBeNull();
     expect(r.parsedScheduledAt).toBeTruthy();
   });
+
+  it("rejects At MM/DD/YYYY header match and uses address after the showing by", () => {
+    const r = parseSupraEmailToDraft({
+      subject: "Fwd",
+      rawBodyText: `At 3/20/2026 2:34 PM, the host wrote:
+The showing by Alex Agent ( alex@windermere.com) at 888 Honest Lane, Dallas, TX 75201
+(KeyBox# 1) began 03/20/2026 2:34PM`,
+      sender: "x@test.com",
+    });
+    expect(r.parsedAddress1).toBe("888 Honest Lane");
+    expect(r.parsedCity).toBe("Dallas");
+    expect(r.parsedState).toBe("TX");
+    expect(r.parsedZip).toBe("75201");
+  });
+
+  it("merges Supra street line + City, ST ZIP when only a line break separates them", () => {
+    const r = parseSupraEmailToDraft({
+      subject: "Supra Showings - New Showing Notification",
+      rawBodyText: `The showing by Pat (p@e.com) at 100 Integrity Drive
+Frisco, TX 75034
+(KeyBox# 9) began 03/10/2026 11:00AM`,
+      sender: "supra@s.com",
+    });
+    expect(r.parsedAddress1).toBe("100 Integrity Drive");
+    expect(r.parsedCity).toBe("Frisco");
+    expect(r.parsedState).toBe("TX");
+    expect(r.parsedZip).toBe("75034");
+  });
+
+  it("does not use KeyBox line as street when paired with City, ST ZIP", () => {
+    const r = parseSupraEmailToDraft({
+      subject: "Test",
+      rawBodyText: `(KeyBox# 32287084)
+Austin, TX 78701`,
+      sender: "x",
+    });
+    expect(r.parsedAddress1).toBeNull();
+    expect(r.parsedCity).toBeNull();
+  });
+
+  it("does not invent address from venue phrase without a street number", () => {
+    const r = parseSupraEmailToDraft({
+      subject: "Note",
+      rawBodyText: "Please meet at Starbucks, Austin, TX 78701 tomorrow.",
+      sender: "x",
+    });
+    expect(r.parsedAddress1).toBeNull();
+    expect(r.parseConfidence).toBe("LOW");
+  });
 });

@@ -154,6 +154,11 @@ function getApplyReadiness(detail: ItemWithRelations | null): { ok: boolean; rea
   if (!hasProp && !hasAddr) {
     reasons.push("Link a matched property ID or fill address, city, state, and ZIP.");
   }
+  if (!hasProp && detail.parseConfidence === Confidences.LOW) {
+    reasons.push(
+      "Parse confidence is low — link a matched property before applying, or raise confidence after verifying every parsed field."
+    );
+  }
   return { ok: reasons.length === 0, reasons };
 }
 
@@ -1358,6 +1363,17 @@ export function SupraInboxView() {
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-kp-on-surface-variant">
                 Parsed proposal (editable)
               </p>
+              {detail.parseConfidence === Confidences.LOW ? (
+                <div className="mb-3 rounded-md border border-amber-500/35 bg-amber-950/25 px-3 py-2 text-xs text-amber-100/95">
+                  <span className="font-semibold">Low parse confidence.</span> Treat address and time as drafts.
+                  Apply stays blocked until you link a matched property or raise confidence after correcting fields.
+                </div>
+              ) : null}
+              {!detail.parsedAddress1?.trim() && !detail.matchedPropertyId?.trim() ? (
+                <div className="mb-3 rounded-md border border-kp-outline bg-kp-surface-high/90 px-3 py-2 text-xs text-kp-on-surface-variant">
+                  No parsed street address yet — fill the address fields or link a property before applying.
+                </div>
+              ) : null}
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <Label className="text-kp-on-surface">Address line 1</Label>

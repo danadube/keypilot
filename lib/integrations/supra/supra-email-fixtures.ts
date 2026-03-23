@@ -78,4 +78,26 @@ Estimated showing duration is 13 minutes.`,
       minConfidence: "LOW",
     },
   },
+  {
+    id: "supra-fwd-at-date-then-real-address",
+    note: "Forwarded “At MM/DD/YYYY …” must not win over the real showing-by at-address",
+    subject: "Fwd: Showing",
+    sender: "notifications@example.com",
+    rawBodyText: `At 3/20/2026 2:34 PM, the host wrote:
+The showing by Alex Agent ( alex@windermere.com) at 888 Honest Lane, Dallas, TX 75201
+(KeyBox# 1) began 03/20/2026 2:34PM`,
+    expected: {
+      parsedAddress1: "888 Honest Lane",
+      parsedCity: "Dallas",
+      parsedState: "TX",
+      parsedZip: "75201",
+      scheduledLocal: { y: 2026, mo: 3, d: 20, h: 14, mi: 34 },
+      parsedAgentName: "Alex Agent",
+      parsedAgentEmail: "alex@windermere.com",
+      parsedStatus: "new_showing",
+      proposedAction: "CREATE_SHOWING",
+      maxConfidence: "HIGH",
+      minConfidence: "MEDIUM",
+    },
+  },
 ];
