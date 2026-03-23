@@ -7,6 +7,14 @@ import {
   SupraProposedAction,
 } from "@prisma/client";
 
+/** Paste real email content — server assigns unique externalMessageId */
+export const ManualPasteSupraIngestSchema = z.object({
+  subject: z.string().min(1).max(500),
+  rawBodyText: z.string().min(1).max(500_000),
+  sender: z.string().max(500).optional().nullable(),
+  receivedAt: z.coerce.date().optional(),
+});
+
 export const CreateSupraQueueItemSchema = z.object({
   externalMessageId: z.string().min(1).max(500),
   subject: z.string().min(1).max(500),
@@ -69,6 +77,7 @@ export const ApplySupraQueueItemSchema = z
   })
   .strict();
 
+export type ManualPasteSupraIngestInput = z.infer<typeof ManualPasteSupraIngestSchema>;
 export type CreateSupraQueueItemInput = z.infer<typeof CreateSupraQueueItemSchema>;
 export type UpdateSupraQueueItemInput = z.infer<typeof UpdateSupraQueueItemSchema>;
 export type ApplySupraQueueItemInput = z.infer<typeof ApplySupraQueueItemSchema>;

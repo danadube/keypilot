@@ -149,6 +149,7 @@ function getApplyReadiness(detail: ItemWithRelations | null): { ok: boolean; rea
 
 type FilterPreset =
   | "all"
+  | "ingested"
   | "needs_review"
   | "ready_to_apply"
   | "failed_parse"
@@ -187,6 +188,13 @@ export function SupraInboxView() {
     null
   );
   const [applyDuplicateAck, setApplyDuplicateAck] = useState(false);
+  const [pasteModalOpen, setPasteModalOpen] = useState(false);
+  const [pasteSubject, setPasteSubject] = useState("");
+  const [pasteBody, setPasteBody] = useState("");
+  const [pasteSender, setPasteSender] = useState("");
+  const [pasteReceivedAt, setPasteReceivedAt] = useState("");
+  const [pasting, setPasting] = useState(false);
+  const [parseDrafting, setParseDrafting] = useState(false);
 
   const applyReadiness = useMemo(() => getApplyReadiness(detail), [detail]);
 
@@ -215,11 +223,13 @@ export function SupraInboxView() {
   }, [successMessage]);
 
   const counts = useMemo(() => {
+    let ingested = 0;
     let needsReview = 0;
     let ready = 0;
     let failed = 0;
     let closed = 0;
     for (const row of items) {
+      if (row.queueState === QueueStates.INGESTED) ingested += 1;
       if (row.queueState === QueueStates.NEEDS_REVIEW) needsReview += 1;
       if (row.queueState === QueueStates.READY_TO_APPLY) ready += 1;
       if (row.queueState === QueueStates.FAILED_PARSE) failed += 1;
@@ -231,11 +241,13 @@ export function SupraInboxView() {
         closed += 1;
       }
     }
-    return { needsReview, ready, failed, closed, total: items.length };
+    return { ingested, needsReview, ready, failed, closed, total: items.length };
   }, [items]);
 
   const displayedItems = useMemo(() => {
     switch (filterPreset) {
+      case "ingested":
+        return items.filter((i) => i.queueState === QueueStates.INGESTED);
       case "needs_review":
         return items.filter((i) => i.queueState === QueueStates.NEEDS_REVIEW);
       case "ready_to_apply":
@@ -279,11 +291,80 @@ export function SupraInboxView() {
     queueState: row.queueState,
   });
 
+  const openPasteModal = () => {
+    setPasteSubject("");
+    setPasteBody("");
+    setPasteSender("");
+    setPasteReceivedAt(new Date().toISOString().slice(0, 16));
+    setPasteModalOpen(true);
+  };
+
+  const submitManualPaste = async () => {
+    if (!pasteSubject.trim() || !pasteBody.trim()) {
+      setError("Subject and email body are required.");
+      return;
+    }
+    setPasting(true);
+    setError(null);
+    try {
+      const body: Record<string, unknown> = {
+        subject: pasteSubject.trim(),
+        rawBodyText: pasteBody,
+        sender: pasteSender.trim() || null,
+      };
+      if (pasteReceivedAt.trim()) {
+        body.receivedAt = new Date(pasteReceivedAt).toISOString();
+      }
+      const res = await fetch("/api/v1/showing-hq/supra-queue/manual-paste", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message ?? "Failed to add pasted email");
+      setPasteModalOpen(false);
+      await load();
+      setFilterPreset("all");
+      setSuccessMessage(
+        "Email saved as INGESTED (raw only). Open Review → Generate parsed draft (stub) or edit fields manually, then apply when ready."
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Paste failed");
+    } finally {
+      setPasting(false);
+    }
+  };
+
   const openDetail = (row: ItemWithRelations) => {
     setApplyConflict(null);
     setApplyDuplicateAck(false);
     setDetail(normalizeItem(row));
     setModalOpen(true);
+  };
+
+  const handleParseDraft = async () => {
+    if (!detail) return;
+    setParseDrafting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/showing-hq/supra-queue/${detail.id}/parse-draft`, {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message ?? "Parse draft failed");
+      const row = json.data?.item as ItemWithRelations;
+      if (row) setDetail(normalizeItem(row));
+      await load();
+      setSuccessMessage(
+        typeof json.data?.message === "string"
+          ? json.data.message
+          : "Stub parser filled draft fields — review before apply."
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Parse draft failed");
+    } finally {
+      setParseDrafting(false);
+    }
   };
 
   const handleApply = async () => {
@@ -566,6 +647,7 @@ export function SupraInboxView() {
           </p>
           <div className="flex flex-wrap gap-2">
             {filterChip("all", "All", counts.total)}
+            {filterChip("ingested", "Ingested (raw)", counts.ingested)}
             {filterChip("needs_review", "Needs review", counts.needsReview, "bg-kp-gold/90 text-kp-bg hover:bg-kp-gold")}
             {filterChip("ready_to_apply", "Ready to apply", counts.ready)}
             {filterChip("failed_parse", "Failed parse", counts.failed, "bg-red-900/80 text-red-100 hover:bg-red-900")}
@@ -578,6 +660,16 @@ export function SupraInboxView() {
             Test data
           </p>
           <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="border-kp-teal/50 text-kp-teal hover:bg-kp-teal/10"
+              disabled={pasting}
+              onClick={openPasteModal}
+            >
+              Paste Supra email
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -667,16 +759,28 @@ export function SupraInboxView() {
               )}
             </p>
             {items.length === 0 ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="mt-4 border-kp-teal/40 text-kp-teal hover:bg-kp-teal/10"
-                disabled={seeding}
-                onClick={() => addSampleRow("typical")}
-              >
-                Add your first sample row
-              </Button>
+              <div className="mt-4 flex flex-wrap justify-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="border-kp-teal/50 text-kp-teal hover:bg-kp-teal/10"
+                  disabled={pasting}
+                  onClick={openPasteModal}
+                >
+                  Paste a real Supra email
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="border-kp-outline"
+                  disabled={seeding}
+                  onClick={() => addSampleRow("typical")}
+                >
+                  Add quick sample
+                </Button>
+              </div>
             ) : (
               <Button
                 type="button"
@@ -739,6 +843,9 @@ export function SupraInboxView() {
                         >
                           {row.subject}
                         </span>
+                        {row.externalMessageId.startsWith("manual-paste-") ? (
+                          <span className="text-[10px] font-medium text-kp-teal">Manual paste</span>
+                        ) : null}
                         {rowApplyOk ? (
                           <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-kp-teal">
                             <Sparkles className="h-3 w-3 shrink-0" />
@@ -1038,6 +1145,30 @@ export function SupraInboxView() {
               </div>
             </div>
 
+            {detail.queueState !== QueueStates.APPLIED &&
+            detail.queueState !== QueueStates.DISMISSED &&
+            detail.queueState !== QueueStates.DUPLICATE ? (
+              <div className="rounded-lg border border-dashed border-kp-outline bg-kp-surface-high/80 p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                  Parser hook (stub)
+                </p>
+                <p className="mt-1 text-xs text-kp-on-surface-variant">
+                  Real parser will replace <code className="rounded bg-kp-surface px-1 text-[10px]">manual-parse-stub</code>{" "}
+                  on the server. For now, this fills rough draft fields from subject + raw body (low confidence).
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 border-kp-outline text-kp-on-surface hover:bg-kp-surface-high"
+                  disabled={parseDrafting || saving || applying}
+                  onClick={handleParseDraft}
+                >
+                  {parseDrafting ? "Running stub…" : "Generate parsed draft (stub)"}
+                </Button>
+              </div>
+            ) : null}
+
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label className="text-kp-on-surface">Subject</Label>
@@ -1327,6 +1458,87 @@ export function SupraInboxView() {
             </div>
           </div>
         ) : null}
+      </BrandModal>
+
+      <BrandModal
+        open={pasteModalOpen}
+        onOpenChange={setPasteModalOpen}
+        title="Paste Supra email"
+        description="Copy from your mail app into KeyPilot. Stored as raw text only (INGESTED). Use the stub parser or manual edits in Review, then Apply when ready. No Gmail API."
+        size="lg"
+        footer={
+          <div className="flex w-full flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={pasting}
+              onClick={() => setPasteModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="bg-kp-teal font-semibold text-kp-bg hover:bg-kp-teal/90"
+              disabled={pasting || !pasteSubject.trim() || !pasteBody.trim()}
+              onClick={submitManualPaste}
+            >
+              {pasting ? "Saving…" : "Add to queue"}
+            </Button>
+          </div>
+        }
+      >
+        <div className="flex max-h-[min(70vh,520px)] flex-col gap-3 overflow-y-auto pr-1">
+          <div>
+            <Label className="text-kp-on-surface">Subject</Label>
+            <Input
+              className={cn("mt-1", fieldInput)}
+              value={pasteSubject}
+              onChange={(e) => setPasteSubject(e.target.value)}
+              placeholder="As shown in your inbox"
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label className="text-kp-on-surface">Sender (optional)</Label>
+              <Input
+                className={cn("mt-1", fieldInput)}
+                value={pasteSender}
+                onChange={(e) => setPasteSender(e.target.value)}
+                placeholder="From: address if you want it stored"
+              />
+            </div>
+            <div>
+              <Label className="text-kp-on-surface">Received (optional)</Label>
+              <Input
+                className={cn("mt-1", fieldInput)}
+                type="datetime-local"
+                value={pasteReceivedAt}
+                onChange={(e) => setPasteReceivedAt(e.target.value)}
+              />
+              <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">
+                Clear to let the server use “now” when saving.
+              </p>
+            </div>
+          </div>
+          <div>
+            <Label className="text-kp-on-surface">Raw body</Label>
+            <p className="mb-1 text-[10px] text-kp-on-surface-variant">
+              Paste the message body (you may include headers at the top — everything is kept for parser testing).
+            </p>
+            <textarea
+              className={cn(
+                "min-h-[260px] w-full rounded-md px-3 py-2 font-mono text-xs leading-relaxed",
+                fieldInput
+              )}
+              spellCheck={false}
+              value={pasteBody}
+              onChange={(e) => setPasteBody(e.target.value)}
+              placeholder="Paste email content here…"
+            />
+          </div>
+        </div>
       </BrandModal>
     </div>
   );
