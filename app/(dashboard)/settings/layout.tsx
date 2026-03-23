@@ -27,17 +27,17 @@ export default function SettingsLayout({
   };
 
   return (
-    <div className="flex flex-col gap-[var(--space-xl)]">
-      <nav className="flex gap-[var(--space-sm)] border-b border-[var(--brand-border)] -mb-2">
+    <div className="flex flex-col gap-6">
+      <nav className="-mb-2 flex gap-1 border-b border-kp-outline">
         {NAV_ITEMS.map((item) => (
           <Link
             key={item.href}
             href={item.href}
             className={cn(
-              "px-4 py-3 text-sm font-medium transition-colors border-b-2 -mb-px",
+              "-mb-px border-b-2 px-4 py-3 text-sm font-medium transition-colors",
               isItemActive(item.href)
-                ? "text-[var(--brand-primary)] border-[var(--brand-primary)]"
-                : "text-[var(--brand-text-muted)] border-transparent hover:text-[var(--brand-text)]"
+                ? "border-kp-teal text-kp-teal"
+                : "border-transparent text-kp-on-surface-variant hover:text-kp-on-surface"
             )}
           >
             {item.label}

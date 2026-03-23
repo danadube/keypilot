@@ -1,8 +1,6 @@
 "use client";
 
 import { ModuleGate } from "@/components/shared/ModuleGate";
-import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
-import { BrandCard } from "@/components/ui/BrandCard";
 
 export default function FarmTrackrPage() {
   return (
@@ -12,16 +10,18 @@ export default function FarmTrackrPage() {
       valueProposition="Geographic farming intelligence and territory management for prospecting in your farm areas."
       backHref="/showing-hq"
     >
-      <div className="flex flex-col gap-[var(--space-xl)]">
-        <BrandPageHeader
-          title="FarmTrackr"
-          description="Geographic farming intelligence and territory management."
-        />
-        <BrandCard padded elevated>
-          <p className="text-[var(--brand-text-muted)]">
+      <div className="flex flex-col gap-6">
+        <div>
+          <h1 className="text-xl font-bold text-kp-on-surface">FarmTrackr</h1>
+          <p className="mt-1 text-sm text-kp-on-surface-variant">
+            Geographic farming intelligence and territory management.
+          </p>
+        </div>
+        <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+          <p className="text-sm text-kp-on-surface-variant">
             Coming soon: farms, farm lists, routes, mailing plans, and campaign history.
           </p>
-        </BrandCard>
+        </div>
       </div>
     </ModuleGate>
   );
