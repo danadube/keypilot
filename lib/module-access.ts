@@ -7,10 +7,10 @@ import type { ModuleId } from "./modules";
 
 export type ModuleAccessMap = Record<string, boolean>;
 
-/** Default: ShowingHQ, PropertyVault, ClientKeep enabled; premium modules require upgrade */
+/** Default: ShowingHQ + property-vault enabled; CRM/premium modules require upgrade */
 const DEFAULT_ACCESS: ModuleAccessMap = {
   "showing-hq": true,
-  "client-keep": true,
+  "client-keep": false,
   "farm-trackr": false,
   "seller-pulse": false,
   "task-pilot": false,
@@ -23,7 +23,7 @@ const DEFAULT_ACCESS: ModuleAccessMap = {
 
 /**
  * Check if user has access to a module.
- * When moduleAccess is null, uses defaults (ShowingHQ + property-vault + settings enabled).
+ * When moduleAccess is null, uses defaults (showing-hq + property-vault + home/settings; CRM locked).
  */
 export function hasModuleAccess(
   moduleAccess: ModuleAccessMap | null | undefined,
@@ -40,6 +40,7 @@ export function hasModuleAccess(
 
 /** Modules that show Upgrade when not enabled (premium modules) */
 export const UPGRADE_MODULES: ModuleId[] = [
+  "client-keep",
   "farm-trackr",
   "seller-pulse",
   "market-pilot",

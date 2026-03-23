@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import {
   Lock,
   Settings,
+  LayoutDashboard,
   Building2,
   Calendar,
   Users,
@@ -22,7 +23,10 @@ import type { ModuleId, ModuleSidebarItem } from "@/lib/modules";
 
 const SIDEBAR_WIDTH = 200;
 
-// Modules shown in the platform switcher — always visible regardless of active module
+const FEEDBACK_MAILTO =
+  "mailto:feedback@keypilot.app?subject=" + encodeURIComponent("KeyPilot feedback");
+
+/** Platform rail order: Dashboard first, then modules (not home module id — uses "/"). */
 const PLATFORM_MODULE_IDS: ModuleId[] = [
   "property-vault",
   "showing-hq",
@@ -32,7 +36,6 @@ const PLATFORM_MODULE_IDS: ModuleId[] = [
   "market-pilot",
 ];
 
-// Module-level icons for the platform switcher
 const MODULE_ICON: Partial<Record<ModuleId, React.ComponentType<{ className?: string }>>> = {
   "property-vault": Building2,
   "showing-hq": Calendar,
@@ -57,11 +60,11 @@ export function ModuleSidebar() {
   const mod = MODULES[activeId];
   const { hasModuleAccess: checkAccess, isLoading } = useProductTier();
 
-  // Sub-nav: current module items minus OVERVIEW (covered by platform switcher)
-  // and SYSTEM (Settings handled separately at the bottom)
   const subItems = mod.sidebar.filter(
     (item) => item.section !== "OVERVIEW" && item.section !== "SYSTEM"
   );
+
+  const dashboardActive = pathname === "/" || activeId === "home";
 
   return (
     <aside
@@ -69,7 +72,6 @@ export function ModuleSidebar() {
       style={{ width: SIDEBAR_WIDTH, backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)" }}
       aria-label="Platform navigation"
     >
-      {/* ── Brand header ──────────────────────────────────────────────────── */}
       <div className="shrink-0 border-b border-white/10 px-4 pb-3 pt-4">
         <Link
           href="/"
@@ -86,22 +88,32 @@ export function ModuleSidebar() {
         </Link>
       </div>
 
-      {/* ── Scrollable nav area ───────────────────────────────────────────── */}
       <nav className="flex-1 overflow-auto py-3" aria-label="Module navigation">
-
-        {/* Platform module switcher — always visible */}
         <div className="mb-1 px-2">
           <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
             Platform
           </p>
           <ul className="space-y-0.5">
+            <li>
+              <Link
+                href="/"
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                  "text-slate-400 hover:bg-white/5 hover:text-white",
+                  dashboardActive &&
+                    "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
+                )}
+              >
+                <LayoutDashboard className="h-[18px] w-[18px] shrink-0 opacity-85" />
+                Dashboard
+              </Link>
+            </li>
+
             {PLATFORM_MODULE_IDS.map((id) => {
               const cfg = MODULES[id];
               if (!cfg) return null;
               const Icon = MODULE_ICON[id];
               const isActive = activeId === id;
-              // A module is locked if it's in UPGRADE_IDS AND user doesn't have access
-              // Exception: if it's the current active module, never show as locked
               const isUpgrade = UPGRADE_MODULES.includes(id);
               const hasAccess = isLoading || checkAccess(id);
               const isLocked = isUpgrade && !hasAccess && !isActive;
@@ -133,7 +145,7 @@ export function ModuleSidebar() {
                       "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                       "text-slate-400 hover:bg-white/5 hover:text-white",
                       isActive &&
-                        "bg-[#4BAED8]/20 font-semibold text-white border-l-4 border-l-[#4BAED8] pl-[calc(0.75rem+4px)]"
+                        "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
                     )}
                   >
                     {Icon ? (
@@ -149,7 +161,6 @@ export function ModuleSidebar() {
           </ul>
         </div>
 
-        {/* Current module — flat sub-nav (no section labels) */}
         {subItems.length > 0 && (
           <div className="mt-2 border-t border-white/10 pt-3">
             <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
@@ -183,7 +194,6 @@ export function ModuleSidebar() {
         )}
       </nav>
 
-      {/* ── System ─────────────────────────────────────────────────────────── */}
       <div className="shrink-0 border-t border-white/10 px-2 py-2">
         <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
           System
@@ -202,12 +212,17 @@ export function ModuleSidebar() {
         </Link>
       </div>
 
-      {/* ── Version footer ────────────────────────────────────────────────── */}
       <footer className="shrink-0 border-t border-slate-700/40 px-4 py-3">
         <p className="text-[11px] text-slate-500" aria-label="App version">
           KeyPilot v{APP_VERSION}
           {APP_COMMIT ? ` · ${APP_COMMIT}` : null}
         </p>
+        <a
+          href={FEEDBACK_MAILTO}
+          className="mt-2 inline-block text-[11px] text-slate-500 underline-offset-2 hover:text-slate-300 hover:underline"
+        >
+          Send feedback
+        </a>
       </footer>
     </aside>
   );
