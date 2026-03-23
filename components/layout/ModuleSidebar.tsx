@@ -46,12 +46,18 @@ const MODULE_ICON: Partial<Record<ModuleId, React.ComponentType<{ className?: st
 };
 
 /**
- * Child links under an expanded module: exclude Settings (System section only).
- * Some legacy sidebar items use href /settings without section: "SYSTEM".
+ * Child links under an expanded module:
+ * - Exclude Settings (belongs under System).
+ * - Exclude items whose href is the module root (avoids a second "Dashboard/Overview" row
+ *   under the parent module label — single parent-child model).
  */
 function getModuleChildNavItems(moduleConfig: ModuleConfig): ModuleSidebarItem[] {
+  const root = moduleConfig.href;
   return moduleConfig.sidebar.filter(
-    (item) => item.section !== "SYSTEM" && item.href !== "/settings"
+    (item) =>
+      item.section !== "SYSTEM" &&
+      item.href !== "/settings" &&
+      item.href !== root
   );
 }
 
@@ -62,6 +68,48 @@ function isItemActive(pathname: string, item: ModuleSidebarItem): boolean {
   if (item.href.includes("?") && pathname.startsWith(item.href.split("?")[0]))
     return true;
   return false;
+}
+
+/** Indented child links — single pattern for platform modules, orphans, and Settings. */
+function ModuleChildNavList({
+  items,
+  pathname,
+  ariaLabel,
+}: {
+  items: ModuleSidebarItem[];
+  pathname: string;
+  ariaLabel: string;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <ul
+      className="ml-2 space-y-0.5 border-l border-white/15 py-0.5 pl-4"
+      aria-label={ariaLabel}
+    >
+      {items.map((item) => {
+        const SubIcon = item.icon;
+        const subActive = isItemActive(pathname, item);
+        return (
+          <li key={item.href + item.label}>
+            <Link
+              href={item.href}
+              className={cn(
+                "flex items-center gap-2 rounded-md py-1.5 pl-2 pr-2 text-[13px] transition-colors",
+                "text-slate-400 hover:bg-white/5 hover:text-slate-100",
+                subActive &&
+                  "bg-[#4BAED8]/10 font-medium text-white ring-1 ring-[#4BAED8]/25"
+              )}
+            >
+              {SubIcon ? (
+                <SubIcon className="h-[15px] w-[15px] shrink-0 opacity-80" />
+              ) : null}
+              <span className="min-w-0 truncate">{item.label}</span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 export function ModuleSidebar() {
@@ -167,33 +215,11 @@ export function ModuleSidebar() {
                   </Link>
 
                   {showChildren ? (
-                    <ul
-                      className="ml-2 space-y-0.5 border-l border-white/15 py-0.5 pl-3"
-                      aria-label={`${cfg.name} pages`}
-                    >
-                      {childItems.map((item) => {
-                        const SubIcon = item.icon;
-                        const subActive = isItemActive(pathname, item);
-                        return (
-                          <li key={item.href + item.label}>
-                            <Link
-                              href={item.href}
-                              className={cn(
-                                "flex items-center gap-2 rounded-md py-1.5 pl-2 pr-2 text-[13px] transition-colors",
-                                "text-slate-400 hover:bg-white/5 hover:text-slate-100",
-                                subActive &&
-                                  "bg-[#4BAED8]/10 font-medium text-white ring-1 ring-[#4BAED8]/25"
-                              )}
-                            >
-                              {SubIcon ? (
-                                <SubIcon className="h-[15px] w-[15px] shrink-0 opacity-80" />
-                              ) : null}
-                              <span className="min-w-0 truncate">{item.label}</span>
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
+                    <ModuleChildNavList
+                      items={childItems}
+                      pathname={pathname}
+                      ariaLabel={`${cfg.name} pages`}
+                    />
                   ) : null}
                 </li>
               );
@@ -224,35 +250,11 @@ export function ModuleSidebar() {
                     <LayoutDashboard className="h-[18px] w-[18px] shrink-0 opacity-85" />
                     {orphan.name}
                   </Link>
-                  {childItems.length > 0 ? (
-                    <ul
-                      className="ml-2 space-y-0.5 border-l border-white/15 py-0.5 pl-3"
-                      aria-label={`${orphan.name} pages`}
-                    >
-                      {childItems.map((item) => {
-                        const SubIcon = item.icon;
-                        const subActive = isItemActive(pathname, item);
-                        return (
-                          <li key={item.href + item.label}>
-                            <Link
-                              href={item.href}
-                              className={cn(
-                                "flex items-center gap-2 rounded-md py-1.5 pl-2 pr-2 text-[13px] transition-colors",
-                                "text-slate-400 hover:bg-white/5 hover:text-slate-100",
-                                subActive &&
-                                  "bg-[#4BAED8]/10 font-medium text-white ring-1 ring-[#4BAED8]/25"
-                              )}
-                            >
-                              {SubIcon ? (
-                                <SubIcon className="h-[15px] w-[15px] shrink-0 opacity-80" />
-                              ) : null}
-                              <span className="min-w-0 truncate">{item.label}</span>
-                            </Link>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  ) : null}
+                  <ModuleChildNavList
+                    items={childItems}
+                    pathname={pathname}
+                    ariaLabel={`${orphan.name} pages`}
+                  />
                 </li>
               );
             })()}
@@ -279,34 +281,12 @@ export function ModuleSidebar() {
               Settings
             </Link>
 
-            {activeId === "settings" && settingsChildItems.length > 0 ? (
-              <ul
-                className="ml-2 space-y-0.5 border-l border-white/15 py-0.5 pl-3"
-                aria-label="Settings pages"
-              >
-                {settingsChildItems.map((item) => {
-                  const SubIcon = item.icon;
-                  const subActive = isItemActive(pathname, item);
-                  return (
-                    <li key={item.href + item.label}>
-                      <Link
-                        href={item.href}
-                        className={cn(
-                          "flex items-center gap-2 rounded-md py-1.5 pl-2 pr-2 text-[13px] transition-colors",
-                          "text-slate-400 hover:bg-white/5 hover:text-slate-100",
-                          subActive &&
-                            "bg-[#4BAED8]/10 font-medium text-white ring-1 ring-[#4BAED8]/25"
-                        )}
-                      >
-                        {SubIcon ? (
-                          <SubIcon className="h-[15px] w-[15px] shrink-0 opacity-80" />
-                        ) : null}
-                        <span className="min-w-0 truncate">{item.label}</span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+            {activeId === "settings" ? (
+              <ModuleChildNavList
+                items={settingsChildItems}
+                pathname={pathname}
+                ariaLabel="Settings pages"
+              />
             ) : null}
           </li>
         </ul>
