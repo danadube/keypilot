@@ -810,11 +810,11 @@ export function ShowingHQDashboardView() {
         aria-label="Schedule and queue"
       >
         {/* Calendar panel — interior calendar component deferred */}
-        <div className="flex min-h-[400px] flex-col overflow-hidden rounded-xl border border-kp-outline bg-kp-surface lg:min-h-[460px]">
-          <div className="flex flex-wrap items-end justify-between gap-2 border-b border-kp-outline bg-kp-surface-high px-4 py-2.5">
+        <div className="flex min-h-[400px] flex-col overflow-hidden rounded-xl border border-kp-outline bg-kp-surface-high lg:min-h-[460px]">
+          <div className="flex flex-wrap items-end justify-between gap-2 border-b border-kp-outline bg-kp-surface-higher px-4 py-2.5">
             <div>
               <h2 className="text-xs font-semibold text-kp-on-surface">Schedule</h2>
-              <p className="text-[10px] text-kp-on-surface-variant">
+              <p className="text-[10px] text-kp-on-surface/80">
                 Week · planning · Month · open houses & showings
               </p>
             </div>

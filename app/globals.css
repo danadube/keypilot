@@ -144,32 +144,75 @@ body {
   --fc-daygrid-event-dot-width: 4px;
 }
 
-/* Dark workbench: calendar grid matches kp surfaces (not near-white) */
+/* ShowingHQ workbench calendar — elevated contrast, readable type (still dark kp) */
 .showing-hq-calendar .fc {
-  --fc-border-color: #2a3850;
+  --fc-border-color: #3d516e;
   --fc-page-bg-color: transparent;
-  --fc-neutral-bg-color: #151e2e;
-  --fc-list-event-hover-bg-color: #1c2840;
-  --fc-today-bg-color: rgb(45 212 191 / 0.1);
+  --fc-neutral-bg-color: #243652;
+  --fc-list-event-hover-bg-color: #2d415f;
+  --fc-today-bg-color: rgb(45 212 191 / 0.14);
 }
 .showing-hq-calendar .fc .fc-scrollgrid,
 .showing-hq-calendar .fc .fc-scrollgrid-section-body > td,
 .showing-hq-calendar .fc .fc-scrollgrid-section-footer > td {
-  background: #151e2e !important;
+  background: #1e2d45 !important;
 }
 .showing-hq-calendar .fc th.fc-col-header-cell,
 .showing-hq-calendar .fc .fc-scrollgrid-section-header > td {
-  background: #1c2840 !important;
+  background: #2a3d5c !important;
+}
+.showing-hq-calendar .fc th.fc-col-header-cell {
+  border-color: var(--fc-border-color);
+}
+.showing-hq-calendar .fc .fc-col-header-cell-cushion {
+  color: #e8eef7;
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.35rem 0;
 }
 .showing-hq-calendar .fc .fc-daygrid-day {
-  background: #151e2e;
+  background: #1e2d45;
+}
+.showing-hq-calendar .fc .fc-daygrid-day-number {
+  color: #e8eef7;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.2rem 0.35rem;
+}
+.showing-hq-calendar .fc .fc-day-other .fc-daygrid-day-number {
+  color: #8fa3bf;
+  opacity: 1;
 }
 .showing-hq-calendar .fc .fc-day-today {
-  background-color: rgb(45 212 191 / 0.08) !important;
+  background-color: rgb(45 212 191 / 0.12) !important;
 }
 .showing-hq-calendar .fc .fc-day-today .fc-daygrid-day-number {
-  color: #2dd4bf;
-  background-color: rgb(45 212 191 / 0.18);
+  color: #99f6e4;
+  font-weight: 700;
+  background-color: rgb(45 212 191 / 0.24);
+  border-radius: 9999px;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Events use bright API colors — dark text for legibility */
+.showing-hq-calendar .fc-daygrid-block-event .fc-event-time,
+.showing-hq-calendar .fc-daygrid-block-event .fc-event-title,
+.showing-hq-calendar .fc-h-event .fc-event-main {
+  color: #0f172a !important;
+}
+.showing-hq-calendar .fc-event-main-fallback .fc-event-type,
+.showing-hq-calendar .fc-event-main-fallback .fc-event-address {
+  color: #0f172a;
+  opacity: 1;
+}
+.showing-hq-calendar .fc .fc-daygrid-event {
+  font-size: 0.7rem;
+  line-height: 1.25;
 }
 .fc .fc-toolbar-title { font-size: 0.9375rem; font-weight: 600; }
 .fc .fc-button {

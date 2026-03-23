@@ -13,6 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { kpCalendarModalField } from "@/components/showing-hq/calendar-modal-field-classes";
+import { cn } from "@/lib/utils";
 import { Copy, Check, ClipboardCheck } from "lucide-react";
 
 type Property = { id: string; address1: string; city: string; state: string };
@@ -231,29 +233,29 @@ export function EditEventModal({
       }
     >
       {loading ? (
-        <p className="text-sm text-slate-500">Loading event…</p>
+        <p className={kpCalendarModalField.mutedHelp}>Loading event…</p>
       ) : (
         <form id="edit-event-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
           {error && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300" role="alert">
+            <p className={kpCalendarModalField.error} role="alert">
               {error}
             </p>
           )}
 
           <div className="space-y-2">
-            <Label>Event type</Label>
-            <p className="text-sm font-medium text-[var(--brand-text)]">{typeLabel}</p>
+            <Label className={kpCalendarModalField.label}>Event type</Label>
+            <p className="text-sm font-medium text-kp-on-surface">{typeLabel}</p>
           </div>
 
           <div className="space-y-2">
-            <Label>Property</Label>
+            <Label className={kpCalendarModalField.label}>Property</Label>
             <Select value={propertyId} onValueChange={setPropertyId}>
-              <SelectTrigger>
+              <SelectTrigger className={kpCalendarModalField.selectTrigger}>
                 <SelectValue placeholder="Select property" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className={kpCalendarModalField.selectContent}>
                 {properties.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
+                  <SelectItem key={p.id} value={p.id} className={kpCalendarModalField.selectItem}>
                     {p.address1}, {p.city}, {p.state}
                   </SelectItem>
                 ))}
@@ -263,19 +265,21 @@ export function EditEventModal({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
-              <Label>Date</Label>
+              <Label className={kpCalendarModalField.label}>Date</Label>
               <Input
                 type="date"
                 value={dateStr}
                 onChange={(e) => setDateStr(e.target.value)}
+                className={kpCalendarModalField.input}
               />
             </div>
             <div className="space-y-2">
-              <Label>Start time</Label>
+              <Label className={kpCalendarModalField.label}>Start time</Label>
               <Input
                 type="time"
                 value={startTimeStr}
                 onChange={(e) => setStartTimeStr(e.target.value)}
+                className={kpCalendarModalField.input}
               />
             </div>
           </div>
@@ -283,31 +287,33 @@ export function EditEventModal({
           {isOpenHouse && (
             <>
               <div className="space-y-2">
-                <Label>End time</Label>
+                <Label className={kpCalendarModalField.label}>End time</Label>
                 <Input
                   type="time"
                   value={endTimeStr}
                   onChange={(e) => setEndTimeStr(e.target.value)}
+                  className={kpCalendarModalField.input}
                 />
               </div>
               <div className="space-y-2">
-                <Label>Title</Label>
+                <Label className={kpCalendarModalField.label}>Title</Label>
                 <Input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Open House · 123 Main St"
+                  className={kpCalendarModalField.input}
                 />
               </div>
             </>
           )}
 
           <div className="space-y-2">
-            <Label>Notes</Label>
+            <Label className={kpCalendarModalField.label}>Notes</Label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional notes"
-              className="min-h-[60px] resize-y text-sm"
+              className={cn("min-h-[60px] resize-y text-sm", kpCalendarModalField.textarea)}
               rows={2}
             />
           </div>

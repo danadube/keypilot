@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { kpCalendarModalField } from "@/components/showing-hq/calendar-modal-field-classes";
 
 type Property = {
   id: string;
@@ -164,26 +165,27 @@ export function QuickCreateEventModal({
     >
       <form id="quick-create-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
         {error && (
-          <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+          <p className={kpCalendarModalField.error} role="alert">
             {error}
           </p>
         )}
 
         <div className="space-y-2">
-          <Label>Event type</Label>
+          <Label className={kpCalendarModalField.label}>Event type</Label>
           <Select
             value={eventType}
             onValueChange={(v) => setEventType(v as QuickCreateEventType)}
           >
-            <SelectTrigger>
+            <SelectTrigger className={kpCalendarModalField.selectTrigger}>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className={kpCalendarModalField.selectContent}>
               {EVENT_TYPE_OPTIONS.map((opt) => (
                 <SelectItem
                   key={opt.value}
                   value={opt.value}
                   disabled={!opt.enabled}
+                  className={kpCalendarModalField.selectItem}
                 >
                   {opt.label}
                   {!opt.enabled ? " (coming soon)" : ""}
@@ -194,21 +196,21 @@ export function QuickCreateEventModal({
         </div>
 
         <div className="space-y-2">
-          <Label>Property</Label>
+          <Label className={kpCalendarModalField.label}>Property</Label>
           {loading ? (
-            <p className="text-sm text-slate-500">Loading properties…</p>
+            <p className={kpCalendarModalField.mutedHelp}>Loading properties…</p>
           ) : (
             <Select
               value={propertyId}
               onValueChange={setPropertyId}
               disabled={!typeOpt?.enabled}
             >
-              <SelectTrigger>
+              <SelectTrigger className={kpCalendarModalField.selectTrigger}>
                 <SelectValue placeholder="Select property" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className={kpCalendarModalField.selectContent}>
                 {properties.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
+                  <SelectItem key={p.id} value={p.id} className={kpCalendarModalField.selectItem}>
                     {p.address1}, {p.city}, {p.state}
                   </SelectItem>
                 ))}
@@ -219,32 +221,35 @@ export function QuickCreateEventModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label>Date</Label>
+            <Label className={kpCalendarModalField.label}>Date</Label>
             <Input
               type="date"
               value={dateStr}
               onChange={(e) => setDateStr(e.target.value)}
               disabled={!typeOpt?.enabled}
+              className={kpCalendarModalField.input}
             />
           </div>
           <div className="space-y-2">
-            <Label>Start time</Label>
+            <Label className={kpCalendarModalField.label}>Start time</Label>
             <Input
               type="time"
               value={startTimeStr}
               onChange={(e) => setStartTimeStr(e.target.value)}
               disabled={!typeOpt?.enabled}
+              className={kpCalendarModalField.input}
             />
           </div>
         </div>
 
         {eventType === "open_house" && (
           <div className="space-y-2">
-            <Label>End time</Label>
+            <Label className={kpCalendarModalField.label}>End time</Label>
             <Input
               type="time"
               value={endTimeStr}
               onChange={(e) => setEndTimeStr(e.target.value)}
+              className={kpCalendarModalField.input}
             />
           </div>
         )}
