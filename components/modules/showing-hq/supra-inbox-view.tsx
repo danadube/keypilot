@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   SupraQueueItem,
   SupraQueueState,
@@ -24,7 +24,7 @@ import {
   SupraPropertyMatchStatus as PropMatch,
   SupraShowingMatchStatus as ShowMatch,
 } from "@prisma/client";
-import { AlertCircle, CheckCircle2, Inbox, ChevronDown, Sparkles } from "lucide-react";
+import { AlertCircle, CheckCircle2, ClipboardPaste, Inbox, ChevronDown, Sparkles } from "lucide-react";
 
 function formatEnumLabel(value: string): string {
   return value
@@ -220,6 +220,12 @@ export function SupraInboxView() {
   const [pasteSender, setPasteSender] = useState("");
   const [pasteReceivedAt, setPasteReceivedAt] = useState("");
   const [pasting, setPasting] = useState(false);
+  const [pasteModalError, setPasteModalError] = useState<string | null>(null);
+  /** Brief table row emphasis after manual paste */
+  const [highlightQueueRowId, setHighlightQueueRowId] = useState<string | null>(null);
+  /** Show “just pasted” strip at top of review modal */
+  const [pastedReviewBannerId, setPastedReviewBannerId] = useState<string | null>(null);
+  const pasteBodyRef = useRef<HTMLTextAreaElement>(null);
   const [parseDrafting, setParseDrafting] = useState(false);
   const [propertySuggestions, setPropertySuggestions] = useState<PropertySuggestionRow[]>([]);
   const [propertySuggestLoading, setPropertySuggestLoading] = useState(false);
@@ -250,9 +256,24 @@ export function SupraInboxView() {
 
   useEffect(() => {
     if (!successMessage) return;
-    const t = setTimeout(() => setSuccessMessage(null), 5000);
+    const t = setTimeout(() => setSuccessMessage(null), 8000);
     return () => clearTimeout(t);
   }, [successMessage]);
+
+  useEffect(() => {
+    if (!highlightQueueRowId) return;
+    const el = document.getElementById(`supra-queue-row-${highlightQueueRowId}`);
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const clear = setTimeout(() => setHighlightQueueRowId(null), 7000);
+    return () => clearTimeout(clear);
+  }, [highlightQueueRowId]);
+
+  useEffect(() => {
+    if (!pasteModalOpen) return;
+    setPasteModalError(null);
+    const id = requestAnimationFrame(() => pasteBodyRef.current?.focus());
+    return () => cancelAnimationFrame(id);
+  }, [pasteModalOpen]);
 
   /* Intentional deps: refetch when parsed address lines change, not on every detail field edit */
   useEffect(() => {
@@ -402,16 +423,18 @@ export function SupraInboxView() {
     setPasteSubject("");
     setPasteBody("");
     setPasteSender("");
+    setPasteModalError(null);
     setPasteReceivedAt(new Date().toISOString().slice(0, 16));
     setPasteModalOpen(true);
   };
 
   const submitManualPaste = async () => {
     if (!pasteSubject.trim() || !pasteBody.trim()) {
-      setError("Subject and email body are required.");
+      setPasteModalError("Add a subject and the message body (both are required).");
       return;
     }
     setPasting(true);
+    setPasteModalError(null);
     setError(null);
     try {
       const body: Record<string, unknown> = {
@@ -429,14 +452,18 @@ export function SupraInboxView() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message ?? "Failed to add pasted email");
+      const created = normalizeItem(json.data as ItemWithRelations);
       setPasteModalOpen(false);
       await load();
-      setFilterPreset("all");
+      setFilterPreset("ingested");
+      setHighlightQueueRowId(created.id);
+      setPastedReviewBannerId(created.id);
       setSuccessMessage(
-        "Email saved as INGESTED (raw only). Open Review → Generate parsed draft or edit fields manually, then apply when ready."
+        "Saved as Ingested (raw). Review opened — run parser or edit the raw body, then Save."
       );
+      openDetail(created);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Paste failed");
+      setPasteModalError(e instanceof Error ? e.message : "Paste failed");
     } finally {
       setPasting(false);
     }
@@ -972,10 +999,13 @@ export function SupraInboxView() {
                   const rowApplyOk = getApplyReadiness(row).ok;
                   return (
                   <tr
+                    id={`supra-queue-row-${row.id}`}
                     key={row.id}
                     className={cn(
                       "border-b border-kp-outline/80 transition-colors hover:bg-kp-surface-high/70",
-                      rowAttentionClass(row.queueState)
+                      rowAttentionClass(row.queueState),
+                      highlightQueueRowId === row.id &&
+                        "bg-kp-teal/[0.12] ring-2 ring-inset ring-kp-teal/45"
                     )}
                   >
                     <td className="max-w-[min(280px,28vw)] px-2 py-1.5 align-top">
@@ -1092,6 +1122,7 @@ export function SupraInboxView() {
             setDetail(null);
             setApplyConflict(null);
             setApplyDuplicateAck(false);
+            setPastedReviewBannerId(null);
           }
         }}
         title="Review queue item"
@@ -1241,6 +1272,25 @@ export function SupraInboxView() {
       >
         {detail ? (
           <div className="flex max-h-[min(78vh,640px)] flex-col gap-3 overflow-y-auto pr-1">
+            {detail.id === pastedReviewBannerId ? (
+              <div
+                className="flex items-start gap-2 rounded-lg border border-kp-teal/40 bg-kp-teal/[0.12] px-3 py-2 shadow-sm"
+                role="status"
+              >
+                <ClipboardPaste className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-kp-on-surface">Just pasted — raw email only</p>
+                  <p className={cn("mt-0.5", t.meta)}>
+                    This row is <strong className="text-kp-on-surface">Ingested</strong>. Scroll to{" "}
+                    <strong className="text-kp-on-surface">Supra parser</strong> to run{" "}
+                    <code className="rounded bg-kp-surface px-1 py-px font-mono text-[11px]">
+                      parse-supra-email
+                    </code>
+                    , or edit subject/body below, then <strong className="text-kp-on-surface">Save</strong>.
+                  </p>
+                </div>
+              </div>
+            ) : null}
             {/* Decision banner */}
             <div
               className={cn(
@@ -1733,83 +1783,151 @@ export function SupraInboxView() {
 
       <BrandModal
         open={pasteModalOpen}
-        onOpenChange={setPasteModalOpen}
-        title="Paste Supra email"
-        description="Copy from your mail app into KeyPilot. Stored as raw text only (INGESTED). Use Generate parsed draft (Supra v1) or manual edits in Review, then Apply when ready. No Gmail API."
-        size="lg"
+        onOpenChange={(open) => {
+          setPasteModalOpen(open);
+          if (!open) setPasteModalError(null);
+        }}
+        title="Paste email (manual test)"
+        description="No mailbox connection — raw text only. Saving adds an Ingested row and opens Review so you can run the parser immediately."
+        size="xl"
         footer={
-          <div className="flex w-full flex-wrap justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={pasting}
-              onClick={() => setPasteModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              className="bg-kp-teal font-semibold text-kp-bg hover:bg-kp-teal/90"
-              disabled={pasting || !pasteSubject.trim() || !pasteBody.trim()}
-              onClick={submitManualPaste}
-            >
-              {pasting ? "Saving…" : "Add to queue"}
-            </Button>
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <p className={cn("order-2 max-w-md sm:order-1", t.metaQuiet)}>
+              In the body field: <span className="font-medium text-kp-on-surface/75">⌘ Enter</span> (Mac) or{" "}
+              <span className="font-medium text-kp-on-surface/75">Ctrl+Enter</span> (Windows) saves without clicking.
+            </p>
+            <div className="order-1 flex w-full flex-wrap justify-end gap-2 sm:order-2 sm:w-auto">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 font-medium"
+                disabled={pasting}
+                onClick={() => setPasteModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                form="supra-manual-paste-form"
+                size="sm"
+                className="h-8 bg-kp-teal font-semibold text-kp-bg hover:bg-kp-teal/90"
+                disabled={pasting || !pasteSubject.trim() || !pasteBody.trim()}
+              >
+                {pasting ? "Saving…" : "Add to queue & open review"}
+              </Button>
+            </div>
           </div>
         }
       >
-        <div className="flex max-h-[min(70vh,520px)] flex-col gap-3 overflow-y-auto pr-1">
+        <form
+          id="supra-manual-paste-form"
+          className="flex max-h-[min(72vh,680px)] flex-col gap-3 overflow-y-auto pr-1"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submitManualPaste();
+          }}
+        >
+          <div className="rounded-lg border border-kp-teal/35 bg-kp-teal/[0.08] px-3 py-2.5">
+            <p className={t.section}>Quick test loop</p>
+            <ol className="mt-1.5 list-decimal space-y-1 pl-4 text-sm leading-snug text-kp-on-surface/88">
+              <li>Paste <strong className="text-kp-on-surface">subject</strong> and full message below.</li>
+              <li>
+                <strong className="text-kp-on-surface">Add to queue</strong> — filter switches to Ingested and Review
+                opens.
+              </li>
+              <li>Run <strong className="text-kp-on-surface">parser</strong> or edit raw text, Save, then Apply when ready.</li>
+            </ol>
+          </div>
+
+          {pasteModalError ? (
+            <div
+              className="rounded-md border border-red-500/40 bg-red-950/30 px-3 py-2 text-sm text-red-100"
+              role="alert"
+            >
+              {pasteModalError}
+            </div>
+          ) : null}
+
           <div>
-            <Label className={t.label}>Subject</Label>
+            <Label className={t.label} htmlFor="supra-paste-subject">
+              Subject
+            </Label>
+            <p className={cn("mt-0.5", t.metaQuiet)}>Same line as in your inbox (required).</p>
             <Input
+              id="supra-paste-subject"
               className={cn("mt-1", fieldInput)}
               value={pasteSubject}
               onChange={(e) => setPasteSubject(e.target.value)}
-              placeholder="As shown in your inbox"
+              placeholder="e.g. Showing confirmed: 123 Main St"
+              autoComplete="off"
             />
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <Label className={t.label}>Sender (optional)</Label>
-              <Input
-                className={cn("mt-1", fieldInput)}
-                value={pasteSender}
-                onChange={(e) => setPasteSender(e.target.value)}
-                placeholder="From: address if you want it stored"
-              />
-            </div>
-            <div>
-              <Label className={t.label}>Received (optional)</Label>
-              <Input
-                className={cn("mt-1", fieldInput)}
-                type="datetime-local"
-                value={pasteReceivedAt}
-                onChange={(e) => setPasteReceivedAt(e.target.value)}
-              />
-              <p className="mt-0.5 text-[10px] text-kp-on-surface/78">
-                Clear to let the server use “now” when saving.
-              </p>
-            </div>
-          </div>
-          <div>
-            <Label className={t.label}>Raw body</Label>
-            <p className="mb-1 text-[10px] text-kp-on-surface/78">
-              Paste the message body (you may include headers at the top — everything is kept for parser testing).
+
+          <div className="rounded-lg border border-kp-outline/90 bg-kp-surface-high/80 p-2 shadow-sm">
+            <Label className={t.label} htmlFor="supra-paste-body">
+              Raw message for parser
+            </Label>
+            <p className={cn("mt-0.5", t.meta)}>
+              Paste the full body. Headers at the top are fine — everything is stored for Supra v1 parsing.
             </p>
             <textarea
+              ref={pasteBodyRef}
+              id="supra-paste-body"
               className={cn(
-                "min-h-[260px] w-full rounded-md px-3 py-2 font-mono text-xs leading-relaxed",
-                fieldInput
+                "mt-2 min-h-[min(360px,42vh)] w-full resize-y rounded-md border border-kp-outline/90 bg-kp-bg px-3 py-2.5 font-mono text-[13px] leading-relaxed text-kp-on-surface shadow-inner",
+                "placeholder:text-kp-on-surface/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal/40"
               )}
               spellCheck={false}
               value={pasteBody}
               onChange={(e) => setPasteBody(e.target.value)}
-              placeholder="Paste email content here…"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  void submitManualPaste();
+                }
+              }}
+              placeholder="Paste the email here (plain text from Mail, Outlook, Gmail “Show original”, etc.)…"
             />
+            <p className={cn("mt-1.5", t.metaQuiet)}>
+              {pasteBody.length > 0
+                ? `${pasteBody.length.toLocaleString()} characters — resize the corner to see more lines.`
+                : "Tip: focus is here when this dialog opens so you can paste immediately."}
+            </p>
           </div>
-        </div>
+
+          <div>
+            <p className={t.section}>Optional metadata</p>
+            <div className="mt-2 grid gap-2.5 sm:grid-cols-2">
+              <div>
+                <Label className={t.label} htmlFor="supra-paste-sender">
+                  Sender
+                </Label>
+                <Input
+                  id="supra-paste-sender"
+                  className={cn("mt-1", fieldInput)}
+                  value={pasteSender}
+                  onChange={(e) => setPasteSender(e.target.value)}
+                  placeholder="noreply@… (optional)"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <Label className={t.label} htmlFor="supra-paste-received">
+                  Received at
+                </Label>
+                <Input
+                  id="supra-paste-received"
+                  className={cn("mt-1", fieldInput)}
+                  type="datetime-local"
+                  value={pasteReceivedAt}
+                  onChange={(e) => setPasteReceivedAt(e.target.value)}
+                />
+                <p className={cn("mt-0.5", t.metaQuiet)}>Clear the field to use the current time when saving.</p>
+              </div>
+            </div>
+          </div>
+        </form>
       </BrandModal>
     </div>
   );
