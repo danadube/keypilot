@@ -8,8 +8,7 @@ import { Building2, Calendar } from "lucide-react";
 import { ProductTierProvider } from "@/components/ProductTierProvider";
 import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
 import { Button } from "@/components/ui/button";
-
-const HEADER_HEIGHT = 64;
+import { cn } from "@/lib/utils";
 
 function getPageTitle(pathname: string): string {
   if (pathname === "/showing-hq") return "ShowingHQ";
@@ -57,45 +56,44 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       {/* Right: header bar + content */}
       <div className="flex min-h-0 flex-1 flex-col">
         <header
-          className="sticky top-0 z-20 flex w-full shrink-0 items-center border-b border-kp-outline bg-kp-surface"
-          style={{ minHeight: HEADER_HEIGHT }}
+          className={cn(
+            "sticky top-0 z-20 flex w-full shrink-0 items-center border-b border-kp-outline bg-kp-surface",
+            isShowingHQWorkbench ? "min-h-[58px]" : "min-h-[52px]"
+          )}
         >
-          <div className="flex min-w-0 flex-1 items-center overflow-hidden py-2 pl-4 pr-3 md:pl-6 md:pr-5">
+          <div className="flex min-w-0 flex-1 items-center overflow-hidden py-1.5 pl-4 pr-3 md:pl-6 md:pr-4">
             <div className="min-w-0">
-              <h1 className="truncate text-base font-semibold text-kp-on-surface md:text-[1.05rem]">
+              <h1 className="truncate text-sm font-semibold leading-tight text-kp-on-surface md:text-base">
                 {getPageTitle(pathname)}
               </h1>
               {isShowingHQWorkbench ? (
-                <p className="mt-0.5 truncate text-[11px] leading-snug text-kp-on-surface-variant">
+                <p className="mt-0.5 truncate text-[10px] leading-tight text-kp-on-surface-variant">
                   {workbenchDateLine}
                 </p>
               ) : null}
             </div>
           </div>
-          <div
-            className="flex shrink-0 items-center gap-2 border-l border-kp-outline bg-kp-surface px-3 py-2 md:gap-2 md:px-4"
-            style={{ minHeight: HEADER_HEIGHT }}
-          >
+          <div className="flex shrink-0 items-center gap-1.5 border-l border-kp-outline bg-kp-surface px-2.5 py-1.5 md:gap-2 md:px-3.5">
             {isShowingHQWorkbench ? (
               <>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 shrink-0 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high hover:text-kp-on-surface"
+                  className="h-7 shrink-0 border-kp-outline bg-transparent px-2.5 text-[11px] text-kp-on-surface hover:bg-kp-surface-high hover:text-kp-on-surface [&_svg]:h-3 [&_svg]:w-3"
                   asChild
                 >
                   <Link href="/properties/new">
-                    <Building2 className="mr-1.5 h-3.5 w-3.5" />
+                    <Building2 className="mr-1 h-3 w-3" />
                     New property
                   </Link>
                 </Button>
                 <Button
                   size="sm"
-                  className="h-8 shrink-0 border-0 bg-kp-gold text-xs text-kp-bg hover:bg-kp-gold-bright"
+                  className="h-7 shrink-0 border-0 bg-kp-gold px-2.5 text-[11px] font-semibold text-kp-bg hover:bg-kp-gold-bright [&_svg]:h-3 [&_svg]:w-3"
                   asChild
                 >
                   <Link href="/open-houses/new">
-                    <Calendar className="mr-1.5 h-3.5 w-3.5" />
+                    <Calendar className="mr-1 h-3 w-3" />
                     Create open house
                   </Link>
                 </Button>
@@ -105,7 +103,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-auto bg-kp-bg px-4 pb-6 pt-3 md:px-6 md:pb-8 md:pt-4">
+        <main className="min-h-0 flex-1 overflow-auto bg-kp-bg px-4 pb-5 pt-2 md:px-6 md:pb-6 md:pt-3">
           <div className="mx-auto min-h-[50vh]" style={{ maxWidth: 1280 }}>
             {children}
           </div>

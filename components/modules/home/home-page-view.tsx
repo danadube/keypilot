@@ -482,36 +482,36 @@ export function HomePageView() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       {/* ── Page header ─────────────────────────────────────────────────── */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
+          <h1 className="font-headline text-[1.5rem] font-semibold leading-tight tracking-tight text-kp-on-surface md:text-[1.65rem]">
             Home
           </h1>
-          <p className="mt-0.5 text-sm text-kp-on-surface-variant">
+          <p className="mt-0.5 text-xs text-kp-on-surface-variant md:text-sm">
             {todayFormatted} · KeyPilot command center
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2 pt-1">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           <Link
             href="/properties/new"
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg border border-kp-outline px-3 py-2",
-              "text-sm font-medium text-kp-on-surface transition-colors hover:bg-kp-surface-high"
+              "inline-flex items-center gap-1 rounded-lg border border-kp-outline px-2.5 py-1.5",
+              "text-xs font-medium text-kp-on-surface transition-colors hover:bg-kp-surface-high"
             )}
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="h-3 w-3" />
             Add property
           </Link>
           <Link
             href="/open-houses/new"
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-lg bg-kp-gold px-3 py-2",
-              "text-sm font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright"
+              "inline-flex items-center gap-1 rounded-lg bg-kp-gold px-2.5 py-1.5",
+              "text-xs font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright"
             )}
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="h-3 w-3" />
             New open house
           </Link>
         </div>

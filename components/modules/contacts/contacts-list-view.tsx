@@ -432,7 +432,7 @@ export function ContactsListView() {
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
       {/* ── Page header ─────────────────────────────────────────────────── */}
-      <div className="px-6 pb-5 pt-6 sm:px-8">
+      <div className="px-6 pb-4 pt-3 sm:px-8">
         <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
           Contacts
         </h1>

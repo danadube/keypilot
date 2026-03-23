@@ -426,7 +426,7 @@ export function OpenHousesListView() {
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
       {/* ── Page header ─────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4 px-6 pb-5 pt-6 sm:px-8">
+      <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-3 sm:px-8">
         <div>
           <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-kp-teal">
             Open House Ops
@@ -441,16 +441,16 @@ export function OpenHousesListView() {
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <Link
             href="/open-houses/sign-in"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-kp-outline px-3 py-2 text-sm font-medium text-kp-on-surface-variant transition-colors hover:border-kp-outline/60 hover:text-kp-on-surface"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-kp-outline px-2.5 py-1.5 text-xs font-medium text-kp-on-surface-variant transition-colors hover:border-kp-outline/60 hover:text-kp-on-surface"
           >
             <QrCode className="h-4 w-4" />
             <span className="hidden sm:inline">Sign-in page</span>
           </Link>
           <Link
             href="/open-houses/new"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-kp-gold px-4 py-2 text-sm font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-gold focus-visible:ring-offset-2 focus-visible:ring-offset-kp-bg"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-kp-gold px-3 py-1.5 text-xs font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-gold focus-visible:ring-offset-2 focus-visible:ring-offset-kp-bg"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-3.5 w-3.5" />
             New open house
           </Link>
         </div>
