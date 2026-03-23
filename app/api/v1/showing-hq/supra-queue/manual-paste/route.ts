@@ -6,21 +6,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getCurrentUser } from "@/lib/auth";
-import { prismaAdmin } from "@/lib/db";
 import { ManualPasteSupraIngestSchema } from "@/lib/validations/supra-queue";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
-import { SupraQueueState } from "@prisma/client";
+import { createIngestedSupraQueueItem } from "@/lib/showing-hq/supra-queue-ingest";
 
 export const dynamic = "force-dynamic";
-
-const listInclude = {
-  matchedProperty: {
-    select: { id: true, address1: true, city: true, state: true, zip: true },
-  },
-  matchedShowing: {
-    select: { id: true, scheduledAt: true, propertyId: true },
-  },
-} as const;
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,17 +24,12 @@ export async function POST(req: NextRequest) {
     const d = parsed.data;
     const externalMessageId = `manual-paste-${randomUUID()}`;
 
-    const item = await prismaAdmin.supraQueueItem.create({
-      data: {
-        hostUserId: user.id,
-        externalMessageId,
-        subject: d.subject.trim(),
-        rawBodyText: d.rawBodyText,
-        sender: d.sender?.trim() || null,
-        receivedAt: d.receivedAt ?? new Date(),
-        queueState: SupraQueueState.INGESTED,
-      },
-      include: listInclude,
+    const item = await createIngestedSupraQueueItem(user.id, {
+      externalMessageId,
+      subject: d.subject.trim(),
+      rawBodyText: d.rawBodyText,
+      sender: d.sender?.trim() || null,
+      receivedAt: d.receivedAt ?? new Date(),
     });
 
     return NextResponse.json({ data: item }, { status: 201 });

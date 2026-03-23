@@ -114,3 +114,140 @@ export async function fetchGmailMessages(
     (a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime()
   );
 }
+
+/** Gmail search: Supra / Supra Showing notification senders, last 14 days. */
+const SUPRA_GMAIL_QUERY_BASE =
+  "newer_than:14d (from:suprasystems.com OR from:suprashowing)";
+
+const MAX_SUPRA_GMAIL_RESULTS = 50;
+const MAX_RAW_BODY_CHARS = 500_000;
+
+export type GmailSupraNormalizedMessage = {
+  gmailMessageId: string;
+  subject: string;
+  rawBodyText: string;
+  sender: string | null;
+  receivedAt: Date;
+};
+
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|tr|li)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+\n/g, "\n")
+    .trim();
+}
+
+function decodeGmailBodyData(data: string): string {
+  try {
+    return Buffer.from(data, "base64url").toString("utf-8");
+  } catch {
+    return "";
+  }
+}
+
+type GmailMessagePart = {
+  mimeType?: string | null;
+  body?: { data?: string | null };
+  parts?: GmailMessagePart[] | null;
+};
+
+/** Walk Gmail message parts for best available plain text (fallback HTML → stripped). */
+function extractPlainBodyFromPart(part: GmailMessagePart): string {
+  if (!part) return "";
+  if (part.mimeType === "text/plain" && part.body?.data) {
+    const t = decodeGmailBodyData(part.body.data);
+    if (t.trim()) return t;
+  }
+  if (part.parts?.length) {
+    for (const p of part.parts) {
+      const t = extractPlainBodyFromPart(p);
+      if (t.trim()) return t;
+    }
+    for (const p of part.parts) {
+      if (p.mimeType === "text/html" && p.body?.data) {
+        const html = decodeGmailBodyData(p.body.data);
+        if (html.trim()) return htmlToPlainText(html);
+      }
+    }
+  }
+  return "";
+}
+
+/**
+ * List + fetch Supra-related Gmail messages (read-only).
+ * Query matches Supra / Supra Showing senders; last 14 days; plain-text body when possible.
+ */
+export async function fetchSupraGmailMessages(
+  conn: GmailConnection,
+  options: { maxResults?: number; query?: string } = {}
+): Promise<GmailSupraNormalizedMessage[]> {
+  const auth = await ensureValidToken(conn);
+  const gmail = google.gmail({ version: "v1", auth });
+
+  const maxResults = Math.min(
+    options.maxResults ?? MAX_SUPRA_GMAIL_RESULTS,
+    MAX_SUPRA_GMAIL_RESULTS
+  );
+  const q = options.query ?? SUPRA_GMAIL_QUERY_BASE;
+
+  const { data: listData } = await gmail.users.messages.list({
+    userId: "me",
+    maxResults,
+    q,
+  });
+
+  const refs = listData.messages ?? [];
+  const out: GmailSupraNormalizedMessage[] = [];
+
+  for (const ref of refs) {
+    if (!ref.id) continue;
+    try {
+      const { data: msg } = await gmail.users.messages.get({
+        userId: "me",
+        id: ref.id,
+        format: "full",
+      });
+
+      const headers = msg.payload?.headers ?? [];
+      const getHeader = (name: string) =>
+        headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? "";
+
+      const subject = (getHeader("Subject") || "(No subject)").slice(0, 500);
+      const from = getHeader("From") || null;
+      const dateHeader = getHeader("Date");
+      const receivedAt = msg.internalDate
+        ? new Date(Number(msg.internalDate))
+        : dateHeader
+          ? new Date(dateHeader)
+          : new Date();
+
+      let rawBodyText = msg.payload
+        ? extractPlainBodyFromPart(msg.payload)
+        : "";
+      if (!rawBodyText.trim()) {
+        rawBodyText = (msg.snippet ?? "").trim() || "(Empty body)";
+      }
+      if (rawBodyText.length > MAX_RAW_BODY_CHARS) {
+        rawBodyText = rawBodyText.slice(0, MAX_RAW_BODY_CHARS);
+      }
+
+      out.push({
+        gmailMessageId: ref.id,
+        subject,
+        rawBodyText,
+        sender: from,
+        receivedAt,
+      });
+    } catch (err) {
+      console.error("[gmail] fetch Supra message failed", ref.id, err);
+    }
+  }
+
+  return out.sort(
+    (a, b) => b.receivedAt.getTime() - a.receivedAt.getTime()
+  );
+}

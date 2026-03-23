@@ -29,7 +29,15 @@ import {
   SupraPropertyMatchStatus as PropMatch,
   SupraShowingMatchStatus as ShowMatch,
 } from "@prisma/client";
-import { AlertCircle, CheckCircle2, ClipboardPaste, Inbox, ChevronDown, Sparkles } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ClipboardPaste,
+  Inbox,
+  ChevronDown,
+  Mail,
+  Sparkles,
+} from "lucide-react";
 
 /** Local value for `<input type="datetime-local" />` */
 function dateToDatetimeLocalInputValue(d: Date): string {
@@ -231,6 +239,7 @@ export function SupraInboxView() {
   const [pasteSender, setPasteSender] = useState("");
   const [pasteReceivedAt, setPasteReceivedAt] = useState("");
   const [pasting, setPasting] = useState(false);
+  const [gmailImporting, setGmailImporting] = useState(false);
   const [pasteModalError, setPasteModalError] = useState<string | null>(null);
   /** Which intake fields were filled from a smart paste (for reviewer clarity). */
   const [pasteSplitDetected, setPasteSplitDetected] = useState<SplitPastedEmailBlobDetected | null>(null);
@@ -431,6 +440,35 @@ export function SupraInboxView() {
     resolutionNotes: row.resolutionNotes,
     queueState: row.queueState,
   });
+
+  const importFromGmail = async () => {
+    setGmailImporting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/v1/showing-hq/supra-queue/import-gmail", {
+        method: "POST",
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error?.message ?? "Gmail import failed");
+        return;
+      }
+      const { imported, skipped, scanned } = json.data as {
+        imported: number;
+        skipped: number;
+        scanned: number;
+      };
+      await load();
+      setFilterPreset("all");
+      setSuccessMessage(
+        `Gmail: ${imported} new message(s) added to the queue. ${skipped} already imported (${scanned} scanned, last ~14 days, Supra senders).`
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Gmail import failed");
+    } finally {
+      setGmailImporting(false);
+    }
+  };
 
   const openPasteModal = () => {
     setPasteSubject("");
@@ -864,10 +902,22 @@ export function SupraInboxView() {
               variant="outline"
               size="sm"
               className="border-kp-teal/50 text-kp-teal hover:bg-kp-teal/10"
-              disabled={pasting}
+              disabled={pasting || gmailImporting}
               onClick={openPasteModal}
             >
               Paste Supra email
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="border-kp-teal/40 font-medium text-kp-teal hover:bg-kp-teal/10"
+              disabled={gmailImporting || pasting}
+              onClick={() => void importFromGmail()}
+              title="Uses your connected Gmail (Settings → Connections). Fetches recent Supra emails."
+            >
+              <Mail className="mr-1 h-3.5 w-3.5" />
+              {gmailImporting ? "Importing…" : "Import from Gmail"}
             </Button>
             <Button
               type="button"
@@ -949,9 +999,9 @@ export function SupraInboxView() {
             <p className="mt-2 max-w-md text-sm leading-relaxed text-kp-on-surface/78">
               {items.length === 0 ? (
                 <>
-                  Mailbox ingestion is not connected. Use <strong>Quick sample</strong> or{" "}
-                  <strong>More samples</strong> to add test rows, then open <strong>Review</strong> to walk
-                  through the workflow.
+                  Use <strong>Import from Gmail</strong> (needs Gmail connected under Settings) or{" "}
+                  <strong>Paste a real Supra email</strong>. You can also add <strong>Quick sample</strong> rows
+                  to try the workflow.
                 </>
               ) : (
                 <>Try another filter, or clear filters to see all {items.length} item(s).</>
@@ -964,10 +1014,21 @@ export function SupraInboxView() {
                   variant="outline"
                   size="sm"
                   className="border-kp-teal/50 text-kp-teal hover:bg-kp-teal/10"
-                  disabled={pasting}
+                  disabled={pasting || gmailImporting}
                   onClick={openPasteModal}
                 >
                   Paste a real Supra email
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="border-kp-teal/40 text-kp-teal hover:bg-kp-teal/10"
+                  disabled={gmailImporting || pasting}
+                  onClick={() => void importFromGmail()}
+                >
+                  <Mail className="mr-1 h-3.5 w-3.5" />
+                  {gmailImporting ? "Importing…" : "Import from Gmail"}
                 </Button>
                 <Button
                   type="button"
@@ -1046,6 +1107,11 @@ export function SupraInboxView() {
                           {row.subject}
                         </span>
                         <div className="flex flex-wrap items-center gap-1">
+                          {row.externalMessageId.startsWith("gmail-") ? (
+                            <span className="rounded border border-blue-500/35 bg-blue-500/10 px-1.5 py-px text-[10px] font-semibold text-blue-300">
+                              Gmail
+                            </span>
+                          ) : null}
                           {row.externalMessageId.startsWith("manual-paste-") ? (
                             <span className="rounded border border-kp-teal/35 bg-kp-teal/10 px-1.5 py-px text-[10px] font-semibold text-kp-teal">
                               Pasted
