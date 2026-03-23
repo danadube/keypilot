@@ -15,11 +15,12 @@ import {
   Megaphone,
 } from "lucide-react";
 import { MODULES, getModuleFromPath } from "@/lib/modules";
+import { UPGRADE_MODULES } from "@/lib/module-access";
 import { useProductTier } from "@/components/ProductTierProvider";
 import { APP_VERSION, APP_COMMIT } from "@/lib/app-version";
 import type { ModuleId, ModuleSidebarItem } from "@/lib/modules";
 
-const SIDEBAR_WIDTH = 240;
+const SIDEBAR_WIDTH = 200;
 
 // Modules shown in the platform switcher — always visible regardless of active module
 const PLATFORM_MODULE_IDS: ModuleId[] = [
@@ -41,9 +42,6 @@ const MODULE_ICON: Partial<Record<ModuleId, React.ComponentType<{ className?: st
   "market-pilot": Megaphone,
 };
 
-// Upgrade module IDs (those that need to be unlocked via /upgrade/:id)
-const UPGRADE_IDS: ModuleId[] = ["client-keep", "farm-trackr", "seller-pulse", "market-pilot"];
-
 function isItemActive(pathname: string, item: ModuleSidebarItem): boolean {
   if (pathname === item.href) return true;
   if (item.href !== "/" && !item.href.includes("?") && pathname.startsWith(item.href))
@@ -51,29 +49,6 @@ function isItemActive(pathname: string, item: ModuleSidebarItem): boolean {
   if (item.href.includes("?") && pathname.startsWith(item.href.split("?")[0]))
     return true;
   return false;
-}
-
-function groupBySection(items: ModuleSidebarItem[]) {
-  const groups: { section?: string; items: ModuleSidebarItem[] }[] = [];
-  let currentSection: string | undefined;
-  let currentItems: ModuleSidebarItem[] = [];
-
-  for (const item of items) {
-    const section = item.section;
-    if (section !== currentSection) {
-      if (currentItems.length > 0) {
-        groups.push({ section: currentSection, items: currentItems });
-      }
-      currentSection = section;
-      currentItems = [item];
-    } else {
-      currentItems.push(item);
-    }
-  }
-  if (currentItems.length > 0) {
-    groups.push({ section: currentSection, items: currentItems });
-  }
-  return groups;
 }
 
 export function ModuleSidebar() {
@@ -87,7 +62,6 @@ export function ModuleSidebar() {
   const subItems = mod.sidebar.filter(
     (item) => item.section !== "OVERVIEW" && item.section !== "SYSTEM"
   );
-  const groups = groupBySection(subItems);
 
   return (
     <aside
@@ -128,7 +102,7 @@ export function ModuleSidebar() {
               const isActive = activeId === id;
               // A module is locked if it's in UPGRADE_IDS AND user doesn't have access
               // Exception: if it's the current active module, never show as locked
-              const isUpgrade = UPGRADE_IDS.includes(id);
+              const isUpgrade = UPGRADE_MODULES.includes(id);
               const hasAccess = isLoading || checkAccess(id);
               const isLocked = isUpgrade && !hasAccess && !isActive;
 
@@ -139,16 +113,13 @@ export function ModuleSidebar() {
                       href={`/upgrade/${id}`}
                       className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                        "text-slate-600 hover:bg-white/5 hover:text-slate-400",
+                        "text-slate-500 hover:bg-white/5 hover:text-slate-400",
                         pathname === `/upgrade/${id}` &&
-                          "bg-[#4BAED8]/20 font-semibold text-white border-l-4 border-l-[#4BAED8] pl-[calc(0.75rem+4px)]"
+                          "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
                       )}
                     >
-                      <Lock className="h-[18px] w-[18px] shrink-0" />
+                      <Lock className="h-[18px] w-[18px] shrink-0 opacity-70" />
                       <span className="flex-1 truncate">{cfg.name}</span>
-                      <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider text-slate-600">
-                        Pro
-                      </span>
                     </Link>
                   </li>
                 );
@@ -178,55 +149,52 @@ export function ModuleSidebar() {
           </ul>
         </div>
 
-        {/* Current module sub-navigation */}
-        {groups.length > 0 && (
+        {/* Current module — flat sub-nav (no section labels) */}
+        {subItems.length > 0 && (
           <div className="mt-2 border-t border-white/10 pt-3">
-            {groups.map(({ section, items: groupItems }) => (
-              <div key={section ?? "main"} className="mb-4 last:mb-2">
-                {section && (
-                  <p className="mb-1.5 px-5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                    {section}
-                  </p>
-                )}
-                <ul className="space-y-0.5 px-2">
-                  {groupItems.map((item) => {
-                    const Icon = item.icon;
-                    const active = isItemActive(pathname, item);
-                    return (
-                      <li key={item.href + item.label}>
-                        <Link
-                          href={item.href}
-                          className={cn(
-                            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                            "text-slate-400 hover:bg-white/5 hover:text-white",
-                            active &&
-                              "bg-[#4BAED8]/20 font-semibold text-white border-l-4 border-l-[#4BAED8] pl-[calc(0.75rem+4px)]"
-                          )}
-                        >
-                          {Icon && (
-                            <Icon className="h-[18px] w-[18px] shrink-0 opacity-85" />
-                          )}
-                          {item.label}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ))}
+            <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+              {mod.name}
+            </p>
+            <ul className="space-y-0.5 px-2">
+              {subItems.map((item) => {
+                const Icon = item.icon;
+                const active = isItemActive(pathname, item);
+                return (
+                  <li key={item.href + item.label}>
+                    <Link
+                      href={item.href}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                        "text-slate-400 hover:bg-white/5 hover:text-white",
+                        active &&
+                          "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
+                      )}
+                    >
+                      {Icon && (
+                        <Icon className="h-[18px] w-[18px] shrink-0 opacity-85" />
+                      )}
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         )}
       </nav>
 
-      {/* ── Settings (always visible) ──────────────────────────────────────── */}
+      {/* ── System ─────────────────────────────────────────────────────────── */}
       <div className="shrink-0 border-t border-white/10 px-2 py-2">
+        <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          System
+        </p>
         <Link
           href="/settings"
           className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
             "text-slate-400 hover:bg-white/5 hover:text-white",
             pathname.startsWith("/settings") &&
-              "bg-[#4BAED8]/20 font-semibold text-white border-l-4 border-l-[#4BAED8] pl-[calc(0.75rem+4px)]"
+              "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
           )}
         >
           <Settings className="h-[18px] w-[18px] shrink-0 opacity-85" />

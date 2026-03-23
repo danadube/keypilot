@@ -169,8 +169,8 @@ function KpiCard({
     <Link
       href={href}
       className={cn(
-        "group flex min-h-[84px] flex-col justify-between rounded-xl border border-kp-outline",
-        "bg-kp-surface px-4 py-3 transition-colors hover:border-kp-teal/40 hover:bg-kp-surface-high"
+        "group flex min-h-[96px] flex-col justify-between rounded-xl border border-kp-outline shadow-sm",
+        "bg-kp-surface-high px-4 py-3 transition-colors hover:border-kp-teal/40 hover:bg-kp-surface-higher"
       )}
     >
       <span className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
@@ -748,20 +748,10 @@ export function ShowingHQDashboardView() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex min-h-0 flex-col gap-4 bg-transparent">
-      {/* ── Page header ─────────────────────────────────────────────────── */}
-      <div className="px-1 pb-1 pt-2">
-        <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
-          Showing HQ
-        </h1>
-        <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-          Open houses · private showings · visitor follow-up
-        </p>
-      </div>
-
-      {/* ── KPI strip ───────────────────────────────────────────────────── */}
+    <div className="flex min-h-0 flex-col gap-6 bg-transparent">
+      {/* ── KPI strip (title lives in shell header) ─────────────────────── */}
       <section
-        className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
         aria-label="Operational metrics"
       >
         <KpiCard
@@ -815,7 +805,7 @@ export function ShowingHQDashboardView() {
 
       {/* ── Schedule + Queue ─────────────────────────────────────────────── */}
       <div
-        className="grid min-h-0 items-stretch gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(300px,380px)]"
+        className="grid min-h-0 items-stretch gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,360px)]"
         role="region"
         aria-label="Schedule and queue"
       >
@@ -918,7 +908,7 @@ export function ShowingHQDashboardView() {
       )}
 
       {/* ── Secondary panels ─────────────────────────────────────────────── */}
-      <div className="grid gap-3 xl:grid-cols-3">
+      <div className="grid gap-4 xl:grid-cols-3">
         <ActivityPanel
           items={activityItems}
           formatTimeContextual={formatTimeContextual}

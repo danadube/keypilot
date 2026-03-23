@@ -11,8 +11,8 @@ import {
   MessageSquare,
   Building2,
 } from "lucide-react";
-import { BrandButton } from "@/components/ui/BrandButton";
 import { Button } from "@/components/ui/button";
+import { BrandButton } from "@/components/ui/BrandButton";
 import { getRelativeTimeLabel } from "@/lib/relative-time-label";
 
 type OpenHouseItem = {
@@ -136,12 +136,12 @@ export function TodayCommandCenter({
 
   const containerClass =
     scenario === "showing_soon"
-      ? "border-amber-300 bg-white shadow-md"
+      ? "border-amber-400/60 bg-kp-surface"
       : scenario === "active_oh"
-        ? "border-emerald-500 bg-white shadow-md"
+        ? "border-emerald-500/70 bg-kp-surface"
         : scenario === "oh_soon"
-          ? "border-sky-400 bg-white shadow-sm"
-          : "border-slate-200 bg-white shadow-sm";
+          ? "border-sky-400/60 bg-kp-surface"
+          : "border-kp-outline bg-kp-surface";
 
   return (
     <section
@@ -152,25 +152,25 @@ export function TodayCommandCenter({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="min-w-0 flex-1">
           <p
-            className="text-[10px] font-semibold uppercase tracking-wider text-slate-500"
+            className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
             style={{ letterSpacing: "0.08em" }}
           >
             Now
           </p>
           <h2
-            className="mt-0.5 text-lg font-bold tracking-tight text-slate-900 sm:text-xl"
+            className="mt-0.5 text-lg font-bold tracking-tight text-kp-on-surface sm:text-xl"
             style={{ fontFamily: "var(--font-heading)" }}
           >
             {heading}
           </h2>
           {address && (
-            <p className="mt-0.5 text-sm font-medium text-slate-800">{address}</p>
+            <p className="mt-0.5 text-sm font-medium text-kp-on-surface">{address}</p>
           )}
           {supportingLine && (
-            <p className="mt-0.5 text-xs text-slate-600">{supportingLine}</p>
+            <p className="mt-0.5 text-xs text-kp-on-surface-variant">{supportingLine}</p>
           )}
           {scenario === "active_oh" && (
-            <p className="mt-0.5 text-xs text-slate-600">
+            <p className="mt-0.5 text-xs text-kp-on-surface-variant">
               {activeOpenHouse?._count.visitors === 0
                 ? "No visitors yet"
                 : `${activeOpenHouse?._count.visitors} visitor${activeOpenHouse?._count.visitors !== 1 ? "s" : ""} checked in`}

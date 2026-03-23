@@ -128,21 +128,21 @@ export function ShowingHQCalendar({
   return (
     <div
       className={cn(
-        "showing-hq-calendar rounded-lg border border-slate-200 bg-white shadow-sm",
+        "showing-hq-calendar rounded-lg border border-kp-outline bg-kp-surface",
         workbenchToolbar ? "overflow-hidden p-0" : "p-4"
       )}
     >
       {workbenchToolbar ? (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-50/90 px-2 py-1.5">
-          <div className="flex items-center gap-1 rounded-md bg-slate-200/60 p-0.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-kp-outline bg-kp-surface-high px-2 py-1.5">
+          <div className="flex items-center gap-1 rounded-md bg-kp-surface-higher/70 p-0.5">
             <button
               type="button"
               onClick={() => setCalView("week")}
               className={cn(
                 "rounded px-2.5 py-1 text-[11px] font-semibold transition-colors",
                 calView === "week"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-kp-surface-higher text-kp-on-surface shadow-sm"
+                  : "text-kp-on-surface-variant hover:text-kp-on-surface"
               )}
             >
               Week
@@ -153,8 +153,8 @@ export function ShowingHQCalendar({
               className={cn(
                 "rounded px-2.5 py-1 text-[11px] font-semibold transition-colors",
                 calView === "month"
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
+                  ? "bg-kp-surface-higher text-kp-on-surface shadow-sm"
+                  : "text-kp-on-surface-variant hover:text-kp-on-surface"
               )}
             >
               Month
@@ -164,18 +164,18 @@ export function ShowingHQCalendar({
             <button
               type="button"
               onClick={() => nav("prev")}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-kp-outline bg-kp-surface-high text-kp-on-surface-variant hover:bg-kp-surface-higher"
               aria-label="Previous"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="min-w-0 truncate px-1 text-center text-[11px] font-semibold text-slate-800">
+            <span className="min-w-0 truncate px-1 text-center text-[11px] font-semibold text-kp-on-surface">
               {rangeTitle || "—"}
             </span>
             <button
               type="button"
               onClick={() => nav("next")}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded border border-kp-outline bg-kp-surface-high text-kp-on-surface-variant hover:bg-kp-surface-higher"
               aria-label="Next"
             >
               <ChevronRight className="h-4 w-4" />
@@ -184,7 +184,7 @@ export function ShowingHQCalendar({
           <button
             type="button"
             onClick={() => nav("today")}
-            className="shrink-0 rounded border border-slate-200 bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-600 hover:bg-slate-50"
+            className="shrink-0 rounded border border-kp-outline bg-kp-surface-high px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant hover:bg-kp-surface-higher"
           >
             Today
           </button>

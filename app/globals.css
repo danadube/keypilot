@@ -56,6 +56,18 @@ body {
   /* Font from layout's Inter; design-system tokens applied via BrandProvider */
 }
 
+/* Authenticated app shell: align shadcn Card/Popover with KeyPilot dark surfaces */
+.kp-dashboard-app {
+  --card: 215 37% 13%;
+  --card-foreground: 213 31% 91%;
+  --popover: 215 37% 13%;
+  --popover-foreground: 213 31% 91%;
+  --border: 215 28% 24%;
+  --muted: 215 28% 18%;
+  --muted-foreground: 215 18% 58%;
+  --input: 215 28% 22%;
+}
+
 /* ── KeyPilot design system font fallbacks ───────────────────────────────────
    --font-inter and --font-newsreader are injected by next/font variables in
    layout.tsx. These fallbacks apply if the CSS var is somehow absent. */
@@ -130,6 +142,34 @@ body {
   --fc-neutral-bg-color: hsl(210 40% 98%);
   --fc-event-border-radius: 3px;
   --fc-daygrid-event-dot-width: 4px;
+}
+
+/* Dark workbench: calendar grid matches kp surfaces (not near-white) */
+.showing-hq-calendar .fc {
+  --fc-border-color: #2a3850;
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: #151e2e;
+  --fc-list-event-hover-bg-color: #1c2840;
+  --fc-today-bg-color: rgb(45 212 191 / 0.1);
+}
+.showing-hq-calendar .fc .fc-scrollgrid,
+.showing-hq-calendar .fc .fc-scrollgrid-section-body > td,
+.showing-hq-calendar .fc .fc-scrollgrid-section-footer > td {
+  background: #151e2e !important;
+}
+.showing-hq-calendar .fc th.fc-col-header-cell,
+.showing-hq-calendar .fc .fc-scrollgrid-section-header > td {
+  background: #1c2840 !important;
+}
+.showing-hq-calendar .fc .fc-daygrid-day {
+  background: #151e2e;
+}
+.showing-hq-calendar .fc .fc-day-today {
+  background-color: rgb(45 212 191 / 0.08) !important;
+}
+.showing-hq-calendar .fc .fc-day-today .fc-daygrid-day-number {
+  color: #2dd4bf;
+  background-color: rgb(45 212 191 / 0.18);
 }
 .fc .fc-toolbar-title { font-size: 0.9375rem; font-weight: 600; }
 .fc .fc-button {

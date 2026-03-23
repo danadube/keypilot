@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 const HEADER_HEIGHT = 64;
 
 function getPageTitle(pathname: string): string {
+  if (pathname === "/showing-hq") return "ShowingHQ";
   if (pathname.startsWith("/showing-hq/showings/new")) return "Schedule Showing";
   if (pathname.startsWith("/showing-hq/showings")) return "Showings";
   if (pathname.startsWith("/showing-hq/visitors")) return "Visitors";
@@ -49,7 +50,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ProductTierProvider>
-    <div className="flex min-h-screen bg-kp-bg">
+    <div className="kp-dashboard-app flex min-h-screen bg-kp-bg">
       {/* Sidebar: full-height branded rail from top */}
       <ModuleSidebar />
 
@@ -59,26 +60,22 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           className="sticky top-0 z-20 flex w-full shrink-0 items-center border-b border-kp-outline bg-kp-surface"
           style={{ minHeight: HEADER_HEIGHT }}
         >
-          <div className="flex min-w-0 flex-1 items-center overflow-hidden py-2 pl-6 pr-4 md:pl-8 md:pr-6">
-            {isShowingHQWorkbench ? (
-              <div className="min-w-0">
-                <h1
-                  className="truncate text-base font-bold leading-tight tracking-tight text-kp-on-surface md:text-lg"
-                  style={{ fontFamily: "var(--font-heading)" }}
-                >
-                  ShowingHQ Workbench
-                </h1>
+          <div className="flex min-w-0 flex-1 items-center overflow-hidden py-2 pl-4 pr-3 md:pl-6 md:pr-5">
+            <div className="min-w-0">
+              <h1 className="truncate text-base font-semibold text-kp-on-surface md:text-[1.05rem]">
+                {getPageTitle(pathname)}
+              </h1>
+              {isShowingHQWorkbench ? (
                 <p className="mt-0.5 truncate text-[11px] leading-snug text-kp-on-surface-variant">
                   {workbenchDateLine}
                 </p>
-              </div>
-            ) : (
-              <h1 className="truncate text-base font-semibold text-kp-on-surface">
-                {getPageTitle(pathname)}
-              </h1>
-            )}
+              ) : null}
+            </div>
           </div>
-          <div className="flex shrink-0 items-center gap-2 border-l border-kp-outline bg-kp-surface px-3 py-2 md:gap-3 md:px-4" style={{ minHeight: HEADER_HEIGHT }}>
+          <div
+            className="flex shrink-0 items-center gap-2 border-l border-kp-outline bg-kp-surface px-3 py-2 md:gap-2 md:px-4"
+            style={{ minHeight: HEADER_HEIGHT }}
+          >
             {isShowingHQWorkbench ? (
               <>
                 <Button
@@ -108,7 +105,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-auto bg-kp-bg p-8 md:p-10">
+        <main className="min-h-0 flex-1 overflow-auto bg-kp-bg px-4 pb-6 pt-3 md:px-6 md:pb-8 md:pt-4">
           <div className="mx-auto min-h-[50vh]" style={{ maxWidth: 1280 }}>
             {children}
           </div>
