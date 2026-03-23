@@ -1,6 +1,5 @@
 /**
- * Run stub/manual parser on raw queue content → fills parsed proposal fields, NEEDS_REVIEW.
- * Swap `buildManualParseDraftFromRaw` for the real parser when ready.
+ * Run Supra v1 email parser on raw queue content → fills parsed proposal fields, NEEDS_REVIEW.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -78,9 +77,9 @@ export async function POST(
     return NextResponse.json({
       data: {
         item: updated,
-        stub: true,
+        parserVersion: "supra_v1",
         message:
-          "Draft fields were filled by the stub parser (low confidence). Review and edit before apply.",
+          "Draft fields were filled by the Supra v1 parser. Review all fields before apply — especially date/time and address.",
       },
     });
   } catch (e) {

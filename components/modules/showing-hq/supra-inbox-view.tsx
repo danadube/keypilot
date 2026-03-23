@@ -326,7 +326,7 @@ export function SupraInboxView() {
       await load();
       setFilterPreset("all");
       setSuccessMessage(
-        "Email saved as INGESTED (raw only). Open Review → Generate parsed draft (stub) or edit fields manually, then apply when ready."
+        "Email saved as INGESTED (raw only). Open Review → Generate parsed draft or edit fields manually, then apply when ready."
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Paste failed");
@@ -358,7 +358,7 @@ export function SupraInboxView() {
       setSuccessMessage(
         typeof json.data?.message === "string"
           ? json.data.message
-          : "Stub parser filled draft fields — review before apply."
+          : "Supra parser filled draft fields — review before apply."
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Parse draft failed");
@@ -1150,11 +1150,12 @@ export function SupraInboxView() {
             detail.queueState !== QueueStates.DUPLICATE ? (
               <div className="rounded-lg border border-dashed border-kp-outline bg-kp-surface-high/80 p-3">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-                  Parser hook (stub)
+                  Supra parser (v1)
                 </p>
                 <p className="mt-1 text-xs text-kp-on-surface-variant">
-                  Real parser will replace <code className="rounded bg-kp-surface px-1 text-[10px]">manual-parse-stub</code>{" "}
-                  on the server. For now, this fills rough draft fields from subject + raw body (low confidence).
+                  Runs <code className="rounded bg-kp-surface px-1 text-[10px]">parse-supra-email</code> on subject +
+                  body. Extend patterns in code as you see new real emails. Always verify date, address, and intent
+                  before apply.
                 </p>
                 <Button
                   type="button"
@@ -1164,7 +1165,7 @@ export function SupraInboxView() {
                   disabled={parseDrafting || saving || applying}
                   onClick={handleParseDraft}
                 >
-                  {parseDrafting ? "Running stub…" : "Generate parsed draft (stub)"}
+                  {parseDrafting ? "Parsing…" : "Generate parsed draft"}
                 </Button>
               </div>
             ) : null}
@@ -1464,7 +1465,7 @@ export function SupraInboxView() {
         open={pasteModalOpen}
         onOpenChange={setPasteModalOpen}
         title="Paste Supra email"
-        description="Copy from your mail app into KeyPilot. Stored as raw text only (INGESTED). Use the stub parser or manual edits in Review, then Apply when ready. No Gmail API."
+        description="Copy from your mail app into KeyPilot. Stored as raw text only (INGESTED). Use Generate parsed draft (Supra v1) or manual edits in Review, then Apply when ready. No Gmail API."
         size="lg"
         footer={
           <div className="flex w-full flex-wrap justify-end gap-2">

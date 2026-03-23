@@ -1,6 +1,6 @@
 /**
  * Manual paste of real Supra (or similar) email content — no mailbox API.
- * Creates a queue row in INGESTED with raw fields only; use parse-draft for stub extraction.
+ * Creates a queue row in INGESTED with raw fields only; use parse-draft for Supra v1 extraction.
  */
 
 import { NextRequest, NextResponse } from "next/server";
