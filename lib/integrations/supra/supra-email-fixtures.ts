@@ -2,7 +2,9 @@
  * Sanitized structural copies of real Supra notification emails (PDF → text).
  * Used to regression-test parseSupraEmailToDraft without storing live mailbox content in CI.
  *
- * When you paste new weekend samples, add a row to REAL_SUPRA_CASES and extend the parser.
+ * Validation pass: patterns below mirror weekend Supra PDF/export shapes (new, end, forward guardrail,
+ * reschedule, cancel, incomplete). When you capture new real samples, add a row here and extend
+ * parse-supra-email.ts only with lines clearly supported by those samples.
  */
 
 export type SupraFixtureExpected = {
@@ -98,6 +100,90 @@ The showing by Alex Agent ( alex@windermere.com) at 888 Honest Lane, Dallas, TX 
       proposedAction: "CREATE_SHOWING",
       maxConfidence: "HIGH",
       minConfidence: "MEDIUM",
+    },
+  },
+  {
+    id: "supra-reschedule-inline-notification",
+    note: "Rescheduled — Supra inline at-address + new appointment time line (no HIGH; review before update)",
+    subject: "Supra Showings - Showing Rescheduled",
+    sender: "suprashowing@suprasystems.com",
+    rawBodyText: `The showing by Taylor Reed ( treed@example.com) at 100 Maple Way, Portland, OR 97201
+(KeyBox# 884422) has been rescheduled. Your new appointment time is 03/23/2026 2:00PM
+For additional information on your showings please login to SupraWEB.`,
+    expected: {
+      parsedAddress1: "100 Maple Way",
+      parsedCity: "Portland",
+      parsedState: "OR",
+      parsedZip: "97201",
+      scheduledLocal: { y: 2026, mo: 3, d: 23, h: 14, mi: 0 },
+      parsedAgentName: "Taylor Reed",
+      parsedAgentEmail: "treed@example.com",
+      parsedStatus: "rescheduled",
+      proposedAction: "UPDATE_SHOWING",
+      maxConfidence: "MEDIUM",
+      minConfidence: "MEDIUM",
+    },
+  },
+  {
+    id: "supra-cancel-inline-notification",
+    note: "Cancelled — inline at-address, no schedule time (DISMISS; address for audit only)",
+    subject: "Supra Showings - Showing Cancelled",
+    sender: "suprashowing@suprasystems.com",
+    rawBodyText: `The showing by Casey Lee ( casey@example.com) at 55 Cedar Court, Seattle, WA 98101
+(KeyBox# 1001) has been cancelled.`,
+    expected: {
+      parsedAddress1: "55 Cedar Court",
+      parsedCity: "Seattle",
+      parsedState: "WA",
+      parsedZip: "98101",
+      scheduledLocal: null,
+      parsedAgentName: "Casey Lee",
+      parsedAgentEmail: "casey@example.com",
+      parsedStatus: "cancelled",
+      proposedAction: "DISMISS",
+      maxConfidence: "MEDIUM",
+      minConfidence: "LOW",
+    },
+  },
+  {
+    id: "supra-footer-only-incomplete",
+    note: "Boilerplate only — must not invent address/time/intent beyond unknown",
+    subject: "Supra Showings",
+    sender: "suprashowing@suprasystems.com",
+    rawBodyText: `For additional information on your showings please login to SupraWEB.`,
+    expected: {
+      parsedAddress1: null,
+      parsedCity: null,
+      parsedState: null,
+      parsedZip: null,
+      scheduledLocal: null,
+      parsedAgentName: null,
+      parsedAgentEmail: null,
+      parsedStatus: null,
+      proposedAction: "NEEDS_MANUAL_REVIEW",
+      maxConfidence: "LOW",
+      minConfidence: "LOW",
+    },
+  },
+  {
+    id: "supra-loose-reminder-weak",
+    note: "Generic “private showing” wording without address — loose hint, LOW, manual review path",
+    subject: "Showing reminder",
+    sender: "calendar@example.com",
+    rawBodyText: `This is a friendly reminder about your private showing appointment.
+Reply if you need to make changes.`,
+    expected: {
+      parsedAddress1: null,
+      parsedCity: null,
+      parsedState: null,
+      parsedZip: null,
+      scheduledLocal: null,
+      parsedAgentName: null,
+      parsedAgentEmail: null,
+      parsedStatus: "new_showing",
+      proposedAction: "CREATE_SHOWING",
+      maxConfidence: "LOW",
+      minConfidence: "LOW",
     },
   },
 ];

@@ -5,7 +5,8 @@
  * `__tests__/supra-email-parser.fixtures.test.ts`). Add sanitized samples there when you
  * validate new weekend emails; extend patterns only when a sample clearly matches.
  *
- * Unknown or ambiguous → leave fields null, LOW confidence.
+ * Confidence (v1): HIGH only for structured new_showing with full address + time + agent email.
+ * Reschedule is capped at MEDIUM. Unknown or ambiguous → leave fields null, LOW.
  */
 
 import {
@@ -50,7 +51,7 @@ const CANCEL_RE =
   /\b(?:showing\s+(?:has\s+been\s+)?(?:cancel(?:led|ed)?|canceled)|cancellation|withdrawn|showing\s+is\s+cancel|no\s+longer\s+(?:scheduled|available))\b/i;
 
 const RESCHEDULE_RE =
-  /\b(?:reschedul(?:e|ed|ing)?|changed\s+(?:the\s+)?(?:appointment|showing)?\s*time|new\s+(?:appointment|showing)\s*time|updated\s+time|time\s+has\s+been\s+changed)\b/i;
+  /\b(?:reschedul(?:e|ed|ing)?|changed\s+(?:the\s+)?(?:appointment|showing)?\s*time|new\s+(?:appointment|showing)\s*time|updated\s+time|time\s+has\s+been\s+changed|new\s+showing\s*time|appointment\s+time\s+is)\b/i;
 
 const NEW_SHOWING_RE =
   /\b(?:showing\s+(?:is\s+)?(?:scheduled|confirmed|booked|set)|showing\s+request|appointment\s+(?:is\s+)?(?:scheduled|confirmed)|private\s+showing\s+(?:scheduled|confirmed|request))\b/i;
@@ -627,12 +628,26 @@ function computeConfidence(args: {
   const structured =
     args.addressKind === "labeled" || args.addressKind === "supra_inline";
 
-  if (
+  /** HIGH only for strong Supra-shaped new showings: structured address + time + agent email. */
+  const strongNewShowing =
+    args.intent === "new_showing" &&
     structured &&
     fullAddr &&
     args.scheduledAt &&
-    (args.intent === "new_showing" || args.intent === "rescheduled")
-  ) {
+    Boolean(args.agentEmail);
+
+  /** Reschedule copy varies by client; never HIGH in v1 — review before update. */
+  if (args.intent === "rescheduled") {
+    if (structured && fullAddr && args.scheduledAt) {
+      return SupraParseConfidence.MEDIUM;
+    }
+    if (fullAddr && args.scheduledAt) return SupraParseConfidence.MEDIUM;
+    if (partialAddr && args.scheduledAt) return SupraParseConfidence.LOW;
+    if (partialAddr || args.scheduledAt) return SupraParseConfidence.LOW;
+    return SupraParseConfidence.LOW;
+  }
+
+  if (strongNewShowing) {
     return SupraParseConfidence.HIGH;
   }
 

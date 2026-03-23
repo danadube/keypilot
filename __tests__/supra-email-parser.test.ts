@@ -43,6 +43,7 @@ Your showing has been rescheduled to 03/25/2025 at 10:30 AM`,
     expect(r.parsedStatus).toBe("rescheduled");
     expect(r.proposedAction).toBe("UPDATE_SHOWING");
     expect(r.parsedScheduledAt).toBeTruthy();
+    expect(r.parseConfidence).toBe("MEDIUM");
   });
 
   it("detects cancellation with address", () => {
@@ -57,7 +58,7 @@ The scheduled showing has been cancelled.`,
     expect(r.parsedAddress1).toContain("88 Elm");
     expect(r.parsedStatus).toBe("cancelled");
     expect(r.proposedAction).toBe("DISMISS");
-    expect(r.parseConfidence).toBeTruthy();
+    expect(r.parseConfidence).toBe("MEDIUM");
   });
 
   it("returns weak parse for unrelated content", () => {
