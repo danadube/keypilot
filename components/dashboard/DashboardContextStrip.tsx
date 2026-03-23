@@ -1,20 +1,31 @@
 import { cn } from "@/lib/utils";
 
 export type DashboardContextStripProps = {
-  title: string;
-  subtitle: string;
+  /**
+   * Optional eyebrow (e.g. Today, Snapshot). The shell header already shows the
+   * module/page name — do not repeat it here.
+   */
+  label?: string;
+  /** One short operational summary line (or two brief sentences). */
+  message: string;
   className?: string;
+  /** Defaults to label + message when both exist, else message. */
+  ariaLabel?: string;
 };
 
 /**
- * Compact module context below the shell header: small title + one muted line.
- * 8px spacing system; keep subtle — not a hero or marketing block.
+ * Operational context below the shell header — not a second title row.
+ * Tight 8px rhythm; subtle surface; dark KeyPilot tokens.
  */
 export function DashboardContextStrip({
-  title,
-  subtitle,
+  label,
+  message,
   className,
+  ariaLabel,
 }: DashboardContextStripProps) {
+  const regionLabel =
+    ariaLabel ?? (label ? `${label}: ${message}` : message);
+
   return (
     <div
       className={cn(
@@ -22,10 +33,21 @@ export function DashboardContextStrip({
         className
       )}
       role="region"
-      aria-label={title}
+      aria-label={regionLabel}
     >
-      <p className="text-sm font-semibold leading-snug text-kp-on-surface">{title}</p>
-      <p className="mt-2 text-xs leading-snug text-kp-on-surface/80">{subtitle}</p>
+      {label ? (
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface/60">
+          {label}
+        </p>
+      ) : null}
+      <p
+        className={cn(
+          "text-xs leading-snug text-kp-on-surface/85",
+          label ? "mt-2" : null
+        )}
+      >
+        {message}
+      </p>
     </div>
   );
 }

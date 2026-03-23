@@ -42,7 +42,7 @@ export default function PropertyVaultOverviewPage() {
 
   const propertiesCount = stats?.propertiesCount ?? 0;
   const openHousesCount = stats?.openHousesCount ?? 0;
-  const vaultSubtitle =
+  const vaultContextMessage =
     propertiesCount === 0 && openHousesCount === 0
       ? "Add a property to start open houses and capturing visitors."
       : `You have ${propertiesCount} propert${propertiesCount === 1 ? "y" : "ies"} on file and ${openHousesCount} open house ${openHousesCount === 1 ? "event" : "events"} linked.`;
@@ -51,8 +51,8 @@ export default function PropertyVaultOverviewPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <DashboardContextStrip
-          title="PropertyVault"
-          subtitle={vaultSubtitle}
+          label="Snapshot"
+          message={vaultContextMessage}
           className="min-w-0 flex-1 sm:max-w-2xl"
         />
         <Button asChild className="w-full shrink-0 sm:w-auto">

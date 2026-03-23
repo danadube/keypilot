@@ -747,23 +747,23 @@ export function ShowingHQDashboardView() {
   });
 
   const scheduleCount = scheduleItems.length;
-  const scheduleSubtitle =
+  const scheduleSentence =
     scheduleCount > 0
-      ? `${scheduleCount} event${scheduleCount === 1 ? "" : "s"} on today's schedule`
-      : "Nothing on today's schedule yet";
-  const followSubtitle =
+      ? `${scheduleCount} event${scheduleCount === 1 ? "" : "s"} on today's schedule.`
+      : "Nothing on today's schedule yet.";
+  const followSentence =
     kpiFollowUps.overdue > 0
-      ? `${kpiFollowUps.overdue} follow-up${kpiFollowUps.overdue === 1 ? "" : "s"} overdue`
+      ? `${kpiFollowUps.overdue} follow-up${kpiFollowUps.overdue === 1 ? "" : "s"} overdue.`
       : kpiFollowUps.pending > 0
-        ? `${kpiFollowUps.pending} follow-up${kpiFollowUps.pending === 1 ? "" : "s"} pending review`
-        : "No follow-ups pending — you're caught up";
-  const dashboardContextSubtitle = `${scheduleSubtitle} · ${followSubtitle}`;
+        ? `${kpiFollowUps.pending} follow-up${kpiFollowUps.pending === 1 ? "" : "s"} pending review.`
+        : "No follow-ups pending — you're caught up.";
+  const dashboardContextMessage = `${scheduleSentence} ${followSentence}`;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex min-h-0 flex-col gap-4 bg-transparent">
-      <DashboardContextStrip title="ShowingHQ" subtitle={dashboardContextSubtitle} />
+      <DashboardContextStrip label="Today" message={dashboardContextMessage} />
 
       {/* ── KPI strip (title lives in shell header) ─────────────────────── */}
       <section
