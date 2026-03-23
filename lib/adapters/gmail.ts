@@ -5,6 +5,7 @@
  */
 
 import { google } from "googleapis";
+import { ensureValidGoogleOAuth2Client } from "@/lib/oauth/google-connection-auth";
 import type { NormalizedPriorityEmail } from "./email-types";
 
 export interface GmailConnection {
@@ -15,32 +16,6 @@ export interface GmailConnection {
   accountEmail: string | null;
 }
 
-function getOAuth2Client(conn: GmailConnection) {
-  const oauth2 = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/v1/auth/google/callback`
-  );
-
-  oauth2.setCredentials({
-    access_token: conn.accessToken,
-    refresh_token: conn.refreshToken ?? undefined,
-    expiry_date: conn.tokenExpiresAt?.getTime(),
-  });
-
-  return oauth2;
-}
-
-async function ensureValidToken(conn: GmailConnection) {
-  const oauth2 = getOAuth2Client(conn);
-  const now = Date.now();
-  const expiresAt = conn.tokenExpiresAt?.getTime() ?? 0;
-  if (expiresAt > 0 && now >= expiresAt - 5 * 60 * 1000) {
-    await oauth2.refreshAccessToken();
-  }
-  return oauth2;
-}
-
 /**
  * Fetch recent inbox messages from Gmail.
  * Normalizes to NormalizedPriorityEmail for Home Priority Emails widget.
@@ -49,7 +24,7 @@ export async function fetchGmailMessages(
   conn: GmailConnection,
   options: { maxResults?: number } = {}
 ): Promise<NormalizedPriorityEmail[]> {
-  const auth = await ensureValidToken(conn);
+  const auth = await ensureValidGoogleOAuth2Client(conn);
   const gmail = google.gmail({ version: "v1", auth });
 
   const maxResults = options.maxResults ?? 20;
@@ -185,7 +160,7 @@ export async function fetchSupraGmailMessages(
   conn: GmailConnection,
   options: { maxResults?: number; query?: string } = {}
 ): Promise<GmailSupraNormalizedMessage[]> {
-  const auth = await ensureValidToken(conn);
+  const auth = await ensureValidGoogleOAuth2Client(conn);
   const gmail = google.gmail({ version: "v1", auth });
 
   const maxResults = Math.min(
