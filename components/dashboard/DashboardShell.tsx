@@ -8,11 +8,8 @@ import { Building2, Calendar } from "lucide-react";
 import { ProductTierProvider } from "@/components/ProductTierProvider";
 import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 
-const HEADER_HEIGHT_DEFAULT = 64;
-/** Align with ShowingHQ sidebar header block (~ pt-4 + title + tagline + pb-5) */
-const HEADER_HEIGHT_SHOWING_HQ_WORKBENCH = 88;
+const HEADER_HEIGHT = 64;
 
 function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/showing-hq/showings/new")) return "Schedule Showing";
@@ -60,18 +57,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-0 flex-1 flex-col">
         <header
           className="sticky top-0 z-20 flex w-full shrink-0 items-center border-b border-kp-outline bg-kp-surface"
-          style={{
-            minHeight: isShowingHQWorkbench
-              ? HEADER_HEIGHT_SHOWING_HQ_WORKBENCH
-              : HEADER_HEIGHT_DEFAULT,
-          }}
+          style={{ minHeight: HEADER_HEIGHT }}
         >
-          <div
-            className={cn(
-              "flex min-w-0 flex-1 items-center overflow-hidden pl-6 pr-4 md:pl-8 md:pr-6",
-              isShowingHQWorkbench ? "py-2" : "h-full"
-            )}
-          >
+          <div className="flex min-w-0 flex-1 items-center overflow-hidden py-2 pl-6 pr-4 md:pl-8 md:pr-6">
             {isShowingHQWorkbench ? (
               <div className="min-w-0">
                 <h1
@@ -90,12 +78,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               </h1>
             )}
           </div>
-          <div
-            className={cn(
-              "flex shrink-0 items-center gap-2 border-l border-kp-outline bg-kp-surface px-3 py-2 md:gap-3 md:px-4",
-              isShowingHQWorkbench ? "min-h-[88px]" : "min-h-[64px]"
-            )}
-          >
+          <div className="flex shrink-0 items-center gap-2 border-l border-kp-outline bg-kp-surface px-3 py-2 md:gap-3 md:px-4" style={{ minHeight: HEADER_HEIGHT }}>
             {isShowingHQWorkbench ? (
               <>
                 <Button

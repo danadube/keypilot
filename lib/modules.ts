@@ -220,11 +220,11 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     href: "/settings",
     available: true,
     sidebar: [
-      { label: "Account", href: "/settings/account", icon: LayoutDashboard, section: "PLATFORM" },
-      { label: "Connections", href: "/settings/connections", icon: Settings, section: "PLATFORM" },
-      { label: "Automation", href: "/settings/automation", icon: Settings, section: "PLATFORM" },
-      { label: "AI", href: "/settings/ai", icon: Settings, section: "PLATFORM" },
-      { label: "Modules", href: "/settings/modules", icon: Settings, section: "PLATFORM" },
+      { label: "Account", href: "/settings/account", icon: LayoutDashboard, section: "ACCOUNT" },
+      { label: "Connections", href: "/settings/connections", icon: Settings, section: "ACCOUNT" },
+      { label: "Automation", href: "/settings/automation", icon: Settings, section: "ACCOUNT" },
+      { label: "AI", href: "/settings/ai", icon: Settings, section: "ACCOUNT" },
+      { label: "Modules", href: "/settings/modules", icon: Settings, section: "ACCOUNT" },
     ],
   },
 };
