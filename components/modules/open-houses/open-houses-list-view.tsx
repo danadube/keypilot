@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { MetricCard } from "@/components/ui/metric-card";
 import { SectionTabs } from "@/components/ui/section-tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 // Mirrors the shape returned by GET /api/v1/open-houses (with full property include)
@@ -425,19 +426,12 @@ export function OpenHousesListView() {
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
-      {/* ── Page header ─────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-3 sm:px-8">
-        <div>
-          <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-kp-teal">
-            Open House Ops
-          </p>
-          <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
-            Open Houses
-          </h1>
-          <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-            Create and manage your public open house events.
-          </p>
-        </div>
+      {/* ── Intro (shell owns title) + actions ─────────────────────────── */}
+      <div className="flex flex-col gap-3 px-6 pb-3 pt-3 sm:flex-row sm:items-end sm:justify-between sm:px-8">
+        <DashboardContextStrip
+          className="min-w-0 flex-1 sm:max-w-2xl"
+          message="Create and manage public events — QR sign-in, visitors, and follow-ups per event."
+        />
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <Link
             href="/open-houses/sign-in"

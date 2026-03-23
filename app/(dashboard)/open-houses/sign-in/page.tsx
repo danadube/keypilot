@@ -17,6 +17,7 @@ import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { QrCode, Tablet, Printer, ArrowRight, List, Plus } from "lucide-react";
 import { BrandButton } from "@/components/ui/BrandButton";
+import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 
 type OpenHouse = {
   id: string;
@@ -161,42 +162,22 @@ export default function OpenSignInPage() {
   );
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Hero — match dashboard hero system */}
-      <header
-        className="relative rounded-2xl bg-[#0B1A3C] px-8 py-8 shadow-2xl"
-        role="banner"
-      >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
-          <div className="min-w-0 flex-1">
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#7DD3F5]">
-              Sign-in & QR
-            </p>
-            <h1
-              className="text-3xl font-extrabold tracking-tight text-white md:text-4xl"
-              style={{ fontFamily: "var(--font-heading)", lineHeight: 1.1 }}
-            >
-              Sign-in & QR
-            </h1>
-            <p className="mt-1 max-w-2xl text-sm text-slate-300 md:text-base">
-              Launch host sign-in for your tablet or print QR posters.
-            </p>
-          </div>
-          <div className="mt-4 flex shrink-0 flex-wrap items-center gap-2 sm:mt-0">
-            <BrandButton variant="primary" size="sm" asChild>
-              <Link href="#host-sign-in">Open host sign-in</Link>
-            </BrandButton>
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-slate-300 bg-white/5 text-white hover:bg-white/10"
-              asChild
-            >
-              <Link href="/open-houses">View open houses</Link>
-            </Button>
-          </div>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <DashboardContextStrip
+          className="min-w-0 flex-1 sm:max-w-2xl"
+          label="Host tools"
+          message="Choose an event below to open host sign-in on a tablet or print a QR poster for visitors."
+        />
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <BrandButton variant="primary" size="sm" asChild>
+            <Link href="#host-sign-in">Open host sign-in</Link>
+          </BrandButton>
+          <Button variant="outline" size="sm" className="border-kp-outline bg-kp-surface-high text-kp-on-surface hover:bg-kp-surface-higher" asChild>
+            <Link href="/open-houses">View open houses</Link>
+          </Button>
         </div>
-      </header>
+      </div>
 
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         {/* Primary: launch host sign-in */}
