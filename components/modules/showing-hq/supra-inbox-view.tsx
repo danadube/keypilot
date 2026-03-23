@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   SupraQueueItem,
   SupraQueueState,
@@ -24,12 +24,45 @@ import {
   SupraPropertyMatchStatus as PropMatch,
   SupraShowingMatchStatus as ShowMatch,
 } from "@prisma/client";
+import { AlertCircle, CheckCircle2, Inbox, ChevronDown } from "lucide-react";
 
 function formatEnumLabel(value: string): string {
   return value
     .split("_")
     .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
     .join(" ");
+}
+
+/** Human-readable proposed actions for reviewers */
+const PROPOSED_ACTION_LABELS: Record<SupraProposedAction, string> = {
+  UNKNOWN: "Unknown — decide manually",
+  CREATE_SHOWING: "Create a new showing",
+  UPDATE_SHOWING: "Update an existing showing",
+  CREATE_PROPERTY_AND_SHOWING: "Create property + showing",
+  DISMISS: "No action (dismiss)",
+  NEEDS_MANUAL_REVIEW: "Needs manual review",
+};
+
+const CONFIDENCE_HINTS: Record<SupraParseConfidence, string> = {
+  HIGH: "Parser (when connected) would be very confident in these fields.",
+  MEDIUM: "Reasonable guess — verify address and time before applying.",
+  LOW: "Treat as draft — most fields need human correction.",
+};
+
+const TERMINAL_STATES: SupraQueueState[] = [
+  QueueStates.DISMISSED,
+  QueueStates.DUPLICATE,
+  QueueStates.APPLIED,
+  QueueStates.FAILED_PARSE,
+];
+
+function isAwaitingDecision(state: SupraQueueState): boolean {
+  return (
+    state === QueueStates.NEEDS_REVIEW ||
+    state === QueueStates.INGESTED ||
+    state === QueueStates.PARSED ||
+    state === QueueStates.READY_TO_APPLY
+  );
 }
 
 function queueStateBadgeVariant(
@@ -65,6 +98,19 @@ function confidenceBadgeVariant(
   }
 }
 
+function rowAttentionClass(state: SupraQueueState): string {
+  if (state === QueueStates.NEEDS_REVIEW) {
+    return "border-l-2 border-l-kp-gold bg-kp-gold/[0.04]";
+  }
+  if (state === QueueStates.FAILED_PARSE) {
+    return "border-l-2 border-l-red-500/60 bg-red-950/20";
+  }
+  if (state === QueueStates.READY_TO_APPLY) {
+    return "border-l-2 border-l-kp-teal/50";
+  }
+  return "";
+}
+
 const fieldInput =
   "border-kp-outline bg-kp-surface-high text-kp-on-surface placeholder:text-kp-on-surface-variant";
 
@@ -78,36 +124,133 @@ type ItemWithRelations = SupraQueueItem & {
   matchedShowing: { id: string; scheduledAt: Date } | null;
 };
 
+type FilterPreset =
+  | "all"
+  | "needs_review"
+  | "ready_to_apply"
+  | "failed_parse"
+  | "closed";
+
+function normalizeItem(row: ItemWithRelations): ItemWithRelations {
+  return {
+    ...row,
+    receivedAt: new Date(row.receivedAt),
+    parsedScheduledAt: row.parsedScheduledAt ? new Date(row.parsedScheduledAt) : null,
+    reviewedAt: row.reviewedAt ? new Date(row.reviewedAt) : null,
+    createdAt: new Date(row.createdAt),
+    updatedAt: new Date(row.updatedAt),
+    matchedShowing: row.matchedShowing
+      ? {
+          ...row.matchedShowing,
+          scheduledAt: new Date(row.matchedShowing.scheduledAt),
+        }
+      : null,
+  };
+}
+
 export function SupraInboxView() {
   const [items, setItems] = useState<ItemWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [stateFilter, setStateFilter] = useState<SupraQueueState | "">("");
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [filterPreset, setFilterPreset] = useState<FilterPreset>("all");
   const [detail, setDetail] = useState<ItemWithRelations | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [sampleMenuOpen, setSampleMenuOpen] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
-    const q = stateFilter ? `?state=${encodeURIComponent(stateFilter)}` : "";
-    const res = await fetch(`/api/v1/showing-hq/supra-queue${q}`);
+    const res = await fetch("/api/v1/showing-hq/supra-queue");
     const json = await res.json();
     if (!res.ok) {
       setError(json.error?.message ?? "Failed to load queue");
       setItems([]);
       return;
     }
-    setItems(json.data ?? []);
-  }, [stateFilter]);
+    const raw = (json.data ?? []) as ItemWithRelations[];
+    setItems(raw.map(normalizeItem));
+  }, []);
 
   useEffect(() => {
     setLoading(true);
     load().finally(() => setLoading(false));
   }, [load]);
 
+  useEffect(() => {
+    if (!successMessage) return;
+    const t = setTimeout(() => setSuccessMessage(null), 5000);
+    return () => clearTimeout(t);
+  }, [successMessage]);
+
+  const counts = useMemo(() => {
+    let needsReview = 0;
+    let ready = 0;
+    let failed = 0;
+    let closed = 0;
+    for (const row of items) {
+      if (row.queueState === QueueStates.NEEDS_REVIEW) needsReview += 1;
+      if (row.queueState === QueueStates.READY_TO_APPLY) ready += 1;
+      if (row.queueState === QueueStates.FAILED_PARSE) failed += 1;
+      if (
+        row.queueState === QueueStates.DISMISSED ||
+        row.queueState === QueueStates.DUPLICATE ||
+        row.queueState === QueueStates.APPLIED
+      ) {
+        closed += 1;
+      }
+    }
+    return { needsReview, ready, failed, closed, total: items.length };
+  }, [items]);
+
+  const displayedItems = useMemo(() => {
+    switch (filterPreset) {
+      case "needs_review":
+        return items.filter((i) => i.queueState === QueueStates.NEEDS_REVIEW);
+      case "ready_to_apply":
+        return items.filter((i) => i.queueState === QueueStates.READY_TO_APPLY);
+      case "failed_parse":
+        return items.filter((i) => i.queueState === QueueStates.FAILED_PARSE);
+      case "closed":
+        return items.filter(
+          (i) =>
+            i.queueState === QueueStates.DISMISSED ||
+            i.queueState === QueueStates.DUPLICATE ||
+            i.queueState === QueueStates.APPLIED
+        );
+      default:
+        return items;
+    }
+  }, [items, filterPreset]);
+
+  const buildUpdatePayload = (row: ItemWithRelations) => ({
+    subject: row.subject,
+    rawBodyText: row.rawBodyText,
+    sender: row.sender,
+    parsedAddress1: row.parsedAddress1,
+    parsedCity: row.parsedCity,
+    parsedState: row.parsedState,
+    parsedZip: row.parsedZip,
+    parsedScheduledAt: row.parsedScheduledAt
+      ? new Date(row.parsedScheduledAt).toISOString()
+      : null,
+    parsedEventKind: row.parsedEventKind,
+    parsedStatus: row.parsedStatus,
+    parsedAgentName: row.parsedAgentName,
+    parsedAgentEmail: row.parsedAgentEmail,
+    parseConfidence: row.parseConfidence,
+    proposedAction: row.proposedAction,
+    propertyMatchStatus: row.propertyMatchStatus,
+    showingMatchStatus: row.showingMatchStatus,
+    matchedPropertyId: row.matchedPropertyId?.trim() || null,
+    matchedShowingId: row.matchedShowingId?.trim() || null,
+    resolutionNotes: row.resolutionNotes,
+    queueState: row.queueState,
+  });
+
   const openDetail = (row: ItemWithRelations) => {
-    setDetail(row);
+    setDetail(normalizeItem(row));
     setModalOpen(true);
   };
 
@@ -122,12 +265,10 @@ export function SupraInboxView() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message ?? "Update failed");
-      setDetail(json.data);
+      const updated = normalizeItem(json.data as ItemWithRelations);
+      setDetail(updated);
       await load();
-      if (
-        json.data?.queueState === QueueStates.DISMISSED ||
-        json.data?.queueState === QueueStates.DUPLICATE
-      ) {
+      if (TERMINAL_STATES.includes(updated.queueState)) {
         setModalOpen(false);
         setDetail(null);
       }
@@ -140,42 +281,113 @@ export function SupraInboxView() {
 
   const handleSaveDetail = async () => {
     if (!detail) return;
-    await patchItem(detail.id, {
-      subject: detail.subject,
-      parsedAddress1: detail.parsedAddress1,
-      parsedCity: detail.parsedCity,
-      parsedState: detail.parsedState,
-      parsedZip: detail.parsedZip,
-      parsedScheduledAt: detail.parsedScheduledAt
-        ? new Date(detail.parsedScheduledAt).toISOString()
-        : null,
-      parsedEventKind: detail.parsedEventKind,
-      parsedStatus: detail.parsedStatus,
-      parsedAgentName: detail.parsedAgentName,
-      parsedAgentEmail: detail.parsedAgentEmail,
-      parseConfidence: detail.parseConfidence,
-      proposedAction: detail.proposedAction,
-      propertyMatchStatus: detail.propertyMatchStatus,
-      showingMatchStatus: detail.showingMatchStatus,
-      matchedPropertyId: detail.matchedPropertyId?.trim() || null,
-      matchedShowingId: detail.matchedShowingId?.trim() || null,
-      resolutionNotes: detail.resolutionNotes,
-      queueState: detail.queueState,
-    });
+    await patchItem(detail.id, buildUpdatePayload(detail));
+    setSuccessMessage("Review saved.");
   };
 
-  const addSampleRow = async () => {
+  const applyStateWithCurrentEdits = async (state: SupraQueueState) => {
+    if (!detail) return;
+    await patchItem(detail.id, { ...buildUpdatePayload(detail), queueState: state });
+    setSuccessMessage(
+      state === QueueStates.READY_TO_APPLY
+        ? "Marked ready to apply (no showing created yet)."
+        : state === QueueStates.FAILED_PARSE
+          ? "Marked failed parse."
+          : state === QueueStates.DISMISSED
+            ? "Item dismissed."
+            : state === QueueStates.DUPLICATE
+              ? "Marked duplicate."
+              : "Updated."
+    );
+  };
+
+  type SampleKind = "typical" | "low_confidence" | "failed_parse" | "ready_to_apply";
+
+  const addSampleRow = async (kind: SampleKind) => {
     setSeeding(true);
+    setSampleMenuOpen(false);
     setError(null);
-    try {
-      const res = await fetch("/api/v1/showing-hq/supra-queue", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          externalMessageId: `manual-test-${Date.now()}@keypilot.local`,
+    const ts = Date.now();
+    const base = {
+      externalMessageId: `manual-test-${kind}-${ts}@keypilot.local`,
+      receivedAt: new Date().toISOString(),
+      sender: "notifications@supra.example",
+    };
+
+    let body: Record<string, unknown>;
+
+    switch (kind) {
+      case "low_confidence":
+        body = {
+          ...base,
+          subject: "Supra: Showing notice (unclear)",
+          rawBodyText:
+            "Fwd: showing\nsome address maybe 456 Oak\nFriday afternoon\ncontact bob@example.com",
+          parsedAddress1: "456 Oak (uncertain)",
+          parsedCity: "Austin",
+          parsedState: "TX",
+          parsedZip: "",
+          parsedScheduledAt: null,
+          parsedEventKind: "unknown",
+          parsedStatus: "unknown",
+          parsedAgentName: null,
+          parsedAgentEmail: null,
+          parseConfidence: "LOW",
+          proposedAction: "NEEDS_MANUAL_REVIEW",
+          propertyMatchStatus: "NO_MATCH",
+          showingMatchStatus: "NO_SHOWING",
+        };
+        break;
+      case "failed_parse":
+        body = {
+          ...base,
+          externalMessageId: `manual-test-failed-${ts}@keypilot.local`,
+          subject: "Supra: Could not parse notification",
+          rawBodyText:
+            "Empty or garbled payload for testing failed_parse state.\n\n----\nBinary or template noise ███",
+          parsedAddress1: null,
+          parsedCity: null,
+          parsedState: null,
+          parsedZip: null,
+          parsedScheduledAt: null,
+          parsedEventKind: null,
+          parsedStatus: null,
+          parsedAgentName: null,
+          parsedAgentEmail: null,
+          parseConfidence: "LOW",
+          proposedAction: "UNKNOWN",
+          propertyMatchStatus: "UNSET",
+          showingMatchStatus: "UNSET",
+          queueState: "FAILED_PARSE",
+        };
+        break;
+      case "ready_to_apply":
+        body = {
+          ...base,
+          externalMessageId: `manual-test-ready-${ts}@keypilot.local`,
+          subject: "Supra: Showing confirmed — 789 Elm St",
+          rawBodyText:
+            "Your showing is confirmed.\n\n789 Elm Street, Dallas TX 75201\nPrivate showing: Sat 10:00 AM\nAgent: Alex Rivera <alex@example.com>",
+          parsedAddress1: "789 Elm Street",
+          parsedCity: "Dallas",
+          parsedState: "TX",
+          parsedZip: "75201",
+          parsedScheduledAt: new Date(Date.now() + 86400000 * 2).toISOString(),
+          parsedEventKind: "private_showing",
+          parsedStatus: "confirmed",
+          parsedAgentName: "Alex Rivera",
+          parsedAgentEmail: "alex@example.com",
+          parseConfidence: "HIGH",
+          proposedAction: "CREATE_SHOWING",
+          propertyMatchStatus: "NO_MATCH",
+          showingMatchStatus: "NO_SHOWING",
+          queueState: "READY_TO_APPLY",
+        };
+        break;
+      default:
+        body = {
+          ...base,
           subject: "Supra: Showing scheduled — 123 Main St",
-          receivedAt: new Date().toISOString(),
-          sender: "notifications@supra.example",
           rawBodyText:
             "Placeholder Supra email body (parser not connected yet).\n\n123 Main Street\nAustin, TX 78701\nPrivate showing: Friday 2:00–3:00 PM",
           parsedAddress1: "123 Main Street",
@@ -191,11 +403,28 @@ export function SupraInboxView() {
           proposedAction: "CREATE_SHOWING",
           propertyMatchStatus: "NO_MATCH",
           showingMatchStatus: "NO_SHOWING",
-        }),
+        };
+    }
+
+    try {
+      const res = await fetch("/api/v1/showing-hq/supra-queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message ?? "Failed to add sample");
       await load();
+      setFilterPreset("all");
+      setSuccessMessage(
+        kind === "typical"
+          ? "Sample row added (needs review). Open Review to edit or change state."
+          : kind === "low_confidence"
+            ? "Low-confidence sample added — good for testing corrections."
+            : kind === "failed_parse"
+              ? "Failed-parse sample added."
+              : "Ready-to-apply sample added (still no auto-create)."
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to add sample");
     } finally {
@@ -211,66 +440,181 @@ export function SupraInboxView() {
     return parts.length ? parts.join(" · ") : "—";
   };
 
+  const filterChip = (
+    preset: FilterPreset,
+    label: string,
+    count?: number,
+    activeClass?: string
+  ) => (
+    <Button
+      type="button"
+      variant={filterPreset === preset ? "default" : "outline"}
+      size="sm"
+      className={cn(
+        filterPreset === preset
+          ? activeClass ?? "bg-kp-teal text-kp-bg hover:bg-kp-teal/90"
+          : "border-kp-outline text-kp-on-surface"
+      )}
+      onClick={() => setFilterPreset(preset)}
+    >
+      {label}
+      {count !== undefined && count > 0 ? (
+        <span className="ml-1.5 rounded-full bg-black/20 px-1.5 text-[10px] font-bold tabular-nums">
+          {count}
+        </span>
+      ) : null}
+    </Button>
+  );
+
   if (loading && items.length === 0) {
     return <PageLoading message="Loading Supra queue…" />;
   }
 
   return (
     <div className="flex flex-col gap-4">
+      {successMessage ? (
+        <div
+          className="flex items-center gap-2 rounded-lg border border-kp-teal/30 bg-kp-teal/10 px-3 py-2 text-sm text-kp-on-surface"
+          role="status"
+        >
+          <CheckCircle2 className="h-4 w-4 shrink-0 text-kp-teal" />
+          {successMessage}
+        </div>
+      ) : null}
+
       {error ? (
         <ErrorMessage message={error} onRetry={() => load()} />
       ) : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant={stateFilter === "" ? "default" : "outline"}
-            size="sm"
-            className={cn(
-              stateFilter === "" ? "bg-kp-teal text-kp-bg hover:bg-kp-teal/90" : "border-kp-outline"
-            )}
-            onClick={() => setStateFilter("")}
-          >
-            All
-          </Button>
-          {(Object.values(QueueStates) as SupraQueueState[]).map((s) => (
-            <Button
-              key={s}
-              type="button"
-              variant={stateFilter === s ? "default" : "outline"}
-              size="sm"
-              className={cn(
-                stateFilter === s
-                  ? "bg-kp-teal text-kp-bg hover:bg-kp-teal/90"
-                  : "border-kp-outline text-kp-on-surface"
-              )}
-              onClick={() => setStateFilter(s)}
-            >
-              {formatEnumLabel(s)}
-            </Button>
-          ))}
+      <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-medium uppercase tracking-wider text-kp-on-surface-variant">
+            Filter
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {filterChip("all", "All", counts.total)}
+            {filterChip("needs_review", "Needs review", counts.needsReview, "bg-kp-gold/90 text-kp-bg hover:bg-kp-gold")}
+            {filterChip("ready_to_apply", "Ready to apply", counts.ready)}
+            {filterChip("failed_parse", "Failed parse", counts.failed, "bg-red-900/80 text-red-100 hover:bg-red-900")}
+            {filterChip("closed", "Closed", counts.closed)}
+          </div>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="border border-dashed border-kp-outline text-kp-on-surface hover:bg-kp-surface-high"
-          disabled={seeding}
-          onClick={addSampleRow}
-        >
-          {seeding ? "Adding…" : "Add sample queue row"}
-        </Button>
+
+        <div className="relative flex flex-col gap-1">
+          <p className="text-xs font-medium uppercase tracking-wider text-kp-on-surface-variant">
+            Test data
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="border border-dashed border-kp-outline text-kp-on-surface hover:bg-kp-surface-high"
+              disabled={seeding}
+              onClick={() => addSampleRow("typical")}
+            >
+              {seeding ? "Adding…" : "Quick sample"}
+            </Button>
+            <div className="relative">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="border-kp-outline text-kp-on-surface hover:bg-kp-surface-high"
+                disabled={seeding}
+                onClick={() => setSampleMenuOpen((o) => !o)}
+                aria-expanded={sampleMenuOpen}
+                aria-haspopup="menu"
+              >
+                More samples
+                <ChevronDown className="ml-1 h-3.5 w-3.5 opacity-70" />
+              </Button>
+              {sampleMenuOpen ? (
+                <>
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-40 cursor-default bg-transparent"
+                    aria-label="Close menu"
+                    onClick={() => setSampleMenuOpen(false)}
+                  />
+                  <div
+                    className="absolute right-0 top-full z-50 mt-1 min-w-[220px] rounded-lg border border-kp-outline bg-kp-surface py-1 shadow-lg"
+                    role="menu"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="block w-full px-3 py-2 text-left text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                      onClick={() => addSampleRow("low_confidence")}
+                    >
+                      Low confidence / unclear body
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="block w-full px-3 py-2 text-left text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                      onClick={() => addSampleRow("failed_parse")}
+                    >
+                      Failed parse (terminal state)
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="block w-full px-3 py-2 text-left text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                      onClick={() => addSampleRow("ready_to_apply")}
+                    >
+                      Ready to apply (pre-approved sample)
+                    </button>
+                  </div>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-        {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <p className="text-sm font-medium text-kp-on-surface">No queue items yet</p>
-            <p className="mt-1 max-w-md text-xs text-kp-on-surface-variant">
-              Ingestion is not connected. Use &quot;Add sample queue row&quot; to test the review UI, or wait
-              for mailbox integration.
+        {displayedItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-14 text-center">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-kp-surface-high text-kp-on-surface-variant">
+              <Inbox className="h-6 w-6" />
+            </div>
+            <p className="text-sm font-semibold text-kp-on-surface">
+              {items.length === 0 ? "No Supra queue items yet" : "Nothing in this filter"}
             </p>
+            <p className="mt-2 max-w-md text-xs leading-relaxed text-kp-on-surface-variant">
+              {items.length === 0 ? (
+                <>
+                  Mailbox ingestion is not connected. Use <strong>Quick sample</strong> or{" "}
+                  <strong>More samples</strong> to add test rows, then open <strong>Review</strong> to walk
+                  through the workflow.
+                </>
+              ) : (
+                <>Try another filter, or clear filters to see all {items.length} item(s).</>
+              )}
+            </p>
+            {items.length === 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-4 border-kp-teal/40 text-kp-teal hover:bg-kp-teal/10"
+                disabled={seeding}
+                onClick={() => addSampleRow("typical")}
+              >
+                Add your first sample row
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-4 border-kp-outline"
+                onClick={() => setFilterPreset("all")}
+              >
+                Show all
+              </Button>
+            )}
           </div>
         ) : (
           <div className="-mx-1 overflow-x-auto px-1">
@@ -296,7 +640,7 @@ export function SupraInboxView() {
                     Confidence
                   </th>
                   <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-                    Proposed
+                    Proposed action
                   </th>
                   <th className="w-[1%] whitespace-nowrap pb-2.5 pt-0.5 text-right text-xs font-semibold uppercase tracking-wider text-kp-on-surface-variant">
                     Review
@@ -304,15 +648,42 @@ export function SupraInboxView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-kp-outline">
-                {items.map((row) => (
-                  <tr key={row.id} className="transition-colors hover:bg-kp-surface-high">
-                    <td className="max-w-[200px] truncate py-2.5 font-medium text-kp-on-surface" title={row.subject}>
-                      {row.subject}
+                {displayedItems.map((row) => (
+                  <tr
+                    key={row.id}
+                    className={cn(
+                      "transition-colors hover:bg-kp-surface-high",
+                      rowAttentionClass(row.queueState)
+                    )}
+                  >
+                    <td className="py-2.5 pl-2">
+                      <div className="flex max-w-[220px] flex-col gap-0.5">
+                        <span
+                          className="truncate font-medium text-kp-on-surface"
+                          title={row.subject}
+                        >
+                          {row.subject}
+                        </span>
+                        {isAwaitingDecision(row.queueState) &&
+                        row.queueState !== QueueStates.READY_TO_APPLY ? (
+                          <span className="text-[10px] font-medium text-kp-gold">
+                            Awaiting decision
+                          </span>
+                        ) : null}
+                        {row.queueState === QueueStates.READY_TO_APPLY ? (
+                          <span className="text-[10px] font-medium text-kp-teal">
+                            Ready for apply step (later)
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="whitespace-nowrap py-2.5 text-kp-on-surface-variant">
                       {new Date(row.receivedAt).toLocaleString()}
                     </td>
-                    <td className="max-w-[180px] truncate py-2.5 text-kp-on-surface-variant" title={parsedAddressLine(row)}>
+                    <td
+                      className="max-w-[200px] truncate py-2.5 text-kp-on-surface-variant"
+                      title={parsedAddressLine(row)}
+                    >
                       {parsedAddressLine(row)}
                     </td>
                     <td className="whitespace-nowrap py-2.5 text-kp-on-surface-variant">
@@ -326,14 +697,28 @@ export function SupraInboxView() {
                       </StatusBadge>
                     </td>
                     <td className="py-2.5">
-                      <StatusBadge variant={confidenceBadgeVariant(row.parseConfidence)}>
-                        {formatEnumLabel(row.parseConfidence)}
-                      </StatusBadge>
+                      <div className="flex flex-col gap-0.5">
+                        <StatusBadge variant={confidenceBadgeVariant(row.parseConfidence)}>
+                          {formatEnumLabel(row.parseConfidence)}
+                        </StatusBadge>
+                        <span
+                          className="max-w-[140px] text-[10px] leading-tight text-kp-on-surface-variant"
+                          title={CONFIDENCE_HINTS[row.parseConfidence]}
+                        >
+                          {row.parseConfidence === Confidences.HIGH
+                            ? "Strong signal"
+                            : row.parseConfidence === Confidences.MEDIUM
+                              ? "Verify fields"
+                              : "Likely wrong"}
+                        </span>
+                      </div>
                     </td>
-                    <td className="py-2.5 text-xs text-kp-on-surface-variant">
-                      {formatEnumLabel(row.proposedAction)}
+                    <td className="max-w-[200px] py-2.5">
+                      <span className="text-xs font-medium leading-snug text-kp-on-surface">
+                        {PROPOSED_ACTION_LABELS[row.proposedAction]}
+                      </span>
                     </td>
-                    <td className="py-2.5 text-right">
+                    <td className="py-2.5 pr-1 text-right">
                       <Button
                         type="button"
                         variant="outline"
@@ -358,19 +743,52 @@ export function SupraInboxView() {
           setModalOpen(o);
           if (!o) setDetail(null);
         }}
-        title="Review Supra item"
-        description="Parsed fields are editable. No property or showing is created until a later apply step."
+        title="Review Supra notification"
+        description="Confirm or edit parsed fields. Nothing is written to properties or showings until a future apply step."
         size="lg"
         footer={
-          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
-            <div className="flex flex-wrap gap-2 sm:mr-auto">
+          <div className="flex w-full flex-col gap-3">
+            <div className="flex flex-wrap gap-2 border-b border-kp-outline pb-3">
+              <span className="w-full text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                Quick actions (saves current edits)
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="border-kp-teal/50 text-kp-teal hover:bg-kp-teal/10"
+                disabled={saving || !detail}
+                onClick={() => applyStateWithCurrentEdits(QueueStates.READY_TO_APPLY)}
+              >
+                Mark ready to apply
+              </Button>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 className="border-kp-outline"
-                disabled={saving}
-                onClick={() => detail && patchItem(detail.id, { queueState: QueueStates.DISMISSED })}
+                disabled={saving || !detail}
+                onClick={() => applyStateWithCurrentEdits(QueueStates.NEEDS_REVIEW)}
+              >
+                Back to needs review
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="border-red-800/50 text-red-400 hover:bg-red-950/40"
+                disabled={saving || !detail}
+                onClick={() => applyStateWithCurrentEdits(QueueStates.FAILED_PARSE)}
+              >
+                Mark failed parse
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="border-kp-outline"
+                disabled={saving || !detail}
+                onClick={() => applyStateWithCurrentEdits(QueueStates.DISMISSED)}
               >
                 Dismiss
               </Button>
@@ -379,8 +797,8 @@ export function SupraInboxView() {
                 variant="outline"
                 size="sm"
                 className="border-kp-outline"
-                disabled={saving}
-                onClick={() => detail && patchItem(detail.id, { queueState: QueueStates.DUPLICATE })}
+                disabled={saving || !detail}
+                onClick={() => applyStateWithCurrentEdits(QueueStates.DUPLICATE)}
               >
                 Mark duplicate
               </Button>
@@ -403,7 +821,73 @@ export function SupraInboxView() {
         }
       >
         {detail ? (
-          <div className="flex max-h-[min(70vh,560px)] flex-col gap-4 overflow-y-auto pr-1">
+          <div className="flex max-h-[min(75vh,620px)] flex-col gap-4 overflow-y-auto pr-1">
+            {/* Decision banner */}
+            <div
+              className={cn(
+                "rounded-lg border px-3 py-2.5",
+                detail.queueState === QueueStates.FAILED_PARSE
+                  ? "border-red-800/50 bg-red-950/30"
+                  : detail.queueState === QueueStates.READY_TO_APPLY
+                    ? "border-kp-teal/40 bg-kp-teal/10"
+                    : isAwaitingDecision(detail.queueState)
+                      ? "border-kp-gold/40 bg-kp-gold/10"
+                      : "border-kp-outline bg-kp-surface-high"
+              )}
+            >
+              <div className="flex flex-wrap items-start gap-2">
+                {detail.queueState === QueueStates.FAILED_PARSE ? (
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                ) : (
+                  <Inbox className="mt-0.5 h-4 w-4 shrink-0 text-kp-gold" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusBadge variant={queueStateBadgeVariant(detail.queueState)} dot>
+                      {formatEnumLabel(detail.queueState)}
+                    </StatusBadge>
+                  </div>
+                  <p className="mt-1 text-xs text-kp-on-surface-variant">
+                    {detail.queueState === QueueStates.FAILED_PARSE
+                      ? "Treat the body as unusable unless you fix it manually below."
+                      : detail.queueState === QueueStates.READY_TO_APPLY
+                        ? "You’ve marked this as ready. Apply (create/update showing) will be a separate step."
+                        : isAwaitingDecision(detail.queueState)
+                          ? "This item is waiting for a human decision — edit fields, then save or use quick actions."
+                          : "This item is closed in the queue."}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Proposed action + confidence */}
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border border-kp-outline bg-kp-surface-high p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                  Proposed action
+                </p>
+                <p className="mt-1 text-sm font-semibold leading-snug text-kp-on-surface">
+                  {PROPOSED_ACTION_LABELS[detail.proposedAction]}
+                </p>
+                <p className="mt-1 text-[11px] text-kp-on-surface-variant">
+                  Enum: {detail.proposedAction.replace(/_/g, " ")}
+                </p>
+              </div>
+              <div className="rounded-lg border border-kp-outline bg-kp-surface-high p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                  Parse confidence
+                </p>
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <StatusBadge variant={confidenceBadgeVariant(detail.parseConfidence)}>
+                    {formatEnumLabel(detail.parseConfidence)}
+                  </StatusBadge>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-kp-on-surface-variant">
+                  {CONFIDENCE_HINTS[detail.parseConfidence]}
+                </p>
+              </div>
+            </div>
+
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <Label className="text-kp-on-surface">Subject</Label>
@@ -431,34 +915,35 @@ export function SupraInboxView() {
                       ? new Date(detail.receivedAt).toISOString().slice(0, 16)
                       : ""
                   }
-                  onChange={(e) =>
-                    setDetail({
-                      ...detail,
-                      receivedAt: e.target.value ? new Date(e.target.value) : detail.receivedAt,
-                    })
-                  }
                   disabled
                 />
                 <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">Read-only in v1</p>
               </div>
               <div>
                 <Label className="text-kp-on-surface">External message id</Label>
-                <Input className={cn("mt-1", fieldInput)} value={detail.externalMessageId} readOnly />
+                <Input className={cn("mt-1 font-mono text-xs", fieldInput)} value={detail.externalMessageId} readOnly />
               </div>
             </div>
 
             <div>
-              <Label className="text-kp-on-surface">Raw email body</Label>
+              <Label className="text-kp-on-surface">Raw source text</Label>
+              <p className="mb-1 text-[10px] text-kp-on-surface-variant">
+                Full message body as captured. Editable for testing when the parser is wrong.
+              </p>
               <textarea
-                className={cn("mt-1 min-h-[120px] w-full rounded-md px-3 py-2 text-xs", fieldInput)}
-                readOnly
+                className={cn(
+                  "min-h-[180px] w-full rounded-md px-3 py-2 font-mono text-xs leading-relaxed",
+                  fieldInput
+                )}
+                spellCheck={false}
                 value={detail.rawBodyText}
+                onChange={(e) => setDetail({ ...detail, rawBodyText: e.target.value })}
               />
             </div>
 
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-                Parsed proposal
+                Parsed proposal (editable)
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
@@ -674,7 +1159,7 @@ export function SupraInboxView() {
                 >
                   {(Object.values(ProposedActions) as SupraProposedAction[]).map((v) => (
                     <option key={v} value={v}>
-                      {formatEnumLabel(v)}
+                      {PROPOSED_ACTION_LABELS[v]}
                     </option>
                   ))}
                 </select>
@@ -687,6 +1172,7 @@ export function SupraInboxView() {
                 className={cn("mt-1 min-h-[72px] w-full rounded-md px-3 py-2 text-sm", fieldInput)}
                 value={detail.resolutionNotes ?? ""}
                 onChange={(e) => setDetail({ ...detail, resolutionNotes: e.target.value || null })}
+                placeholder="Optional notes for your team (dismissal reason, etc.)"
               />
             </div>
           </div>
