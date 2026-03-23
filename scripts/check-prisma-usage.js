@@ -96,6 +96,8 @@ const BYPASSRLS_ALLOWLIST = {
     "app/api/v1/showing-hq/properties/[propertyId]/seller-report/route.ts",
     "app/api/v1/showing-hq/showings/[id]/route.ts",
     "app/api/v1/showing-hq/showings/route.ts",
+    "app/api/v1/showing-hq/supra-queue/[id]/route.ts",
+    "app/api/v1/showing-hq/supra-queue/route.ts",
     "app/api/v1/showing-hq/visitors/[visitorId]/resend-flyer/route.ts",
     "app/api/v1/showing-hq/visitors/[visitorId]/route.ts",
     "app/api/v1/showing-hq/visitors/route.ts",

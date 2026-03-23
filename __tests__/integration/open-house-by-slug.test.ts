@@ -6,13 +6,14 @@
 import { GET } from "@/app/api/v1/open-houses/by-slug/[slug]/route";
 
 const mockOpenHouseFindFirst = jest.fn();
-jest.mock("@/lib/db", () => ({
-  prisma: {
+jest.mock("@/lib/db", () => {
+  const db = {
     openHouse: {
       findFirst: (...args: unknown[]) => mockOpenHouseFindFirst(...args),
     },
-  },
-}));
+  };
+  return { prisma: db, prismaAdmin: db };
+});
 
 const mockOpenHouse = {
   id: "oh-123",

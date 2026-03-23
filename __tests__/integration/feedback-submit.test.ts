@@ -8,8 +8,8 @@ const mockFeedbackRequestFindUnique = jest.fn();
 const mockFeedbackRequestUpdate = jest.fn();
 const mockShowingUpdate = jest.fn();
 
-jest.mock("@/lib/db", () => ({
-  prisma: {
+jest.mock("@/lib/db", () => {
+  const db = {
     feedbackRequest: {
       findUnique: (...args: unknown[]) => mockFeedbackRequestFindUnique(...args),
       update: (...args: unknown[]) => mockFeedbackRequestUpdate(...args),
@@ -17,8 +17,9 @@ jest.mock("@/lib/db", () => ({
     showing: {
       update: (...args: unknown[]) => mockShowingUpdate(...args),
     },
-  },
-}));
+  };
+  return { prisma: db, prismaAdmin: db };
+});
 
 beforeEach(() => {
   jest.clearAllMocks();
