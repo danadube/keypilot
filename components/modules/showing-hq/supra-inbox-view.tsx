@@ -24,7 +24,7 @@ import {
   SupraPropertyMatchStatus as PropMatch,
   SupraShowingMatchStatus as ShowMatch,
 } from "@prisma/client";
-import { AlertCircle, CheckCircle2, Inbox, ChevronDown } from "lucide-react";
+import { AlertCircle, CheckCircle2, Inbox, ChevronDown, Sparkles } from "lucide-react";
 
 function formatEnumLabel(value: string): string {
   return value
@@ -124,6 +124,29 @@ type ItemWithRelations = SupraQueueItem & {
   matchedShowing: { id: string; scheduledAt: Date } | null;
 };
 
+/** Same rules as POST …/apply — for disabling the Apply button and list hints */
+function getApplyReadiness(detail: ItemWithRelations | null): { ok: boolean; reasons: string[] } {
+  if (!detail) return { ok: false, reasons: [] };
+  if (TERMINAL_STATES.includes(detail.queueState)) {
+    return { ok: false, reasons: [] };
+  }
+  const reasons: string[] = [];
+  if (!detail.parsedScheduledAt) {
+    reasons.push("Set parsed scheduled date and time.");
+  }
+  const hasProp = Boolean(detail.matchedPropertyId?.trim());
+  const hasAddr = Boolean(
+    detail.parsedAddress1?.trim() &&
+      detail.parsedCity?.trim() &&
+      detail.parsedState?.trim() &&
+      detail.parsedZip?.trim()
+  );
+  if (!hasProp && !hasAddr) {
+    reasons.push("Link a matched property ID or fill address, city, state, and ZIP.");
+  }
+  return { ok: reasons.length === 0, reasons };
+}
+
 type FilterPreset =
   | "all"
   | "needs_review"
@@ -159,6 +182,13 @@ export function SupraInboxView() {
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [sampleMenuOpen, setSampleMenuOpen] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [applyConflict, setApplyConflict] = useState<{ id: string; scheduledAt: string }[] | null>(
+    null
+  );
+  const [applyDuplicateAck, setApplyDuplicateAck] = useState(false);
+
+  const applyReadiness = useMemo(() => getApplyReadiness(detail), [detail]);
 
   const load = useCallback(async () => {
     setError(null);
@@ -250,8 +280,49 @@ export function SupraInboxView() {
   });
 
   const openDetail = (row: ItemWithRelations) => {
+    setApplyConflict(null);
+    setApplyDuplicateAck(false);
     setDetail(normalizeItem(row));
     setModalOpen(true);
+  };
+
+  const handleApply = async () => {
+    if (!detail || !applyReadiness.ok) return;
+    setApplying(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/showing-hq/supra-queue/${detail.id}/apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmDuplicateOverride: applyDuplicateAck }),
+      });
+      const json = await res.json();
+      if (res.status === 409 && json.error?.code === "DUPLICATE_SHOWING_WINDOW") {
+        setApplyConflict(json.conflicts ?? []);
+        setError(json.error?.message ?? "Duplicate showing in time window.");
+        return;
+      }
+      if (!res.ok) throw new Error(json.error?.message ?? "Apply failed");
+      setApplyConflict(null);
+      setApplyDuplicateAck(false);
+      setModalOpen(false);
+      setDetail(null);
+      await load();
+      const d = json.data as {
+        createdProperty?: boolean;
+        updatedShowing?: boolean;
+      };
+      const base = d?.updatedShowing
+        ? "Applied: showing updated and queue item marked complete."
+        : "Applied: new showing created (source: Supra).";
+      setSuccessMessage(
+        d?.createdProperty ? `${base} A new property was created from the parsed address.` : base
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Apply failed");
+    } finally {
+      setApplying(false);
+    }
   };
 
   const patchItem = async (id: string, body: Record<string, unknown>) => {
@@ -266,6 +337,8 @@ export function SupraInboxView() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message ?? "Update failed");
       const updated = normalizeItem(json.data as ItemWithRelations);
+      setApplyConflict(null);
+      setApplyDuplicateAck(false);
       setDetail(updated);
       await load();
       if (TERMINAL_STATES.includes(updated.queueState)) {
@@ -648,7 +721,9 @@ export function SupraInboxView() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-kp-outline">
-                {displayedItems.map((row) => (
+                {displayedItems.map((row) => {
+                  const rowApplyOk = getApplyReadiness(row).ok;
+                  return (
                   <tr
                     key={row.id}
                     className={cn(
@@ -664,15 +739,22 @@ export function SupraInboxView() {
                         >
                           {row.subject}
                         </span>
+                        {rowApplyOk ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-kp-teal">
+                            <Sparkles className="h-3 w-3 shrink-0" />
+                            Apply ready
+                          </span>
+                        ) : null}
                         {isAwaitingDecision(row.queueState) &&
-                        row.queueState !== QueueStates.READY_TO_APPLY ? (
+                        row.queueState !== QueueStates.READY_TO_APPLY &&
+                        !rowApplyOk ? (
                           <span className="text-[10px] font-medium text-kp-gold">
                             Awaiting decision
                           </span>
                         ) : null}
-                        {row.queueState === QueueStates.READY_TO_APPLY ? (
+                        {row.queueState === QueueStates.READY_TO_APPLY && !rowApplyOk ? (
                           <span className="text-[10px] font-medium text-kp-teal">
-                            Ready for apply step (later)
+                            Ready state — finish required fields to apply
                           </span>
                         ) : null}
                       </div>
@@ -730,7 +812,8 @@ export function SupraInboxView() {
                       </Button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -741,13 +824,80 @@ export function SupraInboxView() {
         open={modalOpen}
         onOpenChange={(o) => {
           setModalOpen(o);
-          if (!o) setDetail(null);
+          if (!o) {
+            setDetail(null);
+            setApplyConflict(null);
+            setApplyDuplicateAck(false);
+          }
         }}
         title="Review Supra notification"
-        description="Confirm or edit parsed fields. Nothing is written to properties or showings until a future apply step."
+        description="Edit parsed fields, then Save changes. Use Apply changes to create or update the property and showing in KeyPilot."
         size="lg"
         footer={
           <div className="flex w-full flex-col gap-3">
+            {detail && !TERMINAL_STATES.includes(detail.queueState) ? (
+              <div className="rounded-lg border border-kp-teal/35 bg-kp-teal/[0.08] p-3">
+                <div className="flex items-start gap-2">
+                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-semibold text-kp-on-surface">Apply changes</p>
+                    <p className="mt-0.5 text-[11px] text-kp-on-surface-variant">
+                      Creates a property if needed, then creates or updates a showing (source: Supra). The queue
+                      item is marked applied.
+                    </p>
+                    {!applyReadiness.ok ? (
+                      <ul className="mt-2 list-inside list-disc text-[11px] text-kp-gold">
+                        {applyReadiness.reasons.map((r) => (
+                          <li key={r}>{r}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {applyConflict && applyConflict.length > 0 ? (
+                      <div className="mt-2 rounded-md border border-kp-outline bg-kp-surface-high p-2 text-[11px] text-kp-on-surface-variant">
+                        <p className="font-medium text-kp-on-surface">Conflicting showings (±2h window)</p>
+                        <ul className="mt-1 space-y-1 font-mono text-[10px]">
+                          {applyConflict.map((c) => (
+                            <li key={c.id}>
+                              {c.id.slice(0, 8)}… @ {new Date(c.scheduledAt).toLocaleString()}
+                            </li>
+                          ))}
+                        </ul>
+                        <label className="mt-2 flex cursor-pointer items-center gap-2 text-kp-on-surface">
+                          <input
+                            type="checkbox"
+                            className="h-3.5 w-3.5 rounded border-kp-outline"
+                            checked={applyDuplicateAck}
+                            onChange={(e) => setApplyDuplicateAck(e.target.checked)}
+                          />
+                          <span>I understand — apply anyway</span>
+                        </label>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="mt-3 w-full bg-kp-teal font-semibold text-kp-bg hover:bg-kp-teal/90 sm:w-auto"
+                  disabled={
+                    applying ||
+                    !applyReadiness.ok ||
+                    Boolean(applyConflict?.length && !applyDuplicateAck)
+                  }
+                  title={
+                    !applyReadiness.ok
+                      ? "Fix the items above before applying."
+                      : applyConflict?.length && !applyDuplicateAck
+                        ? "Confirm override when a duplicate exists."
+                        : undefined
+                  }
+                  onClick={handleApply}
+                >
+                  {applying ? "Applying…" : "Apply changes"}
+                </Button>
+              </div>
+            ) : null}
+
             <div className="flex flex-wrap gap-2 border-b border-kp-outline pb-3">
               <span className="w-full text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
                 Quick actions (saves current edits)
@@ -851,7 +1001,7 @@ export function SupraInboxView() {
                     {detail.queueState === QueueStates.FAILED_PARSE
                       ? "Treat the body as unusable unless you fix it manually below."
                       : detail.queueState === QueueStates.READY_TO_APPLY
-                        ? "You’ve marked this as ready. Apply (create/update showing) will be a separate step."
+                        ? "Marked ready to apply. Use Apply changes below to write the property and showing."
                         : isAwaitingDecision(detail.queueState)
                           ? "This item is waiting for a human decision — edit fields, then save or use quick actions."
                           : "This item is closed in the queue."}

@@ -62,5 +62,13 @@ export const UpdateSupraQueueItemSchema = z
   })
   .strict();
 
+/** POST apply — set confirmDuplicateOverride when server returned DUPLICATE_SHOWING_WINDOW */
+export const ApplySupraQueueItemSchema = z
+  .object({
+    confirmDuplicateOverride: z.boolean().optional(),
+  })
+  .strict();
+
 export type CreateSupraQueueItemInput = z.infer<typeof CreateSupraQueueItemSchema>;
 export type UpdateSupraQueueItemInput = z.infer<typeof UpdateSupraQueueItemSchema>;
+export type ApplySupraQueueItemInput = z.infer<typeof ApplySupraQueueItemSchema>;
