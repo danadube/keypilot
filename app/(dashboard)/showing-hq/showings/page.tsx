@@ -1,5 +1,5 @@
-import { ShowingsList } from "@/components/showing-hq/ShowingsList";
+import { ShowingsListView } from "@/components/modules/showing-hq/showings-list-view";
 
 export default function ShowingsPage() {
-  return <ShowingsList />;
+  return <ShowingsListView />;
 }
