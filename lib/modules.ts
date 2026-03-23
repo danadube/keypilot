@@ -6,7 +6,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
-  Home,
   Building2,
   Briefcase,
   Calendar,
@@ -111,8 +110,6 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     available: true,
     sidebar: [
       { label: "Dashboard", href: "/showing-hq", icon: LayoutDashboard, section: "OVERVIEW" },
-      { label: "PropertyVault", href: "/property-vault", icon: Building2, section: "PLATFORM" },
-      { label: "Home", href: "/", icon: Home, section: "PLATFORM" },
       { label: "All Showings", href: "/showing-hq/showings", icon: Calendar, section: "SHOWINGS" },
       { label: "Supra Inbox", href: "/showing-hq/supra-inbox", icon: Inbox, section: "SHOWINGS" },
       { label: "Feedback Requests", href: "/showing-hq/feedback-requests", icon: ClipboardCheck, section: "SHOWINGS" },
@@ -223,11 +220,11 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     href: "/settings",
     available: true,
     sidebar: [
-      { label: "Account", href: "/settings/account", icon: LayoutDashboard, section: "PLATFORM" },
-      { label: "Connections", href: "/settings/connections", icon: Settings, section: "PLATFORM" },
-      { label: "Automation", href: "/settings/automation", icon: Settings, section: "PLATFORM" },
-      { label: "AI", href: "/settings/ai", icon: Settings, section: "PLATFORM" },
-      { label: "Modules", href: "/settings/modules", icon: Settings, section: "PLATFORM" },
+      { label: "Account", href: "/settings/account", icon: LayoutDashboard, section: "ACCOUNT" },
+      { label: "Connections", href: "/settings/connections", icon: Settings, section: "ACCOUNT" },
+      { label: "Automation", href: "/settings/automation", icon: Settings, section: "ACCOUNT" },
+      { label: "AI", href: "/settings/ai", icon: Settings, section: "ACCOUNT" },
+      { label: "Modules", href: "/settings/modules", icon: Settings, section: "ACCOUNT" },
     ],
   },
 };

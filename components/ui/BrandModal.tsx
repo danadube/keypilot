@@ -78,19 +78,18 @@ export function BrandModal({
         ref={panelRef}
         tabIndex={-1}
         className={cn(
-          "relative z-10 w-full rounded-[var(--radius-lg)] border border-[var(--brand-border)] bg-[var(--brand-surface)] shadow-[var(--shadow-lg)]",
+          "relative z-10 w-full rounded-xl border border-kp-outline bg-kp-surface shadow-xl",
           sizeClasses[size],
           className
         )}
       >
         {(title || description || onOpenChange) && (
-          <div className="flex items-start justify-between gap-[var(--space-md)] border-b border-[var(--brand-border)] p-[var(--space-md)]">
-            <div>
+          <div className="flex items-start justify-between gap-3 border-b border-kp-outline px-4 pb-3 pt-4">
+            <div className="min-w-0 pr-2">
               {title && (
                 <h2
                   id="brand-modal-title"
-                  className="font-semibold text-[var(--brand-text)]"
-                  style={{ fontFamily: "var(--font-heading)", fontSize: "var(--text-h4-size)", lineHeight: "var(--text-h4-line)" }}
+                  className="text-base font-semibold leading-tight text-kp-on-surface"
                 >
                   {title}
                 </h2>
@@ -98,8 +97,7 @@ export function BrandModal({
               {description && (
                 <p
                   id="brand-modal-desc"
-                  className="mt-[var(--space-xs)] text-[var(--brand-text-muted)]"
-                  style={{ fontSize: "var(--text-body-size)", lineHeight: "var(--text-body-line)" }}
+                  className="mt-1 text-sm leading-snug text-kp-on-surface/80"
                 >
                   {description}
                 </p>
@@ -109,7 +107,7 @@ export function BrandModal({
               <button
                 type="button"
                 onClick={() => onOpenChange(false)}
-                className="rounded-[var(--radius-sm)] p-[var(--space-xs)] text-[var(--brand-text-muted)] hover:bg-[var(--brand-surface-alt)] hover:text-[var(--brand-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-primary)]"
+                className="rounded-md p-1 text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal/60"
                 aria-label="Close"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -119,11 +117,11 @@ export function BrandModal({
             )}
           </div>
         )}
-        <div className="max-h-[min(70vh,400px)] overflow-y-auto p-[var(--space-md)]">
+        <div className="max-h-[min(72vh,520px)] overflow-y-auto px-4 py-4">
           {children}
         </div>
         {footer && (
-          <div className="flex justify-end gap-[var(--space-sm)] border-t border-[var(--brand-border)] p-[var(--space-md)]">
+          <div className="flex justify-end gap-2 border-t border-kp-outline bg-kp-surface-high/40 px-4 py-3">
             {footer}
           </div>
         )}

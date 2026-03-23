@@ -397,7 +397,7 @@ export function DealsListView() {
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
       {/* ── Page header ─────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4 px-6 pb-5 pt-6 sm:px-8">
+      <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-3 sm:px-8">
         <div>
           <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
             Deals
@@ -409,7 +409,7 @@ export function DealsListView() {
         <button
           onClick={() => setCreateOpen(true)}
           className={cn(
-            "mt-1 shrink-0 rounded-lg bg-kp-gold px-4 py-2 text-sm font-semibold text-kp-bg",
+            "mt-0.5 shrink-0 rounded-lg bg-kp-gold px-3 py-1.5 text-xs font-semibold text-kp-bg",
             "transition-colors hover:bg-kp-gold-bright"
           )}
         >

@@ -1,14 +1,10 @@
 import { FollowUpsView } from "@/components/modules/showing-hq/follow-ups-view";
+import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 
 export default function ShowingHQFollowUpsPage() {
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-xl font-bold text-kp-on-surface">Follow-ups</h1>
-        <p className="mt-1 text-sm text-kp-on-surface-variant">
-          AI suggested tasks, email follow-ups, and call reminders.
-        </p>
-      </div>
+    <div className="flex flex-col gap-4">
+      <DashboardContextStrip message="Suggested tasks, email follow-ups, and reminders tied to open houses and showings." />
       <FollowUpsView />
     </div>
   );

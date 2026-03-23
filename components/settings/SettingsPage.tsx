@@ -1,27 +1,19 @@
 "use client";
 
 import { UserButton } from "@clerk/nextjs";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 
 export function SettingsPageContent() {
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Settings</h1>
+      <div>
+        <h1 className="text-xl font-bold text-kp-on-surface">Account</h1>
+        <p className="mt-0.5 text-sm text-kp-on-surface-variant">Manage your account and profile</p>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Account</CardTitle>
-          <CardDescription>
-            Manage your account and profile
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex items-center gap-4">
+      <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+        <h2 className="mb-1 text-sm font-semibold text-kp-on-surface">Profile</h2>
+        <p className="mb-4 text-xs text-kp-on-surface-variant">Manage your profile, sign out, or switch accounts.</p>
+        <div className="flex items-center gap-4">
           <UserButton
             afterSignOutUrl="/"
             appearance={{
@@ -30,28 +22,18 @@ export function SettingsPageContent() {
               },
             }}
           />
-          <div>
-            <p className="text-sm font-medium">Signed in with Clerk</p>
-            <p className="text-sm text-muted-foreground">
-              Use the button above to manage your profile, sign out, or switch
-              accounts.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+          <p className="text-sm text-kp-on-surface-variant">Signed in with Clerk</p>
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>KeyPilot</CardTitle>
-          <CardDescription>
-            Open House Lead Capture — Phase 1 MVP
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm text-muted-foreground">
-          <p>Features: properties, open houses, QR sign-in, visitors, follow-ups, seller reports, PDF export, email sending.</p>
+      <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+        <h2 className="mb-1 text-sm font-semibold text-kp-on-surface">KeyPilot</h2>
+        <p className="mb-3 text-xs text-kp-on-surface-variant">Open House Lead Capture</p>
+        <div className="space-y-1.5 text-xs text-kp-on-surface-variant">
+          <p>Properties · Open houses · QR sign-in · Visitors · Follow-ups · Seller reports · PDF export · Email sending</p>
           <p>More settings coming in future updates.</p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

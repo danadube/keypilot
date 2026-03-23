@@ -27,6 +27,7 @@ import { QuickCreateEventModal } from "@/components/showing-hq/QuickCreateEventM
 import { EditEventModal } from "@/components/showing-hq/EditEventModal";
 import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
 import { ShowingHQWorkbenchQueue } from "@/components/showing-hq/ShowingHQWorkbenchQueue";
+import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 
 // ── Types (mirrored exactly from API response) ────────────────────────────────
 
@@ -169,8 +170,8 @@ function KpiCard({
     <Link
       href={href}
       className={cn(
-        "group flex min-h-[84px] flex-col justify-between rounded-xl border border-kp-outline",
-        "bg-kp-surface px-4 py-3 transition-colors hover:border-kp-teal/40 hover:bg-kp-surface-high"
+        "group flex min-h-[96px] flex-col justify-between rounded-xl border border-kp-outline shadow-sm",
+        "bg-kp-surface-high px-4 py-3 transition-colors hover:border-kp-teal/40 hover:bg-kp-surface-higher"
       )}
     >
       <span className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
@@ -745,23 +746,28 @@ export function ShowingHQDashboardView() {
     return tb - ta;
   });
 
+  const scheduleCount = scheduleItems.length;
+  const scheduleSentence =
+    scheduleCount > 0
+      ? `${scheduleCount} event${scheduleCount === 1 ? "" : "s"} on today's schedule.`
+      : "Nothing on today's schedule yet.";
+  const followSentence =
+    kpiFollowUps.overdue > 0
+      ? `${kpiFollowUps.overdue} follow-up${kpiFollowUps.overdue === 1 ? "" : "s"} overdue.`
+      : kpiFollowUps.pending > 0
+        ? `${kpiFollowUps.pending} follow-up${kpiFollowUps.pending === 1 ? "" : "s"} pending review.`
+        : "No follow-ups pending — you're caught up.";
+  const dashboardContextMessage = `${scheduleSentence} ${followSentence}`;
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="flex min-h-0 flex-col gap-4 bg-transparent">
-      {/* ── Page header ─────────────────────────────────────────────────── */}
-      <div className="px-1 pb-1 pt-2">
-        <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
-          Showing HQ
-        </h1>
-        <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-          Open houses · private showings · visitor follow-up
-        </p>
-      </div>
+      <DashboardContextStrip label="Today" message={dashboardContextMessage} />
 
-      {/* ── KPI strip ───────────────────────────────────────────────────── */}
+      {/* ── KPI strip (title lives in shell header) ─────────────────────── */}
       <section
-        className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
         aria-label="Operational metrics"
       >
         <KpiCard
@@ -815,16 +821,16 @@ export function ShowingHQDashboardView() {
 
       {/* ── Schedule + Queue ─────────────────────────────────────────────── */}
       <div
-        className="grid min-h-0 items-stretch gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(300px,380px)]"
+        className="grid min-h-0 items-stretch gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,360px)]"
         role="region"
         aria-label="Schedule and queue"
       >
         {/* Calendar panel — interior calendar component deferred */}
-        <div className="flex min-h-[400px] flex-col overflow-hidden rounded-xl border border-kp-outline bg-kp-surface lg:min-h-[460px]">
-          <div className="flex flex-wrap items-end justify-between gap-2 border-b border-kp-outline bg-kp-surface-high px-4 py-2.5">
+        <div className="flex min-h-[400px] flex-col overflow-hidden rounded-xl border border-kp-outline bg-kp-surface-high lg:min-h-[460px]">
+          <div className="flex flex-wrap items-end justify-between gap-2 border-b border-kp-outline bg-kp-surface-higher px-4 py-2.5">
             <div>
               <h2 className="text-xs font-semibold text-kp-on-surface">Schedule</h2>
-              <p className="text-[10px] text-kp-on-surface-variant">
+              <p className="text-[10px] text-kp-on-surface/80">
                 Week · planning · Month · open houses & showings
               </p>
             </div>
@@ -918,7 +924,7 @@ export function ShowingHQDashboardView() {
       )}
 
       {/* ── Secondary panels ─────────────────────────────────────────────── */}
-      <div className="grid gap-3 xl:grid-cols-3">
+      <div className="grid gap-4 xl:grid-cols-3">
         <ActivityPanel
           items={activityItems}
           formatTimeContextual={formatTimeContextual}

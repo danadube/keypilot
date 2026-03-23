@@ -7,7 +7,7 @@ import type { ModuleId } from "./modules";
 
 export type ModuleAccessMap = Record<string, boolean>;
 
-/** Default: ShowingHQ enabled, others require upgrade */
+/** Default: ShowingHQ + property-vault enabled; CRM/premium modules require upgrade */
 const DEFAULT_ACCESS: ModuleAccessMap = {
   "showing-hq": true,
   "client-keep": false,
@@ -23,7 +23,7 @@ const DEFAULT_ACCESS: ModuleAccessMap = {
 
 /**
  * Check if user has access to a module.
- * When moduleAccess is null, uses defaults (ShowingHQ + property-vault + settings enabled).
+ * When moduleAccess is null, uses defaults (showing-hq + property-vault + home/settings; CRM locked).
  */
 export function hasModuleAccess(
   moduleAccess: ModuleAccessMap | null | undefined,

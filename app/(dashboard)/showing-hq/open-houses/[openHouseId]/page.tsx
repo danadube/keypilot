@@ -402,7 +402,7 @@ export default function ShowingHQOpenHouseDetailPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
           {data.qrCodeDataUrl && (
             <div className="shrink-0">
-              <div className="rounded-lg border border-kp-outline bg-white p-3">
+              <div className="rounded-lg border border-kp-outline bg-kp-surface p-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={data.qrCodeDataUrl}

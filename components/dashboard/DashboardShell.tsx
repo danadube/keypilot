@@ -6,28 +6,38 @@ import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { Building2, Calendar } from "lucide-react";
 import { ProductTierProvider } from "@/components/ProductTierProvider";
-import { TopModuleNav } from "@/components/layout/TopModuleNav";
 import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
 
-/** ShowingHQ + open-houses use sidebar-first nav; hide module tab bar there */
-function useHideTopModuleNav(): boolean {
-  const pathname = usePathname() ?? "";
-  return (
-    pathname === "/showing-hq" ||
-    pathname.startsWith("/showing-hq/") ||
-    pathname.startsWith("/open-houses")
-  );
+function getPageTitle(pathname: string): string {
+  if (pathname === "/showing-hq") return "ShowingHQ";
+  if (pathname.startsWith("/showing-hq/showings/new")) return "Schedule Showing";
+  if (pathname.startsWith("/showing-hq/showings")) return "Showings";
+  if (pathname.startsWith("/showing-hq/visitors")) return "Visitors";
+  if (pathname.startsWith("/showing-hq/follow-ups")) return "Follow-ups";
+  if (pathname.startsWith("/showing-hq/supra-inbox")) return "Supra Inbox";
+  if (pathname.startsWith("/showing-hq/feedback-requests")) return "Feedback Requests";
+  if (pathname.startsWith("/showing-hq/activity")) return "Activity";
+  if (pathname.startsWith("/showing-hq/templates")) return "Templates";
+  if (pathname.startsWith("/open-houses/new")) return "New Open House";
+  if (pathname === "/open-houses/sign-in") return "Sign-in & QR";
+  if (/^\/open-houses\/[^/]+\/sign-in/.test(pathname)) return "Host sign-in";
+  if (pathname.startsWith("/open-houses")) return "Open Houses";
+  if (pathname.startsWith("/properties/new")) return "New Property";
+  if (pathname.startsWith("/properties")) return "Properties";
+  if (pathname.startsWith("/property-vault")) return "PropertyVault";
+  if (pathname.startsWith("/contacts")) return "Contacts";
+  if (pathname.startsWith("/deals")) return "Deals";
+  if (pathname.startsWith("/client-keep")) return "ClientKeep";
+  if (pathname.startsWith("/settings")) return "Settings";
+  if (pathname === "/") return "Overview";
+  return "KeyPilot";
 }
-
-const HEADER_HEIGHT_DEFAULT = 64;
-/** Align with ShowingHQ sidebar header block (~ pt-4 + title + tagline + pb-5) */
-const HEADER_HEIGHT_SHOWING_HQ_WORKBENCH = 88;
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
-  const hideTopNav = useHideTopModuleNav();
   const isShowingHQWorkbench = pathname === "/showing-hq";
   const workbenchDateLine = React.useMemo(
     () =>
@@ -42,70 +52,51 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ProductTierProvider>
-    <div className="flex min-h-screen bg-kp-bg">
+    <div className="kp-dashboard-app flex min-h-screen bg-kp-bg">
       {/* Sidebar: full-height branded rail from top */}
       <ModuleSidebar />
 
       {/* Right: header bar + content */}
       <div className="flex min-h-0 flex-1 flex-col">
         <header
-          className="sticky top-0 z-20 flex w-full shrink-0 items-center border-b border-kp-outline bg-kp-surface"
-          style={{
-            minHeight: isShowingHQWorkbench
-              ? HEADER_HEIGHT_SHOWING_HQ_WORKBENCH
-              : HEADER_HEIGHT_DEFAULT,
-          }}
+          className={cn(
+            "sticky top-0 z-20 flex w-full shrink-0 items-stretch border-b border-kp-outline bg-kp-surface",
+            shellTopRowHeightClass(pathname)
+          )}
         >
-          <div
-            className={cn(
-              "flex min-w-0 flex-1 items-center overflow-hidden pl-6 pr-4 md:pl-8 md:pr-6",
-              isShowingHQWorkbench ? "py-2" : "h-full"
-            )}
-          >
-            {isShowingHQWorkbench ? (
-              <div className="min-w-0">
-                <h1
-                  className="truncate text-base font-bold leading-tight tracking-tight text-kp-on-surface md:text-lg"
-                  style={{ fontFamily: "var(--font-heading)" }}
-                >
-                  ShowingHQ Workbench
-                </h1>
-                <p className="mt-0.5 truncate text-[11px] leading-snug text-kp-on-surface-variant">
+          <div className="flex min-w-0 flex-1 items-center overflow-hidden pl-4 pr-3 md:pl-6 md:pr-4">
+            <div className="min-w-0">
+              <h1 className="truncate text-sm font-semibold leading-tight text-kp-on-surface md:text-base">
+                {getPageTitle(pathname)}
+              </h1>
+              {isShowingHQWorkbench ? (
+                <p className="mt-0.5 truncate text-[10px] leading-tight text-kp-on-surface-variant">
                   {workbenchDateLine}
                 </p>
-              </div>
-            ) : hideTopNav ? (
-              <span className="sr-only">Navigation</span>
-            ) : (
-              <TopModuleNav />
-            )}
+              ) : null}
+            </div>
           </div>
-          <div
-            className={cn(
-              "flex shrink-0 items-center gap-2 border-l border-kp-outline bg-kp-surface px-3 py-2 md:gap-3 md:px-4",
-              isShowingHQWorkbench ? "min-h-[88px]" : "min-h-[64px]"
-            )}
-          >
+          <div className="flex shrink-0 items-center gap-1.5 border-l border-kp-outline bg-kp-surface px-2.5 md:gap-2 md:px-3.5">
             {isShowingHQWorkbench ? (
               <>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 shrink-0 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high hover:text-kp-on-surface"
+                  className="h-7 shrink-0 border-kp-outline bg-transparent px-2.5 text-[11px] text-kp-on-surface hover:bg-kp-surface-high hover:text-kp-on-surface [&_svg]:h-3 [&_svg]:w-3"
                   asChild
                 >
                   <Link href="/properties/new">
-                    <Building2 className="mr-1.5 h-3.5 w-3.5" />
+                    <Building2 className="mr-1 h-3 w-3" />
                     New property
                   </Link>
                 </Button>
                 <Button
                   size="sm"
-                  className="h-8 shrink-0 border-0 bg-kp-gold text-xs text-kp-bg hover:bg-kp-gold-bright"
+                  className="h-7 shrink-0 border-0 bg-kp-gold px-2.5 text-[11px] font-semibold text-kp-bg hover:bg-kp-gold-bright [&_svg]:h-3 [&_svg]:w-3"
                   asChild
                 >
                   <Link href="/open-houses/new">
-                    <Calendar className="mr-1.5 h-3.5 w-3.5" />
+                    <Calendar className="mr-1 h-3 w-3" />
                     Create open house
                   </Link>
                 </Button>
@@ -115,7 +106,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-auto bg-kp-bg p-8 md:p-10">
+        <main className="min-h-0 flex-1 overflow-auto bg-kp-bg px-4 pb-5 pt-2 md:px-6 md:pb-6 md:pt-3">
           <div className="mx-auto min-h-[50vh]" style={{ maxWidth: 1280 }}>
             {children}
           </div>

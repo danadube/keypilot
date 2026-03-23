@@ -13,6 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { kpCalendarModalField } from "@/components/showing-hq/calendar-modal-field-classes";
+import { cn } from "@/lib/utils";
 import { Copy, Check, ClipboardCheck } from "lucide-react";
 
 type Property = { id: string; address1: string; city: string; state: string };
@@ -201,13 +203,13 @@ export function EditEventModal({
       description={typeLabel}
       size="md"
       footer={
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
+        <div className="flex w-full flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
             {canDelete && (
               <Button
                 type="button"
                 variant="ghost"
-                className="text-destructive hover:text-destructive"
+                className="text-red-400 hover:bg-red-950/30 hover:text-red-300"
                 disabled={deleting || submitting}
                 onClick={handleDelete}
               >
@@ -215,45 +217,51 @@ export function EditEventModal({
               </Button>
             )}
           </div>
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className={kpCalendarModalField.buttonCancel}
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
             <Button
               type="submit"
               form="edit-event-form"
               disabled={!canSave || submitting || loading}
+              className={kpCalendarModalField.buttonSave}
             >
-              {submitting ? "Saving…" : "Save"}
+              {submitting ? "Saving…" : "Save changes"}
             </Button>
           </div>
         </div>
       }
     >
       {loading ? (
-        <p className="text-sm text-slate-500">Loading event…</p>
+        <p className={kpCalendarModalField.mutedHelp}>Loading event…</p>
       ) : (
-        <form id="edit-event-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form id="edit-event-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
           {error && (
-            <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300" role="alert">
+            <p className={kpCalendarModalField.error} role="alert">
               {error}
             </p>
           )}
 
-          <div className="space-y-2">
-            <Label>Event type</Label>
-            <p className="text-sm font-medium text-[var(--brand-text)]">{typeLabel}</p>
+          <div className="space-y-1.5">
+            <Label className={kpCalendarModalField.label}>Event type</Label>
+            <p className="text-sm font-medium text-kp-on-surface">{typeLabel}</p>
           </div>
 
-          <div className="space-y-2">
-            <Label>Property</Label>
+          <div className="space-y-1.5">
+            <Label className={kpCalendarModalField.label}>Property</Label>
             <Select value={propertyId} onValueChange={setPropertyId}>
-              <SelectTrigger>
+              <SelectTrigger className={kpCalendarModalField.selectTrigger}>
                 <SelectValue placeholder="Select property" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className={kpCalendarModalField.selectContent}>
                 {properties.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
+                  <SelectItem key={p.id} value={p.id} className={kpCalendarModalField.selectItem}>
                     {p.address1}, {p.city}, {p.state}
                   </SelectItem>
                 ))}
@@ -261,53 +269,65 @@ export function EditEventModal({
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Date</Label>
-              <Input
-                type="date"
-                value={dateStr}
-                onChange={(e) => setDateStr(e.target.value)}
-              />
+          <div
+            className={cn(
+              kpCalendarModalField.scheduleChrome,
+              "kp-calendar-modal-datetime space-y-3"
+            )}
+          >
+            <p className={kpCalendarModalField.scheduleTitle}>Date & time</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className={kpCalendarModalField.label}>Date</Label>
+                <Input
+                  type="date"
+                  value={dateStr}
+                  onChange={(e) => setDateStr(e.target.value)}
+                  className={kpCalendarModalField.inputNativePicker}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className={kpCalendarModalField.label}>Start time</Label>
+                <Input
+                  type="time"
+                  value={startTimeStr}
+                  onChange={(e) => setStartTimeStr(e.target.value)}
+                  className={kpCalendarModalField.inputNativePicker}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Start time</Label>
-              <Input
-                type="time"
-                value={startTimeStr}
-                onChange={(e) => setStartTimeStr(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {isOpenHouse && (
-            <>
-              <div className="space-y-2">
-                <Label>End time</Label>
+            {isOpenHouse && (
+              <div className="space-y-1.5 sm:max-w-[calc(50%-0.375rem)]">
+                <Label className={kpCalendarModalField.label}>End time</Label>
                 <Input
                   type="time"
                   value={endTimeStr}
                   onChange={(e) => setEndTimeStr(e.target.value)}
+                  className={kpCalendarModalField.inputNativePicker}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Title</Label>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Open House · 123 Main St"
-                />
-              </div>
-            </>
+            )}
+          </div>
+
+          {isOpenHouse && (
+            <div className="space-y-1.5">
+              <Label className={kpCalendarModalField.label}>Title</Label>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="e.g. Open House · 123 Main St"
+                className={kpCalendarModalField.input}
+              />
+            </div>
           )}
 
-          <div className="space-y-2">
-            <Label>Notes</Label>
+          <div className="space-y-1.5">
+            <Label className={kpCalendarModalField.label}>Notes</Label>
             <Textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional notes"
-              className="min-h-[60px] resize-y text-sm"
+              className={cn("min-h-[60px] resize-y text-sm", kpCalendarModalField.textarea)}
               rows={2}
             />
           </div>
@@ -326,7 +346,7 @@ export function EditEventModal({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="mt-2"
+                  className={cn("mt-2", kpCalendarModalField.buttonCancel)}
                   onClick={() => {
                     const url = typeof window !== "undefined" ? `${window.location.origin}/feedback/${feedbackRequest.token}` : "";
                     navigator.clipboard.writeText(url).then(() => {

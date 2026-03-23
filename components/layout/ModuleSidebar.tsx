@@ -4,15 +4,63 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Lock } from "lucide-react";
-import { FeedbackButton } from "@/components/showing-hq/FeedbackButton";
+import {
+  Lock,
+  Settings,
+  LayoutDashboard,
+  Building2,
+  Calendar,
+  Users,
+  MapPin,
+  TrendingUp,
+  Megaphone,
+} from "lucide-react";
 import { MODULES, getModuleFromPath } from "@/lib/modules";
+import { UPGRADE_MODULES } from "@/lib/module-access";
 import { useProductTier } from "@/components/ProductTierProvider";
-import { getUpgradeModuleIds } from "@/lib/upgrade-modules";
 import { APP_VERSION, APP_COMMIT } from "@/lib/app-version";
-import type { ModuleSidebarItem } from "@/lib/modules";
+import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
+import type { ModuleConfig, ModuleId, ModuleSidebarItem } from "@/lib/modules";
 
-const SIDEBAR_WIDTH = 240;
+const SIDEBAR_WIDTH = 200;
+
+const FEEDBACK_MAILTO =
+  "mailto:feedback@keypilot.app?subject=" + encodeURIComponent("KeyPilot feedback");
+
+/** Platform rail order: Dashboard first, then modules (not home module id — uses "/"). */
+const PLATFORM_MODULE_IDS: ModuleId[] = [
+  "property-vault",
+  "showing-hq",
+  "client-keep",
+  "farm-trackr",
+  "seller-pulse",
+  "market-pilot",
+];
+
+const MODULE_ICON: Partial<Record<ModuleId, React.ComponentType<{ className?: string }>>> = {
+  "property-vault": Building2,
+  "showing-hq": Calendar,
+  "client-keep": Users,
+  "farm-trackr": MapPin,
+  "seller-pulse": TrendingUp,
+  "market-pilot": Megaphone,
+};
+
+/**
+ * Child links under an expanded module:
+ * - Exclude Settings (belongs under System).
+ * - Exclude items whose href is the module root (avoids a second "Dashboard/Overview" row
+ *   under the parent module label — single parent-child model).
+ */
+function getModuleChildNavItems(moduleConfig: ModuleConfig): ModuleSidebarItem[] {
+  const root = moduleConfig.href;
+  return moduleConfig.sidebar.filter(
+    (item) =>
+      item.section !== "SYSTEM" &&
+      item.href !== "/settings" &&
+      item.href !== root
+  );
+}
 
 function isItemActive(pathname: string, item: ModuleSidebarItem): boolean {
   if (pathname === item.href) return true;
@@ -23,167 +71,244 @@ function isItemActive(pathname: string, item: ModuleSidebarItem): boolean {
   return false;
 }
 
-function groupBySection(items: ModuleSidebarItem[]) {
-  const groups: { section?: string; items: ModuleSidebarItem[] }[] = [];
-  let currentSection: string | undefined;
-  let currentItems: ModuleSidebarItem[] = [];
-
-  for (const item of items) {
-    const section = item.section;
-    if (section !== currentSection) {
-      if (currentItems.length > 0) {
-        groups.push({ section: currentSection, items: currentItems });
-      }
-      currentSection = section;
-      currentItems = [item];
-    } else {
-      currentItems.push(item);
-    }
-  }
-  if (currentItems.length > 0) {
-    groups.push({ section: currentSection, items: currentItems });
-  }
-  return groups;
+/** Indented child links — single pattern for platform modules, orphans, and Settings. */
+function ModuleChildNavList({
+  items,
+  pathname,
+  ariaLabel,
+}: {
+  items: ModuleSidebarItem[];
+  pathname: string;
+  ariaLabel: string;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <ul
+      className="ml-2 space-y-0.5 border-l border-white/15 py-0.5 pl-4"
+      aria-label={ariaLabel}
+    >
+      {items.map((item) => {
+        const SubIcon = item.icon;
+        const subActive = isItemActive(pathname, item);
+        return (
+          <li key={item.href + item.label}>
+            <Link
+              href={item.href}
+              className={cn(
+                "flex items-center gap-2 rounded-md py-1.5 pl-2 pr-2 text-[13px] transition-colors",
+                "text-slate-400 hover:bg-white/5 hover:text-slate-100",
+                subActive &&
+                  "bg-[#4BAED8]/10 font-medium text-white ring-1 ring-[#4BAED8]/25"
+              )}
+            >
+              {SubIcon ? (
+                <SubIcon className="h-[15px] w-[15px] shrink-0 opacity-80" />
+              ) : null}
+              <span className="min-w-0 truncate">{item.label}</span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 export function ModuleSidebar() {
   const pathname = usePathname();
   const activeId = getModuleFromPath(pathname);
-  const mod = MODULES[activeId];
-  const items = mod.sidebar;
-  const groups = groupBySection(items);
   const { hasModuleAccess: checkAccess, isLoading } = useProductTier();
-  const upgradeIds = getUpgradeModuleIds();
-  const lockedModules = isLoading ? [] : upgradeIds.filter((id) => !checkAccess(id));
+
+  const settingsMod = MODULES.settings;
+  const settingsChildItems = getModuleChildNavItems(settingsMod);
+
+  const dashboardActive = pathname === "/" || activeId === "home";
 
   return (
     <aside
       className="flex shrink-0 flex-col border-r border-kp-outline text-slate-100"
       style={{ width: SIDEBAR_WIDTH, backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)" }}
-      aria-label={`${mod.name} navigation`}
+      aria-label="Platform navigation"
     >
-      {/* Sidebar header: ShowingHQ as primary product identity (or module name) */}
       <div
         className={cn(
-          "shrink-0 border-b border-white/10 px-4",
-          activeId === "showing-hq"
-            ? "flex min-h-[88px] flex-col justify-center py-3"
-            : "pt-4 pb-5"
+          "flex shrink-0 items-center border-b border-kp-outline px-4",
+          shellTopRowHeightClass(pathname ?? "")
         )}
       >
-        {activeId === "showing-hq" ? (
-          <>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h2
-                className="text-[24px] font-bold tracking-tight text-white leading-none"
-                style={{ letterSpacing: "-0.01em" }}
-              >
-                Showing<span className="text-[#4BAED8]">HQ</span>
-              </h2>
-              <span className="shrink-0 rounded-full border border-[#4BAED8]/60 bg-[#4BAED8]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#7DD3F5]">
-                Beta
-              </span>
-            </div>
-            <p className="mt-2 text-[11px] leading-relaxed text-slate-400">
-              Private showings & open house command center.
-            </p>
-          </>
-        ) : (
-          <h2 className="text-sm font-semibold text-slate-50">{mod.name}</h2>
-        )}
-      </div>
-      <nav className="flex-1 overflow-auto py-3">
-        {groups.map(({ section, items: groupItems }) => (
-          <div key={section ?? "main"} className="mb-4 last:mb-2">
-            {section && (
-              <p className="mb-1.5 px-5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                {section}
-              </p>
-            )}
-            <ul className="space-y-0.5 px-2">
-              {groupItems.map((item) => {
-                const Icon = item.icon;
-                const active = isItemActive(pathname, item);
-                return (
-                  <li key={item.href + item.label}>
-                    <Link
-                      href={item.href}
-                      className={cn(
-                        "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
-                        "text-slate-400 hover:text-white hover:bg-white/5",
-                        active &&
-                          "bg-[#4BAED8]/20 font-semibold text-white border-l-4 border-l-[#4BAED8] pl-[calc(0.75rem+4px)]"
-                      )}
-                    >
-                      {Icon && <Icon className="h-[18px] w-[18px] shrink-0 opacity-85" />}
-                      {item.label}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ))}
-      </nav>
-      {lockedModules.length > 0 && (
-        <div className="shrink-0 border-t border-white/10 px-5 py-3">
-          <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-            Upgrade Your Platform
-          </p>
-          <ul className="space-y-0.5">
-            {lockedModules.map((id) => {
-              const cfg = MODULES[id];
-              if (!cfg) return null;
-              const isActive = pathname === `/upgrade/${id}`;
-              return (
-                <li key={id}>
-                  <Link
-                    href={`/upgrade/${id}`}
-                    className={cn(
-                      "flex items-center gap-3 rounded-md px-2.5 py-2.5 text-sm transition-colors",
-                      "text-slate-400 hover:text-white hover:bg-white/5",
-                      isActive &&
-                        "bg-[#4BAED8]/20 font-semibold text-white border-l-4 border-l-[#4BAED8] pl-[calc(0.75rem+4px)]"
-                    )}
-                  >
-                    <Lock className="h-[18px] w-[18px] shrink-0 opacity-80" />
-                    {cfg.name}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-      {activeId === "showing-hq" && (
-        <div className="shrink-0 border-t border-white/10 p-4">
-          <FeedbackButton
-            variant="outline"
-            size="sm"
-            className="w-full justify-center border-white/15 bg-white/5 text-slate-300 hover:bg-white/15 hover:text-white"
-          >
-            Send feedback
-          </FeedbackButton>
-        </div>
-      )}
-      <footer className="shrink-0 border-t border-slate-700/40 px-4 pt-5 pb-3">
         <Link
           href="/"
-          className="mb-2 block w-full transition-opacity hover:opacity-90"
+          className="flex min-w-0 items-center transition-opacity hover:opacity-90"
           aria-label="KeyPilot home"
         >
           <Image
             src="/KeyPilot-logo.png?v=4"
-            alt=""
+            alt="KeyPilot"
             width={200}
             height={60}
-            className="h-14 w-auto max-w-full object-contain object-left"
+            className="h-9 w-auto max-w-full object-contain object-left"
           />
         </Link>
-        <p className="text-xs text-slate-400" aria-label="App version">
-          KeyPilot v{APP_VERSION}
-          {APP_COMMIT ? ` • ${APP_COMMIT}` : null}
+      </div>
+
+      <nav className="flex-1 overflow-auto py-3" aria-label="Module navigation">
+        <div className="mb-1 px-2">
+          <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            Platform
+          </p>
+          <ul className="space-y-0.5">
+            <li>
+              <Link
+                href="/"
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                  "text-slate-400 hover:bg-white/5 hover:text-white",
+                  dashboardActive &&
+                    "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
+                )}
+              >
+                <LayoutDashboard className="h-[18px] w-[18px] shrink-0 opacity-85" />
+                Dashboard
+              </Link>
+            </li>
+
+            {PLATFORM_MODULE_IDS.map((id) => {
+              const cfg = MODULES[id];
+              if (!cfg) return null;
+              const Icon = MODULE_ICON[id];
+              const isActiveModule = activeId === id;
+              const isUpgrade = UPGRADE_MODULES.includes(id);
+              const hasAccess = isLoading || checkAccess(id);
+              const isLocked = isUpgrade && !hasAccess && !isActiveModule;
+              const childItems = getModuleChildNavItems(cfg);
+              const showChildren = isActiveModule && !isLocked && childItems.length > 0;
+
+              if (isLocked) {
+                return (
+                  <li key={id}>
+                    <Link
+                      href={`/upgrade/${id}`}
+                      className={cn(
+                        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                        "text-slate-500 hover:bg-white/5 hover:text-slate-400",
+                        pathname === `/upgrade/${id}` &&
+                          "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
+                      )}
+                    >
+                      <Lock className="h-[18px] w-[18px] shrink-0 opacity-70" />
+                      <span className="flex-1 truncate">{cfg.name}</span>
+                    </Link>
+                  </li>
+                );
+              }
+
+              return (
+                <li key={id} className="space-y-0.5">
+                  <Link
+                    href={cfg.href}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                      "text-slate-400 hover:bg-white/5 hover:text-white",
+                      isActiveModule &&
+                        "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
+                    )}
+                  >
+                    {Icon ? (
+                      <Icon className="h-[18px] w-[18px] shrink-0 opacity-85" />
+                    ) : (
+                      <span className="h-[18px] w-[18px] shrink-0" />
+                    )}
+                    {cfg.name}
+                  </Link>
+
+                  {showChildren ? (
+                    <ModuleChildNavList
+                      items={childItems}
+                      pathname={pathname}
+                      ariaLabel={`${cfg.name} pages`}
+                    />
+                  ) : null}
+                </li>
+              );
+            })}
+
+            {/* Routes like /transactions, /insight not listed above — keep one inline row + children */}
+            {(() => {
+              if (
+                activeId === "home" ||
+                activeId === "settings" ||
+                PLATFORM_MODULE_IDS.includes(activeId)
+              ) {
+                return null;
+              }
+              const orphan = MODULES[activeId];
+              if (!orphan) return null;
+              const childItems = getModuleChildNavItems(orphan);
+              return (
+                <li key={orphan.id} className="space-y-0.5">
+                  <Link
+                    href={orphan.href}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                      "text-slate-400 hover:bg-white/5 hover:text-white",
+                      "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
+                    )}
+                  >
+                    <LayoutDashboard className="h-[18px] w-[18px] shrink-0 opacity-85" />
+                    {orphan.name}
+                  </Link>
+                  <ModuleChildNavList
+                    items={childItems}
+                    pathname={pathname}
+                    ariaLabel={`${orphan.name} pages`}
+                  />
+                </li>
+              );
+            })()}
+          </ul>
+        </div>
+      </nav>
+
+      <div className="shrink-0 border-t border-white/10 px-2 py-2">
+        <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          System
         </p>
+        <ul className="space-y-0.5">
+          <li className="space-y-0.5">
+            <Link
+              href="/settings"
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                "text-slate-400 hover:bg-white/5 hover:text-white",
+                pathname.startsWith("/settings") &&
+                  "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
+              )}
+            >
+              <Settings className="h-[18px] w-[18px] shrink-0 opacity-85" />
+              Settings
+            </Link>
+
+            {activeId === "settings" ? (
+              <ModuleChildNavList
+                items={settingsChildItems}
+                pathname={pathname}
+                ariaLabel="Settings pages"
+              />
+            ) : null}
+          </li>
+        </ul>
+      </div>
+
+      <footer className="shrink-0 border-t border-slate-700/40 px-4 py-3">
+        <p className="text-[11px] text-slate-500" aria-label="App version">
+          KeyPilot v{APP_VERSION}
+          {APP_COMMIT ? ` · ${APP_COMMIT}` : null}
+        </p>
+        <a
+          href={FEEDBACK_MAILTO}
+          className="mt-2 inline-block text-[11px] text-slate-500 underline-offset-2 hover:text-slate-300 hover:underline"
+        >
+          Send feedback
+        </a>
       </footer>
     </aside>
   );
