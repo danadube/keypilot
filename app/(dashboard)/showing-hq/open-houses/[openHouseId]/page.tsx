@@ -3,17 +3,11 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
-import { BrandCard } from "@/components/ui/BrandCard";
-import { BrandSectionHeader } from "@/components/ui/BrandSectionHeader";
-import { BrandButton } from "@/components/ui/BrandButton";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { LeadStatusBadge } from "@/components/shared/LeadStatusBadge";
 import { InterestBadge } from "@/components/shared/InterestBadge";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, UserPlus, CheckSquare, QrCode, Copy, RefreshCw, FileText } from "lucide-react";
 import { InviteHostDialog } from "@/components/open-houses/InviteHostDialog";
 import {
   Select,
@@ -22,6 +16,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Users,
+  UserPlus,
+  CheckSquare,
+  QrCode,
+  Copy,
+  RefreshCw,
+  FileText,
+  ArrowLeft,
+} from "lucide-react";
 
 type OpenHouseData = {
   hostUserId?: string;
@@ -56,6 +60,13 @@ type OpenHouseData = {
   draftStatusCounts: { DRAFT: number; REVIEWED: number; SENT_MANUAL: number; ARCHIVED: number };
   qrCodeDataUrl: string;
 };
+
+function draftStatusClass(status: string) {
+  if (status === "SENT_MANUAL") return "text-emerald-400";
+  if (status === "REVIEWED") return "text-kp-teal";
+  if (status === "ARCHIVED") return "text-kp-on-surface-variant";
+  return "text-kp-gold"; // DRAFT
+}
 
 export default function ShowingHQOpenHouseDetailPage() {
   const params = useParams();
@@ -175,262 +186,288 @@ export default function ShowingHQOpenHouseDetailPage() {
     );
 
   return (
-    <div className="min-h-0 flex flex-col gap-6 bg-transparent">
-      <ShowingHQPageHero
-        title={data.title}
-        description={`${address} · ${formatDate(data.startAt)}`}
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            <Select
-              value={data.status}
-              onValueChange={handleStatusChange}
-              disabled={updatingStatus}
-            >
-              <SelectTrigger className="w-[140px] border-[var(--brand-border)] bg-white">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="SCHEDULED">Scheduled</SelectItem>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="COMPLETED">Completed</SelectItem>
-                <SelectItem value="CANCELLED">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
-            <BrandButton variant="secondary" size="sm" asChild>
-              <Link href={`/open-houses/${openHouseId}/report`}>
-                <FileText className="mr-2 h-4 w-4" />
-                Seller report
-              </Link>
-            </BrandButton>
-            <InviteHostDialog openHouseId={openHouseId} onInviteSent={loadData} />
-            <BrandButton variant="secondary" size="sm" asChild>
-              <Link href="/showing-hq">← Dashboard</Link>
-            </BrandButton>
-            <BrandButton variant="secondary" size="sm" asChild>
-              <Link href="/open-houses">All open houses</Link>
-            </BrandButton>
+    <div className="flex flex-col gap-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1.5 px-2 text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+            asChild
+          >
+            <Link href="/showing-hq">
+              <ArrowLeft className="h-4 w-4" />
+              Dashboard
+            </Link>
+          </Button>
+          <span className="text-kp-outline">/</span>
+          <div>
+            <h1 className="text-xl font-bold text-kp-on-surface">{data.title}</h1>
+            <p className="text-sm text-kp-on-surface-variant">
+              {address} · {formatDate(data.startAt)}
+            </p>
           </div>
-        }
-      />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            value={data.status}
+            onValueChange={handleStatusChange}
+            disabled={updatingStatus}
+          >
+            <SelectTrigger className="h-8 w-[140px] border-kp-outline bg-kp-surface-high text-xs text-kp-on-surface">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent className="border-kp-outline bg-kp-surface">
+              <SelectItem value="SCHEDULED" className="text-kp-on-surface">Scheduled</SelectItem>
+              <SelectItem value="ACTIVE" className="text-kp-on-surface">Active</SelectItem>
+              <SelectItem value="COMPLETED" className="text-kp-on-surface">Completed</SelectItem>
+              <SelectItem value="CANCELLED" className="text-kp-on-surface">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+            asChild
+          >
+            <Link href={`/open-houses/${openHouseId}/report`}>
+              <FileText className="mr-1.5 h-3.5 w-3.5" />
+              Seller report
+            </Link>
+          </Button>
+          <InviteHostDialog openHouseId={openHouseId} onInviteSent={loadData} />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+            asChild
+          >
+            <Link href="/open-houses">All open houses</Link>
+          </Button>
+        </div>
+      </div>
+
+      {/* Error */}
+      {error && (
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <BrandCard elevated padded>
+        <div className="rounded-xl border border-kp-outline bg-kp-surface p-4">
           <div className="flex items-center gap-3">
-            <Users className="h-8 w-8 text-[var(--brand-primary)]" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-kp-teal/10 text-kp-teal">
+              <Users className="h-5 w-5" />
+            </div>
             <div>
-              <p className="text-2xl font-semibold text-[var(--brand-text)]">
-                {totalVisitors}
-              </p>
-              <p className="text-sm text-[var(--brand-text-muted)]">
-                Total visitors
-              </p>
+              <p className="text-2xl font-semibold text-kp-on-surface">{totalVisitors}</p>
+              <p className="text-xs text-kp-on-surface-variant">Total visitors</p>
             </div>
           </div>
-        </BrandCard>
-        <BrandCard elevated padded>
+        </div>
+        <div className="rounded-xl border border-kp-outline bg-kp-surface p-4">
           <div className="flex items-center gap-3">
-            <UserPlus className="h-8 w-8 text-[var(--brand-primary)]" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-kp-teal/10 text-kp-teal">
+              <UserPlus className="h-5 w-5" />
+            </div>
             <div>
-              <p className="text-2xl font-semibold text-[var(--brand-text)]">
-                {contactsCaptured}
-              </p>
-              <p className="text-sm text-[var(--brand-text-muted)]">
-                Contacts captured
-              </p>
+              <p className="text-2xl font-semibold text-kp-on-surface">{contactsCaptured}</p>
+              <p className="text-xs text-kp-on-surface-variant">Contacts captured</p>
             </div>
           </div>
-        </BrandCard>
-        <BrandCard elevated padded>
+        </div>
+        <div className="rounded-xl border border-kp-outline bg-kp-surface p-4">
           <div className="flex items-center gap-3">
-            <CheckSquare className="h-8 w-8 text-[var(--brand-primary)]" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-kp-gold/10 text-kp-gold">
+              <CheckSquare className="h-5 w-5" />
+            </div>
             <div>
-              <p className="text-2xl font-semibold text-[var(--brand-text)]">
-                {followUpsCount}
-              </p>
-              <p className="text-sm text-[var(--brand-text-muted)]">
-                Follow-ups created
-              </p>
+              <p className="text-2xl font-semibold text-kp-on-surface">{followUpsCount}</p>
+              <p className="text-xs text-kp-on-surface-variant">Follow-ups created</p>
             </div>
           </div>
-        </BrandCard>
+        </div>
       </div>
 
-      <div className="grid gap-[var(--space-lg)] lg:grid-cols-2">
+      {/* Visitors + Follow-ups */}
+      <div className="grid gap-4 lg:grid-cols-2">
         {/* Visitor list */}
-        <BrandCard elevated padded>
-          <BrandSectionHeader
-            title="Visitors"
-            description={`${data.visitors.length} sign-in${data.visitors.length !== 1 ? "s" : ""}`}
-          />
-          <div className="mt-4">
-            {data.visitors.length === 0 ? (
-              <p className="py-6 text-center text-[var(--brand-text-muted)]">
-                No visitors yet. Share your sign-in link.
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-[var(--brand-border)]">
-                      <th className="pb-2 text-left font-semibold">Name</th>
-                      <th className="pb-2 text-left font-semibold">Email</th>
-                      <th className="pb-2 text-left font-semibold">Phone</th>
-                      <th className="pb-2 text-left font-semibold">Interest</th>
-                      <th className="pb-2 text-left font-semibold">Sign-in</th>
-                      <th className="pb-2 text-left font-semibold">Status</th>
-                      <th className="pb-2 w-[80px]"></th>
+        <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+          <p className="mb-1 text-sm font-semibold text-kp-on-surface">Visitors</p>
+          <p className="mb-4 text-xs text-kp-on-surface-variant">
+            {data.visitors.length} sign-in{data.visitors.length !== 1 ? "s" : ""}
+          </p>
+          {data.visitors.length === 0 ? (
+            <p className="py-6 text-center text-sm text-kp-on-surface-variant">
+              No visitors yet. Share your sign-in link.
+            </p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-kp-outline">
+                    <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Name</th>
+                    <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Email</th>
+                    <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Interest</th>
+                    <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Sign-in</th>
+                    <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Status</th>
+                    <th className="pb-2 w-[80px]"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-kp-outline">
+                  {data.visitors.map((v) => (
+                    <tr key={v.id} className="hover:bg-kp-surface-high/50">
+                      <td className="py-2 font-medium text-kp-on-surface">{fullName(v.contact)}</td>
+                      <td className="py-2 text-kp-on-surface-variant">{v.contact.email ?? "—"}</td>
+                      <td className="py-2">
+                        <InterestBadge interestLevel={v.interestLevel} />
+                      </td>
+                      <td className="py-2 text-kp-on-surface-variant">{formatDateTime(v.submittedAt)}</td>
+                      <td className="py-2">
+                        <LeadStatusBadge status={v.leadStatus} />
+                      </td>
+                      <td className="py-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-kp-on-surface-variant hover:bg-kp-surface-higher hover:text-kp-on-surface"
+                          asChild
+                        >
+                          <Link href={`/showing-hq/visitors/${v.id}`}>Profile</Link>
+                        </Button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[var(--brand-border)]">
-                    {data.visitors.map((v) => (
-                      <tr key={v.id} className="hover:bg-[var(--brand-surface-alt)]/50">
-                        <td className="py-2 font-medium">{fullName(v.contact)}</td>
-                        <td className="py-2 text-[var(--brand-text-muted)]">
-                          {v.contact.email ?? "—"}
-                        </td>
-                        <td className="py-2 text-[var(--brand-text-muted)]">
-                          {v.contact.phone ?? "—"}
-                        </td>
-                        <td className="py-2">
-                          <InterestBadge interestLevel={v.interestLevel} />
-                        </td>
-                        <td className="py-2 text-[var(--brand-text-muted)]">
-                          {formatDateTime(v.submittedAt)}
-                        </td>
-                        <td className="py-2">
-                          <LeadStatusBadge status={v.leadStatus} />
-                        </td>
-                        <td className="py-2">
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/showing-hq/visitors/${v.id}`}>
-                              Profile
-                            </Link>
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </BrandCard>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
 
         {/* Follow-ups */}
-        <BrandCard elevated padded>
-          <BrandSectionHeader
-            title="Follow-ups"
-            description="Tasks generated from this open house"
-          />
+        <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+          <p className="mb-1 text-sm font-semibold text-kp-on-surface">Follow-ups</p>
+          <p className="mb-4 text-xs text-kp-on-surface-variant">Tasks generated from this open house</p>
+          {data.drafts.length === 0 ? (
+            <p className="py-6 text-center text-sm text-kp-on-surface-variant">
+              No follow-up drafts yet.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {data.drafts.map((d) => (
+                <li
+                  key={d.id}
+                  className="flex items-center justify-between rounded-lg border border-kp-outline bg-kp-surface-high p-3"
+                >
+                  <p className="font-medium text-kp-on-surface">{d.subject}</p>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium ${draftStatusClass(d.status)}`}>
+                      {d.status.replace(/_/g, " ")}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-higher"
+                      asChild
+                    >
+                      <Link href={`/open-houses/${openHouseId}/follow-ups`}>View</Link>
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
           <div className="mt-4">
-            {data.drafts.length === 0 ? (
-              <p className="py-6 text-center text-[var(--brand-text-muted)]">
-                No follow-up drafts yet.
-              </p>
-            ) : (
-              <ul className="space-y-3">
-                {data.drafts.map((d) => (
-                  <li
-                    key={d.id}
-                    className="flex items-center justify-between rounded-lg border border-[var(--brand-border)] p-3"
-                  >
-                    <p className="font-medium text-[var(--brand-text)]">
-                      {d.subject}
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {d.status}
-                      </Badge>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/open-houses/${openHouseId}/follow-ups`}>
-                          View
-                        </Link>
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="mt-4">
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/open-houses/${openHouseId}/follow-ups`}>
-                  Manage follow-ups
-                </Link>
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+              asChild
+            >
+              <Link href={`/open-houses/${openHouseId}/follow-ups`}>Manage follow-ups</Link>
+            </Button>
           </div>
-        </BrandCard>
+        </div>
       </div>
 
       {/* QR sign-in link */}
-      <BrandCard elevated padded>
-        <BrandSectionHeader
-          title="QR sign-in link"
-          description="Share this link or scan the QR code for visitor sign-in"
-        />
-        <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+      <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+        <p className="mb-1 text-sm font-semibold text-kp-on-surface">QR sign-in link</p>
+        <p className="mb-4 text-xs text-kp-on-surface-variant">
+          Share this link or scan the QR code for visitor sign-in
+        </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
           {data.qrCodeDataUrl && (
             <div className="shrink-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={data.qrCodeDataUrl}
-                alt="QR Code"
-                width={120}
-                height={120}
-                className="rounded border border-[var(--brand-border)]"
-              />
+              <div className="rounded-lg border border-kp-outline bg-white p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={data.qrCodeDataUrl}
+                  alt="QR Code"
+                  width={120}
+                  height={120}
+                />
+              </div>
             </div>
           )}
           <div className="min-w-0 flex-1 space-y-3">
-            <p className="break-all text-sm text-[var(--brand-text-muted)]">
-              {signInUrl}
-            </p>
+            <p className="break-all text-sm text-kp-on-surface-variant">{signInUrl}</p>
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
-                variant="outline"
+                className="h-8 border-0 bg-kp-teal px-3 text-xs text-kp-bg hover:opacity-90"
                 onClick={handleCopyLink}
                 disabled={!signInUrl}
               >
-                <Copy className="mr-2 h-4 w-4" />
+                <Copy className="mr-1.5 h-3.5 w-3.5" />
                 {copied ? "Copied!" : "Copy link"}
               </Button>
               <Button
                 size="sm"
                 variant="outline"
+                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
                 onClick={handleRegenerateQr}
                 disabled={regenerating}
               >
-                <RefreshCw
-                  className={`mr-2 h-4 w-4 ${regenerating ? "animate-spin" : ""}`}
-                />
+                <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${regenerating ? "animate-spin" : ""}`} />
                 {regenerating ? "Regenerating..." : "Regenerate QR"}
               </Button>
-              <Button size="sm" variant="outline" asChild>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                asChild
+              >
                 <Link href={`/open-houses/${openHouseId}/sign-in`}>
-                  <QrCode className="mr-2 h-4 w-4" />
+                  <QrCode className="mr-1.5 h-3.5 w-3.5" />
                   Host sign-in
                 </Link>
               </Button>
-              <Button size="sm" variant="outline" asChild>
-                <Link href={`/open-houses/${openHouseId}/sign-in/print`}>
-                  Print QR poster
-                </Link>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                asChild
+              >
+                <Link href={`/open-houses/${openHouseId}/sign-in/print`}>Print QR poster</Link>
               </Button>
-              <Button size="sm" variant="secondary" asChild>
-                <a
-                  href={signInUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                asChild
+              >
+                <a href={signInUrl} target="_blank" rel="noopener noreferrer">
                   Open visitor page
                 </a>
               </Button>
             </div>
           </div>
         </div>
-      </BrandCard>
+      </div>
     </div>
   );
 }

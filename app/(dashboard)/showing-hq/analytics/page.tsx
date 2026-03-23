@@ -2,13 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
-import { BrandCard } from "@/components/ui/BrandCard";
-import { BrandSectionHeader } from "@/components/ui/BrandSectionHeader";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Button } from "@/components/ui/button";
-import { Home, Calendar, Users, Mail, Send, MessageSquare, ChevronLeft } from "lucide-react";
+import { Home, Calendar, Users, Mail, Send, MessageSquare, ArrowLeft } from "lucide-react";
 
 type SummaryData = {
   openHousesCreated: number;
@@ -49,86 +46,63 @@ export default function ShowingHQAnalyticsPage() {
     uniqueUsersTracked: 0,
   };
 
-  return (
-    <div className="min-h-0 flex flex-col gap-6 bg-transparent">
-      <ShowingHQPageHero
-        title="Beta analytics"
-        description="ShowingHQ beta event counts. Internal use."
-        action={
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/showing-hq">
-              <ChevronLeft className="mr-1 h-4 w-4" />
-              Back
-            </Link>
-          </Button>
-        }
-      />
+  const stats = [
+    { icon: Home, label: "Open houses created", value: summary.openHousesCreated, color: "text-kp-teal", bg: "bg-kp-teal/10" },
+    { icon: Users, label: "Visitors captured", value: summary.visitorsCaptured, color: "text-kp-gold", bg: "bg-kp-gold/10" },
+    { icon: Mail, label: "Gmail connected", value: summary.gmailConnected, color: "text-kp-teal", bg: "bg-kp-teal/10" },
+    { icon: Calendar, label: "Calendar connected", value: summary.calendarConnected, color: "text-kp-teal", bg: "bg-kp-teal/10" },
+    { icon: Send, label: "Follow-ups sent", value: summary.followupsSent, color: "text-kp-gold", bg: "bg-kp-gold/10" },
+    { icon: MessageSquare, label: "Feedback submitted", value: summary.feedbackSubmitted, color: "text-kp-on-surface-variant", bg: "bg-kp-surface-high" },
+  ];
 
-      <BrandCard elevated padded>
-        <BrandSectionHeader
-          title="Usage summary"
-          description="Event counts across open houses, visitors, and follow-ups."
-        />
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="flex items-center gap-3 rounded-lg border border-[var(--brand-border)] p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--brand-primary)]/10">
-              <Home className="h-5 w-5 text-[var(--brand-primary)]" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-[var(--brand-text-muted)]">Open houses created</p>
-              <p className="text-xl font-semibold text-[var(--brand-text)]">{summary.openHousesCreated}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border border-[var(--brand-border)] p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--brand-secondary)]/10">
-              <Users className="h-5 w-5 text-[var(--brand-secondary)]" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-[var(--brand-text-muted)]">Visitors captured</p>
-              <p className="text-xl font-semibold text-[var(--brand-text)]">{summary.visitorsCaptured}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border border-[var(--brand-border)] p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--brand-accent)]/10">
-              <Mail className="h-5 w-5 text-[var(--brand-accent)]" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-[var(--brand-text-muted)]">Gmail connected</p>
-              <p className="text-xl font-semibold text-[var(--brand-text)]">{summary.gmailConnected}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border border-[var(--brand-border)] p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--brand-accent)]/10">
-              <Calendar className="h-5 w-5 text-[var(--brand-accent)]" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-[var(--brand-text-muted)]">Calendar connected</p>
-              <p className="text-xl font-semibold text-[var(--brand-text)]">{summary.calendarConnected}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border border-[var(--brand-border)] p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--brand-primary)]/10">
-              <Send className="h-5 w-5 text-[var(--brand-primary)]" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-[var(--brand-text-muted)]">Follow-ups sent</p>
-              <p className="text-xl font-semibold text-[var(--brand-text)]">{summary.followupsSent}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border border-[var(--brand-border)] p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--brand-secondary)]/10">
-              <MessageSquare className="h-5 w-5 text-[var(--brand-secondary)]" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-[var(--brand-text-muted)]">Feedback submitted</p>
-              <p className="text-xl font-semibold text-[var(--brand-text)]">{summary.feedbackSubmitted}</p>
-            </div>
-          </div>
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-kp-on-surface">Beta analytics</h1>
+          <p className="mt-1 text-sm text-kp-on-surface-variant">
+            ShowingHQ beta event counts. Internal use.
+          </p>
         </div>
-        <p className="mt-4 text-sm text-[var(--brand-text-muted)]">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 gap-1.5 px-2 text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+          asChild
+        >
+          <Link href="/showing-hq">
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Link>
+        </Button>
+      </div>
+
+      <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+        <p className="mb-1 text-sm font-semibold text-kp-on-surface">Usage summary</p>
+        <p className="mb-5 text-xs text-kp-on-surface-variant">
+          Event counts across open houses, visitors, and follow-ups.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {stats.map(({ icon: Icon, label, value, color, bg }) => (
+            <div
+              key={label}
+              className="flex items-center gap-3 rounded-lg border border-kp-outline bg-kp-surface-high p-4"
+            >
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${bg}`}>
+                <Icon className={`h-5 w-5 ${color}`} />
+              </div>
+              <div>
+                <p className="text-xs text-kp-on-surface-variant">{label}</p>
+                <p className="text-xl font-semibold text-kp-on-surface">{value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 text-sm text-kp-on-surface-variant">
           Unique users with events: {summary.uniqueUsersTracked}
         </p>
-      </BrandCard>
+      </div>
     </div>
   );
 }

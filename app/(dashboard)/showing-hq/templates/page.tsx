@@ -1,25 +1,23 @@
 "use client";
 
-import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
-import { BrandCard } from "@/components/ui/BrandCard";
-import { BrandSectionHeader } from "@/components/ui/BrandSectionHeader";
-
 export default function ShowingHQTemplatesPage() {
   return (
-    <div className="min-h-0 flex flex-col gap-6 bg-transparent">
-      <ShowingHQPageHero
-        title="Templates"
-        description="Manage follow-up and communication templates."
-      />
-      <BrandCard padded elevated>
-        <BrandSectionHeader
-          title="Templates"
-          description="Templates for follow-up emails and messages."
-        />
-        <p className="mt-4 text-[var(--brand-text-muted)]">
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-xl font-bold text-kp-on-surface">Templates</h1>
+        <p className="mt-1 text-sm text-kp-on-surface-variant">
+          Manage follow-up and communication templates.
+        </p>
+      </div>
+      <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+        <p className="text-sm font-semibold text-kp-on-surface">Templates</p>
+        <p className="mt-1 text-xs text-kp-on-surface-variant">
+          Templates for follow-up emails and messages.
+        </p>
+        <p className="mt-4 text-sm text-kp-on-surface-variant">
           Coming soon: create and manage templates for open house follow-ups.
         </p>
-      </BrandCard>
+      </div>
     </div>
   );
 }
