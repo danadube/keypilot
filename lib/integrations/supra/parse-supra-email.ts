@@ -1,10 +1,11 @@
 /**
  * Supra email parser v1 — conservative extraction for pasted MLS/Supra-style notifications.
  *
- * Source of truth: common US showing-email patterns (labeled property lines, City ST ZIP,
- * ISO and US date/time phrases). Unknown or ambiguous → leave fields null, LOW confidence.
+ * Regression fixtures from real PDF exports live in `supra-email-fixtures.ts` (see
+ * `__tests__/supra-email-parser.fixtures.test.ts`). Add sanitized samples there when you
+ * validate new weekend emails; extend patterns only when a sample clearly matches.
  *
- * Replace/extend patterns as you capture more real weekend emails.
+ * Unknown or ambiguous → leave fields null, LOW confidence.
  */
 
 import {
@@ -12,7 +13,19 @@ import {
   SupraProposedAction,
 } from "@prisma/client";
 
-export type SupraEventIntent = "new_showing" | "rescheduled" | "cancelled" | "unknown";
+export type SupraEventIntent =
+  | "new_showing"
+  | "rescheduled"
+  | "cancelled"
+  | "showing_ended"
+  | "unknown";
+
+/** How we resolved the street/city block — used to cap confidence */
+export type SupraAddressParseKind =
+  | "labeled"
+  | "supra_inline"
+  | "line_pair"
+  | "none";
 
 export type SupraParseDraft = {
   parsedAddress1: string | null;
@@ -42,6 +55,16 @@ const RESCHEDULE_RE =
 const NEW_SHOWING_RE =
   /\b(?:showing\s+(?:is\s+)?(?:scheduled|confirmed|booked|set)|showing\s+request|appointment\s+(?:is\s+)?(?:scheduled|confirmed)|private\s+showing\s+(?:scheduled|confirmed|request))\b/i;
 
+/** Supra-branded subject/body (PDF exports) */
+const SUPRA_NEW_NOTIFICATION_RE =
+  /\bsupra\s+showings?\s*[-–]\s*new\s+showing\b|\bnew\s+showing\s+notification\b/i;
+
+const END_OF_SHOWING_SUBJECT_RE = /\bend\s+of\s+showing\b/i;
+
+/** Body: Supra end-of-showing copy */
+const SUPRA_ENDED_BODY_RE =
+  /\bhas\s+ended\b/i;
+
 /** City, ST ZIP on one line */
 const CITY_ST_ZIP_LINE =
   /^(.+?),\s*([A-Za-z]{2})\s+(\d{5})(?:-(\d{4}))?\s*$/;
@@ -62,18 +85,66 @@ function stripHtmlNoise(s: string): string {
     .replace(/&amp;/g, "&");
 }
 
-function detectIntent(subject: string, body: string): SupraEventIntent {
-  const t = `${subject}\n${body}`.toLowerCase();
-  if (CANCEL_RE.test(t)) return "cancelled";
-  if (RESCHEDULE_RE.test(t)) return "rescheduled";
-  if (NEW_SHOWING_RE.test(t)) return "new_showing";
-  if (/\bshowing\b/.test(t) || /\bappointment\b/.test(t)) return "new_showing";
-  return "unknown";
+/** "at 123 Main St, City, ST 12345" — common in Supra notifications (often one line) */
+function normalizeCommasAcrossBreaks(s: string): string {
+  return stripHtmlNoise(s).replace(/,\s*\n\s*/g, ", ");
+}
+
+function extractSupraInlineAddress(text: string): {
+  address1: string;
+  city: string;
+  state: string;
+  zip: string;
+} | null {
+  const norm = normalizeCommasAcrossBreaks(text);
+  const m = norm.match(
+    /\bat\s+(.+?),\s*([^,]+),\s*([A-Za-z]{2})\s+(\d{5})(?:-(\d{4}))?\b/i
+  );
+  if (!m) return null;
+  return {
+    address1: m[1].trim().slice(0, 500),
+    city: m[2].trim(),
+    state: m[3].toUpperCase(),
+    zip: m[4] + (m[5] ? `-${m[5]}` : ""),
+  };
+}
+
+/**
+ * `looseShowingHint`: true when intent is only from generic "showing"/"appointment" words
+ * (easy to misfire) — caps confidence and should not yield HIGH alone.
+ */
+export function detectIntent(subject: string, body: string): {
+  intent: SupraEventIntent;
+  looseShowingHint: boolean;
+} {
+  const combined = `${subject}\n${body}`;
+  const t = combined.toLowerCase();
+  if (CANCEL_RE.test(t)) return { intent: "cancelled", looseShowingHint: false };
+  if (RESCHEDULE_RE.test(t)) return { intent: "rescheduled", looseShowingHint: false };
+  if (END_OF_SHOWING_SUBJECT_RE.test(combined)) {
+    return { intent: "showing_ended", looseShowingHint: false };
+  }
+  if (SUPRA_ENDED_BODY_RE.test(body) && /\bbegan\b/i.test(body)) {
+    return { intent: "showing_ended", looseShowingHint: false };
+  }
+  if (NEW_SHOWING_RE.test(t)) return { intent: "new_showing", looseShowingHint: false };
+  if (SUPRA_NEW_NOTIFICATION_RE.test(combined)) {
+    return { intent: "new_showing", looseShowingHint: false };
+  }
+  if (/\bthe\s+showing\s+by\b/i.test(combined) && /\bbegan\b/i.test(combined)) {
+    return { intent: "new_showing", looseShowingHint: false };
+  }
+  if (/\bshowing\b/.test(t) || /\bappointment\b/.test(t)) {
+    return { intent: "new_showing", looseShowingHint: true };
+  }
+  return { intent: "unknown", looseShowingHint: false };
 }
 
 function intentToProposedAction(intent: SupraEventIntent): SupraProposedAction {
   switch (intent) {
     case "cancelled":
+      return SupraProposedAction.DISMISS;
+    case "showing_ended":
       return SupraProposedAction.DISMISS;
     case "rescheduled":
       return SupraProposedAction.UPDATE_SHOWING;
@@ -96,6 +167,7 @@ function extractAddress(text: string): {
   city: string | null;
   state: string | null;
   zip: string | null;
+  kind: SupraAddressParseKind;
 } {
   const rawLines = stripHtmlNoise(text).split(/\r?\n/);
   const lines = rawLines.map((l) => l.trim()).filter(Boolean);
@@ -113,6 +185,7 @@ function extractAddress(text: string): {
           city: oneline[2].trim(),
           state: oneline[3].toUpperCase(),
           zip: oneline[4] + (oneline[5] ? `-${oneline[5]}` : ""),
+          kind: "labeled",
         };
       }
       const next = lines[i + 1];
@@ -124,13 +197,31 @@ function extractAddress(text: string): {
             city: csz[1].trim(),
             state: csz[2].toUpperCase(),
             zip: csz[3] + (csz[4] ? `-${csz[4]}` : ""),
+            kind: "labeled",
           };
         }
       }
       if (/^\d/.test(rest) && rest.length >= 4) {
-        return { address1: rest.slice(0, 500), city: null, state: null, zip: null };
+        return {
+          address1: rest.slice(0, 500),
+          city: null,
+          state: null,
+          zip: null,
+          kind: "labeled",
+        };
       }
     }
+  }
+
+  const inline = extractSupraInlineAddress(text);
+  if (inline) {
+    return {
+      address1: inline.address1,
+      city: inline.city,
+      state: inline.state,
+      zip: inline.zip,
+      kind: "supra_inline",
+    };
   }
 
   for (let i = 1; i < lines.length; i++) {
@@ -143,6 +234,7 @@ function extractAddress(text: string): {
           city: csz[1].trim(),
           state: csz[2].toUpperCase(),
           zip: csz[3] + (csz[4] ? `-${csz[4]}` : ""),
+          kind: "line_pair",
         };
       }
       continue;
@@ -159,11 +251,18 @@ function extractAddress(text: string): {
         city: csOnly[1].trim(),
         state: csOnly[2].toUpperCase(),
         zip: null,
+        kind: "line_pair",
       };
     }
   }
 
-  return { address1: null, city: null, state: null, zip: null };
+  return {
+    address1: null,
+    city: null,
+    state: null,
+    zip: null,
+    kind: "none",
+  };
 }
 
 const MONTH_TOKEN_TO_INDEX: Record<string, number> = {
@@ -278,7 +377,46 @@ function extractDateTime(subject: string, body: string): Date | null {
   return null;
 }
 
+/** Prefer "has ended MM/DD/YYYY h:mmAM" for Supra end notifications */
+function extractEndedDateTime(body: string): Date | null {
+  const m = body.match(
+    /\bhas\s+ended\s+(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\s+(\d{1,2}:\d{2}\s*(?:AM|PM))/i
+  );
+  if (!m) return null;
+  const mo = parseInt(m[1], 10);
+  const day = parseInt(m[2], 10);
+  let yr = parseInt(m[3], 10);
+  if (yr < 100) yr += 2000;
+  const tm = parseTimeToHoursMinutes(
+    m[4].trim().toUpperCase().replace(/\s+/g, " ")
+  );
+  if (!tm || mo < 1 || mo > 12 || day < 1 || day > 31) return null;
+  const d = new Date(yr, mo - 1, day, tm.h, tm.m, 0, 0);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
+}
+
+function extractSupraShowingByAgent(text: string): {
+  name: string | null;
+  email: string | null;
+} | null {
+  const m = text.match(/the\s+showing\s+by\s+([^\n(]+?)\s*\(\s*([^)]+)\)/i);
+  if (!m) return null;
+  const name = m[1].replace(/\s+/g, " ").trim();
+  const inner = m[2].trim();
+  const em = inner.match(EMAIL_RE_ONE);
+  return {
+    name: name.length >= 2 ? name.slice(0, 300) : null,
+    email: em ? em[0].toLowerCase() : null,
+  };
+}
+
 function extractAgent(text: string): { name: string | null; email: string | null } {
+  const supraBy = extractSupraShowingByAgent(text);
+  if (supraBy && (supraBy.name || supraBy.email)) {
+    return supraBy;
+  }
+
   const labeledLoose = text.match(
     /(?:buyer(?:'s)?\s*)?(?:agent|realtor)\s*[:#]\s*(.+)$/im
   );
@@ -330,6 +468,8 @@ function computeConfidence(args: {
   zip: string | null;
   scheduledAt: Date | null;
   agentEmail: string | null;
+  addressKind: SupraAddressParseKind;
+  looseShowingHint: boolean;
 }): SupraParseConfidence {
   const fullAddr = Boolean(
     args.address1 && args.city && args.state && args.zip
@@ -338,20 +478,39 @@ function computeConfidence(args: {
     args.address1 || (args.city && args.state) || args.zip
   );
 
-  if (args.intent === "cancelled") {
+  if (args.intent === "showing_ended") {
     if (fullAddr) return SupraParseConfidence.MEDIUM;
-    if (partialAddr) return SupraParseConfidence.LOW;
     return SupraParseConfidence.LOW;
   }
 
-  if (fullAddr && args.scheduledAt && args.intent !== "unknown") {
+  if (args.intent === "cancelled") {
+    if (fullAddr) return SupraParseConfidence.MEDIUM;
+    return SupraParseConfidence.LOW;
+  }
+
+  if (args.looseShowingHint) {
+    if (fullAddr && args.scheduledAt) return SupraParseConfidence.MEDIUM;
+    return SupraParseConfidence.LOW;
+  }
+
+  const structured =
+    args.addressKind === "labeled" || args.addressKind === "supra_inline";
+
+  if (
+    structured &&
+    fullAddr &&
+    args.scheduledAt &&
+    (args.intent === "new_showing" || args.intent === "rescheduled")
+  ) {
     return SupraParseConfidence.HIGH;
   }
 
   if (
     (fullAddr && args.scheduledAt) ||
-    (fullAddr && args.intent !== "unknown") ||
-    (args.scheduledAt && args.intent !== "unknown" && partialAddr)
+    (structured && fullAddr && args.intent === "new_showing") ||
+    (args.scheduledAt &&
+      args.intent !== "unknown" &&
+      partialAddr)
   ) {
     return SupraParseConfidence.MEDIUM;
   }
@@ -373,11 +532,15 @@ export function parseSupraEmailToDraft(input: {
 }): SupraParseDraft {
   const body = input.rawBodyText ?? "";
   const subject = input.subject ?? "";
-  const intent = detectIntent(subject, body);
+  const { intent, looseShowingHint } = detectIntent(subject, body);
   const proposedAction = intentToProposedAction(intent);
 
-  const { address1, city, state, zip } = extractAddress(body);
-  const scheduledAt = extractDateTime(subject, body);
+  const { address1, city, state, zip, kind: addressKind } = extractAddress(body);
+  let scheduledAt = extractDateTime(subject, body);
+  if (intent === "showing_ended") {
+    const endedAt = extractEndedDateTime(body);
+    if (endedAt) scheduledAt = endedAt;
+  }
   const agent = extractAgent(body);
 
   const parsedSourceHint = input.sender?.trim() || null;
@@ -397,6 +560,10 @@ export function parseSupraEmailToDraft(input: {
       parsedEventKind = "cancellation";
       parsedStatus = "cancelled";
       break;
+    case "showing_ended":
+      parsedEventKind = "showing_ended";
+      parsedStatus = "showing_ended";
+      break;
     default:
       parsedEventKind = null;
       parsedStatus = null;
@@ -410,6 +577,8 @@ export function parseSupraEmailToDraft(input: {
     zip,
     scheduledAt,
     agentEmail: agent.email,
+    addressKind,
+    looseShowingHint,
   });
 
   return {

@@ -75,6 +75,27 @@ The scheduled showing has been cancelled.`,
     expect(r.parseConfidence).toBe("LOW");
   });
 
+  it("Supra end-of-showing: DISMISS, ended time, same inline address", () => {
+    const r = parseSupraEmailToDraft({
+      subject: "Supra Showings - End of Showing Notification",
+      sender: "suprashowing@suprasystems.com",
+      rawBodyText: `The Supra system detected the showing by Jane Doe ( jane@example.com) at 100 Oak Ave,
+Bend, OR 97701 (KeyBox# 1) that began 03/21/2026 1:00PM has ended 03/21/2026 1:22PM.`,
+    });
+    expect(r.parsedAddress1).toBe("100 Oak Ave");
+    expect(r.parsedCity).toBe("Bend");
+    expect(r.parsedState).toBe("OR");
+    expect(r.parsedZip).toBe("97701");
+    expect(r.parsedStatus).toBe("showing_ended");
+    expect(r.proposedAction).toBe("DISMISS");
+    const at = r.parsedScheduledAt!;
+    expect(at.getFullYear()).toBe(2026);
+    expect(at.getMonth()).toBe(2);
+    expect(at.getDate()).toBe(21);
+    expect(at.getHours()).toBe(13);
+    expect(at.getMinutes()).toBe(22);
+  });
+
   it("handles missing zip and missing agent without inventing", () => {
     const r = parseSupraEmailToDraft({
       subject: "Showing update",

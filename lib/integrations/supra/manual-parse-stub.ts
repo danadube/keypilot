@@ -5,8 +5,10 @@
 
 export {
   parseSupraEmailToDraft,
+  detectIntent,
   type SupraParseDraft,
   type SupraEventIntent,
+  type SupraAddressParseKind,
 } from "./parse-supra-email";
 
 import { parseSupraEmailToDraft, type SupraParseDraft } from "./parse-supra-email";
