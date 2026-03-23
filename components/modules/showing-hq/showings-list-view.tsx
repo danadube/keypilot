@@ -11,6 +11,7 @@ import {
   Plus,
   AlertCircle,
   Loader2,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MetricCard } from "@/components/ui/metric-card";
@@ -199,13 +200,146 @@ function SearchInput({
   );
 }
 
+// ── Edit Showing Modal ────────────────────────────────────────────────────────
+
+function EditShowingModal({
+  showing,
+  onClose,
+  onSaved,
+}: {
+  showing: Showing;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const dt = new Date(showing.scheduledAt);
+  const initialDate = [
+    dt.getFullYear(),
+    String(dt.getMonth() + 1).padStart(2, "0"),
+    String(dt.getDate()).padStart(2, "0"),
+  ].join("-");
+  const initialTime = [
+    String(dt.getHours()).padStart(2, "0"),
+    String(dt.getMinutes()).padStart(2, "0"),
+  ].join(":");
+
+  const [dateStr, setDateStr] = useState(initialDate);
+  const [timeStr, setTimeStr] = useState(initialTime);
+  const [notes, setNotes] = useState(showing.notes ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
+  }, [onClose]);
+
+  async function handleSave() {
+    if (!dateStr || !timeStr) { setError("Date and time are required."); return; }
+    const [h, m] = timeStr.split(":").map(Number);
+    const scheduledAt = new Date(dateStr);
+    scheduledAt.setHours(h, m ?? 0, 0, 0);
+
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/showing-hq/showings/${showing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduledAt: scheduledAt.toISOString(), notes: notes || null }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="fixed inset-0 bg-black/50" onClick={onClose} aria-hidden />
+      <div className="relative z-10 w-full max-w-md rounded-xl border border-kp-outline bg-kp-surface shadow-xl">
+        <div className="flex items-center justify-between border-b border-kp-outline p-5">
+          <div>
+            <h2 className="text-base font-semibold text-kp-on-surface">Edit Showing</h2>
+            <p className="mt-0.5 text-xs text-kp-on-surface-variant">{showing.property.address1}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1 text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="space-y-4 p-5">
+          {error && <p className="text-sm text-red-400">{error}</p>}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Date</label>
+              <input
+                type="date"
+                value={dateStr}
+                onChange={(e) => setDateStr(e.target.value)}
+                className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Time</label>
+              <input
+                type="time"
+                value={timeStr}
+                onChange={(e) => setTimeStr(e.target.value)}
+                className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Notes</label>
+            <textarea
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 border-t border-kp-outline p-5">
+          <button
+            onClick={onClose}
+            className="rounded-lg border border-kp-outline px-4 py-1.5 text-sm text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="rounded-lg bg-kp-gold px-4 py-1.5 text-sm font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright disabled:opacity-60"
+          >
+            {saving ? "Saving…" : "Save changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Table ─────────────────────────────────────────────────────────────────────
 
 const TH =
   "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
 const TD = "px-4 py-3.5 text-sm";
 
-function ShowingsTable({ showings }: { showings: Showing[] }) {
+function ShowingsTable({ showings, onEdit }: { showings: Showing[]; onEdit: (s: Showing) => void }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
@@ -217,6 +351,7 @@ function ShowingsTable({ showings }: { showings: Showing[] }) {
             <th className={cn(TH, "hidden lg:table-cell")}>Buyer</th>
             <th className={cn(TH, "hidden sm:table-cell")}>Feedback</th>
             <th className={cn(TH, "hidden md:table-cell")}>Source</th>
+            <th className={cn(TH, "w-[56px]")}></th>
           </tr>
         </thead>
         <tbody>
@@ -268,6 +403,17 @@ function ShowingsTable({ showings }: { showings: Showing[] }) {
               <td className={cn(TD, "hidden md:table-cell")}>
                 <StatusBadge variant="upcoming">{s.source}</StatusBadge>
               </td>
+
+              {/* Actions */}
+              <td className={TD}>
+                <button
+                  onClick={() => onEdit(s)}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-kp-on-surface-variant transition-colors hover:bg-kp-surface-higher hover:text-kp-on-surface"
+                  aria-label="Edit showing"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -289,6 +435,7 @@ function ShowingsTable({ showings }: { showings: Showing[] }) {
 export function ShowingsListView() {
   const { showings, loading, error, reload } = useShowings();
   const [search, setSearch] = useState("");
+  const [editingShowing, setEditingShowing] = useState<Showing | null>(null);
 
   const visibleShowings = useMemo(() => {
     if (!search.trim()) return showings;
@@ -413,9 +560,17 @@ export function ShowingsListView() {
         ) : visibleShowings.length === 0 ? (
           <EmptyState isFiltered={isFiltered} onReset={() => setSearch("")} />
         ) : (
-          <ShowingsTable showings={visibleShowings} />
+          <ShowingsTable showings={visibleShowings} onEdit={setEditingShowing} />
         )}
       </div>
+
+      {editingShowing && (
+        <EditShowingModal
+          showing={editingShowing}
+          onClose={() => setEditingShowing(null)}
+          onSaved={() => { reload(); setEditingShowing(null); }}
+        />
+      )}
     </div>
   );
 }

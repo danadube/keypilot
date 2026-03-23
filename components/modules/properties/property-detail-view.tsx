@@ -15,6 +15,7 @@ import {
   ExternalLink,
   Calendar,
   DollarSign,
+  Pencil,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -65,6 +66,17 @@ function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
 
 // ── Main component ─────────────────────────────────────────────────────────────
 
+type EditForm = {
+  mlsNumber: string;
+  address1: string;
+  address2: string;
+  city: string;
+  state: string;
+  zip: string;
+  listingPrice: string;
+  notes: string;
+};
+
 export function PropertyDetailView({ id }: { id: string }) {
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,6 +84,59 @@ export function PropertyDetailView({ id }: { id: string }) {
   const [flyerUploading, setFlyerUploading] = useState(false);
   const [flyerError, setFlyerError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Edit state ──────────────────────────────────────────────────────────────
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<EditForm>({
+    mlsNumber: "", address1: "", address2: "", city: "", state: "", zip: "", listingPrice: "", notes: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  function startEditing(p: Property) {
+    setEditForm({
+      mlsNumber: p.mlsNumber ?? "",
+      address1: p.address1,
+      address2: p.address2 ?? "",
+      city: p.city,
+      state: p.state,
+      zip: p.zip,
+      listingPrice: p.listingPrice != null ? String(p.listingPrice) : "",
+      notes: p.notes ?? "",
+    });
+    setSaveError(null);
+    setIsEditing(true);
+  }
+
+  async function handleSaveEdit() {
+    if (!property) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch(`/api/v1/properties/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mlsNumber: editForm.mlsNumber || null,
+          address1: editForm.address1,
+          address2: editForm.address2 || null,
+          city: editForm.city,
+          state: editForm.state,
+          zip: editForm.zip,
+          listingPrice: editForm.listingPrice ? parseFloat(editForm.listingPrice) : null,
+          notes: editForm.notes || null,
+        }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+      setProperty((p) => p ? { ...p, ...json.data } : p);
+      setIsEditing(false);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   const loadData = useCallback(() => {
     setError(null);
@@ -173,11 +238,22 @@ export function PropertyDetailView({ id }: { id: string }) {
           <h1 className="text-xl font-bold text-kp-on-surface">{fullAddress}</h1>
           <p className="mt-0.5 text-sm text-kp-on-surface-variant">{locationLine}</p>
         </div>
-        {property.listingPrice && (
+        {property.listingPrice && !isEditing && (
           <span className="flex items-center gap-1 rounded-lg border border-kp-gold/40 bg-kp-gold/10 px-3 py-1 text-sm font-semibold text-kp-gold">
             <DollarSign className="h-3.5 w-3.5" />
             {formatPrice(property.listingPrice)}
           </span>
+        )}
+        {!isEditing && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+            onClick={() => startEditing(property)}
+          >
+            <Pencil className="mr-1.5 h-3.5 w-3.5" />
+            Edit
+          </Button>
         )}
       </div>
 
@@ -190,17 +266,115 @@ export function PropertyDetailView({ id }: { id: string }) {
           {/* Property details */}
           <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
             <h2 className="mb-4 text-sm font-semibold text-kp-on-surface">Property details</h2>
-            <div className="space-y-2.5">
-              {property.mlsNumber && (
-                <InfoRow label="MLS #" value={property.mlsNumber} />
-              )}
-              <InfoRow label="Listing price" value={formatPrice(property.listingPrice)} />
-              <InfoRow label="City" value={property.city} />
-              <InfoRow label="State" value={`${property.state} ${property.zip}`} />
-              {property.notes && (
-                <InfoRow label="Notes" value={property.notes} />
-              )}
-            </div>
+
+            {isEditing ? (
+              <div className="space-y-3">
+                {saveError && <p className="text-sm text-red-400">{saveError}</p>}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Address</label>
+                    <input
+                      className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      value={editForm.address1}
+                      onChange={(e) => setEditForm((f) => ({ ...f, address1: e.target.value }))}
+                      placeholder="Street address"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Address 2</label>
+                    <input
+                      className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      value={editForm.address2}
+                      onChange={(e) => setEditForm((f) => ({ ...f, address2: e.target.value }))}
+                      placeholder="Unit, apt, etc."
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">City</label>
+                    <input
+                      className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      value={editForm.city}
+                      onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">State</label>
+                      <input
+                        className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                        value={editForm.state}
+                        onChange={(e) => setEditForm((f) => ({ ...f, state: e.target.value }))}
+                        maxLength={2}
+                        placeholder="CA"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">ZIP</label>
+                      <input
+                        className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                        value={editForm.zip}
+                        onChange={(e) => setEditForm((f) => ({ ...f, zip: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">MLS #</label>
+                    <input
+                      className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      value={editForm.mlsNumber}
+                      onChange={(e) => setEditForm((f) => ({ ...f, mlsNumber: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Listing price</label>
+                    <input
+                      type="number"
+                      className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      value={editForm.listingPrice}
+                      onChange={(e) => setEditForm((f) => ({ ...f, listingPrice: e.target.value }))}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Notes</label>
+                  <textarea
+                    rows={3}
+                    className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                    value={editForm.notes}
+                    onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
+                  />
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={handleSaveEdit}
+                    disabled={saving}
+                    className="rounded-lg bg-kp-gold px-4 py-1.5 text-sm font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright disabled:opacity-60"
+                  >
+                    {saving ? "Saving…" : "Save changes"}
+                  </button>
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    disabled={saving}
+                    className="rounded-lg border border-kp-outline px-4 py-1.5 text-sm text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {property.mlsNumber && (
+                  <InfoRow label="MLS #" value={property.mlsNumber} />
+                )}
+                <InfoRow label="Listing price" value={formatPrice(property.listingPrice)} />
+                <InfoRow label="City" value={property.city} />
+                <InfoRow label="State" value={`${property.state} ${property.zip}`} />
+                {property.notes && (
+                  <InfoRow label="Notes" value={property.notes} />
+                )}
+              </div>
+            )}
           </div>
 
           {/* Flyer */}

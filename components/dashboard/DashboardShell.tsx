@@ -6,28 +6,38 @@ import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
 import { Building2, Calendar } from "lucide-react";
 import { ProductTierProvider } from "@/components/ProductTierProvider";
-import { TopModuleNav } from "@/components/layout/TopModuleNav";
 import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
-/** ShowingHQ + open-houses use sidebar-first nav; hide module tab bar there */
-function useHideTopModuleNav(): boolean {
-  const pathname = usePathname() ?? "";
-  return (
-    pathname === "/showing-hq" ||
-    pathname.startsWith("/showing-hq/") ||
-    pathname.startsWith("/open-houses")
-  );
-}
 
 const HEADER_HEIGHT_DEFAULT = 64;
 /** Align with ShowingHQ sidebar header block (~ pt-4 + title + tagline + pb-5) */
 const HEADER_HEIGHT_SHOWING_HQ_WORKBENCH = 88;
 
+function getPageTitle(pathname: string): string {
+  if (pathname.startsWith("/showing-hq/showings/new")) return "Schedule Showing";
+  if (pathname.startsWith("/showing-hq/showings")) return "Showings";
+  if (pathname.startsWith("/showing-hq/visitors")) return "Visitors";
+  if (pathname.startsWith("/showing-hq/follow-ups")) return "Follow-ups";
+  if (pathname.startsWith("/showing-hq/supra-inbox")) return "Supra Inbox";
+  if (pathname.startsWith("/showing-hq/feedback-requests")) return "Feedback Requests";
+  if (pathname.startsWith("/showing-hq/activity")) return "Activity";
+  if (pathname.startsWith("/showing-hq/templates")) return "Templates";
+  if (pathname.startsWith("/open-houses/new")) return "New Open House";
+  if (pathname.startsWith("/open-houses")) return "Open Houses";
+  if (pathname.startsWith("/properties/new")) return "New Property";
+  if (pathname.startsWith("/properties")) return "Properties";
+  if (pathname.startsWith("/property-vault")) return "PropertyVault";
+  if (pathname.startsWith("/contacts")) return "Contacts";
+  if (pathname.startsWith("/deals")) return "Deals";
+  if (pathname.startsWith("/client-keep")) return "ClientKeep";
+  if (pathname.startsWith("/settings")) return "Settings";
+  if (pathname === "/") return "Overview";
+  return "KeyPilot";
+}
+
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
-  const hideTopNav = useHideTopModuleNav();
   const isShowingHQWorkbench = pathname === "/showing-hq";
   const workbenchDateLine = React.useMemo(
     () =>
@@ -74,10 +84,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                   {workbenchDateLine}
                 </p>
               </div>
-            ) : hideTopNav ? (
-              <span className="sr-only">Navigation</span>
             ) : (
-              <TopModuleNav />
+              <h1 className="truncate text-base font-semibold text-kp-on-surface">
+                {getPageTitle(pathname)}
+              </h1>
             )}
           </div>
           <div
