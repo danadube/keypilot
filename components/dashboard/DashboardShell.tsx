@@ -9,6 +9,7 @@ import { ProductTierProvider } from "@/components/ProductTierProvider";
 import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
 
 function getPageTitle(pathname: string): string {
   if (pathname === "/showing-hq") return "ShowingHQ";
@@ -57,11 +58,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-0 flex-1 flex-col">
         <header
           className={cn(
-            "sticky top-0 z-20 flex w-full shrink-0 items-center border-b border-kp-outline bg-kp-surface",
-            isShowingHQWorkbench ? "min-h-[58px]" : "min-h-[52px]"
+            "sticky top-0 z-20 flex w-full shrink-0 items-stretch border-b border-kp-outline bg-kp-surface",
+            shellTopRowHeightClass(pathname)
           )}
         >
-          <div className="flex min-w-0 flex-1 items-center overflow-hidden py-1.5 pl-4 pr-3 md:pl-6 md:pr-4">
+          <div className="flex min-w-0 flex-1 items-center overflow-hidden pl-4 pr-3 md:pl-6 md:pr-4">
             <div className="min-w-0">
               <h1 className="truncate text-sm font-semibold leading-tight text-kp-on-surface md:text-base">
                 {getPageTitle(pathname)}
@@ -73,7 +74,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               ) : null}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5 border-l border-kp-outline bg-kp-surface px-2.5 py-1.5 md:gap-2 md:px-3.5">
+          <div className="flex shrink-0 items-center gap-1.5 border-l border-kp-outline bg-kp-surface px-2.5 md:gap-2 md:px-3.5">
             {isShowingHQWorkbench ? (
               <>
                 <Button

@@ -19,6 +19,7 @@ import { MODULES, getModuleFromPath } from "@/lib/modules";
 import { UPGRADE_MODULES } from "@/lib/module-access";
 import { useProductTier } from "@/components/ProductTierProvider";
 import { APP_VERSION, APP_COMMIT } from "@/lib/app-version";
+import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
 import type { ModuleConfig, ModuleId, ModuleSidebarItem } from "@/lib/modules";
 
 const SIDEBAR_WIDTH = 200;
@@ -128,10 +129,15 @@ export function ModuleSidebar() {
       style={{ width: SIDEBAR_WIDTH, backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)" }}
       aria-label="Platform navigation"
     >
-      <div className="shrink-0 border-b border-white/10 px-4 pb-3 pt-4">
+      <div
+        className={cn(
+          "flex shrink-0 items-center border-b border-kp-outline px-4",
+          shellTopRowHeightClass(pathname ?? "")
+        )}
+      >
         <Link
           href="/"
-          className="block transition-opacity hover:opacity-90"
+          className="flex min-w-0 items-center transition-opacity hover:opacity-90"
           aria-label="KeyPilot home"
         >
           <Image
@@ -139,7 +145,7 @@ export function ModuleSidebar() {
             alt="KeyPilot"
             width={200}
             height={60}
-            className="h-10 w-auto max-w-full object-contain object-left"
+            className="h-8 max-h-9 w-auto max-w-full object-contain object-left"
           />
         </Link>
       </div>
