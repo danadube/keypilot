@@ -34,15 +34,34 @@ const BLOCKED_APPLY_STATES: SupraQueueState[] = [
   SupraQueueState.FAILED_PARSE,
 ];
 
-type DuplicateConflict = { id: string; scheduledAt: Date };
+type DuplicateShowingRow = {
+  id: string;
+  scheduledAt: Date;
+  property: {
+    id: string;
+    address1: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
+};
+
+type ApplyDuplicateMeta = {
+  parsedScheduledAt: Date;
+  windowHours: number;
+  isUpdatingMatchedShowing: boolean;
+  matchedShowingId: string | null;
+};
 
 class ApplyDuplicateError extends Error {
-  readonly conflicts: DuplicateConflict[];
+  readonly rows: DuplicateShowingRow[];
+  readonly meta: ApplyDuplicateMeta;
 
-  constructor(conflicts: DuplicateConflict[]) {
+  constructor(rows: DuplicateShowingRow[], meta: ApplyDuplicateMeta) {
     super("DUPLICATE_SHOWING_WINDOW");
     this.name = "ApplyDuplicateError";
-    this.conflicts = conflicts;
+    this.rows = rows;
+    this.meta = meta;
   }
 }
 
@@ -181,11 +200,22 @@ export async function POST(
             id: { not: matchedShowingId },
             scheduledAt: { gte: winStart, lte: winEnd },
           },
-          select: { id: true, scheduledAt: true },
+          select: {
+            id: true,
+            scheduledAt: true,
+            property: {
+              select: { id: true, address1: true, city: true, state: true, zip: true },
+            },
+          },
         });
 
         if (conflicts.length > 0 && !confirmDuplicateOverride) {
-          throw new ApplyDuplicateError(conflicts);
+          throw new ApplyDuplicateError(conflicts, {
+            parsedScheduledAt: scheduledAt,
+            windowHours: DUPLICATE_WINDOW_MS / (60 * 60 * 1000),
+            isUpdatingMatchedShowing: true,
+            matchedShowingId,
+          });
         }
 
         const mergedNotes =
@@ -235,11 +265,22 @@ export async function POST(
           deletedAt: null,
           scheduledAt: { gte: winStart, lte: winEnd },
         },
-        select: { id: true, scheduledAt: true },
+        select: {
+          id: true,
+          scheduledAt: true,
+          property: {
+            select: { id: true, address1: true, city: true, state: true, zip: true },
+          },
+        },
       });
 
       if (conflicts.length > 0 && !confirmDuplicateOverride) {
-        throw new ApplyDuplicateError(conflicts);
+        throw new ApplyDuplicateError(conflicts, {
+          parsedScheduledAt: scheduledAt,
+          windowHours: DUPLICATE_WINDOW_MS / (60 * 60 * 1000),
+          isUpdatingMatchedShowing: false,
+          matchedShowingId: null,
+        });
       }
 
       const showing = await tx.showing.create({
@@ -289,17 +330,38 @@ export async function POST(
     });
   } catch (e) {
     if (e instanceof ApplyDuplicateError) {
+      const { meta, rows } = e;
+      const property = rows[0]?.property;
+      const parsedIso = meta.parsedScheduledAt.toISOString();
+      const count = rows.length;
+      const addr = property
+        ? `${property.address1}, ${property.city}, ${property.state} ${property.zip}`.trim()
+        : "this property";
+      const actionHint = meta.isUpdatingMatchedShowing
+        ? "If one of these is the same appointment, you can match the queue to that showing and apply again. Otherwise confirm below to update your selected showing anyway, or adjust the parsed time."
+        : "If one of these is the same Supra appointment, match the queue to that showing and apply again (updates instead of creating). Otherwise confirm below to create another showing, or change the parsed time.";
+
       return NextResponse.json(
         {
           error: {
-            message:
-              "Another showing on this property is scheduled within ±2 hours of this time. Confirm override to create or update anyway.",
+            message: `${count === 1 ? "Another showing exists" : `${count} other showings exist`} at ${addr} within ±${meta.windowHours} hours of the time you are applying (${new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(meta.parsedScheduledAt)}). ${actionHint}`,
             code: "DUPLICATE_SHOWING_WINDOW",
           },
-          conflicts: e.conflicts.map((c) => ({
-            id: c.id,
-            scheduledAt: c.scheduledAt.toISOString(),
+          conflicts: rows.map((r) => ({
+            id: r.id,
+            scheduledAt: r.scheduledAt.toISOString(),
+            minutesFromParsed: Math.round(
+              Math.abs(r.scheduledAt.getTime() - meta.parsedScheduledAt.getTime()) / 60000
+            ),
+            property: r.property,
           })),
+          duplicateContext: {
+            windowHours: meta.windowHours,
+            parsedScheduledAt: parsedIso,
+            isUpdatingMatchedShowing: meta.isUpdatingMatchedShowing,
+            matchedShowingId: meta.matchedShowingId,
+            property,
+          },
         },
         { status: 409 }
       );

@@ -202,6 +202,111 @@ function propertyMatchKindLabel(kind: PropertySuggestionRow["matchKind"]): strin
   return "Partial";
 }
 
+type ApplyDuplicateProperty = {
+  id: string;
+  address1: string;
+  city: string;
+  state: string;
+  zip: string;
+};
+
+type ApplyDuplicateBundle = {
+  conflicts: {
+    id: string;
+    scheduledAt: string;
+    minutesFromParsed: number;
+    property?: ApplyDuplicateProperty;
+  }[];
+  context: {
+    windowHours: number;
+    parsedScheduledAt: string;
+    isUpdatingMatchedShowing: boolean;
+    matchedShowingId: string | null;
+    property: ApplyDuplicateProperty | null;
+  };
+  /** Full server explanation (API error.message) */
+  serverGuidance?: string;
+};
+
+/** Build structured duplicate state from POST apply 409 (supports older responses without duplicateContext). */
+function parseApplyDuplicate409(
+  json: Record<string, unknown>,
+  detail: ItemWithRelations
+): ApplyDuplicateBundle | null {
+  if (!detail.parsedScheduledAt) return null;
+  const rawList = json.conflicts;
+  if (!Array.isArray(rawList) || rawList.length === 0) return null;
+
+  const parsedAtMs = new Date(detail.parsedScheduledAt).getTime();
+  const conflicts = rawList.map((raw: unknown) => {
+    const c = raw as Record<string, unknown>;
+    const id = typeof c.id === "string" ? c.id : "";
+    const scheduledAt = typeof c.scheduledAt === "string" ? c.scheduledAt : "";
+    const minutesFromParsed =
+      typeof c.minutesFromParsed === "number"
+        ? c.minutesFromParsed
+        : Math.round(Math.abs(new Date(scheduledAt).getTime() - parsedAtMs) / 60000);
+    let property: ApplyDuplicateProperty | undefined;
+    const p = c.property;
+    if (p && typeof p === "object" && p !== null) {
+      const o = p as Record<string, unknown>;
+      if (typeof o.id === "string" && typeof o.address1 === "string") {
+        property = {
+          id: o.id,
+          address1: o.address1,
+          city: String(o.city ?? ""),
+          state: String(o.state ?? ""),
+          zip: String(o.zip ?? ""),
+        };
+      }
+    }
+    return { id, scheduledAt, minutesFromParsed, property };
+  });
+
+  const ctxRaw = json.duplicateContext as Record<string, unknown> | undefined;
+  let property: ApplyDuplicateProperty | null = null;
+  if (ctxRaw?.property && typeof ctxRaw.property === "object" && ctxRaw.property !== null) {
+    const o = ctxRaw.property as Record<string, unknown>;
+    if (typeof o.id === "string" && typeof o.address1 === "string") {
+      property = {
+        id: o.id,
+        address1: o.address1,
+        city: String(o.city ?? ""),
+        state: String(o.state ?? ""),
+        zip: String(o.zip ?? ""),
+      };
+    }
+  }
+  if (!property && detail.matchedProperty) {
+    const mp = detail.matchedProperty;
+    property = {
+      id: mp.id,
+      address1: mp.address1,
+      city: mp.city,
+      state: mp.state,
+      zip: mp.zip ?? "",
+    };
+  }
+
+  const err = json.error as { message?: string } | undefined;
+  const serverGuidance = typeof err?.message === "string" ? err.message : undefined;
+
+  return {
+    conflicts,
+    context: {
+      windowHours: typeof ctxRaw?.windowHours === "number" ? ctxRaw.windowHours : 2,
+      parsedScheduledAt:
+        typeof ctxRaw?.parsedScheduledAt === "string"
+          ? ctxRaw.parsedScheduledAt
+          : new Date(detail.parsedScheduledAt).toISOString(),
+      isUpdatingMatchedShowing: ctxRaw?.isUpdatingMatchedShowing === true,
+      matchedShowingId: typeof ctxRaw?.matchedShowingId === "string" ? ctxRaw.matchedShowingId : null,
+      property,
+    },
+    serverGuidance,
+  };
+}
+
 /**
  * Client Apply readiness — aligned with POST …/supra-queue/[id]/apply:
  * - parsedScheduledAt required
@@ -268,10 +373,9 @@ export function SupraInboxView() {
   const [sampleMenuOpen, setSampleMenuOpen] = useState(false);
   const [applying, setApplying] = useState(false);
   const [applyingRowId, setApplyingRowId] = useState<string | null>(null);
-  const [applyConflict, setApplyConflict] = useState<{ id: string; scheduledAt: string }[] | null>(
-    null
-  );
+  const [applyDuplicate, setApplyDuplicate] = useState<ApplyDuplicateBundle | null>(null);
   const [applyDuplicateAck, setApplyDuplicateAck] = useState(false);
+  const [dupLinkShowingId, setDupLinkShowingId] = useState<string | null>(null);
   const [pasteModalOpen, setPasteModalOpen] = useState(false);
   const [pasteSubject, setPasteSubject] = useState("");
   const [pasteBody, setPasteBody] = useState("");
@@ -345,7 +449,7 @@ export function SupraInboxView() {
     if (!items.some((r) => r.id === detail.id)) {
       setModalOpen(false);
       setDetail(null);
-      setApplyConflict(null);
+      setApplyDuplicate(null);
       setApplyDuplicateAck(false);
       setPastedReviewBannerId(null);
     }
@@ -673,7 +777,7 @@ export function SupraInboxView() {
   };
 
   const openDetail = (row: ItemWithRelations) => {
-    setApplyConflict(null);
+    setApplyDuplicate(null);
     setApplyDuplicateAck(false);
     setDetail(normalizeItem(row));
     setModalOpen(true);
@@ -763,6 +867,38 @@ export function SupraInboxView() {
     return { res, json } as const;
   };
 
+  const linkQueueToExistingShowing = async (
+    conflict: ApplyDuplicateBundle["conflicts"][number],
+    bundle: ApplyDuplicateBundle
+  ) => {
+    const prop = conflict.property ?? bundle.context.property;
+    if (!prop || !detail) return;
+    setDupLinkShowingId(conflict.id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/showing-hq/supra-queue/${detail.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          matchedPropertyId: prop.id,
+          matchedShowingId: conflict.id,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message ?? "Could not link showing");
+      const updated = normalizeItem(json.data as ItemWithRelations);
+      setDetail(updated);
+      setApplyDuplicate(null);
+      setApplyDuplicateAck(false);
+      setSuccessMessage("Linked on the server. Apply again to update that showing (duplicate block should clear).");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not link showing");
+    } finally {
+      setDupLinkShowingId(null);
+    }
+  };
+
   const handleApply = async () => {
     if (!detail || !applyReadiness.ok) return;
     setApplying(true);
@@ -770,12 +906,16 @@ export function SupraInboxView() {
     try {
       const { res, json } = await postApplyRequest(detail, applyDuplicateAck);
       if (res.status === 409 && json.error?.code === "DUPLICATE_SHOWING_WINDOW") {
-        setApplyConflict(json.conflicts ?? []);
-        setError(json.error?.message ?? "Duplicate showing in time window.");
+        const dup = parseApplyDuplicate409(json as Record<string, unknown>, detail);
+        if (dup) setApplyDuplicate(dup);
+        else setApplyDuplicate(null);
+        setError(
+          "Apply paused: another showing falls in the duplicate time window. Use the details below to link or override."
+        );
         return;
       }
       if (!res.ok) throw new Error(json.error?.message ?? "Apply failed");
-      setApplyConflict(null);
+      setApplyDuplicate(null);
       setApplyDuplicateAck(false);
       setModalOpen(false);
       setDetail(null);
@@ -804,14 +944,19 @@ export function SupraInboxView() {
     try {
       const { res, json } = await postApplyRequest(row, false);
       if (res.status === 409 && json.error?.code === "DUPLICATE_SHOWING_WINDOW") {
-        setDetail(normalizeItem(row));
+        const normalized = normalizeItem(row);
+        setDetail(normalized);
         setModalOpen(true);
-        setApplyConflict(json.conflicts ?? []);
-        setError(json.error?.message ?? "Duplicate showing in time window.");
+        const dup = parseApplyDuplicate409(json as Record<string, unknown>, normalized);
+        if (dup) setApplyDuplicate(dup);
+        else setApplyDuplicate(null);
+        setError(
+          "Apply paused: another showing falls in the duplicate time window. Use the details below to link or override."
+        );
         return;
       }
       if (!res.ok) throw new Error(json.error?.message ?? "Apply failed");
-      setApplyConflict(null);
+      setApplyDuplicate(null);
       setApplyDuplicateAck(false);
       await load();
       const d = json.data as {
@@ -843,7 +988,7 @@ export function SupraInboxView() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message ?? "Update failed");
       const updated = normalizeItem(json.data as ItemWithRelations);
-      setApplyConflict(null);
+      setApplyDuplicate(null);
       setApplyDuplicateAck(false);
       setDetail(updated);
       await load();
@@ -1285,7 +1430,7 @@ export function SupraInboxView() {
           setModalOpen(o);
           if (!o) {
             setDetail(null);
-            setApplyConflict(null);
+            setApplyDuplicate(null);
             setApplyDuplicateAck(false);
             setPastedReviewBannerId(null);
             setReviewRawExpanded(false);
@@ -1913,25 +2058,80 @@ export function SupraInboxView() {
                         ))}
                       </ul>
                     ) : null}
-                    {applyConflict && applyConflict.length > 0 ? (
+                    {applyDuplicate && applyDuplicate.conflicts.length > 0 ? (
                       <div className="mt-2 rounded-md border border-kp-outline/90 bg-kp-surface-high p-2.5">
-                        <p className="text-sm font-semibold text-kp-on-surface">Conflicting showings (±2h)</p>
-                        <p className={cn("mt-0.5", t.metaQuiet)}>Another showing exists near this time.</p>
-                        <ul className="mt-1.5 space-y-1 font-mono text-[11px] text-kp-on-surface/80">
-                          {applyConflict.map((c) => (
-                            <li key={c.id}>
-                              {c.id.slice(0, 8)}… @ {new Date(c.scheduledAt).toLocaleString()}
+                        <p className="text-sm font-semibold text-kp-on-surface">
+                          Duplicate check (±{applyDuplicate.context.windowHours}h)
+                        </p>
+                        <p className={cn("mt-1 text-xs leading-snug", t.meta)}>
+                          You are applying{" "}
+                          <span className="font-semibold text-kp-on-surface">
+                            {new Date(applyDuplicate.context.parsedScheduledAt).toLocaleString()}
+                          </span>
+                          . Another showing on this listing falls in that window.
+                        </p>
+                        {applyDuplicate.serverGuidance ? (
+                          <p className={cn("mt-1.5 text-xs leading-snug text-kp-on-surface/88", t.meta)}>
+                            {applyDuplicate.serverGuidance}
+                          </p>
+                        ) : null}
+                        <p className={cn("mt-1.5 text-[11px] leading-snug", t.metaQuiet)}>
+                          {applyDuplicate.context.isUpdatingMatchedShowing
+                            ? "Best next step: if one row below is the same appointment, link to it and apply again to update it. If you truly need two showings this close, confirm override."
+                            : "Best next step: if one row below is this Supra email, link to it and apply again (updates that showing instead of creating a second). If this is a different appointment, confirm override or fix the parsed time."}
+                        </p>
+                        {applyDuplicate.context.property ? (
+                          <p className={cn("mt-2 text-xs font-medium text-kp-on-surface", t.meta)}>
+                            <span className="text-kp-on-surface/70">Property: </span>
+                            {applyDuplicate.context.property.address1}, {applyDuplicate.context.property.city},{" "}
+                            {applyDuplicate.context.property.state} {applyDuplicate.context.property.zip}
+                          </p>
+                        ) : detail.parsedAddress1?.trim() ? (
+                          <p className={cn("mt-2 text-xs font-medium text-kp-on-surface", t.meta)}>
+                            <span className="text-kp-on-surface/70">Parsed address: </span>
+                            {detail.parsedAddress1}
+                            {detail.parsedCity ? `, ${detail.parsedCity}` : ""}
+                            {detail.parsedState ? `, ${detail.parsedState}` : ""}
+                            {detail.parsedZip ? ` ${detail.parsedZip}` : ""}
+                          </p>
+                        ) : null}
+                        <ul className="mt-2 space-y-2">
+                          {applyDuplicate.conflicts.map((c) => (
+                            <li
+                              key={c.id}
+                              className="rounded-md border border-kp-outline/60 bg-kp-bg/40 px-2 py-1.5"
+                            >
+                              <p className="text-xs font-semibold text-kp-on-surface">
+                                {new Date(c.scheduledAt).toLocaleString()}
+                                <span className="ml-1.5 font-normal text-kp-on-surface/75">
+                                  ({c.minutesFromParsed === 0 ? "same time" : `±${c.minutesFromParsed} min`} vs parsed)
+                                </span>
+                              </p>
+                              <p className="mt-0.5 font-mono text-[10px] text-kp-on-surface/65">{c.id}</p>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="mt-1.5 h-7 border-kp-outline/70 px-2 text-[11px] font-semibold"
+                                disabled={Boolean(dupLinkShowingId) || applying}
+                                onClick={() => void linkQueueToExistingShowing(c, applyDuplicate)}
+                              >
+                                {dupLinkShowingId === c.id ? "Linking…" : "Use this showing"}
+                              </Button>
                             </li>
                           ))}
                         </ul>
-                        <label className="mt-2 flex cursor-pointer items-center gap-2 text-kp-on-surface">
+                        <label className="mt-2.5 flex cursor-pointer items-start gap-2 text-kp-on-surface">
                           <input
                             type="checkbox"
-                            className="h-3.5 w-3.5 rounded border-kp-outline"
+                            className="mt-0.5 h-3.5 w-3.5 shrink-0 rounded border-kp-outline"
                             checked={applyDuplicateAck}
                             onChange={(e) => setApplyDuplicateAck(e.target.checked)}
                           />
-                          <span className="text-xs">I understand — apply anyway</span>
+                          <span className="text-xs leading-snug">
+                            Proceed anyway — this is a separate showing (or I accept updating/creating within ±
+                            {applyDuplicate.context.windowHours}h).
+                          </span>
                         </label>
                       </div>
                     ) : null}
@@ -1944,13 +2144,13 @@ export function SupraInboxView() {
                   disabled={
                     applying ||
                     !applyReadiness.ok ||
-                    Boolean(applyConflict?.length && !applyDuplicateAck)
+                    Boolean(applyDuplicate?.conflicts.length && !applyDuplicateAck)
                   }
                   title={
                     !applyReadiness.ok
                       ? "Fix the items above before applying."
-                      : applyConflict?.length && !applyDuplicateAck
-                        ? "Confirm override when a duplicate exists."
+                      : applyDuplicate?.conflicts.length && !applyDuplicateAck
+                        ? "Use an existing showing, or check the box to proceed anyway."
                         : undefined
                   }
                   onClick={handleApply}
