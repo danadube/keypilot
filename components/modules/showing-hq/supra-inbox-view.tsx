@@ -175,8 +175,32 @@ type PropertySuggestionRow = {
   city: string;
   state: string;
   zip: string;
-  matchKind: "exact" | "partial";
+  matchKind: "exact" | "partial_zip" | "partial";
 };
+
+type ShowingSuggestionRow = {
+  id: string;
+  scheduledAt: string;
+  minutesDelta: number;
+  propertyId: string;
+  property: { id: string; address1: string; city: string; state: string; zip: string };
+};
+
+/** Conservative candidate properties for showing lookup before the reviewer picks one. */
+function candidatePropertyIdsForShowingSuggest(suggestions: PropertySuggestionRow[]): string[] {
+  const uniq = (ids: string[]) => Array.from(new Set(ids));
+  const exactIds = suggestions.filter((s) => s.matchKind === "exact").map((s) => s.id);
+  if (exactIds.length > 0) return uniq(exactIds).slice(0, 5);
+  const zipIds = suggestions.filter((s) => s.matchKind === "partial_zip").map((s) => s.id);
+  if (zipIds.length > 0) return uniq(zipIds).slice(0, 5);
+  return uniq(suggestions.map((s) => s.id)).slice(0, 3);
+}
+
+function propertyMatchKindLabel(kind: PropertySuggestionRow["matchKind"]): string {
+  if (kind === "exact") return "Exact";
+  if (kind === "partial_zip") return "Partial · ZIP";
+  return "Partial";
+}
 
 /**
  * Client Apply readiness — aligned with POST …/supra-queue/[id]/apply:
@@ -268,9 +292,7 @@ export function SupraInboxView() {
   const [parseDrafting, setParseDrafting] = useState(false);
   const [propertySuggestions, setPropertySuggestions] = useState<PropertySuggestionRow[]>([]);
   const [propertySuggestLoading, setPropertySuggestLoading] = useState(false);
-  const [showingSuggestions, setShowingSuggestions] = useState<
-    { id: string; scheduledAt: string; minutesDelta: number }[]
-  >([]);
+  const [showingSuggestions, setShowingSuggestions] = useState<ShowingSuggestionRow[]>([]);
   const [showingSuggestLoading, setShowingSuggestLoading] = useState(false);
   const [clearingTestInbox, setClearingTestInbox] = useState(false);
 
@@ -343,15 +365,18 @@ export function SupraInboxView() {
       return;
     }
     const a1 = detail.parsedAddress1?.trim();
-    const city = detail.parsedCity?.trim();
+    const city = detail.parsedCity?.trim() ?? "";
     const st = detail.parsedState?.trim();
-    if (!a1 || !city || !st) {
+    const zip = detail.parsedZip?.trim() ?? "";
+    const zipOk = zip.replace(/\D/g, "").length >= 5;
+    if (!a1 || !st || (!city && !zipOk)) {
       setPropertySuggestions([]);
       return;
     }
     let cancelled = false;
     setPropertySuggestLoading(true);
-    const q = new URLSearchParams({ address1: a1, city, state: st });
+    const q = new URLSearchParams({ address1: a1, state: st, city });
+    if (zip) q.set("zip", zip);
     fetch(`/api/v1/showing-hq/properties/suggest?${q.toString()}`)
       .then((res) => res.json())
       .then((json) => {
@@ -368,31 +393,60 @@ export function SupraInboxView() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- see comment above
-  }, [modalOpen, detail?.id, detail?.parsedAddress1, detail?.parsedCity, detail?.parsedState]);
+  }, [modalOpen, detail?.id, detail?.parsedAddress1, detail?.parsedCity, detail?.parsedState, detail?.parsedZip]);
 
   useEffect(() => {
     if (!modalOpen || !detail) {
       setShowingSuggestions([]);
+      setShowingSuggestLoading(false);
       return;
     }
-    const pid = detail.matchedPropertyId?.trim();
     const at = detail.parsedScheduledAt;
-    if (!pid || !at) {
+    if (!at) {
       setShowingSuggestions([]);
+      setShowingSuggestLoading(false);
       return;
     }
     const t = new Date(at).getTime();
     if (Number.isNaN(t)) {
       setShowingSuggestions([]);
+      setShowingSuggestLoading(false);
       return;
     }
+
+    const pid = detail.matchedPropertyId?.trim();
+    const scheduledIso = new Date(at).toISOString();
+    const windowHours = "4";
+
+    let q: URLSearchParams;
+    if (pid) {
+      q = new URLSearchParams({
+        propertyId: pid,
+        scheduledAt: scheduledIso,
+        windowHours,
+      });
+    } else {
+      if (propertySuggestLoading) {
+        setShowingSuggestions([]);
+        setShowingSuggestLoading(false);
+        return;
+      }
+      const cand = candidatePropertyIdsForShowingSuggest(propertySuggestions);
+      if (cand.length === 0) {
+        setShowingSuggestions([]);
+        setShowingSuggestLoading(false);
+        return;
+      }
+      q = new URLSearchParams({
+        candidatePropertyIds: cand.join(","),
+        scheduledAt: scheduledIso,
+        windowHours,
+      });
+    }
+
     let cancelled = false;
     setShowingSuggestLoading(true);
-    const q = new URLSearchParams({
-      propertyId: pid,
-      scheduledAt: new Date(at).toISOString(),
-      windowHours: "3",
-    });
+
     fetch(`/api/v1/showing-hq/showings/suggest?${q.toString()}`)
       .then((res) => res.json())
       .then((json) => {
@@ -408,8 +462,15 @@ export function SupraInboxView() {
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only property + time drive showing hints
-  }, [modalOpen, detail?.id, detail?.matchedPropertyId, detail?.parsedScheduledAt]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- property suggestions feed candidate showing lookup
+  }, [
+    modalOpen,
+    detail?.id,
+    detail?.matchedPropertyId,
+    detail?.parsedScheduledAt,
+    propertySuggestions,
+    propertySuggestLoading,
+  ]);
 
   const counts = useMemo(() => {
     let ingested = 0;
@@ -432,6 +493,11 @@ export function SupraInboxView() {
     }
     return { ingested, needsReview, ready, failed, closed, total: items.length };
   }, [items]);
+
+  const showingSuggestMultiProperty = useMemo(
+    () => new Set(showingSuggestions.map((s) => s.propertyId)).size > 1,
+    [showingSuggestions]
+  );
 
   const displayedItems = useMemo(() => {
     switch (filterPreset) {
@@ -632,16 +698,25 @@ export function SupraInboxView() {
     });
   };
 
-  const selectShowingSuggestion = (s: { id: string; scheduledAt: string }) => {
+  const selectShowingSuggestion = (s: ShowingSuggestionRow) => {
     setDetail((prev) => {
       if (!prev) return prev;
+      const prop = s.property;
       return {
         ...prev,
+        matchedPropertyId: prop.id,
+        matchedProperty: {
+          id: prop.id,
+          address1: prop.address1,
+          city: prop.city,
+          state: prop.state,
+          zip: prop.zip,
+        },
         matchedShowingId: s.id,
         matchedShowing: {
           id: s.id,
           scheduledAt: new Date(s.scheduledAt),
-          propertyId: prev.matchedPropertyId?.trim() ?? "",
+          propertyId: prop.id,
         },
       };
     });
@@ -1624,8 +1699,9 @@ export function SupraInboxView() {
                     </p>
 
               {detail.parsedAddress1?.trim() &&
-              detail.parsedCity?.trim() &&
-              detail.parsedState?.trim() ? (
+              detail.parsedState?.trim() &&
+              (detail.parsedCity?.trim() ||
+                (detail.parsedZip?.replace(/\D/g, "").length ?? 0) >= 5) ? (
                 <div
                   className={cn(
                     "mb-2 rounded-lg border border-kp-outline/50 bg-transparent p-2",
@@ -1637,8 +1713,8 @@ export function SupraInboxView() {
                     <p className={cn("mt-2", t.meta)}>Loading…</p>
                   ) : propertySuggestions.length === 0 ? (
                     <p className={cn("mt-2", t.meta)}>
-                      No similar properties in your account (same city/state). Use manual ID below or create on
-                      apply.
+                      No similar properties in your account (same city/state and/or state/ZIP). Use manual ID below or
+                      create on apply.
                     </p>
                   ) : (
                     <ul className="mt-2 space-y-1.5">
@@ -1656,7 +1732,7 @@ export function SupraInboxView() {
                               {s.address1}, {s.city}, {s.state} {s.zip}
                             </span>
                             <span className="ml-2 text-[10px] font-semibold uppercase text-kp-on-surface/65">
-                              {s.matchKind === "exact" ? "Exact" : "Partial"}
+                              {propertyMatchKindLabel(s.matchKind)}
                             </span>
                           </button>
                         </li>
@@ -1666,22 +1742,34 @@ export function SupraInboxView() {
                 </div>
               ) : null}
 
-              {detail.matchedPropertyId?.trim() && detail.parsedScheduledAt ? (
+              {detail.parsedScheduledAt &&
+              (detail.matchedPropertyId?.trim() ||
+                propertySuggestLoading ||
+                propertySuggestions.length > 0) ? (
                 <div
                   className={cn(
                     "mb-2 rounded-lg border border-kp-outline/50 bg-transparent p-2",
                     detail.parseConfidence === Confidences.LOW && "opacity-[0.92]"
                   )}
                 >
-                  <p className={t.section}>Possible showings (±3h)</p>
-                  <p className={cn("mt-1", t.metaQuiet)}>
-                    Pick one to update, or clear to create a new showing on apply.
-                  </p>
+                  <p className={t.section}>Possible showings (±4h)</p>
+                  {detail.matchedPropertyId?.trim() ? (
+                    <p className={cn("mt-1", t.metaQuiet)}>
+                      Pick one to update, or clear to create a new showing on apply.
+                    </p>
+                  ) : (
+                    <p className={cn("mt-1", t.metaQuiet)}>
+                      From your top property suggestions — choosing a row links that property and showing. Or pick a
+                      property above first.
+                    </p>
+                  )}
                   {showingSuggestLoading ? (
                     <p className={cn("mt-2", t.meta)}>Loading…</p>
                   ) : showingSuggestions.length === 0 ? (
                     <p className={cn("mt-2", t.meta)}>
-                      No showings in that window. Use manual ID or leave empty for a new showing.
+                      {detail.matchedPropertyId?.trim()
+                        ? "No showings in that window. Use manual ID or leave empty for a new showing."
+                        : "No showings in that window for suggested properties. Link a property or use manual ID."}
                     </p>
                   ) : (
                     <ul className="mt-2 space-y-1.5">
@@ -1695,9 +1783,14 @@ export function SupraInboxView() {
                             )}
                             onClick={() => selectShowingSuggestion(s)}
                           >
-                            {new Date(s.scheduledAt).toLocaleString()}{" "}
-                            <span className="text-kp-on-surface/70">
-                              (±{s.minutesDelta} min)
+                            {showingSuggestMultiProperty ? (
+                              <span className="mb-0.5 block truncate text-[10px] font-normal text-kp-on-surface/65">
+                                {s.property.address1}, {s.property.city} {s.property.state}
+                              </span>
+                            ) : null}
+                            <span className="text-kp-on-surface">
+                              {new Date(s.scheduledAt).toLocaleString()}{" "}
+                              <span className="text-kp-on-surface/70">(±{s.minutesDelta} min)</span>
                             </span>
                           </button>
                         </li>

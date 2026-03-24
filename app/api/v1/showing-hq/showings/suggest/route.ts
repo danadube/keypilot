@@ -1,5 +1,5 @@
 /**
- * GET — suggest existing showings near a time for a property (same host user).
+ * GET — suggest existing showings near a time for one property or a small set of candidate properties.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -16,12 +16,14 @@ export async function GET(req: NextRequest) {
     const user = await getCurrentUser();
     const sp = req.nextUrl.searchParams;
     const raw = ShowingSuggestQuerySchema.safeParse({
-      propertyId: sp.get("propertyId") ?? "",
+      propertyId: (sp.get("propertyId") ?? "").trim() || undefined,
+      candidatePropertyIds: sp.get("candidatePropertyIds") ?? undefined,
       scheduledAt: sp.get("scheduledAt") ?? sp.get("at") ?? "",
       windowHours: sp.get("windowHours") ?? undefined,
     });
     if (!raw.success) {
-      return apiError("propertyId and scheduledAt (ISO) are required", 400, "VALIDATION_ERROR");
+      const msg = raw.error.issues[0]?.message ?? "Invalid query";
+      return apiError(msg, 400, "VALIDATION_ERROR");
     }
 
     const scheduledAt = new Date(raw.data.scheduledAt);
@@ -29,8 +31,15 @@ export async function GET(req: NextRequest) {
       return apiError("scheduledAt must be a valid date/time", 400, "VALIDATION_ERROR");
     }
 
+    const candidateParts =
+      raw.data.candidatePropertyIds
+        ?.split(",")
+        .map((s) => s.trim())
+        .filter(Boolean) ?? [];
+
     const suggestions = await suggestShowingsForUser(prismaAdmin, user.id, {
       propertyId: raw.data.propertyId,
+      candidatePropertyIds: candidateParts.length > 0 ? candidateParts : undefined,
       scheduledAt,
       windowHours: raw.data.windowHours,
     });
@@ -39,6 +48,8 @@ export async function GET(req: NextRequest) {
       data: {
         suggestions: suggestions.map((s) => ({
           id: s.id,
+          propertyId: s.propertyId,
+          property: s.property,
           scheduledAt: s.scheduledAt.toISOString(),
           minutesDelta: s.minutesDelta,
         })),

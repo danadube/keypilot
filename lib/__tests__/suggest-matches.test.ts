@@ -4,9 +4,17 @@ import {
   rankShowingsByTimeProximity,
 } from "@/lib/showing-hq/suggest-matches";
 
+const sampleProp = {
+  id: "p1",
+  address1: "1 Main St",
+  city: "Palm Desert",
+  state: "CA",
+  zip: "92211",
+};
+
 describe("normalizeAddressLine", () => {
-  it("lowercases and collapses whitespace", () => {
-    expect(normalizeAddressLine("  479 Desert Holly Dr.  ")).toBe("479 desert holly dr");
+  it("lowercases, strips punctuation, and expands common street types", () => {
+    expect(normalizeAddressLine("  479 Desert Holly Dr.  ")).toBe("479 desert holly drive");
   });
 });
 
@@ -35,7 +43,17 @@ describe("rankPropertySuggestions", () => {
     },
   ];
 
-  it("returns exact match first", () => {
+  it("treats Dr vs Drive as exact when normalized", () => {
+    const r = rankPropertySuggestions(candidates, {
+      address1: "479 Desert Holly Dr",
+      city: "Palm Desert",
+      state: "CA",
+    });
+    expect(r[0]?.id).toBe("a");
+    expect(r[0]?.matchKind).toBe("exact");
+  });
+
+  it("returns exact match first when strings match literally", () => {
     const r = rankPropertySuggestions(candidates, {
       address1: "479 Desert Holly Drive",
       city: "Palm Desert",
@@ -55,6 +73,30 @@ describe("rankPropertySuggestions", () => {
     expect(kinds.filter((k) => k === "exact").length).toBe(0);
     expect(r.map((x) => x.id)).toContain("c");
     expect(r.map((x) => x.id)).toContain("a");
+  });
+
+  it("ranks partial_zip ahead of partial when parsed ZIP aligns", () => {
+    const wrongZipPartial = {
+      id: "wrongzip",
+      address1: "479 Desert Holly Way",
+      city: "Palm Desert",
+      state: "CA",
+      zip: "90210",
+    };
+    const mixed = [wrongZipPartial, candidates[0]!, candidates[2]!];
+    const r = rankPropertySuggestions(mixed, {
+      address1: "479 Desert Holly",
+      city: "Palm Desert",
+      state: "CA",
+      zip: "92211",
+    });
+    const idxZip = r.findIndex((x) => x.id === "a");
+    const idxWrong = r.findIndex((x) => x.id === "wrongzip");
+    expect(idxZip).toBeGreaterThan(-1);
+    expect(idxWrong).toBeGreaterThan(-1);
+    expect(idxZip).toBeLessThan(idxWrong);
+    expect(r[idxZip]?.matchKind).toBe("partial_zip");
+    expect(r[idxWrong]?.matchKind).toBe("partial");
   });
 
   it("returns empty when address too short", () => {
@@ -83,26 +125,27 @@ describe("rankShowingsByTimeProximity", () => {
 
   it("includes exact and near times within window", () => {
     const rows = [
-      { id: "far", scheduledAt: new Date("2026-03-20T20:00:00") },
-      { id: "exact", scheduledAt: new Date("2026-03-20T14:34:00") },
-      { id: "near", scheduledAt: new Date("2026-03-20T15:00:00") },
+      { id: "far", scheduledAt: new Date("2026-03-20T20:00:00"), propertyId: "p1", property: sampleProp },
+      { id: "exact", scheduledAt: new Date("2026-03-20T14:34:00"), propertyId: "p1", property: sampleProp },
+      { id: "near", scheduledAt: new Date("2026-03-20T15:00:00"), propertyId: "p1", property: sampleProp },
     ];
     const windowMs = 3 * 60 * 60 * 1000;
     const r = rankShowingsByTimeProximity(rows, t0, windowMs);
     expect(r.map((x) => x.id)).toEqual(["exact", "near"]);
     expect(r[0]?.minutesDelta).toBe(0);
+    expect(r[0]?.propertyId).toBe("p1");
   });
 
   it("excludes showings outside window", () => {
-    const rows = [{ id: "far", scheduledAt: new Date("2026-03-20T20:00:00") }];
+    const rows = [{ id: "far", scheduledAt: new Date("2026-03-20T20:00:00"), propertyId: "p1", property: sampleProp }];
     const windowMs = 2 * 60 * 60 * 1000;
     expect(rankShowingsByTimeProximity(rows, t0, windowMs)).toEqual([]);
   });
 
   it("sorts by proximity", () => {
     const rows = [
-      { id: "b", scheduledAt: new Date("2026-03-20T14:50:00") },
-      { id: "a", scheduledAt: new Date("2026-03-20T14:35:00") },
+      { id: "b", scheduledAt: new Date("2026-03-20T14:50:00"), propertyId: "p1", property: sampleProp },
+      { id: "a", scheduledAt: new Date("2026-03-20T14:35:00"), propertyId: "p1", property: sampleProp },
     ];
     const r = rankShowingsByTimeProximity(rows, t0, 60 * 60 * 1000);
     expect(r.map((x) => x.id)).toEqual(["a", "b"]);

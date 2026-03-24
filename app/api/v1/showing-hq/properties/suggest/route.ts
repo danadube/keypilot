@@ -1,5 +1,5 @@
 /**
- * GET — suggest existing properties for Supra review (exact / partial address1 + city + state).
+ * GET — suggest existing properties for Supra review (address + state + city and/or ZIP).
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
       address1: sp.get("address1") ?? sp.get("address") ?? "",
       city: sp.get("city") ?? "",
       state: sp.get("state") ?? "",
+      zip: sp.get("zip") ?? "",
     });
     if (!parsed.success) {
       return apiError("address1, city, and state are required", 400, "VALIDATION_ERROR");
