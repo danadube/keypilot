@@ -376,6 +376,8 @@ export function SupraInboxView() {
   const [applyDuplicate, setApplyDuplicate] = useState<ApplyDuplicateBundle | null>(null);
   const [applyDuplicateAck, setApplyDuplicateAck] = useState(false);
   const [dupLinkShowingId, setDupLinkShowingId] = useState<string | null>(null);
+  /** JSON.stringify(buildUpdatePayload(row)) after last open/save/server sync — modal dirty when current detail differs. */
+  const [savedModalFingerprint, setSavedModalFingerprint] = useState<string | null>(null);
   const [pasteModalOpen, setPasteModalOpen] = useState(false);
   const [pasteSubject, setPasteSubject] = useState("");
   const [pasteBody, setPasteBody] = useState("");
@@ -449,6 +451,7 @@ export function SupraInboxView() {
     if (!items.some((r) => r.id === detail.id)) {
       setModalOpen(false);
       setDetail(null);
+      setSavedModalFingerprint(null);
       setApplyDuplicate(null);
       setApplyDuplicateAck(false);
       setPastedReviewBannerId(null);
@@ -650,6 +653,26 @@ export function SupraInboxView() {
     queueState: row.queueState,
   });
 
+  /** PATCH queue item; throws on failure. Used by Save, Save & apply, and link-to-showing. */
+  const performPatchQueueItem = async (
+    id: string,
+    body: Record<string, unknown>
+  ): Promise<ItemWithRelations> => {
+    const res = await fetch(`/api/v1/showing-hq/supra-queue/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error?.message ?? "Update failed");
+    return normalizeItem(json.data as ItemWithRelations);
+  };
+
+  const modalHasUnsavedEdits = useMemo(() => {
+    if (!detail || savedModalFingerprint === null) return false;
+    return JSON.stringify(buildUpdatePayload(detail)) !== savedModalFingerprint;
+  }, [detail, savedModalFingerprint]);
+
   const importFromGmail = async () => {
     setGmailImporting(true);
     setError(null);
@@ -779,7 +802,9 @@ export function SupraInboxView() {
   const openDetail = (row: ItemWithRelations) => {
     setApplyDuplicate(null);
     setApplyDuplicateAck(false);
-    setDetail(normalizeItem(row));
+    const n = normalizeItem(row);
+    setDetail(n);
+    setSavedModalFingerprint(JSON.stringify(buildUpdatePayload(n)));
     setModalOpen(true);
   };
 
@@ -843,7 +868,11 @@ export function SupraInboxView() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message ?? "Parse draft failed");
       const row = json.data?.item as ItemWithRelations;
-      if (row) setDetail(normalizeItem(row));
+      if (row) {
+        const n = normalizeItem(row);
+        setDetail(n);
+        setSavedModalFingerprint(JSON.stringify(buildUpdatePayload(n)));
+      }
       await load();
       setSuccessMessage(
         typeof json.data?.message === "string"
@@ -876,18 +905,12 @@ export function SupraInboxView() {
     setDupLinkShowingId(conflict.id);
     setError(null);
     try {
-      const res = await fetch(`/api/v1/showing-hq/supra-queue/${detail.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          matchedPropertyId: prop.id,
-          matchedShowingId: conflict.id,
-        }),
+      const updated = await performPatchQueueItem(detail.id, {
+        matchedPropertyId: prop.id,
+        matchedShowingId: conflict.id,
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error?.message ?? "Could not link showing");
-      const updated = normalizeItem(json.data as ItemWithRelations);
       setDetail(updated);
+      setSavedModalFingerprint(JSON.stringify(buildUpdatePayload(updated)));
       setApplyDuplicate(null);
       setApplyDuplicateAck(false);
       setSuccessMessage("Linked on the server. Apply again to update that showing (duplicate block should clear).");
@@ -904,9 +927,35 @@ export function SupraInboxView() {
     setApplying(true);
     setError(null);
     try {
-      const { res, json } = await postApplyRequest(detail, applyDuplicateAck);
+      let d = detail;
+      if (
+        savedModalFingerprint !== null &&
+        JSON.stringify(buildUpdatePayload(detail)) !== savedModalFingerprint
+      ) {
+        d = await performPatchQueueItem(detail.id, buildUpdatePayload(detail));
+        setDetail(d);
+        setSavedModalFingerprint(JSON.stringify(buildUpdatePayload(d)));
+        await load();
+        if (TERMINAL_STATES.includes(d.queueState)) {
+          setModalOpen(false);
+          setDetail(null);
+          setSavedModalFingerprint(null);
+          return;
+        }
+        const afterSave = getApplyReadiness(d);
+        if (!afterSave.ok) {
+          setError(
+            afterSave.reasons.length > 0
+              ? afterSave.reasons.join(" ")
+              : "Saved, but this item is not ready to apply yet."
+          );
+          return;
+        }
+      }
+
+      const { res, json } = await postApplyRequest(d, applyDuplicateAck);
       if (res.status === 409 && json.error?.code === "DUPLICATE_SHOWING_WINDOW") {
-        const dup = parseApplyDuplicate409(json as Record<string, unknown>, detail);
+        const dup = parseApplyDuplicate409(json as Record<string, unknown>, d);
         if (dup) setApplyDuplicate(dup);
         else setApplyDuplicate(null);
         setError(
@@ -919,16 +968,17 @@ export function SupraInboxView() {
       setApplyDuplicateAck(false);
       setModalOpen(false);
       setDetail(null);
+      setSavedModalFingerprint(null);
       await load();
-      const d = json.data as {
+      const applyMeta = json.data as {
         createdProperty?: boolean;
         updatedShowing?: boolean;
       };
-      const base = d?.updatedShowing
+      const base = applyMeta?.updatedShowing
         ? "Applied: showing updated and queue item marked complete."
         : "Applied: new showing created (source: Supra).";
       setSuccessMessage(
-        d?.createdProperty ? `${base} A new property was created from the parsed address.` : base
+        applyMeta?.createdProperty ? `${base} A new property was created from the parsed address.` : base
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Apply failed");
@@ -946,6 +996,7 @@ export function SupraInboxView() {
       if (res.status === 409 && json.error?.code === "DUPLICATE_SHOWING_WINDOW") {
         const normalized = normalizeItem(row);
         setDetail(normalized);
+        setSavedModalFingerprint(JSON.stringify(buildUpdatePayload(normalized)));
         setModalOpen(true);
         const dup = parseApplyDuplicate409(json as Record<string, unknown>, normalized);
         if (dup) setApplyDuplicate(dup);
@@ -980,21 +1031,16 @@ export function SupraInboxView() {
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`/api/v1/showing-hq/supra-queue/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error?.message ?? "Update failed");
-      const updated = normalizeItem(json.data as ItemWithRelations);
+      const updated = await performPatchQueueItem(id, body);
       setApplyDuplicate(null);
       setApplyDuplicateAck(false);
       setDetail(updated);
+      setSavedModalFingerprint(JSON.stringify(buildUpdatePayload(updated)));
       await load();
       if (TERMINAL_STATES.includes(updated.queueState)) {
         setModalOpen(false);
         setDetail(null);
+        setSavedModalFingerprint(null);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Update failed");
@@ -1430,6 +1476,7 @@ export function SupraInboxView() {
           setModalOpen(o);
           if (!o) {
             setDetail(null);
+            setSavedModalFingerprint(null);
             setApplyDuplicate(null);
             setApplyDuplicateAck(false);
             setPastedReviewBannerId(null);
@@ -1438,7 +1485,7 @@ export function SupraInboxView() {
           }
         }}
         title="Review queue item"
-        description="Review and fix on the left, then match and apply on the right in order. Save before using shortcuts or Apply."
+        description="Review and fix on the left, then match and apply on the right. Apply now saves unsaved edits first when needed; queue shortcuts still save current edits."
         size="2xl"
         bodyClassName="max-h-[min(85vh,840px)]"
         footer={
@@ -2135,6 +2182,13 @@ export function SupraInboxView() {
                         </label>
                       </div>
                     ) : null}
+                    {applyReadiness.ok && modalHasUnsavedEdits ? (
+                      <p className={cn("mt-2 text-[11px] leading-snug", t.metaQuiet)}>
+                        Unsaved edits in this modal — <strong className="text-kp-on-surface">Save &amp; apply</strong>{" "}
+                        will save to the server first, then run apply. Use <strong className="text-kp-on-surface">Save changes</strong>{" "}
+                        alone if you only want to persist without applying.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 <Button
@@ -2151,11 +2205,19 @@ export function SupraInboxView() {
                       ? "Fix the items above before applying."
                       : applyDuplicate?.conflicts.length && !applyDuplicateAck
                         ? "Use an existing showing, or check the box to proceed anyway."
-                        : undefined
+                        : modalHasUnsavedEdits
+                          ? "Saves your current modal edits, then applies using the saved row."
+                          : undefined
                   }
                   onClick={handleApply}
                 >
-                  {applying ? "Applying…" : "Apply now"}
+                  {applying
+                    ? modalHasUnsavedEdits
+                      ? "Save & apply…"
+                      : "Applying…"
+                    : modalHasUnsavedEdits
+                      ? "Save & apply"
+                      : "Apply now"}
                 </Button>
               </div>
                   ) : (
