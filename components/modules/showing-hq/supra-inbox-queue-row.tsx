@@ -1,6 +1,6 @@
 "use client";
 
-import type { ComponentProps } from "react";
+import type { ComponentProps, KeyboardEvent, MouseEvent } from "react";
 import type {
   SupraQueueItem,
   SupraQueueState,
@@ -111,6 +111,10 @@ function formatShowingDateTime(row: SupraInboxQueueItemRow): string {
   });
 }
 
+function stopCardOpenReview(e: MouseEvent | KeyboardEvent) {
+  e.stopPropagation();
+}
+
 function rowBoardChrome(state: SupraQueueState): string {
   if (state === "NEEDS_REVIEW" || state === "INGESTED" || state === "PARSED") {
     return "border-l-[4px] border-l-amber-400";
@@ -151,23 +155,50 @@ export function SupraInboxQueueRow({
   const agent = row.parsedAgentName?.trim() || "—";
   const when = formatShowingDateTime(row);
 
+  const openReviewFromCard = () => {
+    onReview();
+  };
+
+  const onCardBodyKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openReviewFromCard();
+    }
+  };
+
   return (
     <article
       id={`supra-queue-row-${row.id}`}
       className={cn(
-        "rounded-lg border border-kp-outline bg-kp-surface px-3 py-3 shadow-sm transition-colors sm:px-4 sm:py-3.5",
+        "rounded-lg border border-kp-outline bg-kp-surface px-3 py-3 shadow-sm sm:px-4 sm:py-3.5",
         rowBoardChrome(row.queueState),
-        highlighted && "ring-2 ring-kp-teal/50 ring-offset-2 ring-offset-kp-bg",
-        "hover:bg-kp-surface-high/80"
+        highlighted && "ring-2 ring-kp-teal/50 ring-offset-2 ring-offset-kp-bg"
       )}
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
-        <div className="min-w-0 flex-1 space-y-3">
+        {/* Main body: opens full review modal (same as Review). Chips are non-navigating chrome. */}
+        <div
+          className={cn(
+            "min-w-0 flex-1 space-y-3 rounded-md p-1 -m-1 outline-none transition-colors",
+            "cursor-pointer hover:bg-kp-surface-high/70",
+            "focus-visible:bg-kp-surface-high/70 focus-visible:ring-2 focus-visible:ring-kp-teal focus-visible:ring-offset-2 focus-visible:ring-offset-kp-surface"
+          )}
+          role="button"
+          tabIndex={0}
+          aria-label={`Open full review: ${row.subject}`}
+          onClick={openReviewFromCard}
+          onKeyDown={onCardBodyKeyDown}
+        >
           <header className="flex flex-wrap items-start gap-2 gap-y-1">
             <h3 className="min-w-0 text-base font-semibold leading-snug text-kp-on-surface">
               {row.subject}
             </h3>
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div
+              className="flex flex-wrap items-center gap-1.5"
+              onClick={stopCardOpenReview}
+              onKeyDown={stopCardOpenReview}
+              onMouseDown={stopCardOpenReview}
+            >
               {row.externalMessageId.startsWith("gmail-") ? (
                 <span className="rounded border border-blue-600/50 bg-blue-950/60 px-1.5 py-0.5 text-[10px] font-semibold text-blue-200">
                   Gmail
@@ -213,16 +244,28 @@ export function SupraInboxQueueRow({
               {LIST_ACTION_LABEL[row.proposedAction]}
             </span>
           </div>
+
+          <p className="border-t border-kp-outline pt-2 text-[11px] tabular-nums text-kp-on-surface-variant">
+            Received {new Date(row.receivedAt).toLocaleString()}
+          </p>
         </div>
 
-        <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center lg:flex-col lg:items-stretch">
+        {/* Actions: isolated from card-body click; Apply never opens review. */}
+        <div
+          className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center lg:flex-col lg:items-stretch"
+          onClick={stopCardOpenReview}
+          onMouseDown={stopCardOpenReview}
+        >
           {showInlineApply ? (
             <Button
               type="button"
               size="sm"
-              className="h-9 bg-kp-teal font-semibold text-kp-bg hover:bg-kp-teal/90"
+              className="h-9 min-h-9 bg-kp-teal px-4 font-bold text-kp-bg shadow-sm hover:bg-kp-teal/90"
               disabled={applyLoading || applyBlockedByOtherRow}
-              onClick={onApply}
+              onClick={(e) => {
+                e.stopPropagation();
+                onApply();
+              }}
             >
               {applyLoading ? (
                 "Applying…"
@@ -238,17 +281,16 @@ export function SupraInboxQueueRow({
             type="button"
             variant="outline"
             size="sm"
-            className="h-9 border-kp-outline font-semibold text-kp-on-surface hover:bg-kp-surface-high"
-            onClick={onReview}
+            className="h-9 min-h-9 min-w-[6.5rem] border-2 border-kp-teal/70 bg-kp-surface-high px-4 font-bold text-kp-on-surface shadow-sm hover:border-kp-teal hover:bg-kp-surface-higher"
+            onClick={(e) => {
+              e.stopPropagation();
+              onReview();
+            }}
           >
             Review
           </Button>
         </div>
       </div>
-
-      <p className="mt-3 border-t border-kp-outline/80 pt-2 text-[11px] tabular-nums text-kp-on-surface-variant">
-        Received {new Date(row.receivedAt).toLocaleString()}
-      </p>
     </article>
   );
 }
