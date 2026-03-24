@@ -16,6 +16,7 @@ import { BrandModal } from "@/components/ui/BrandModal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
+import { SupraInboxQueueRow } from "@/components/modules/showing-hq/supra-inbox-queue-row";
 import { cn } from "@/lib/utils";
 import {
   pastedBlobHasDetectedFields,
@@ -52,14 +53,14 @@ function formatEnumLabel(value: string): string {
     .join(" ");
 }
 
-/** Human-readable proposed actions for reviewers */
+/** Human-readable proposed actions (review modal + selects) */
 const PROPOSED_ACTION_LABELS: Record<SupraProposedAction, string> = {
-  UNKNOWN: "Unknown — decide manually",
-  CREATE_SHOWING: "Create a new showing",
-  UPDATE_SHOWING: "Update an existing showing",
+  UNKNOWN: "Choose action",
+  CREATE_SHOWING: "Create showing",
+  UPDATE_SHOWING: "Update showing",
   CREATE_PROPERTY_AND_SHOWING: "Create property + showing",
-  DISMISS: "No action (dismiss)",
-  NEEDS_MANUAL_REVIEW: "Needs manual review",
+  DISMISS: "Dismiss",
+  NEEDS_MANUAL_REVIEW: "Review details",
 };
 
 const CONFIDENCE_HINTS: Record<SupraParseConfidence, string> = {
@@ -117,19 +118,6 @@ function confidenceBadgeVariant(
   }
 }
 
-function rowAttentionClass(state: SupraQueueState): string {
-  if (state === QueueStates.NEEDS_REVIEW) {
-    return "border-l-[3px] border-l-kp-gold bg-kp-gold/[0.07]";
-  }
-  if (state === QueueStates.FAILED_PARSE) {
-    return "border-l-[3px] border-l-red-500/70 bg-red-950/25";
-  }
-  if (state === QueueStates.READY_TO_APPLY) {
-    return "border-l-[3px] border-l-kp-teal/60 bg-kp-teal/[0.06]";
-  }
-  return "";
-}
-
 /** Inputs/selects: obvious editable fields (review + paste modals). */
 const fieldInput =
   "h-9 w-full rounded-md border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal focus-visible:border-kp-teal disabled:cursor-not-allowed disabled:opacity-60";
@@ -163,8 +151,6 @@ const t = {
   body: "text-sm leading-snug text-kp-on-surface",
   meta: "text-xs leading-snug text-kp-on-surface/78",
   metaQuiet: "text-[11px] leading-snug text-kp-on-surface/68",
-  tableCell: "text-xs leading-tight text-kp-on-surface/88",
-  tableMuted: "text-[11px] leading-tight text-kp-on-surface/65",
 } as const;
 
 function rawBodyLines(text: string): string[] {
@@ -220,6 +206,15 @@ function getApplyReadiness(detail: ItemWithRelations | null): { ok: boolean; rea
   return { ok: reasons.length === 0, reasons };
 }
 
+/** Inline Apply on the board: schedule + medium/high confidence + same readiness as POST apply. */
+function rowShowsInlineApply(row: ItemWithRelations): boolean {
+  if (!row.parsedScheduledAt) return false;
+  if (row.parseConfidence !== Confidences.MEDIUM && row.parseConfidence !== Confidences.HIGH) {
+    return false;
+  }
+  return getApplyReadiness(row).ok;
+}
+
 type FilterPreset =
   | "all"
   | "ingested"
@@ -257,6 +252,7 @@ export function SupraInboxView() {
   const [seeding, setSeeding] = useState(false);
   const [sampleMenuOpen, setSampleMenuOpen] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [applyingRowId, setApplyingRowId] = useState<string | null>(null);
   const [applyConflict, setApplyConflict] = useState<{ id: string; scheduledAt: string }[] | null>(
     null
   );
@@ -691,17 +687,22 @@ export function SupraInboxView() {
     }
   };
 
+  const postApplyRequest = async (item: ItemWithRelations, confirmDuplicateOverride: boolean) => {
+    const res = await fetch(`/api/v1/showing-hq/supra-queue/${item.id}/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ confirmDuplicateOverride }),
+    });
+    const json = await res.json();
+    return { res, json } as const;
+  };
+
   const handleApply = async () => {
     if (!detail || !applyReadiness.ok) return;
     setApplying(true);
     setError(null);
     try {
-      const res = await fetch(`/api/v1/showing-hq/supra-queue/${detail.id}/apply`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ confirmDuplicateOverride: applyDuplicateAck }),
-      });
-      const json = await res.json();
+      const { res, json } = await postApplyRequest(detail, applyDuplicateAck);
       if (res.status === 409 && json.error?.code === "DUPLICATE_SHOWING_WINDOW") {
         setApplyConflict(json.conflicts ?? []);
         setError(json.error?.message ?? "Duplicate showing in time window.");
@@ -727,6 +728,40 @@ export function SupraInboxView() {
       setError(e instanceof Error ? e.message : "Apply failed");
     } finally {
       setApplying(false);
+    }
+  };
+
+  const handleApplyFromList = async (row: ItemWithRelations) => {
+    if (!rowShowsInlineApply(row)) return;
+    setApplyingRowId(row.id);
+    setError(null);
+    try {
+      const { res, json } = await postApplyRequest(row, false);
+      if (res.status === 409 && json.error?.code === "DUPLICATE_SHOWING_WINDOW") {
+        setDetail(normalizeItem(row));
+        setModalOpen(true);
+        setApplyConflict(json.conflicts ?? []);
+        setError(json.error?.message ?? "Duplicate showing in time window.");
+        return;
+      }
+      if (!res.ok) throw new Error(json.error?.message ?? "Apply failed");
+      setApplyConflict(null);
+      setApplyDuplicateAck(false);
+      await load();
+      const d = json.data as {
+        createdProperty?: boolean;
+        updatedShowing?: boolean;
+      };
+      const base = d?.updatedShowing
+        ? "Applied: showing updated and queue item marked complete."
+        : "Applied: new showing created (source: Supra).";
+      setSuccessMessage(
+        d?.createdProperty ? `${base} A new property was created from the parsed address.` : base
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Apply failed");
+    } finally {
+      setApplyingRowId(null);
     }
   };
 
@@ -908,14 +943,6 @@ export function SupraInboxView() {
     } finally {
       setSeeding(false);
     }
-  };
-
-  const parsedAddressLine = (row: ItemWithRelations) => {
-    const parts = [
-      row.parsedAddress1,
-      [row.parsedCity, row.parsedState, row.parsedZip].filter(Boolean).join(", "),
-    ].filter(Boolean);
-    return parts.length ? parts.join(" · ") : "—";
   };
 
   const filterChip = (
@@ -1154,157 +1181,30 @@ export function SupraInboxView() {
             )}
           </div>
         ) : (
-          <div className="-mx-1 overflow-x-auto px-1">
-            <table className="w-full border-collapse text-left">
-              <thead>
-                <tr className="border-b border-kp-outline bg-kp-surface-high/50">
-                  <th className="px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface/70">
-                    Email
-                  </th>
-                  <th className="px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface/70">
-                    In
-                  </th>
-                  <th className="px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface/70">
-                    Address
-                  </th>
-                  <th className="px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface/70">
-                    Showing
-                  </th>
-                  <th className="px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface/70">
-                    Queue
-                  </th>
-                  <th className="px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface/70">
-                    Risk
-                  </th>
-                  <th className="min-w-[9rem] px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface/70">
-                    Next step
-                  </th>
-                  <th className="w-[1%] whitespace-nowrap px-2 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface/70">
-                    Open
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayedItems.map((row) => {
-                  const rowApplyOk = getApplyReadiness(row).ok;
-                  return (
-                  <tr
-                    id={`supra-queue-row-${row.id}`}
-                    key={row.id}
-                    className={cn(
-                      "border-b border-kp-outline/80 transition-colors hover:bg-kp-surface-high/70",
-                      rowAttentionClass(row.queueState),
-                      highlightQueueRowId === row.id &&
-                        "bg-kp-teal/[0.12] ring-2 ring-inset ring-kp-teal/45"
-                    )}
-                  >
-                    <td className="max-w-[min(280px,28vw)] px-2 py-1.5 align-top">
-                      <div className="flex flex-col gap-1">
-                        <span
-                          className="line-clamp-2 text-sm font-semibold leading-snug text-kp-on-surface"
-                          title={row.subject}
-                        >
-                          {row.subject}
-                        </span>
-                        <div className="flex flex-wrap items-center gap-1">
-                          {row.externalMessageId.startsWith("gmail-") ? (
-                            <span className="rounded border border-blue-500/35 bg-blue-500/10 px-1.5 py-px text-[10px] font-semibold text-blue-300">
-                              Gmail
-                            </span>
-                          ) : null}
-                          {row.externalMessageId.startsWith("manual-paste-") ? (
-                            <span className="rounded border border-kp-teal/35 bg-kp-teal/10 px-1.5 py-px text-[10px] font-semibold text-kp-teal">
-                              Pasted
-                            </span>
-                          ) : null}
-                          {rowApplyOk ? (
-                            <span className="inline-flex items-center gap-0.5 rounded border border-kp-teal/40 bg-kp-teal/10 px-1.5 py-px text-[10px] font-semibold text-kp-teal">
-                              <Sparkles className="h-2.5 w-2.5 shrink-0" />
-                              Apply OK
-                            </span>
-                          ) : null}
-                          {isAwaitingDecision(row.queueState) &&
-                          row.queueState !== QueueStates.READY_TO_APPLY &&
-                          !rowApplyOk ? (
-                            <span className="rounded border border-kp-gold/35 bg-kp-gold/10 px-1.5 py-px text-[10px] font-semibold text-kp-gold">
-                              Needs you
-                            </span>
-                          ) : null}
-                          {row.queueState === QueueStates.READY_TO_APPLY && !rowApplyOk ? (
-                            <span className="rounded border border-amber-500/30 bg-amber-950/25 px-1.5 py-px text-[10px] font-semibold text-amber-200/90">
-                              Fields incomplete
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                    </td>
-                    <td className={cn("whitespace-nowrap px-2 py-1.5 align-top tabular-nums", t.tableCell)}>
-                      {new Date(row.receivedAt).toLocaleString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                    <td
-                      className={cn("max-w-[200px] px-2 py-1.5 align-top", t.tableCell)}
-                      title={parsedAddressLine(row)}
-                    >
-                      <span className="line-clamp-2">{parsedAddressLine(row)}</span>
-                    </td>
-                    <td className={cn("whitespace-nowrap px-2 py-1.5 align-top tabular-nums", t.tableCell)}>
-                      {row.parsedScheduledAt
-                        ? new Date(row.parsedScheduledAt).toLocaleString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })
-                        : "—"}
-                    </td>
-                    <td className="px-2 py-1.5 align-top">
-                      <StatusBadge variant={queueStateBadgeVariant(row.queueState)} dot>
-                        {formatEnumLabel(row.queueState)}
-                      </StatusBadge>
-                    </td>
-                    <td className="px-2 py-1.5 align-top">
-                      <div className="flex flex-col gap-0.5">
-                        <StatusBadge variant={confidenceBadgeVariant(row.parseConfidence)}>
-                          {formatEnumLabel(row.parseConfidence)}
-                        </StatusBadge>
-                        <span
-                          className={cn("max-w-[8.5rem]", t.tableMuted)}
-                          title={CONFIDENCE_HINTS[row.parseConfidence]}
-                        >
-                          {row.parseConfidence === Confidences.HIGH
-                            ? "Trust parser"
-                            : row.parseConfidence === Confidences.MEDIUM
-                              ? "Double-check"
-                              : "High risk"}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="max-w-[220px] px-2 py-1.5 align-top">
-                      <span className="text-xs font-semibold leading-tight text-kp-on-surface">
-                        {PROPOSED_ACTION_LABELS[row.proposedAction]}
-                      </span>
-                    </td>
-                    <td className="px-2 py-1.5 pr-1 text-right align-top">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-8 border-kp-outline/90 bg-kp-surface-high px-3 text-xs font-semibold text-kp-on-surface shadow-sm hover:bg-kp-surface-higher"
-                        onClick={() => openDetail(row)}
-                      >
-                        Review
-                      </Button>
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-0.5 border-b border-kp-outline pb-3">
+              <p className="text-sm font-semibold text-kp-on-surface">Action board</p>
+              <p className="text-xs leading-relaxed text-kp-on-surface-variant">
+                Parsed address, time, and agent are shown on each card. Use{" "}
+                <span className="font-semibold text-kp-on-surface">Apply</span> when confidence is
+                medium or high and fields are complete; open <span className="font-semibold text-kp-on-surface">Review</span>{" "}
+                to match a property or edit before applying.
+              </p>
+            </div>
+            {displayedItems.map((row) => (
+              <SupraInboxQueueRow
+                key={row.id}
+                row={row}
+                highlighted={highlightQueueRowId === row.id}
+                showInlineApply={rowShowsInlineApply(row)}
+                applyLoading={applyingRowId === row.id}
+                applyBlockedByOtherRow={
+                  applyingRowId !== null && applyingRowId !== row.id
+                }
+                onReview={() => openDetail(row)}
+                onApply={() => void handleApplyFromList(row)}
+              />
+            ))}
           </div>
         )}
       </div>
