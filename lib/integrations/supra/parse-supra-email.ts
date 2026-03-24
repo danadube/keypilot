@@ -34,6 +34,11 @@ export type SupraParseDraft = {
   parsedState: string | null;
   parsedZip: string | null;
   parsedScheduledAt: Date | null;
+  /**
+   * For `showing_ended` only: “that began MM/DD/YYYY …” from Supra end notifications.
+   * `parsedScheduledAt` remains the ended time (DB / matching). Not persisted on SupraQueueItem.
+   */
+  parsedShowingBeganAt: Date | null;
   parsedEventKind: string | null;
   parsedStatus: string | null;
   parsedAgentName: string | null;
@@ -533,10 +538,10 @@ function extractDateTime(
   return null;
 }
 
-/** Prefer "has ended MM/DD/YYYY h:mmAM" for Supra end notifications */
-function extractEndedDateTime(body: string): Date | null {
-  const m = body.match(
-    /\bhas\s+ended\s+(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\s+(\d{1,2}:\d{2}\s*(?:AM|PM))/i
+/** Parse a single Supra-style `MM/DD/YYYY h:mmAM` chunk (no surrounding text). */
+function parseSupraMdyTimeChunk(chunk: string): Date | null {
+  const m = chunk.trim().match(
+    /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})\s+(\d{1,2}:\d{2}\s*(?:AM|PM))$/i
   );
   if (!m) return null;
   const mo = parseInt(m[1], 10);
@@ -550,6 +555,24 @@ function extractEndedDateTime(body: string): Date | null {
   const d = new Date(yr, mo - 1, day, tm.h, tm.m, 0, 0);
   if (Number.isNaN(d.getTime())) return null;
   return d;
+}
+
+/** Prefer "has ended MM/DD/YYYY h:mmAM" for Supra end notifications */
+function extractEndedDateTime(body: string): Date | null {
+  const m = body.match(
+    /\bhas\s+ended\s+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\s+\d{1,2}:\d{2}\s*(?:AM|PM))\b/i
+  );
+  if (!m) return null;
+  return parseSupraMdyTimeChunk(m[1]);
+}
+
+/** “that began MM/DD/YYYY h:mmAM” on end-of-showing copy */
+function extractBeganDateTimeForSupraEnded(body: string): Date | null {
+  const m = body.match(
+    /\bthat\s+began\s+(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\s+\d{1,2}:\d{2}\s*(?:AM|PM))\b/i
+  );
+  if (!m) return null;
+  return parseSupraMdyTimeChunk(m[1]);
 }
 
 /** Gmail/HTML often breaks the line between agent name and “( email )”. */
@@ -715,7 +738,9 @@ export function parseSupraEmailToDraft(input: {
 
   const { address1, city, state, zip, kind: addressKind } = extractAddress(body);
   let scheduledAt = extractDateTime(subject, body);
+  let parsedShowingBeganAt: Date | null = null;
   if (intent === "showing_ended") {
+    parsedShowingBeganAt = extractBeganDateTimeForSupraEnded(body);
     const endedAt = extractEndedDateTime(body);
     if (endedAt) scheduledAt = endedAt;
   }
@@ -765,6 +790,7 @@ export function parseSupraEmailToDraft(input: {
     parsedState: state,
     parsedZip: zip,
     parsedScheduledAt: scheduledAt,
+    parsedShowingBeganAt,
     parsedEventKind,
     parsedStatus,
     parsedAgentName: agent.name,

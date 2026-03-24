@@ -14,6 +14,8 @@ export type SupraFixtureExpected = {
   parsedZip: string | null;
   /** Local calendar components — avoids TZ flakiness in tests */
   scheduledLocal?: { y: number; mo: number; d: number; h: number; mi: number } | null;
+  /** End-of-showing: “that began …” (optional; omit when not asserted) */
+  beganLocal?: { y: number; mo: number; d: number; h: number; mi: number } | null;
   parsedAgentName: string | null;
   parsedAgentEmail: string | null;
   parsedStatus: string | null;
@@ -33,6 +35,18 @@ export type SupraRealEmailCase = {
 };
 
 /**
+ * Verbatim body lines from Supra PDF exports (March 2026), sanitized (no opt-out URLs).
+ * Source-of-truth for parser + Gmail extraction parity tests.
+ */
+export const PDF_EXACT_NEW_SHOWING_BODY = `The showing by John McKenna( jmckenna@windermere.com) at 479 Desert Holly Drive, Palm Desert, CA 92211
+(KeyBox# 32287084) began 03/20/2026 2:34PM
+For additional information on your showings please login to SupraWEB.`;
+
+export const PDF_EXACT_END_SHOWING_BODY = `The Supra system detected the showing by John McKenna ( jmckenna@windermere.com) at 479 Desert Holly Drive,
+Palm Desert, CA 92211 (KeyBox# 32287084) that began 03/20/2026 2:34PM has ended 03/20/2026 2:47PM.
+Estimated showing duration is 13 minutes.`;
+
+/**
  * Real patterns captured from Supra PDF exports (March 2026 samples).
  */
 export const REAL_SUPRA_CASES: SupraRealEmailCase[] = [
@@ -41,9 +55,7 @@ export const REAL_SUPRA_CASES: SupraRealEmailCase[] = [
     note: "Supra Showings - New Showing Notification (inline at-address, showing by Name(email), began MDY)",
     subject: "Supra Showings - New Showing Notification",
     sender: "suprashowing@suprasystems.com",
-    rawBodyText: `The showing by John McKenna( jmckenna@windermere.com) at 479 Desert Holly Drive, Palm Desert, CA 92211
-(KeyBox# 32287084) began 03/20/2026 2:34PM
-For additional information on your showings please login to SupraWEB.`,
+    rawBodyText: PDF_EXACT_NEW_SHOWING_BODY,
     expected: {
       parsedAddress1: "479 Desert Holly Drive",
       parsedCity: "Palm Desert",
@@ -63,14 +75,13 @@ For additional information on your showings please login to SupraWEB.`,
     note: "End of Showing — address split across line break; began + has ended timestamps",
     subject: "Supra Showings - End of Showing Notification",
     sender: "suprashowing@suprasystems.com",
-    rawBodyText: `The Supra system detected the showing by John McKenna ( jmckenna@windermere.com) at 479 Desert Holly Drive,
-Palm Desert, CA 92211 (KeyBox# 32287084) that began 03/20/2026 2:34PM has ended 03/20/2026 2:47PM.
-Estimated showing duration is 13 minutes.`,
+    rawBodyText: PDF_EXACT_END_SHOWING_BODY,
     expected: {
       parsedAddress1: "479 Desert Holly Drive",
       parsedCity: "Palm Desert",
       parsedState: "CA",
       parsedZip: "92211",
+      beganLocal: { y: 2026, mo: 3, d: 20, h: 14, mi: 34 },
       scheduledLocal: { y: 2026, mo: 3, d: 20, h: 14, mi: 47 },
       parsedAgentName: "John McKenna",
       parsedAgentEmail: "jmckenna@windermere.com",

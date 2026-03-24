@@ -95,6 +95,9 @@ Bend, OR 97701 (KeyBox# 1) that began 03/21/2026 1:00PM has ended 03/21/2026 1:2
     expect(at.getDate()).toBe(21);
     expect(at.getHours()).toBe(13);
     expect(at.getMinutes()).toBe(22);
+    const began = r.parsedShowingBeganAt!;
+    expect(began.getHours()).toBe(13);
+    expect(began.getMinutes()).toBe(0);
   });
 
   it("handles missing zip and missing agent without inventing", () => {

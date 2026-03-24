@@ -36,6 +36,12 @@ describe("parseSupraEmailToDraft — real Supra fixture cases", () => {
     expect(r.parsedZip).toBe(e.parsedZip);
     assertLocalDate(r.parsedScheduledAt, e.scheduledLocal);
 
+    if (e.beganLocal !== undefined) {
+      assertLocalDate(r.parsedShowingBeganAt, e.beganLocal);
+    } else {
+      expect(r.parsedShowingBeganAt).toBeNull();
+    }
+
     expect(r.parsedAgentName).toBe(e.parsedAgentName);
     expect(r.parsedAgentEmail).toBe(e.parsedAgentEmail);
     expect(r.parsedStatus).toBe(e.parsedStatus);
