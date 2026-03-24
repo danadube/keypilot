@@ -90,6 +90,7 @@ export async function POST(
       );
     }
 
+    /** Mirrors Supra inbox `getApplyReadiness`: property link OR full parsed address (no confidence gate). */
     const matchedPropertyId = item.matchedPropertyId?.trim() || null;
     const matchedShowingId = item.matchedShowingId?.trim() || null;
 

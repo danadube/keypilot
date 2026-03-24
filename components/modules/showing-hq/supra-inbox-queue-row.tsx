@@ -115,21 +115,34 @@ function stopCardOpenReview(e: MouseEvent | KeyboardEvent) {
   e.stopPropagation();
 }
 
-function rowBoardChrome(state: SupraQueueState): string {
-  if (state === "NEEDS_REVIEW" || state === "INGESTED" || state === "PARSED") {
-    return "border-l-[4px] border-l-amber-400";
-  }
-  if (state === "READY_TO_APPLY") {
-    return "border-l-[4px] border-l-emerald-500";
-  }
+function rowBoardChrome(state: SupraQueueState, applyReady: boolean): string {
   if (state === "FAILED_PARSE") {
     return "border-l-[4px] border-l-red-500";
   }
-  return "border-l-[4px] border-l-transparent";
+  if (state === "APPLIED" || state === "DISMISSED" || state === "DUPLICATE") {
+    return "border-l-[4px] border-l-transparent";
+  }
+  if (applyReady || state === "READY_TO_APPLY") {
+    return "border-l-[4px] border-l-emerald-500";
+  }
+  return "border-l-[4px] border-l-amber-400";
+}
+
+/** List badge: when apply-ready, show positive label instead of raw NEEDS_REVIEW. */
+function listQueueBadge(
+  state: SupraQueueState,
+  applyReady: boolean
+): { variant: ComponentProps<typeof StatusBadge>["variant"]; label: string } {
+  if (applyReady) {
+    return { variant: "sold", label: "Apply ready" };
+  }
+  return { variant: queueStateBadgeVariant(state), label: formatEnumLabel(state) };
 }
 
 export type SupraInboxQueueRowProps = {
   row: SupraInboxQueueItemRow;
+  /** Same as getApplyReadiness(row).ok — drives Apply button, border, and queue chip label. */
+  applyReadinessOk: boolean;
   highlighted?: boolean;
   showInlineApply: boolean;
   applyLoading?: boolean;
@@ -144,6 +157,7 @@ export type SupraInboxQueueRowProps = {
  */
 export function SupraInboxQueueRow({
   row,
+  applyReadinessOk,
   highlighted,
   showInlineApply,
   applyLoading,
@@ -154,6 +168,7 @@ export function SupraInboxQueueRow({
   const addr = formatParsedAddressBlock(row);
   const agent = row.parsedAgentName?.trim() || "—";
   const when = formatShowingDateTime(row);
+  const queueChip = listQueueBadge(row.queueState, applyReadinessOk);
 
   const openReviewFromCard = () => {
     onReview();
@@ -171,7 +186,7 @@ export function SupraInboxQueueRow({
       id={`supra-queue-row-${row.id}`}
       className={cn(
         "rounded-lg border border-kp-outline bg-kp-surface px-3 py-3 shadow-sm sm:px-4 sm:py-3.5",
-        rowBoardChrome(row.queueState),
+        rowBoardChrome(row.queueState, applyReadinessOk),
         highlighted && "ring-2 ring-kp-teal/50 ring-offset-2 ring-offset-kp-bg"
       )}
     >
@@ -209,8 +224,8 @@ export function SupraInboxQueueRow({
                   Pasted
                 </span>
               ) : null}
-              <StatusBadge variant={queueStateBadgeVariant(row.queueState)} dot className="text-[10px]">
-                {formatEnumLabel(row.queueState)}
+              <StatusBadge variant={queueChip.variant} dot className="text-[10px]">
+                {queueChip.label}
               </StatusBadge>
             </div>
           </header>

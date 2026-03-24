@@ -178,7 +178,12 @@ type PropertySuggestionRow = {
   matchKind: "exact" | "partial";
 };
 
-/** Same rules as POST …/apply — for disabling the Apply button and list hints */
+/**
+ * Client Apply readiness — aligned with POST …/supra-queue/[id]/apply:
+ * - parsedScheduledAt required
+ * - matched property OR full parsed address (line1, city, state, ZIP)
+ * Server does not use parse confidence; we do not block LOW here if address/property is grounded.
+ */
 function getApplyReadiness(detail: ItemWithRelations | null): { ok: boolean; reasons: string[] } {
   if (!detail) return { ok: false, reasons: [] };
   if (TERMINAL_STATES.includes(detail.queueState)) {
@@ -196,23 +201,9 @@ function getApplyReadiness(detail: ItemWithRelations | null): { ok: boolean; rea
       detail.parsedZip?.trim()
   );
   if (!hasProp && !hasAddr) {
-    reasons.push("Link a matched property ID or fill address, city, state, and ZIP.");
-  }
-  if (!hasProp && detail.parseConfidence === Confidences.LOW) {
-    reasons.push(
-      "Parse confidence is low — link a matched property before applying, or raise confidence after verifying every parsed field."
-    );
+    reasons.push("Link a matched property or fill address, city, state, and ZIP.");
   }
   return { ok: reasons.length === 0, reasons };
-}
-
-/** Inline Apply on the board: schedule + medium/high confidence + same readiness as POST apply. */
-function rowShowsInlineApply(row: ItemWithRelations): boolean {
-  if (!row.parsedScheduledAt) return false;
-  if (row.parseConfidence !== Confidences.MEDIUM && row.parseConfidence !== Confidences.HIGH) {
-    return false;
-  }
-  return getApplyReadiness(row).ok;
 }
 
 type FilterPreset =
@@ -732,7 +723,7 @@ export function SupraInboxView() {
   };
 
   const handleApplyFromList = async (row: ItemWithRelations) => {
-    if (!rowShowsInlineApply(row)) return;
+    if (!getApplyReadiness(row).ok) return;
     setApplyingRowId(row.id);
     setError(null);
     try {
@@ -1185,26 +1176,30 @@ export function SupraInboxView() {
             <div className="flex flex-col gap-0.5 border-b border-kp-outline pb-3">
               <p className="text-sm font-semibold text-kp-on-surface">Action board</p>
               <p className="text-xs leading-relaxed text-kp-on-surface-variant">
-                Parsed address, time, and agent are shown on each card. Use{" "}
-                <span className="font-semibold text-kp-on-surface">Apply</span> when confidence is
-                medium or high and fields are complete; open <span className="font-semibold text-kp-on-surface">Review</span>{" "}
-                to match a property or edit before applying.
+                <span className="font-semibold text-kp-on-surface">Apply</span> appears when schedule
+                and property resolution are ready (linked property or full parsed address), same as the
+                server. Open <span className="font-semibold text-kp-on-surface">Review</span> to match,
+                edit, or handle edge cases.
               </p>
             </div>
-            {displayedItems.map((row) => (
-              <SupraInboxQueueRow
-                key={row.id}
-                row={row}
-                highlighted={highlightQueueRowId === row.id}
-                showInlineApply={rowShowsInlineApply(row)}
-                applyLoading={applyingRowId === row.id}
-                applyBlockedByOtherRow={
-                  applyingRowId !== null && applyingRowId !== row.id
-                }
-                onReview={() => openDetail(row)}
-                onApply={() => void handleApplyFromList(row)}
-              />
-            ))}
+            {displayedItems.map((row) => {
+              const applyReady = getApplyReadiness(row).ok;
+              return (
+                <SupraInboxQueueRow
+                  key={row.id}
+                  row={row}
+                  applyReadinessOk={applyReady}
+                  highlighted={highlightQueueRowId === row.id}
+                  showInlineApply={applyReady}
+                  applyLoading={applyingRowId === row.id}
+                  applyBlockedByOtherRow={
+                    applyingRowId !== null && applyingRowId !== row.id
+                  }
+                  onReview={() => openDetail(row)}
+                  onApply={() => void handleApplyFromList(row)}
+                />
+              );
+            })}
           </div>
         )}
       </div>
@@ -1322,13 +1317,19 @@ export function SupraInboxView() {
                 </div>
               </div>
             ) : null}
-            {/* Decision banner */}
+            {/* Decision banner — when apply-ready, show teal / “Apply ready” even if queue state is NEEDS_REVIEW */}
+            {(() => {
+              const applyReadyBanner =
+                applyReadiness.ok &&
+                !TERMINAL_STATES.includes(detail.queueState) &&
+                detail.queueState !== QueueStates.FAILED_PARSE;
+              return (
             <div
               className={cn(
                 "rounded-lg border px-3 py-2",
                 detail.queueState === QueueStates.FAILED_PARSE
                   ? "border-red-700/45 bg-red-950/35"
-                  : detail.queueState === QueueStates.READY_TO_APPLY
+                  : applyReadyBanner || detail.queueState === QueueStates.READY_TO_APPLY
                     ? "border-kp-teal/45 bg-kp-teal/[0.12]"
                     : isAwaitingDecision(detail.queueState)
                       ? "border-kp-gold/45 bg-kp-gold/[0.12]"
@@ -1338,27 +1339,40 @@ export function SupraInboxView() {
               <div className="flex flex-wrap items-start gap-2.5">
                 {detail.queueState === QueueStates.FAILED_PARSE ? (
                   <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+                ) : applyReadyBanner || detail.queueState === QueueStates.READY_TO_APPLY ? (
+                  <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" />
                 ) : (
                   <Inbox className="mt-0.5 h-4 w-4 shrink-0 text-kp-gold" />
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <StatusBadge variant={queueStateBadgeVariant(detail.queueState)} dot>
-                      {formatEnumLabel(detail.queueState)}
+                    <StatusBadge
+                      variant={
+                        applyReadyBanner || detail.queueState === QueueStates.READY_TO_APPLY
+                          ? "sold"
+                          : queueStateBadgeVariant(detail.queueState)
+                      }
+                      dot
+                    >
+                      {applyReadyBanner
+                        ? "Apply ready"
+                        : formatEnumLabel(detail.queueState)}
                     </StatusBadge>
                   </div>
                   <p className={cn("mt-1.5", t.meta)}>
                     {detail.queueState === QueueStates.FAILED_PARSE
                       ? "Treat the body as unusable unless you fix it — expand Raw source on the left if needed."
-                      : detail.queueState === QueueStates.READY_TO_APPLY
-                        ? "Ready to apply — use Apply now on the right to write property and showing."
+                      : applyReadyBanner || detail.queueState === QueueStates.READY_TO_APPLY
+                        ? "Schedule and address/property meet apply requirements — use Apply on the board or Apply now here."
                         : isAwaitingDecision(detail.queueState)
-                          ? "This item is waiting for a human decision — edit fields, then save or use quick actions."
+                          ? "Add schedule and a linked property or full parsed address to enable Apply."
                           : "This item is closed in the queue."}
                   </p>
                 </div>
               </div>
             </div>
+              );
+            })()}
 
             <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-[minmax(0,1fr)_minmax(15.5rem,18rem)] lg:grid-cols-[minmax(0,1fr)_minmax(17.5rem,20rem)] xl:grid-cols-[minmax(0,1fr)_22rem]">
               {/* Left: primary editing column */}
@@ -1370,7 +1384,8 @@ export function SupraInboxView() {
                 <div className="rounded-md border border-amber-500/40 bg-amber-950/35 px-3 py-2 text-sm text-amber-50">
                   <span className="font-semibold">Low parse confidence.</span>{" "}
                   <span className="text-amber-50/90">
-                    Treat address and time as drafts. Apply requires a linked property or higher confidence.
+                    Double-check address and time. You can still apply when schedule and full address (or a
+                    linked property) are set — same rules as higher confidence.
                   </span>
                 </div>
               ) : null}
