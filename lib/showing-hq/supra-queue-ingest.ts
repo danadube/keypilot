@@ -66,7 +66,7 @@ export type SupraGmailIngestStatus = "imported" | "skipped" | "refreshed";
 export async function ingestSupraQueueItemIfNew(
   hostUserId: string,
   input: IngestedSupraQueueInput
-): Promise<{ status: SupraGmailIngestStatus }> {
+): Promise<{ status: SupraGmailIngestStatus; queueItemId?: string }> {
   const existing = await prismaAdmin.supraQueueItem.findUnique({
     where: {
       hostUserId_externalMessageId: {
@@ -78,8 +78,8 @@ export async function ingestSupraQueueItemIfNew(
   });
 
   if (!existing) {
-    await createIngestedSupraQueueItem(hostUserId, input);
-    return { status: "imported" };
+    const created = await createIngestedSupraQueueItem(hostUserId, input);
+    return { status: "imported", queueItemId: created.id };
   }
 
   if (GMAIL_BODY_REFRESH_SKIP_STATES.includes(existing.queueState)) {
@@ -117,5 +117,5 @@ export async function ingestSupraQueueItemIfNew(
     },
   });
 
-  return { status: "refreshed" };
+  return { status: "refreshed", queueItemId: existing.id };
 }

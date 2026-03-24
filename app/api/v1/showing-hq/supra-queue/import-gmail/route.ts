@@ -9,6 +9,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { fetchSupraGmailMessages } from "@/lib/adapters/gmail";
+import { applySupraV1ParseDraftToQueueItem } from "@/lib/showing-hq/supra-queue-apply-parse-draft";
 import { ingestSupraQueueItemIfNew } from "@/lib/showing-hq/supra-queue-ingest";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,7 @@ export async function POST() {
     let imported = 0;
     let skipped = 0;
     let refreshed = 0;
+    let autoParsed = 0;
     const seenGmailIds = new Set<string>();
 
     for (const conn of connections) {
@@ -64,7 +66,7 @@ export async function POST() {
         seenGmailIds.add(m.gmailMessageId);
 
         const externalMessageId = `gmail-${m.gmailMessageId}`;
-        const { status } = await ingestSupraQueueItemIfNew(user.id, {
+        const { status, queueItemId } = await ingestSupraQueueItemIfNew(user.id, {
           externalMessageId,
           subject: m.subject,
           rawBodyText: m.rawBodyText,
@@ -74,6 +76,18 @@ export async function POST() {
         if (status === "imported") imported += 1;
         else if (status === "refreshed") refreshed += 1;
         else skipped += 1;
+
+        if (queueItemId && (status === "imported" || status === "refreshed")) {
+          try {
+            const pr = await applySupraV1ParseDraftToQueueItem({
+              hostUserId: user.id,
+              queueItemId,
+            });
+            if (pr.ok) autoParsed += 1;
+          } catch (e) {
+            console.error("[import-gmail] auto-parse failed", queueItemId, e);
+          }
+        }
       }
     }
 
@@ -82,6 +96,7 @@ export async function POST() {
         imported,
         refreshed,
         skipped,
+        autoParsed,
         scanned: seenGmailIds.size,
       },
     });

@@ -7,18 +7,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { SupraQueueState } from "@prisma/client";
-import { buildManualParseDraftFromRaw } from "@/lib/integrations/supra/manual-parse-stub";
+import { applySupraV1ParseDraftToQueueItem } from "@/lib/showing-hq/supra-queue-apply-parse-draft";
 
 export const dynamic = "force-dynamic";
-
-const listInclude = {
-  matchedProperty: {
-    select: { id: true, address1: true, city: true, state: true, zip: true },
-  },
-  matchedShowing: {
-    select: { id: true, scheduledAt: true, propertyId: true },
-  },
-} as const;
 
 const BLOCKED: SupraQueueState[] = [
   SupraQueueState.APPLIED,
@@ -36,6 +27,7 @@ export async function POST(
 
     const item = await prismaAdmin.supraQueueItem.findFirst({
       where: { id, hostUserId: user.id },
+      select: { queueState: true },
     });
     if (!item) {
       return apiError("Queue item not found", 404, "NOT_FOUND");
@@ -49,34 +41,25 @@ export async function POST(
       );
     }
 
-    const draft = buildManualParseDraftFromRaw({
-      subject: item.subject,
-      rawBodyText: item.rawBodyText,
-      sender: item.sender,
+    const result = await applySupraV1ParseDraftToQueueItem({
+      hostUserId: user.id,
+      queueItemId: id,
     });
 
-    const updated = await prismaAdmin.supraQueueItem.update({
-      where: { id },
-      data: {
-        parsedAddress1: draft.parsedAddress1,
-        parsedCity: draft.parsedCity,
-        parsedState: draft.parsedState,
-        parsedZip: draft.parsedZip,
-        parsedScheduledAt: draft.parsedScheduledAt,
-        parsedEventKind: draft.parsedEventKind,
-        parsedStatus: draft.parsedStatus,
-        parsedAgentName: draft.parsedAgentName,
-        parsedAgentEmail: draft.parsedAgentEmail,
-        parseConfidence: draft.parseConfidence,
-        proposedAction: draft.proposedAction,
-        queueState: SupraQueueState.NEEDS_REVIEW,
-      },
-      include: listInclude,
-    });
+    if (!result.ok) {
+      if (result.code === "NOT_FOUND") {
+        return apiError("Queue item not found", 404, "NOT_FOUND");
+      }
+      return apiError(
+        "Cannot generate a parse draft for this queue state.",
+        400,
+        "INVALID_STATE"
+      );
+    }
 
     return NextResponse.json({
       data: {
-        item: updated,
+        item: result.item,
         parserVersion: "supra_v1",
         message:
           "Draft fields were filled by the Supra v1 parser. Review all fields before apply — especially date/time and address.",

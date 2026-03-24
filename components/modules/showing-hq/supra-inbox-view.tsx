@@ -505,16 +505,17 @@ export function SupraInboxView() {
         setError(json.error?.message ?? "Gmail import failed");
         return;
       }
-      const { imported, refreshed = 0, skipped, scanned } = json.data as {
+      const { imported, refreshed = 0, skipped, scanned, autoParsed = 0 } = json.data as {
         imported: number;
         refreshed?: number;
         skipped: number;
         scanned: number;
+        autoParsed?: number;
       };
       await load();
       setFilterPreset("all");
       setSuccessMessage(
-        `Gmail: ${imported} new, ${refreshed} existing row(s) refreshed from Gmail, ${skipped} skipped (APPLIED/DUPLICATE or duplicate scan) (${scanned} scanned, last ~14 days, Supra senders). Run parse on refreshed rows if needed.`
+        `Gmail: ${imported} new, ${refreshed} refreshed, ${autoParsed} auto-parsed to NEEDS_REVIEW, ${skipped} skipped (${scanned} scanned, last ~14 days, Supra senders).`
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gmail import failed");
