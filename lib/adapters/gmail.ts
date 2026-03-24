@@ -105,14 +105,24 @@ export type GmailSupraNormalizedMessage = {
   receivedAt: Date;
 };
 
-function htmlToPlainText(html: string): string {
+/**
+ * Gmail HTML → plain for Supra notifications. Table cells become line breaks so
+ * "street" / "City, ST ZIP" can land on separate lines (matches parser line-pair logic).
+ */
+export function htmlToPlainText(html: string): string {
   return html
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|tr|li)>/gi, "\n")
+    .replace(/<\/(p|div|tr|li|h[1-6]|table)>/gi, "\n")
+    .replace(/<\/(td|th)>/gi, "\n")
     .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/\s+\n/g, "\n")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
@@ -130,26 +140,59 @@ type GmailMessagePart = {
   parts?: GmailMessagePart[] | null;
 };
 
-/** Walk Gmail message parts for best available plain text (fallback HTML → stripped). */
-function extractPlainBodyFromPart(part: GmailMessagePart): string {
-  if (!part) return "";
-  if (part.mimeType === "text/plain" && part.body?.data) {
-    const t = decodeGmailBodyData(part.body.data);
-    if (t.trim()) return t;
-  }
-  if (part.parts?.length) {
-    for (const p of part.parts) {
-      const t = extractPlainBodyFromPart(p);
-      if (t.trim()) return t;
+/** Collect every text/plain and HTML-stripped body (multipart can nest several). */
+function gatherMailBodies(part: GmailMessagePart | undefined): {
+  plainParts: string[];
+  htmlParts: string[];
+} {
+  const plainParts: string[] = [];
+  const htmlParts: string[] = [];
+
+  function walk(p: GmailMessagePart | undefined) {
+    if (!p) return;
+    if (p.mimeType === "text/plain" && p.body?.data) {
+      const t = decodeGmailBodyData(p.body.data).trim();
+      if (t) plainParts.push(t);
+    } else if (p.mimeType === "text/html" && p.body?.data) {
+      const html = decodeGmailBodyData(p.body.data).trim();
+      if (html) htmlParts.push(htmlToPlainText(html));
     }
-    for (const p of part.parts) {
-      if (p.mimeType === "text/html" && p.body?.data) {
-        const html = decodeGmailBodyData(p.body.data);
-        if (html.trim()) return htmlToPlainText(html);
-      }
+    if (p.parts?.length) {
+      for (const c of p.parts) walk(c);
     }
   }
-  return "";
+
+  walk(part);
+  return { plainParts, htmlParts };
+}
+
+/**
+ * Gmail often ships a short text/plain part plus a full HTML body. Supra’s structured copy
+ * lives in HTML; taking plain first loses address/time lines. Prefer HTML when it is
+ * clearly richer or is the only part that matches Supra’s “showing by” pattern.
+ */
+export function pickSupraRawBodyFromChunks(
+  plainParts: string[],
+  htmlParts: string[]
+): string {
+  const bestPlain = plainParts.reduce((a, b) => (b.length > a.length ? b : a), "").trim();
+  const bestHtml = htmlParts.reduce((a, b) => (b.length > a.length ? b : a), "").trim();
+  const pLen = bestPlain.length;
+  const hLen = bestHtml.length;
+  const showingBy = /the\s+showing\s+by\b/i;
+  const keyboxOrAt = /\bKeyBox#|\bat\s+\d/i;
+
+  if (!hLen) return bestPlain;
+  if (!pLen) return bestHtml;
+
+  if (pLen < 280 && hLen > pLen + 80) return bestHtml;
+  if (!showingBy.test(bestPlain) && showingBy.test(bestHtml)) return bestHtml;
+  if (!keyboxOrAt.test(bestPlain) && keyboxOrAt.test(bestHtml) && hLen + 40 > pLen) {
+    return bestHtml;
+  }
+  if (pLen < 160 && hLen > pLen + 40) return bestHtml;
+
+  return bestPlain;
 }
 
 /**
@@ -200,9 +243,8 @@ export async function fetchSupraGmailMessages(
           ? new Date(dateHeader)
           : new Date();
 
-      let rawBodyText = msg.payload
-        ? extractPlainBodyFromPart(msg.payload)
-        : "";
+      const { plainParts, htmlParts } = gatherMailBodies(msg.payload ?? undefined);
+      let rawBodyText = pickSupraRawBodyFromChunks(plainParts, htmlParts);
       if (!rawBodyText.trim()) {
         rawBodyText = (msg.snippet ?? "").trim() || "(Empty body)";
       }

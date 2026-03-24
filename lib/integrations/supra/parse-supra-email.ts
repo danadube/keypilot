@@ -291,7 +291,11 @@ function extractAddress(text: string): {
   const lines = joinOrphanStreetWithCityZipLine(trimmed);
   const norm = normalizeCommasAcrossBreaks(lines.join("\n"));
 
-  const inline = findBestSupraInlineAddress(norm);
+  let inline = findBestSupraInlineAddress(norm);
+  if (!inline) {
+    const compactNorm = normalizeCommasAcrossBreaks(compactWhitespaceSingleLine(text));
+    inline = findBestSupraInlineAddress(compactNorm);
+  }
   if (inline) {
     return {
       address1: inline.address1.slice(0, 500),
@@ -439,8 +443,20 @@ function parseTimeToHoursMinutes(s: string): { h: number; m: number } | null {
 /**
  * Try to build a local Date in America-centric interpretation (manual review still required).
  */
-function extractDateTime(subject: string, body: string): Date | null {
+function extractDateTime(
+  subject: string,
+  body: string,
+  alreadyCompacted = false
+): Date | null {
   const text = `${subject}\n${body}`;
+
+  const beganTight = text.match(
+    /\bbegan\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}\s+\d{1,2}:\d{2}\s*(?:AM|PM))\b/i
+  );
+  if (beganTight) {
+    const nested = extractDateTime("", beganTight[1], true);
+    if (nested) return nested;
+  }
 
   const iso = text.match(
     /\b(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:\.\d{3})?(?:Z|[+-]\d{2}:?\d{2})?)\b/
@@ -502,8 +518,16 @@ function extractDateTime(subject: string, body: string): Date | null {
   );
   if (startLabel) {
     const slice = startLabel[1].slice(0, 120);
-    const nested = extractDateTime("", slice);
+    const nested = extractDateTime("", slice, true);
     if (nested) return nested;
+  }
+
+  if (!alreadyCompacted) {
+    const compact = compactWhitespaceSingleLine(body);
+    if (compact.length > 0 && compact !== body.trim()) {
+      const nested = extractDateTime(subject, compact, true);
+      if (nested) return nested;
+    }
   }
 
   return null;
@@ -528,19 +552,27 @@ function extractEndedDateTime(body: string): Date | null {
   return d;
 }
 
+/** Gmail/HTML often breaks the line between agent name and “( email )”. */
+function compactWhitespaceSingleLine(s: string): string {
+  return s.replace(/\r?\n/g, " ").replace(/\s+/g, " ").trim();
+}
+
 function extractSupraShowingByAgent(text: string): {
   name: string | null;
   email: string | null;
 } | null {
-  const m = text.match(/the\s+showing\s+by\s+([^\n(]+?)\s*\(\s*([^)]+)\)/i);
-  if (!m) return null;
-  const name = m[1].replace(/\s+/g, " ").trim();
-  const inner = m[2].trim();
-  const em = inner.match(EMAIL_RE_ONE);
-  return {
-    name: name.length >= 2 ? name.slice(0, 300) : null,
-    email: em ? em[0].toLowerCase() : null,
+  const tryOnce = (src: string) => {
+    const m = src.match(/the\s+showing\s+by\s+([^\n(]+?)\s*\(\s*([^)]+)\)/i);
+    if (!m) return null;
+    const name = m[1].replace(/\s+/g, " ").trim();
+    const inner = m[2].trim();
+    const em = inner.match(EMAIL_RE_ONE);
+    return {
+      name: name.length >= 2 ? name.slice(0, 300) : null,
+      email: em ? em[0].toLowerCase() : null,
+    };
   };
+  return tryOnce(text) ?? tryOnce(compactWhitespaceSingleLine(text));
 }
 
 function extractAgent(text: string): { name: string | null; email: string | null } {
