@@ -1,6 +1,7 @@
 /**
- * Pull recent Supra-related messages from connected Gmail and append to the Supra review queue.
- * Idempotent per Gmail message id (externalMessageId = gmail-{messageId}).
+ * Pull recent Supra-related messages from connected Gmail into the Supra review queue.
+ * New messages create INGESTED rows. Existing rows (except APPLIED / DUPLICATE) get
+ * `rawBodyText` + headers refreshed from Gmail so re-import picks up improved extraction.
  */
 
 import { NextResponse } from "next/server";
@@ -37,6 +38,7 @@ export async function POST() {
 
     let imported = 0;
     let skipped = 0;
+    let refreshed = 0;
     const seenGmailIds = new Set<string>();
 
     for (const conn of connections) {
@@ -70,6 +72,7 @@ export async function POST() {
           receivedAt: m.receivedAt,
         });
         if (status === "imported") imported += 1;
+        else if (status === "refreshed") refreshed += 1;
         else skipped += 1;
       }
     }
@@ -77,6 +80,7 @@ export async function POST() {
     return NextResponse.json({
       data: {
         imported,
+        refreshed,
         skipped,
         scanned: seenGmailIds.size,
       },

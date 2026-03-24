@@ -4,7 +4,13 @@
  */
 
 import { prismaAdmin } from "@/lib/db";
-import { SupraQueueState } from "@prisma/client";
+import {
+  SupraParseConfidence,
+  SupraProposedAction,
+  SupraPropertyMatchStatus,
+  SupraQueueState,
+  SupraShowingMatchStatus,
+} from "@prisma/client";
 
 export const supraQueueListInclude = {
   matchedProperty: {
@@ -44,11 +50,23 @@ export async function createIngestedSupraQueueItem(
   });
 }
 
-/** Idempotent ingest: skip if hostUserId + externalMessageId already exists. */
+/** Do not overwrite bodies for rows that are finalized or deduped. */
+const GMAIL_BODY_REFRESH_SKIP_STATES: SupraQueueState[] = [
+  SupraQueueState.APPLIED,
+  SupraQueueState.DUPLICATE,
+];
+
+export type SupraGmailIngestStatus = "imported" | "skipped" | "refreshed";
+
+/**
+ * Gmail idempotent ingest: create new row, or refresh body/metadata for an existing row
+ * (so improved HTML/plain extraction can replace stale `rawBodyText` on re-import).
+ * Skips only APPLIED / DUPLICATE. Refresh clears parsed + match fields and resets to INGESTED.
+ */
 export async function ingestSupraQueueItemIfNew(
   hostUserId: string,
   input: IngestedSupraQueueInput
-): Promise<{ status: "imported" | "skipped" }> {
+): Promise<{ status: SupraGmailIngestStatus }> {
   const existing = await prismaAdmin.supraQueueItem.findUnique({
     where: {
       hostUserId_externalMessageId: {
@@ -56,9 +74,48 @@ export async function ingestSupraQueueItemIfNew(
         externalMessageId: input.externalMessageId,
       },
     },
-    select: { id: true },
+    select: { id: true, queueState: true },
   });
-  if (existing) return { status: "skipped" };
-  await createIngestedSupraQueueItem(hostUserId, input);
-  return { status: "imported" };
+
+  if (!existing) {
+    await createIngestedSupraQueueItem(hostUserId, input);
+    return { status: "imported" };
+  }
+
+  if (GMAIL_BODY_REFRESH_SKIP_STATES.includes(existing.queueState)) {
+    return { status: "skipped" };
+  }
+
+  await prismaAdmin.supraQueueItem.update({
+    where: { id: existing.id },
+    data: {
+      subject: input.subject.trim().slice(0, 500),
+      rawBodyText: input.rawBodyText,
+      sender: input.sender
+        ? input.sender.trim().slice(0, 500) || null
+        : null,
+      receivedAt: input.receivedAt,
+      parsedAddress1: null,
+      parsedCity: null,
+      parsedState: null,
+      parsedZip: null,
+      parsedScheduledAt: null,
+      parsedEventKind: null,
+      parsedStatus: null,
+      parsedAgentName: null,
+      parsedAgentEmail: null,
+      parseConfidence: SupraParseConfidence.LOW,
+      proposedAction: SupraProposedAction.UNKNOWN,
+      queueState: SupraQueueState.INGESTED,
+      matchedPropertyId: null,
+      matchedShowingId: null,
+      propertyMatchStatus: SupraPropertyMatchStatus.UNSET,
+      showingMatchStatus: SupraShowingMatchStatus.UNSET,
+      reviewedAt: null,
+      reviewedByUserId: null,
+      resolutionNotes: null,
+    },
+  });
+
+  return { status: "refreshed" };
 }
