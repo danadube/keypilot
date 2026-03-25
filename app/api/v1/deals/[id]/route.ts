@@ -4,6 +4,36 @@ import { withRLSContext } from "@/lib/db-context";
 import { UpdateDealSchema } from "@/lib/validations/deal";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
+const dealDetailInclude = {
+  contact: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      status: true,
+      notes: true,
+    },
+  },
+  property: {
+    select: {
+      id: true,
+      address1: true,
+      city: true,
+      state: true,
+      zip: true,
+    },
+  },
+  linkedTransaction: {
+    select: {
+      id: true,
+      status: true,
+      salePrice: true,
+    },
+  },
+} as const;
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -15,28 +45,7 @@ export async function GET(
     const deal = await withRLSContext(user.id, (tx) =>
       tx.deal.findFirst({
         where: { id, userId: user.id },
-        include: {
-          contact: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phone: true,
-              status: true,
-              notes: true,
-            },
-          },
-          property: {
-            select: {
-              id: true,
-              address1: true,
-              city: true,
-              state: true,
-              zip: true,
-            },
-          },
-        },
+        include: dealDetailInclude,
       })
     );
 
@@ -76,26 +85,7 @@ export async function PATCH(
       return tx.deal.update({
         where: { id },
         data: parsed.data,
-        include: {
-          contact: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phone: true,
-            },
-          },
-          property: {
-            select: {
-              id: true,
-              address1: true,
-              city: true,
-              state: true,
-              zip: true,
-            },
-          },
-        },
+        include: dealDetailInclude,
       });
     });
 

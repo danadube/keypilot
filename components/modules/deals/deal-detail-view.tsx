@@ -15,9 +15,15 @@ import {
   Trash2,
   ExternalLink,
   StickyNote,
+  Handshake,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
+import {
+  STATUS_LABELS as TX_STATUS_LABELS,
+  statusBadgeVariant as txStatusBadgeVariant,
+  type TxStatus,
+} from "@/components/modules/transactions/transactions-shared";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -51,6 +57,11 @@ type Deal = {
     state: string;
     zip: string;
   };
+  linkedTransaction: {
+    id: string;
+    status: TxStatus;
+    salePrice: string | number | null;
+  } | null;
 };
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -106,6 +117,17 @@ function formatDateTime(iso: string) {
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
+  });
+}
+
+function formatTxSalePrice(v: string | number | null | undefined) {
+  if (v == null || v === "") return "—";
+  const n = typeof v === "string" ? parseFloat(v) : v;
+  if (Number.isNaN(n)) return "—";
+  return n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
   });
 }
 
@@ -165,7 +187,11 @@ export function DealDetailView({ dealId }: { dealId: string }) {
         if (json.error) {
           setError(json.error.message ?? "Failed to load deal");
         } else {
-          const d: Deal = json.data;
+          const raw = json.data;
+          const d: Deal = {
+            ...raw,
+            linkedTransaction: raw.linkedTransaction ?? null,
+          };
           setDeal(d);
           setStatus(d.status);
           setNotes(d.notes ?? "");
@@ -192,7 +218,8 @@ export function DealDetailView({ dealId }: { dealId: string }) {
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      const d: Deal = json.data;
+      const raw = json.data;
+      const d: Deal = { ...raw, linkedTransaction: raw.linkedTransaction ?? null };
       setDeal(d);
       setStatus(d.status);
       setNotes(d.notes ?? "");
@@ -374,6 +401,40 @@ export function DealDetailView({ dealId }: { dealId: string }) {
               </InfoRow>
             </div>
           </div>
+
+          {/* Linked closing record (read-only) */}
+          {deal.linkedTransaction ? (
+            <div className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
+              <div className="border-b border-kp-outline px-5 py-4">
+                <div className="flex items-center gap-2">
+                  <Handshake className="h-4 w-4 text-kp-on-surface-variant" />
+                  <div>
+                    <p className="text-sm font-semibold text-kp-on-surface">Linked transaction</p>
+                    <p className="text-xs text-kp-on-surface-variant">
+                      Closing record linked from this deal
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-4 px-5 py-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusBadge variant={txStatusBadgeVariant(deal.linkedTransaction.status)}>
+                    {TX_STATUS_LABELS[deal.linkedTransaction.status]}
+                  </StatusBadge>
+                </div>
+                <InfoRow icon={MapPin} label="Sale price">
+                  {formatTxSalePrice(deal.linkedTransaction.salePrice)}
+                </InfoRow>
+                <Link
+                  href={`/transactions/${deal.linkedTransaction.id}`}
+                  className="inline-flex items-center gap-1 text-sm font-medium text-kp-teal hover:underline"
+                >
+                  Open transaction
+                  <ExternalLink className="h-3 w-3 opacity-70" />
+                </Link>
+              </div>
+            </div>
+          ) : null}
 
           {/* Timeline card */}
           <div className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">

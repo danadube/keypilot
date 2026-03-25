@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComponentProps } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -13,6 +13,8 @@ import {
   Plus,
   Save,
   X,
+  Briefcase,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -38,6 +40,66 @@ type CommissionRow = {
   createdAt: string;
 };
 
+type DealStatus =
+  | "INTERESTED"
+  | "SHOWING"
+  | "OFFER"
+  | "NEGOTIATION"
+  | "UNDER_CONTRACT"
+  | "CLOSED"
+  | "LOST";
+
+type LinkedDealSummary = {
+  id: string;
+  status: DealStatus;
+  contact: { id: string; firstName: string; lastName: string };
+};
+
+type DealCandidateRow = {
+  id: string;
+  status: DealStatus;
+  contact: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string | null;
+    phone: string | null;
+    status: string | null;
+  };
+  linkedTransaction?: { id: string } | null;
+};
+
+const DEAL_STATUS_LABELS: Record<DealStatus, string> = {
+  INTERESTED: "Interested",
+  SHOWING: "Showing",
+  OFFER: "Offer",
+  NEGOTIATION: "Negotiating",
+  UNDER_CONTRACT: "Under Contract",
+  CLOSED: "Closed",
+  LOST: "Lost",
+};
+
+function dealStatusBadgeVariant(
+  s: DealStatus
+): ComponentProps<typeof StatusBadge>["variant"] {
+  switch (s) {
+    case "INTERESTED":
+      return "pending";
+    case "SHOWING":
+      return "upcoming";
+    case "OFFER":
+      return "active";
+    case "NEGOTIATION":
+      return "live";
+    case "UNDER_CONTRACT":
+      return "sold";
+    case "CLOSED":
+      return "closed";
+    case "LOST":
+      return "cancelled";
+  }
+}
+
 type TransactionDetail = {
   id: string;
   status: TxStatus;
@@ -47,6 +109,8 @@ type TransactionDetail = {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+  dealId: string | null;
+  deal: LinkedDealSummary | null;
   property: {
     id: string;
     address1: string;
@@ -166,6 +230,20 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
   const [editNotes, setEditNotes] = useState("");
   const [editSaving, setEditSaving] = useState(false);
 
+  const [dealCandidates, setDealCandidates] = useState<DealCandidateRow[]>([]);
+  const [dealCandidatesLoading, setDealCandidatesLoading] = useState(false);
+  const [selectedDealId, setSelectedDealId] = useState("");
+  const [dealLinkError, setDealLinkError] = useState<string | null>(null);
+  const [dealLinkBusy, setDealLinkBusy] = useState(false);
+
+  const selectableDeals = useMemo(
+    () =>
+      dealCandidates.filter(
+        (d) => !d.linkedTransaction || d.linkedTransaction.id === transactionId
+      ),
+    [dealCandidates, transactionId]
+  );
+
   const load = useCallback(() => {
     setError(null);
     setLoading(true);
@@ -196,6 +274,32 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
   }, [load]);
 
   useEffect(() => {
+    if (!txn || txn.dealId) {
+      setDealCandidates([]);
+      setSelectedDealId("");
+      return;
+    }
+    let cancelled = false;
+    setDealCandidatesLoading(true);
+    fetch(`/api/v1/deals?propertyId=${encodeURIComponent(txn.property.id)}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled) return;
+        if (json.data) setDealCandidates(json.data as DealCandidateRow[]);
+        else setDealCandidates([]);
+      })
+      .catch(() => {
+        if (!cancelled) setDealCandidates([]);
+      })
+      .finally(() => {
+        if (!cancelled) setDealCandidatesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [transactionId, txn?.dealId, txn?.property.id]);
+
+  useEffect(() => {
     if (!txn) return;
     const changed =
       status !== txn.status ||
@@ -205,6 +309,26 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       notesInput !== (txn.notes ?? "");
     setDirty(changed);
   }, [txn, status, salePriceInput, closingInput, brokerageInput, notesInput]);
+
+  const patchDealLink = async (dealId: string | null) => {
+    setDealLinkBusy(true);
+    setDealLinkError(null);
+    try {
+      const res = await fetch(`/api/v1/transactions/${transactionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message ?? "Update failed");
+      await load();
+      setSelectedDealId("");
+    } catch (e) {
+      setDealLinkError(e instanceof Error ? e.message : "Link update failed");
+    } finally {
+      setDealLinkBusy(false);
+    }
+  };
 
   const handleSaveTransaction = async () => {
     if (!txn) return;
@@ -431,6 +555,123 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       </div>
 
       <div className="mx-6 mt-6 space-y-6 sm:mx-8">
+        <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Briefcase className="h-4 w-4 text-kp-on-surface-variant" />
+            <h2 className="text-sm font-semibold text-kp-on-surface">CRM deal</h2>
+          </div>
+          <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+            Link an existing deal for this property. Only deals you own on this address appear here.
+          </p>
+
+          {dealLinkError && (
+            <div className="mt-3 flex items-center gap-2 text-sm text-red-400">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {dealLinkError}
+            </div>
+          )}
+
+          {txn.deal ? (
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0 space-y-2">
+                <p className="text-sm font-medium text-kp-on-surface">
+                  {[txn.deal.contact.firstName, txn.deal.contact.lastName].filter(Boolean).join(" ") ||
+                    "Unknown contact"}
+                </p>
+                <StatusBadge variant={dealStatusBadgeVariant(txn.deal.status)}>
+                  {DEAL_STATUS_LABELS[txn.deal.status]}
+                </StatusBadge>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href={`/deals/${txn.deal.id}`}
+                  className="inline-flex items-center gap-1 rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-1.5 text-xs font-medium text-kp-teal hover:bg-kp-teal/10"
+                >
+                  View deal
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+                <button
+                  type="button"
+                  disabled={dealLinkBusy}
+                  onClick={() => {
+                    if (!confirm("Remove the CRM deal link from this transaction?")) return;
+                    void patchDealLink(null);
+                  }}
+                  className={cn(
+                    "rounded-lg border border-kp-outline px-3 py-1.5 text-xs font-medium",
+                    "text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface",
+                    "disabled:pointer-events-none disabled:opacity-50"
+                  )}
+                >
+                  Unlink
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-3">
+              {dealCandidatesLoading ? (
+                <div className="flex items-center gap-2 text-sm text-kp-on-surface-variant">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading deals for this property…
+                </div>
+              ) : selectableDeals.length === 0 ? (
+                <p className="text-sm text-kp-on-surface-variant">
+                  No linkable deals on this property yet. Create a deal from ClientKeep, then link it
+                  here.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <label
+                      htmlFor="txn-link-deal"
+                      className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                    >
+                      Deal to link
+                    </label>
+                    <select
+                      id="txn-link-deal"
+                      value={selectedDealId}
+                      onChange={(e) => setSelectedDealId(e.target.value)}
+                      className={cn(
+                        "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface",
+                        "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      )}
+                    >
+                      <option value="">Select a deal…</option>
+                      {selectableDeals.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {[d.contact.firstName, d.contact.lastName].filter(Boolean).join(" ") ||
+                            "Unknown"}{" "}
+                          — {DEAL_STATUS_LABELS[d.status]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!selectedDealId || dealLinkBusy}
+                    onClick={() => selectedDealId && void patchDealLink(selectedDealId)}
+                    className={cn(
+                      "inline-flex h-9 shrink-0 items-center justify-center rounded-lg px-4 text-sm font-semibold",
+                      selectedDealId && !dealLinkBusy
+                        ? "bg-kp-teal/20 text-kp-teal hover:bg-kp-teal/30"
+                        : "cursor-not-allowed bg-kp-surface-high text-kp-on-surface-variant"
+                    )}
+                  >
+                    {dealLinkBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Link deal"}
+                  </button>
+                </div>
+              )}
+              <Link
+                href="/deals"
+                className="inline-flex text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
+              >
+                Go to deals list
+              </Link>
+            </div>
+          )}
+        </section>
+
         <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
           <h2 className="text-sm font-semibold text-kp-on-surface">Transaction details</h2>
           <p className="mt-0.5 text-xs text-kp-on-surface-variant">
