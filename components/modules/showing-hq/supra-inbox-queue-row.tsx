@@ -8,6 +8,7 @@ import type {
   SupraProposedAction,
 } from "@prisma/client";
 import { Button } from "@/components/ui/button";
+import { supraBtnPrimary, supraBtnSecondary } from "@/components/modules/showing-hq/supra-inbox-button-tiers";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { cn } from "@/lib/utils";
 import { Sparkles } from "lucide-react";
@@ -274,8 +275,9 @@ export function SupraInboxQueueRow({
           {showInlineApply ? (
             <Button
               type="button"
+              variant="outline"
               size="sm"
-              className="h-9 min-h-9 bg-kp-teal px-4 font-bold text-kp-bg shadow-md ring-2 ring-kp-teal/35 hover:bg-kp-teal/92 hover:ring-kp-teal/50"
+              className={cn(supraBtnPrimary, "h-9 min-h-9 border-transparent px-4 font-bold")}
               disabled={applyLoading || applyBlockedByOtherRow}
               onClick={(e) => {
                 e.stopPropagation();
@@ -296,7 +298,7 @@ export function SupraInboxQueueRow({
             type="button"
             variant="outline"
             size="sm"
-            className="h-9 min-h-9 min-w-[6.5rem] border-2 border-kp-outline bg-kp-surface-high px-4 font-bold text-kp-on-surface shadow-sm hover:border-kp-teal/80 hover:bg-kp-surface-higher hover:text-kp-on-surface"
+            className={cn(supraBtnSecondary, "h-9 min-h-9 min-w-[6.5rem] px-4 font-bold")}
             onClick={(e) => {
               e.stopPropagation();
               onReview();

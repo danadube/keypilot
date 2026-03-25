@@ -17,6 +17,13 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { SupraInboxQueueRow } from "@/components/modules/showing-hq/supra-inbox-queue-row";
+import {
+  supraBtnDangerSecondary,
+  supraBtnPrimary,
+  supraBtnSave,
+  supraBtnSecondary,
+  supraBtnTertiary,
+} from "@/components/modules/showing-hq/supra-inbox-button-tiers";
 import { cn } from "@/lib/utils";
 import {
   pastedBlobHasDetectedFields,
@@ -1211,18 +1218,25 @@ export function SupraInboxView() {
   ) => (
     <Button
       type="button"
-      variant={filterPreset === preset ? "default" : "outline"}
+      variant="outline"
       size="sm"
       className={cn(
         filterPreset === preset
-          ? activeClass ?? "bg-kp-teal text-kp-bg hover:bg-kp-teal/90"
-          : "border-kp-outline text-kp-on-surface"
+          ? cn(activeClass ?? supraBtnPrimary, "border-transparent")
+          : supraBtnSecondary
       )}
       onClick={() => setFilterPreset(preset)}
     >
       {label}
       {count !== undefined && count > 0 ? (
-        <span className="ml-1.5 rounded-full bg-black/20 px-1.5 text-[10px] font-bold tabular-nums">
+        <span
+          className={cn(
+            "ml-1.5 rounded-full border px-1.5 text-[10px] font-bold tabular-nums",
+            filterPreset === preset
+              ? "border-white/30 bg-white/15 text-inherit"
+              : "border-kp-outline bg-kp-bg text-kp-on-surface"
+          )}
+        >
           {count}
         </span>
       ) : null}
@@ -1255,9 +1269,19 @@ export function SupraInboxView() {
           <div className="flex flex-wrap gap-2">
             {filterChip("all", "All", counts.total)}
             {filterChip("ingested", "Ingested (raw)", counts.ingested)}
-            {filterChip("needs_review", "Needs review", counts.needsReview, "bg-kp-gold/90 text-kp-bg hover:bg-kp-gold")}
+            {filterChip(
+              "needs_review",
+              "Needs review",
+              counts.needsReview,
+              "bg-kp-gold font-semibold text-kp-bg shadow-md hover:bg-kp-gold-bright"
+            )}
             {filterChip("ready_to_apply", "Ready to apply", counts.ready)}
-            {filterChip("failed_parse", "Failed parse", counts.failed, "bg-red-900/80 text-red-100 hover:bg-red-900")}
+            {filterChip(
+              "failed_parse",
+              "Failed parse",
+              counts.failed,
+              "bg-red-700 font-semibold text-white shadow-md hover:bg-red-600"
+            )}
             {filterChip("closed", "Closed", counts.closed)}
           </div>
         </div>
@@ -1269,7 +1293,7 @@ export function SupraInboxView() {
               type="button"
               variant="outline"
               size="sm"
-              className="border-kp-teal/50 text-kp-teal hover:bg-kp-teal/10"
+              className={supraBtnSecondary}
               disabled={pasting || gmailImporting}
               onClick={openPasteModal}
             >
@@ -1279,7 +1303,7 @@ export function SupraInboxView() {
               type="button"
               variant="outline"
               size="sm"
-              className="border-kp-teal/40 font-medium text-kp-teal hover:bg-kp-teal/10"
+              className={cn(supraBtnPrimary, "border-transparent")}
               disabled={gmailImporting || pasting}
               onClick={() => void importFromGmail()}
               title="Uses your connected Gmail (Settings → Connections). Fetches recent Supra emails."
@@ -1289,9 +1313,9 @@ export function SupraInboxView() {
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="border border-dashed border-kp-outline text-kp-on-surface hover:bg-kp-surface-high"
+              className={cn(supraBtnTertiary, "border border-dashed border-kp-outline")}
               disabled={seeding}
               onClick={() => addSampleRow("typical")}
             >
@@ -1300,16 +1324,16 @@ export function SupraInboxView() {
             <div className="relative">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="border-kp-outline text-kp-on-surface hover:bg-kp-surface-high"
+                className={cn(supraBtnTertiary, "border border-kp-outline")}
                 disabled={seeding}
                 onClick={() => setSampleMenuOpen((o) => !o)}
                 aria-expanded={sampleMenuOpen}
                 aria-haspopup="menu"
               >
                 More samples
-                <ChevronDown className="ml-1 h-3.5 w-3.5 opacity-70" />
+                <ChevronDown className="ml-1 h-3.5 w-3.5 text-kp-on-surface/80" />
               </Button>
               {sampleMenuOpen ? (
                 <>
@@ -1356,7 +1380,7 @@ export function SupraInboxView() {
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 self-start text-xs font-semibold text-kp-on-surface/75 hover:bg-kp-surface-high hover:text-kp-on-surface"
+            className={cn(supraBtnTertiary, "h-8 self-start text-xs")}
             disabled={
               clearingTestInbox || loading || pasting || gmailImporting || clearableQueueCount === 0
             }
@@ -1398,7 +1422,7 @@ export function SupraInboxView() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="border-kp-teal/50 text-kp-teal hover:bg-kp-teal/10"
+                  className={supraBtnSecondary}
                   disabled={pasting || gmailImporting}
                   onClick={openPasteModal}
                 >
@@ -1408,7 +1432,7 @@ export function SupraInboxView() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="border-kp-teal/40 text-kp-teal hover:bg-kp-teal/10"
+                  className={cn(supraBtnPrimary, "border-transparent")}
                   disabled={gmailImporting || pasting}
                   onClick={() => void importFromGmail()}
                 >
@@ -1417,9 +1441,9 @@ export function SupraInboxView() {
                 </Button>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="border-kp-outline"
+                  className={cn(supraBtnTertiary, "border border-dashed border-kp-outline")}
                   disabled={seeding}
                   onClick={() => addSampleRow("typical")}
                 >
@@ -1431,7 +1455,7 @@ export function SupraInboxView() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="mt-4 border-kp-outline"
+                className={cn(supraBtnSecondary, "mt-4")}
                 onClick={() => setFilterPreset("all")}
               >
                 Show all
@@ -1497,7 +1521,7 @@ export function SupraInboxView() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 border-kp-teal/50 font-semibold text-kp-teal hover:bg-kp-teal/10"
+                className={cn(supraBtnSecondary, "h-8 border-kp-teal")}
                 disabled={saving || !detail}
                 onClick={() => applyStateWithCurrentEdits(QueueStates.READY_TO_APPLY)}
               >
@@ -1507,7 +1531,7 @@ export function SupraInboxView() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 border-kp-outline/90 font-medium"
+                className={cn(supraBtnSecondary, "h-8")}
                 disabled={saving || !detail}
                 onClick={() => applyStateWithCurrentEdits(QueueStates.NEEDS_REVIEW)}
               >
@@ -1517,7 +1541,7 @@ export function SupraInboxView() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 border-red-800/50 font-medium text-red-400 hover:bg-red-950/40"
+                className={cn(supraBtnDangerSecondary, "h-8")}
                 disabled={saving || !detail}
                 onClick={() => applyStateWithCurrentEdits(QueueStates.FAILED_PARSE)}
               >
@@ -1527,7 +1551,7 @@ export function SupraInboxView() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 border-kp-outline/90 font-medium"
+                className={cn(supraBtnSecondary, "h-8")}
                 disabled={saving || !detail}
                 onClick={() => applyStateWithCurrentEdits(QueueStates.DISMISSED)}
               >
@@ -1537,7 +1561,7 @@ export function SupraInboxView() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 border-kp-outline/90 font-medium"
+                className={cn(supraBtnSecondary, "h-8")}
                 disabled={saving || !detail}
                 onClick={() => applyStateWithCurrentEdits(QueueStates.DUPLICATE)}
               >
@@ -1547,17 +1571,18 @@ export function SupraInboxView() {
             <div className="flex flex-wrap justify-end gap-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="h-8 font-medium"
+                className={cn(supraBtnTertiary, "h-8")}
                 onClick={() => setModalOpen(false)}
               >
                 Close
               </Button>
               <Button
                 type="button"
+                variant="outline"
                 size="sm"
-                className="h-8 bg-kp-gold font-semibold text-kp-bg hover:bg-kp-gold-bright"
+                className={cn(supraBtnSave, "h-8 border-transparent")}
                 disabled={saving || !detail}
                 onClick={handleSaveDetail}
               >
@@ -1819,9 +1844,9 @@ export function SupraInboxView() {
                 )}
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  className="h-8 border-kp-outline/70 text-xs font-medium text-kp-on-surface"
+                  className={cn(supraBtnTertiary, "h-8 text-xs")}
                   onClick={() => setReviewRawExpanded((x) => !x)}
                 >
                   {reviewRawExpanded ? "Collapse email" : "Show full email"}
@@ -1871,7 +1896,7 @@ export function SupraInboxView() {
                           type="button"
                           variant="outline"
                           size="sm"
-                          className="mt-2 h-8 w-full border-kp-outline/50 font-semibold text-kp-on-surface hover:bg-kp-surface-high/80"
+                          className={cn(supraBtnSecondary, "mt-2 h-8 w-full")}
                           disabled={parseDrafting || saving || applying}
                           onClick={handleParseDraft}
                         >
@@ -1994,7 +2019,7 @@ export function SupraInboxView() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="mt-2 h-8 px-2 text-xs font-semibold text-kp-on-surface/90 hover:bg-kp-surface-high hover:text-kp-on-surface"
+                    className={cn(supraBtnTertiary, "mt-2 h-8 justify-start px-2 text-left text-xs")}
                     onClick={clearShowingMatch}
                   >
                     Clear showing match (create new showing on apply)
@@ -2160,7 +2185,7 @@ export function SupraInboxView() {
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="mt-1.5 h-7 border-kp-outline bg-kp-surface-high px-2 text-[11px] font-semibold text-kp-on-surface shadow-sm hover:border-kp-teal/40 hover:bg-kp-surface-high"
+                                className={cn(supraBtnSecondary, "mt-1.5 h-7 px-2 text-[11px]")}
                                 disabled={Boolean(dupLinkShowingId) || applying}
                                 onClick={() => void linkQueueToExistingShowing(c, applyDuplicate)}
                               >
@@ -2194,8 +2219,9 @@ export function SupraInboxView() {
                 </div>
                 <Button
                   type="button"
+                  variant="outline"
                   size="sm"
-                  className="mt-3 w-full bg-kp-teal font-semibold text-kp-bg shadow-md ring-2 ring-kp-teal/30 hover:bg-kp-teal/92 hover:ring-kp-teal/45"
+                  className={cn(supraBtnPrimary, "mt-3 w-full border-transparent")}
                   disabled={
                     applying ||
                     !applyReadiness.ok ||
@@ -2235,12 +2261,12 @@ export function SupraInboxView() {
                     onClick={() => setReviewAdvancedOpen((o) => !o)}
                     aria-expanded={reviewAdvancedOpen}
                   >
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/72">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/80">
                       Advanced — queue &amp; routing
                     </span>
                     <ChevronDown
                       className={cn(
-                        "h-4 w-4 shrink-0 text-kp-on-surface/65 transition-transform",
+                        "h-4 w-4 shrink-0 text-kp-on-surface/80 transition-transform",
                         reviewAdvancedOpen && "rotate-180"
                       )}
                     />
@@ -2357,7 +2383,7 @@ export function SupraInboxView() {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 font-medium"
+                className={cn(supraBtnSecondary, "h-8")}
                 disabled={pasting}
                 onClick={() => setPasteModalOpen(false)}
               >
@@ -2366,8 +2392,9 @@ export function SupraInboxView() {
               <Button
                 type="submit"
                 form="supra-manual-paste-form"
+                variant="outline"
                 size="sm"
-                className="h-8 bg-kp-teal font-semibold text-kp-bg hover:bg-kp-teal/90"
+                className={cn(supraBtnPrimary, "h-8 border-transparent")}
                 disabled={pasting || !pasteSubject.trim() || !pasteBody.trim()}
               >
                 {pasting ? "Saving…" : "Add to queue & open review"}
