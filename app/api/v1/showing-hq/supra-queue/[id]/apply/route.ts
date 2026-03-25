@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
 import { ApplySupraQueueItemSchema } from "@/lib/validations/supra-queue";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { persistShowingBuyerAgentFeedbackDraftAfterSupraApply } from "@/lib/showing-hq/showing-buyer-agent-feedback-draft";
 import {
   ShowingSource,
   SupraPropertyMatchStatus,
@@ -319,6 +320,19 @@ export async function POST(
       };
     });
 
+    let buyerAgentFeedbackDraftReady = false;
+    try {
+      const draftResult = await persistShowingBuyerAgentFeedbackDraftAfterSupraApply({
+        showingId: result.showingId,
+        propertyId: result.propertyId,
+        hostUserId: user.id,
+        hostDisplayName: user.name,
+      });
+      buyerAgentFeedbackDraftReady = draftResult.saved;
+    } catch (draftErr) {
+      console.error("[supra-apply] feedback draft hook failed (non-fatal)", draftErr);
+    }
+
     return NextResponse.json({
       data: {
         queueItem: result.item,
@@ -326,6 +340,7 @@ export async function POST(
         showingId: result.showingId,
         createdProperty: result.createdProperty,
         updatedShowing: result.updatedShowing,
+        buyerAgentFeedbackDraftReady,
       },
     });
   } catch (e) {
