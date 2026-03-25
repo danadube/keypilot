@@ -476,17 +476,21 @@ export function ShowingsListView({
     if (loading) return;
     if (lastHandledOpenShowingRef.current === oid) return;
     const match = showings.find((s) => s.id === oid);
-    if (!match) return;
-
-    lastHandledOpenShowingRef.current = oid;
-    setEditingShowing(match);
-    router.replace("/showing-hq/showings", { scroll: false });
-    requestAnimationFrame(() => {
-      document.getElementById(`showing-row-${oid}`)?.scrollIntoView({
-        block: "nearest",
-        behavior: "smooth",
+    if (match) {
+      lastHandledOpenShowingRef.current = oid;
+      setEditingShowing(match);
+      router.replace("/showing-hq/showings", { scroll: false });
+      requestAnimationFrame(() => {
+        document.getElementById(`showing-row-${oid}`)?.scrollIntoView({
+          block: "nearest",
+          behavior: "smooth",
+        });
       });
-    });
+      return;
+    }
+    // List loaded but id not in current page (e.g. beyond take(100)) — clear query so URL is not stuck.
+    lastHandledOpenShowingRef.current = oid;
+    router.replace("/showing-hq/showings", { scroll: false });
   }, [initialOpenShowingId, loading, showings, router]);
 
   const visibleShowings = useMemo(() => {
@@ -499,7 +503,7 @@ export function ShowingsListView({
     [showings]
   );
   const supraCount = useMemo(
-    () => showings.filter((s) => s.source === "supra").length,
+    () => showings.filter((s) => s.source === "SUPRA_SCRAPE").length,
     [showings]
   );
 
