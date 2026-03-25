@@ -56,6 +56,7 @@ export function UserActivitiesView() {
   const [formOpen, setFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [completeError, setCompleteError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const [type, setType] = useState<string>("TASK");
@@ -121,6 +122,7 @@ export function UserActivitiesView() {
   };
 
   const handleComplete = async (id: string) => {
+    setCompleteError(null);
     setCompletingId(id);
     try {
       const res = await fetch(`/api/v1/activities/${id}/complete`, {
@@ -128,7 +130,17 @@ export function UserActivitiesView() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({}),
       });
-      if (res.ok) await load();
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) {
+        await load();
+      } else {
+        setCompleteError(
+          (json as { error?: { message?: string } }).error?.message ??
+            "Could not mark complete"
+        );
+      }
+    } catch {
+      setCompleteError("Could not mark complete");
     } finally {
       setCompletingId(null);
     }
@@ -165,6 +177,12 @@ export function UserActivitiesView() {
           {formOpen ? "Close" : "New activity"}
         </Button>
       </div>
+
+      {completeError && (
+        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400">
+          {completeError}
+        </p>
+      )}
 
       {formOpen && (
         <form
