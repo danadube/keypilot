@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
 import { ApplySupraQueueItemSchema } from "@/lib/validations/supra-queue";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { persistShowingBuyerAgentFeedbackDraftAfterSupraApply } from "@/lib/showing-hq/showing-buyer-agent-feedback-draft";
 import {
   ShowingSource,
   SupraPropertyMatchStatus,
@@ -318,6 +319,17 @@ export async function POST(
         updatedShowing: false,
       };
     });
+
+    try {
+      await persistShowingBuyerAgentFeedbackDraftAfterSupraApply({
+        showingId: result.showingId,
+        propertyId: result.propertyId,
+        hostUserId: user.id,
+        hostDisplayName: user.name,
+      });
+    } catch (draftErr) {
+      console.error("[supra-apply] feedback draft hook failed (non-fatal)", draftErr);
+    }
 
     return NextResponse.json({
       data: {

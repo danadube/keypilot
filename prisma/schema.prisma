@@ -319,6 +319,10 @@ model Showing {
   source             ShowingSource   @default(MANUAL)
   scrapeStatus       String?         // e.g. PARSED, MATCHED, UNMATCHED
   feedbackRequestStatus String?      // e.g. PENDING, SENT, RECEIVED
+  /** Buyer-agent follow-up email draft (e.g. after Supra apply). Gmail/API send is not wired in v1. */
+  feedbackDraftSubject   String?
+  feedbackDraftBody      String?         @db.Text
+  feedbackDraftGeneratedAt DateTime?
   createdAt          DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
   deletedAt         DateTime?
