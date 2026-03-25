@@ -54,7 +54,14 @@ export async function POST(req: NextRequest) {
       return apiError(parsed.error.issues[0]?.message ?? "Invalid input", 400);
     }
 
-    const { propertyId } = parsed.data;
+    const {
+      propertyId,
+      status: createStatus,
+      salePrice,
+      closingDate,
+      brokerageName,
+      notes,
+    } = parsed.data;
 
     const transaction = await withRLSContext(user.id, async (tx) => {
       // FK scope validation — runs under RLS so findFirst returns null if the
@@ -70,7 +77,15 @@ export async function POST(req: NextRequest) {
       }
 
       return tx.transaction.create({
-        data: { propertyId, userId: user.id },
+        data: {
+          propertyId,
+          userId: user.id,
+          ...(createStatus !== undefined && { status: createStatus }),
+          ...(salePrice !== undefined && { salePrice }),
+          ...(closingDate !== undefined && { closingDate }),
+          ...(brokerageName !== undefined && { brokerageName }),
+          ...(notes !== undefined && { notes }),
+        },
         include: { property: { select: propertySelect } },
       });
     });
