@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
+import {
+  assertValidTransactionDealLink,
+  responseIfDealIdUniqueViolation,
+  transactionLinkedDealSelect,
+} from "@/lib/transaction-deal-link";
 import { UpdateTransactionSchema } from "@/lib/validations/transaction";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import type { Prisma } from "@prisma/client";
 
 const propertySelect = {
   id: true,
@@ -29,6 +35,7 @@ export async function GET(
         where: { id, userId: user.id },
         include: {
           property: { select: propertySelect },
+          deal: { select: transactionLinkedDealSelect },
           commissions: { orderBy: { createdAt: "asc" } },
         },
       })
@@ -61,23 +68,68 @@ export async function PATCH(
     const transaction = await withRLSContext(user.id, async (tx) => {
       const existing = await tx.transaction.findFirst({
         where: { id, userId: user.id },
-        select: { id: true },
+        select: { id: true, propertyId: true },
       });
       if (!existing) return null;
 
+      const {
+        dealId: dealIdPatch,
+        status,
+        closingDate,
+        salePrice,
+        brokerageName,
+        notes,
+      } = parsed.data;
+
+      const data: Prisma.TransactionUncheckedUpdateInput = {};
+      if (status !== undefined) data.status = status;
+      if (closingDate !== undefined) data.closingDate = closingDate;
+      if (salePrice !== undefined) data.salePrice = salePrice;
+      if (brokerageName !== undefined) data.brokerageName = brokerageName;
+      if (notes !== undefined) data.notes = notes;
+
+      if (dealIdPatch !== undefined) {
+        if (dealIdPatch === null) {
+          data.dealId = null;
+        } else {
+          await assertValidTransactionDealLink(tx, {
+            userId: user.id,
+            propertyId: existing.propertyId,
+            dealId: dealIdPatch,
+          });
+          data.dealId = dealIdPatch;
+        }
+      }
+
+      const include = {
+        property: { select: propertySelect },
+        deal: { select: transactionLinkedDealSelect },
+        commissions: { orderBy: { createdAt: "asc" } as const },
+      };
+
+      if (Object.keys(data).length === 0) {
+        return tx.transaction.findFirst({
+          where: { id, userId: user.id },
+          include,
+        });
+      }
+
       return tx.transaction.update({
         where: { id },
-        data: parsed.data,
-        include: {
-          property: { select: propertySelect },
-          commissions: { orderBy: { createdAt: "asc" } },
-        },
+        data,
+        include,
       });
     });
 
     if (!transaction) return apiError("Transaction not found", 404);
     return NextResponse.json({ data: transaction });
   } catch (e) {
+    const uniqueResp = responseIfDealIdUniqueViolation(e);
+    if (uniqueResp) return uniqueResp;
+    const err = e as { status?: number; message?: string };
+    if (err.status === 400) {
+      return apiError(err.message ?? "Invalid request", 400);
+    }
     return apiErrorFromCaught(e);
   }
 }
