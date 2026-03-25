@@ -127,6 +127,9 @@ export async function PATCH(
     const uniqueResp = responseIfDealIdUniqueViolation(e);
     if (uniqueResp) return uniqueResp;
     const err = e as { status?: number; message?: string };
+    if (err.status === 404) {
+      return apiError(err.message ?? "Not found", 404);
+    }
     if (err.status === 400) {
       return apiError(err.message ?? "Invalid request", 400);
     }

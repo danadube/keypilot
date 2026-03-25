@@ -16,6 +16,7 @@ import {
   ExternalLink,
   StickyNote,
   Handshake,
+  DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -422,7 +423,7 @@ export function DealDetailView({ dealId }: { dealId: string }) {
                     {TX_STATUS_LABELS[deal.linkedTransaction.status]}
                   </StatusBadge>
                 </div>
-                <InfoRow icon={MapPin} label="Sale price">
+                <InfoRow icon={DollarSign} label="Sale price">
                   {formatTxSalePrice(deal.linkedTransaction.salePrice)}
                 </InfoRow>
                 <Link
