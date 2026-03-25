@@ -7,12 +7,12 @@ import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { PropertyFeedbackSummaryView } from "./property-feedback-summary";
 import { PropertySellerReportView } from "./property-seller-report";
+import { PropertyVaultPropertySubnav } from "./property-vault-property-subnav";
+import { PropertyFlyerPanel, type PropertyFlyerFields } from "./property-flyer-panel";
 import {
   ArrowLeft,
-  FileText,
   Upload,
   Trash2,
-  ExternalLink,
   Calendar,
   DollarSign,
   Pencil,
@@ -34,7 +34,7 @@ type Property = {
   flyerUrl?: string | null;
   flyerFilename?: string | null;
   flyerUploadedAt?: string | null;
-  flyerEnabled?: boolean;
+  flyerEnabled?: boolean | null;
   imageUrl?: string | null;
   openHouses?: { id: string; title: string; startAt: string }[];
 };
@@ -83,9 +83,6 @@ export function PropertyDetailView({ id }: { id: string }) {
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [flyerUploading, setFlyerUploading] = useState(false);
-  const [flyerError, setFlyerError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -158,60 +155,9 @@ export function PropertyDetailView({ id }: { id: string }) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleFlyerUpload = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      e.target.value = "";
-      setFlyerError(null);
-      setFlyerUploading(true);
-      const formData = new FormData();
-      formData.set("file", file);
-      fetch(`/api/v1/properties/${id}/flyer`, { method: "POST", body: formData })
-        .then((res) => res.json())
-        .then((json) => {
-          if (json.error) throw new Error(json.error.message);
-          setProperty((p) =>
-            p
-              ? {
-                  ...p,
-                  flyerUrl: json.data.flyerUrl,
-                  flyerFilename: json.data.flyerFilename,
-                  flyerUploadedAt: json.data.flyerUploadedAt,
-                  flyerEnabled: true,
-                }
-              : p
-          );
-        })
-        .catch((err) => setFlyerError(err instanceof Error ? err.message : "Upload failed"))
-        .finally(() => setFlyerUploading(false));
-    },
-    [id]
-  );
-
-  const handleRemoveFlyer = useCallback(() => {
-    if (!confirm("Remove this flyer? It will no longer be sent to visitors.")) return;
-    setFlyerError(null);
-    setFlyerUploading(true);
-    fetch(`/api/v1/properties/${id}/flyer`, { method: "DELETE" })
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) throw new Error(json.error.message);
-        setProperty((p) =>
-          p
-            ? {
-                ...p,
-                flyerUrl: null,
-                flyerFilename: null,
-                flyerUploadedAt: null,
-                flyerEnabled: true,
-              }
-            : p
-        );
-      })
-      .catch((err) => setFlyerError(err instanceof Error ? err.message : "Remove failed"))
-      .finally(() => setFlyerUploading(false));
-  }, [id]);
+  const patchFlyer = useCallback((patch: Partial<PropertyFlyerFields>) => {
+    setProperty((p) => (p ? { ...p, ...patch } : p));
+  }, []);
 
   const handlePhotoUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -265,7 +211,6 @@ export function PropertyDetailView({ id }: { id: string }) {
   if (error || !property)
     return <ErrorMessage message={error || "Not found"} onRetry={loadData} />;
 
-  const hasFlyer = !!(property.flyerUrl?.trim() && property.flyerEnabled !== false);
   const hasHeroImage = !!property.imageUrl?.trim();
   const fullAddress = [property.address1, property.address2].filter(Boolean).join(" ");
   const locationLine = [property.city, property.state, property.zip].filter(Boolean).join(", ");
@@ -327,6 +272,8 @@ export function PropertyDetailView({ id }: { id: string }) {
           </Link>
         </Button>
       </div>
+
+      <PropertyVaultPropertySubnav propertyId={id} current="overview" />
 
       {/* ── Hero + property header ─────────────────────────────────────────── */}
       <div className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
@@ -414,6 +361,13 @@ export function PropertyDetailView({ id }: { id: string }) {
           </div>
         )}
       </div>
+
+      <p className="-mt-2 text-xs text-kp-on-surface-variant">
+        <Link href={`/properties/${id}/media`} className="font-medium text-kp-teal hover:underline">
+          Photos &amp; media page
+        </Link>{" "}
+        for a larger preview and the same upload controls.
+      </p>
 
       {/* ── Two-column layout: details left, reports right ──────────────────── */}
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
@@ -535,83 +489,24 @@ export function PropertyDetailView({ id }: { id: string }) {
             )}
           </div>
 
-          {/* Flyer */}
-          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-            <div className="mb-3 flex items-center gap-2">
-              <FileText className="h-4 w-4 text-kp-on-surface-variant" />
-              <h2 className="text-sm font-semibold text-kp-on-surface">Property flyer</h2>
-            </div>
-            <p className="mb-4 text-xs text-kp-on-surface-variant">
-              PDF flyer sent to visitors after open house sign-in. Created in Canva or elsewhere.
-            </p>
-
-            {flyerError && (
-              <p className="mb-3 text-sm text-red-400">{flyerError}</p>
-            )}
-
-            {/* Hidden file input — always present */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/pdf"
-              className="hidden"
-              onChange={handleFlyerUpload}
+          {/* Flyer — full editor on Documents; quick jump link */}
+          <div className="space-y-2">
+            <PropertyFlyerPanel
+              propertyId={id}
+              flyer={{
+                flyerUrl: property.flyerUrl,
+                flyerFilename: property.flyerFilename,
+                flyerUploadedAt: property.flyerUploadedAt,
+                flyerEnabled: property.flyerEnabled,
+              }}
+              onFlyerPatch={patchFlyer}
             />
-
-            {hasFlyer ? (
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm">
-                  <FileText className="h-4 w-4 shrink-0 text-kp-on-surface-variant" />
-                  <span className="font-medium text-kp-on-surface">
-                    {property.flyerFilename ?? "Flyer"}
-                  </span>
-                  {property.flyerUploadedAt && (
-                    <span className="text-xs text-kp-on-surface-variant">
-                      · {formatDate(property.flyerUploadedAt)}
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high" asChild>
-                    <a href={property.flyerUrl!} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
-                      Preview
-                    </a>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
-                    disabled={flyerUploading}
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <Upload className="mr-1.5 h-3.5 w-3.5" />
-                    {flyerUploading ? "Uploading…" : "Replace"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-xs text-red-400 hover:bg-red-500/10 hover:text-red-400"
-                    disabled={flyerUploading}
-                    onClick={handleRemoveFlyer}
-                  >
-                    <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                    Remove
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
-                disabled={flyerUploading}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="mr-1.5 h-3.5 w-3.5" />
-                {flyerUploading ? "Uploading…" : "Upload flyer (PDF)"}
-              </Button>
-            )}
+            <p className="text-xs text-kp-on-surface-variant">
+              <Link href={`/properties/${id}/documents`} className="font-medium text-kp-teal hover:underline">
+                Open documents page
+              </Link>{" "}
+              for a focused flyer workflow.
+            </p>
           </div>
 
           {/* Open houses */}
