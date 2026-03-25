@@ -66,7 +66,7 @@ export default function PropertyVaultOverviewPage() {
         <Card className="transition-shadow hover:shadow-md">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-              <Building2 className="h-4 w-4" /> All Properties
+              <Building2 className="h-4 w-4" /> Properties
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -97,7 +97,7 @@ export default function PropertyVaultOverviewPage() {
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
-              <Link href="/properties">All properties</Link>
+              <Link href="/properties">Properties</Link>
             </Button>
             <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
               <Link href="/properties/new">

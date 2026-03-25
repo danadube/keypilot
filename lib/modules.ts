@@ -14,7 +14,6 @@ import {
   Megaphone,
   BarChart3,
   FileText,
-  Image,
   QrCode,
   Settings,
   List,
@@ -93,8 +92,6 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     sidebar: [
       { label: "Overview", href: "/property-vault", icon: LayoutDashboard, section: "OVERVIEW" },
       { label: "Properties", href: "/properties", icon: Building2, section: "PROPERTIES" },
-      { label: "Property Documents", href: "/property-vault/documents", icon: FileText, section: "ASSETS" },
-      { label: "Photos & Media", href: "/property-vault/media", icon: Image, section: "ASSETS" },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
     ],
   },
