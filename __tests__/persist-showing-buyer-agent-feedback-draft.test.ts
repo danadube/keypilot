@@ -33,12 +33,13 @@ describe("persistShowingBuyerAgentFeedbackDraftAfterSupraApply", () => {
     });
     mockShowingUpdate.mockResolvedValue({});
 
-    await persistShowingBuyerAgentFeedbackDraftAfterSupraApply({
+    const out = await persistShowingBuyerAgentFeedbackDraftAfterSupraApply({
       showingId: "sh-1",
       propertyId: "p-1",
       hostUserId: "u-1",
       hostDisplayName: "Host Name",
     });
+    expect(out).toEqual({ saved: true });
 
     expect(mockShowingUpdate).toHaveBeenCalledWith({
       where: { id: "sh-1" },
@@ -63,12 +64,13 @@ describe("persistShowingBuyerAgentFeedbackDraftAfterSupraApply", () => {
       scheduledAt: new Date(),
     });
 
-    await persistShowingBuyerAgentFeedbackDraftAfterSupraApply({
+    const out = await persistShowingBuyerAgentFeedbackDraftAfterSupraApply({
       showingId: "sh-1",
       propertyId: "p-1",
       hostUserId: "u-1",
       hostDisplayName: "H",
     });
+    expect(out).toEqual({ saved: false });
 
     expect(mockShowingUpdate).not.toHaveBeenCalled();
   });
@@ -88,7 +90,7 @@ describe("persistShowingBuyerAgentFeedbackDraftAfterSupraApply", () => {
         hostUserId: "u-1",
         hostDisplayName: "H",
       })
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({ saved: false });
 
     expect(mockShowingUpdate).not.toHaveBeenCalled();
   });
@@ -114,6 +116,6 @@ describe("persistShowingBuyerAgentFeedbackDraftAfterSupraApply", () => {
         hostUserId: "u-1",
         hostDisplayName: "H",
       })
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({ saved: false });
   });
 });

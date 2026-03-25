@@ -320,13 +320,15 @@ export async function POST(
       };
     });
 
+    let buyerAgentFeedbackDraftReady = false;
     try {
-      await persistShowingBuyerAgentFeedbackDraftAfterSupraApply({
+      const draftResult = await persistShowingBuyerAgentFeedbackDraftAfterSupraApply({
         showingId: result.showingId,
         propertyId: result.propertyId,
         hostUserId: user.id,
         hostDisplayName: user.name,
       });
+      buyerAgentFeedbackDraftReady = draftResult.saved;
     } catch (draftErr) {
       console.error("[supra-apply] feedback draft hook failed (non-fatal)", draftErr);
     }
@@ -338,6 +340,7 @@ export async function POST(
         showingId: result.showingId,
         createdProperty: result.createdProperty,
         updatedShowing: result.updatedShowing,
+        buyerAgentFeedbackDraftReady,
       },
     });
   } catch (e) {

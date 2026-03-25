@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent } from "react";
 import type {
   SupraQueueItem,
@@ -405,11 +406,17 @@ function normalizeItem(row: ItemWithRelations): ItemWithRelations {
   };
 }
 
+type SupraInboxSuccessInfo = {
+  message: string;
+  /** Set when apply API saved a buyer-agent feedback draft */
+  buyerAgentFeedbackDraftReady?: boolean;
+};
+
 export function SupraInboxView() {
   const [items, setItems] = useState<ItemWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [successInfo, setSuccessInfo] = useState<SupraInboxSuccessInfo | null>(null);
   const [filterPreset, setFilterPreset] = useState<FilterPreset>("all");
   const [detail, setDetail] = useState<ItemWithRelations | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -473,10 +480,10 @@ export function SupraInboxView() {
   }, [load]);
 
   useEffect(() => {
-    if (!successMessage) return;
-    const t = setTimeout(() => setSuccessMessage(null), 8000);
+    if (!successInfo) return;
+    const t = setTimeout(() => setSuccessInfo(null), 8000);
     return () => clearTimeout(t);
-  }, [successMessage]);
+  }, [successInfo]);
 
   useEffect(() => {
     if (!highlightQueueRowId) return;
@@ -739,9 +746,9 @@ export function SupraInboxView() {
       };
       await load();
       setFilterPreset("all");
-      setSuccessMessage(
-        `Gmail: ${imported} new, ${refreshed} refreshed, ${autoParsed} auto-parsed to NEEDS_REVIEW, ${skipped} skipped (${scanned} scanned, last ~14 days, Supra senders).`
-      );
+      setSuccessInfo({
+        message: `Gmail: ${imported} new, ${refreshed} refreshed, ${autoParsed} auto-parsed to NEEDS_REVIEW, ${skipped} skipped (${scanned} scanned, last ~14 days, Supra senders).`,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gmail import failed");
     } finally {
@@ -768,9 +775,9 @@ export function SupraInboxView() {
         typeof json.data?.deletedCount === "number" ? json.data.deletedCount : 0;
       await load();
       setFilterPreset("all");
-      setSuccessMessage(
-        `Removed ${deletedCount} queue row(s). Applied rows were kept. Properties and showings were not changed.`
-      );
+      setSuccessInfo({
+        message: `Removed ${deletedCount} queue row(s). Applied rows were kept. Properties and showings were not changed.`,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to clear queue");
     } finally {
@@ -833,9 +840,10 @@ export function SupraInboxView() {
       setFilterPreset("ingested");
       setHighlightQueueRowId(created.id);
       setPastedReviewBannerId(created.id);
-      setSuccessMessage(
-        "Saved as Ingested (raw). Review opened — run parser or edit the raw body, then Save."
-      );
+      setSuccessInfo({
+        message:
+          "Saved as Ingested (raw). Review opened — run parser or edit the raw body, then Save.",
+      });
       openDetail(created);
     } catch (e) {
       setPasteModalError(e instanceof Error ? e.message : "Paste failed");
@@ -919,11 +927,12 @@ export function SupraInboxView() {
         setSavedModalFingerprint(JSON.stringify(buildUpdatePayload(n)));
       }
       await load();
-      setSuccessMessage(
-        typeof json.data?.message === "string"
-          ? json.data.message
-          : "Supra parser filled draft fields — review before apply."
-      );
+      setSuccessInfo({
+        message:
+          typeof json.data?.message === "string"
+            ? json.data.message
+            : "Supra parser filled draft fields — review before apply.",
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Parse draft failed");
     } finally {
@@ -958,7 +967,10 @@ export function SupraInboxView() {
       setSavedModalFingerprint(JSON.stringify(buildUpdatePayload(updated)));
       setApplyDuplicate(null);
       setApplyDuplicateAck(false);
-      setSuccessMessage("Linked on the server. Apply again to update that showing (duplicate block should clear).");
+      setSuccessInfo({
+        message:
+          "Linked on the server. Apply again to update that showing (duplicate block should clear).",
+      });
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not link showing");
@@ -1018,13 +1030,21 @@ export function SupraInboxView() {
       const applyMeta = json.data as {
         createdProperty?: boolean;
         updatedShowing?: boolean;
+        buyerAgentFeedbackDraftReady?: boolean;
       };
       const base = applyMeta?.updatedShowing
         ? "Applied: showing updated and queue item marked complete."
         : "Applied: new showing created (source: Supra).";
-      setSuccessMessage(
-        applyMeta?.createdProperty ? `${base} A new property was created from the parsed address.` : base
-      );
+      const msgCore = applyMeta?.createdProperty
+        ? `${base} A new property was created from the parsed address.`
+        : base;
+      const draftReady = Boolean(applyMeta?.buyerAgentFeedbackDraftReady);
+      setSuccessInfo({
+        message: draftReady
+          ? `${msgCore} Buyer-agent feedback email draft is ready.`
+          : msgCore,
+        buyerAgentFeedbackDraftReady: draftReady,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Apply failed");
     } finally {
@@ -1058,13 +1078,21 @@ export function SupraInboxView() {
       const d = json.data as {
         createdProperty?: boolean;
         updatedShowing?: boolean;
+        buyerAgentFeedbackDraftReady?: boolean;
       };
       const base = d?.updatedShowing
         ? "Applied: showing updated and queue item marked complete."
         : "Applied: new showing created (source: Supra).";
-      setSuccessMessage(
-        d?.createdProperty ? `${base} A new property was created from the parsed address.` : base
-      );
+      const msgCore = d?.createdProperty
+        ? `${base} A new property was created from the parsed address.`
+        : base;
+      const draftReady = Boolean(d?.buyerAgentFeedbackDraftReady);
+      setSuccessInfo({
+        message: draftReady
+          ? `${msgCore} Buyer-agent feedback email draft is ready.`
+          : msgCore,
+        buyerAgentFeedbackDraftReady: draftReady,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Apply failed");
     } finally {
@@ -1097,23 +1125,24 @@ export function SupraInboxView() {
   const handleSaveDetail = async () => {
     if (!detail) return;
     await patchItem(detail.id, buildUpdatePayload(detail));
-    setSuccessMessage("Review saved.");
+    setSuccessInfo({ message: "Review saved." });
   };
 
   const applyStateWithCurrentEdits = async (state: SupraQueueState) => {
     if (!detail) return;
     await patchItem(detail.id, { ...buildUpdatePayload(detail), queueState: state });
-    setSuccessMessage(
-      state === QueueStates.READY_TO_APPLY
-        ? "Marked ready to apply (no showing created yet)."
-        : state === QueueStates.FAILED_PARSE
-          ? "Marked failed parse."
-          : state === QueueStates.DISMISSED
-            ? "Item dismissed."
-            : state === QueueStates.DUPLICATE
-              ? "Marked duplicate."
-              : "Updated."
-    );
+    setSuccessInfo({
+      message:
+        state === QueueStates.READY_TO_APPLY
+          ? "Marked ready to apply (no showing created yet)."
+          : state === QueueStates.FAILED_PARSE
+            ? "Marked failed parse."
+            : state === QueueStates.DISMISSED
+              ? "Item dismissed."
+              : state === QueueStates.DUPLICATE
+                ? "Marked duplicate."
+                : "Updated.",
+    });
   };
 
   type SampleKind = "typical" | "low_confidence" | "failed_parse" | "ready_to_apply";
@@ -1231,15 +1260,16 @@ export function SupraInboxView() {
       if (!res.ok) throw new Error(json.error?.message ?? "Failed to add sample");
       await load();
       setFilterPreset("all");
-      setSuccessMessage(
-        kind === "typical"
-          ? "Sample row added (needs review). Open Review to edit or change state."
-          : kind === "low_confidence"
-            ? "Low-confidence sample added — good for testing corrections."
-            : kind === "failed_parse"
-              ? "Failed-parse sample added."
-              : "Ready-to-apply sample added (still no auto-create)."
-      );
+      setSuccessInfo({
+        message:
+          kind === "typical"
+            ? "Sample row added (needs review). Open Review to edit or change state."
+            : kind === "low_confidence"
+              ? "Low-confidence sample added — good for testing corrections."
+              : kind === "failed_parse"
+                ? "Failed-parse sample added."
+                : "Ready-to-apply sample added (still no auto-create).",
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to add sample");
     } finally {
@@ -1286,13 +1316,23 @@ export function SupraInboxView() {
 
   return (
     <div className="flex flex-col gap-3">
-      {successMessage ? (
+      {successInfo ? (
         <div
-          className="flex items-center gap-2 rounded-lg border border-kp-teal/35 bg-kp-teal/[0.12] px-3 py-2 text-sm font-medium text-kp-on-surface"
+          className="flex gap-2 rounded-lg border border-kp-teal/35 bg-kp-teal/[0.12] px-3 py-2 text-sm font-medium text-kp-on-surface"
           role="status"
         >
-          <CheckCircle2 className="h-4 w-4 shrink-0 text-kp-teal" />
-          {successMessage}
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <p className="leading-snug">{successInfo.message}</p>
+            {successInfo.buyerAgentFeedbackDraftReady ? (
+              <Link
+                href="/showing-hq/showings"
+                className="inline-flex text-xs font-semibold text-kp-teal underline-offset-2 hover:underline"
+              >
+                Open Showings — Edit the row to copy, mailto, or review the draft
+              </Link>
+            ) : null}
+          </div>
         </div>
       ) : null}
 

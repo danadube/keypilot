@@ -5,7 +5,7 @@
 import { POST } from "@/app/api/v1/showing-hq/supra-queue/[id]/apply/route";
 import { SupraQueueState } from "@prisma/client";
 
-const mockPersistFeedbackDraft = jest.fn().mockResolvedValue(undefined);
+const mockPersistFeedbackDraft = jest.fn().mockResolvedValue({ saved: true });
 
 jest.mock("@/lib/showing-hq/showing-buyer-agent-feedback-draft", () => ({
   persistShowingBuyerAgentFeedbackDraftAfterSupraApply: (...args: unknown[]) =>
@@ -83,6 +83,8 @@ describe("POST /api/v1/showing-hq/supra-queue/[id]/apply — feedback draft hook
     const res = await POST(req, { params: Promise.resolve({ id: "qi-1" }) });
 
     expect(res.status).toBe(200);
+    const okBody = (await res.json()) as { data: { buyerAgentFeedbackDraftReady?: boolean } };
+    expect(okBody.data.buyerAgentFeedbackDraftReady).toBe(true);
     expect(mockPersistFeedbackDraft).toHaveBeenCalledTimes(1);
     expect(mockPersistFeedbackDraft).toHaveBeenCalledWith({
       showingId: "sh-new",
@@ -104,5 +106,7 @@ describe("POST /api/v1/showing-hq/supra-queue/[id]/apply — feedback draft hook
     const res = await POST(req, { params: Promise.resolve({ id: "qi-1" }) });
 
     expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { buyerAgentFeedbackDraftReady?: boolean } };
+    expect(body.data.buyerAgentFeedbackDraftReady).toBe(false);
   });
 });

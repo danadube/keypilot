@@ -47,13 +47,14 @@ ${host}`;
 /**
  * Loads property + showing, generates draft when buyer agent email exists, persists to Showing.
  * Swallows errors and logs — must not affect Supra apply success.
+ * @returns whether draft fields were written to the Showing row.
  */
 export async function persistShowingBuyerAgentFeedbackDraftAfterSupraApply(args: {
   showingId: string;
   propertyId: string;
   hostUserId: string;
   hostDisplayName: string;
-}): Promise<void> {
+}): Promise<{ saved: boolean }> {
   try {
     const [property, showing] = await Promise.all([
       prismaAdmin.property.findFirst({
@@ -74,10 +75,10 @@ export async function persistShowingBuyerAgentFeedbackDraftAfterSupraApply(args:
       }),
     ]);
 
-    if (!property || !showing) return;
+    if (!property || !showing) return { saved: false };
 
     const buyerAgentEmail = showing.buyerAgentEmail?.trim();
-    if (!buyerAgentEmail) return;
+    if (!buyerAgentEmail) return { saved: false };
 
     const propertyAddressLine =
       `${property.address1}, ${property.city}, ${property.state} ${property.zip}`.trim();
@@ -97,7 +98,9 @@ export async function persistShowingBuyerAgentFeedbackDraftAfterSupraApply(args:
         feedbackDraftGeneratedAt: new Date(),
       },
     });
+    return { saved: true };
   } catch (e) {
     console.error("[supra-apply] buyer-agent feedback draft failed (non-fatal)", e);
+    return { saved: false };
   }
 }
