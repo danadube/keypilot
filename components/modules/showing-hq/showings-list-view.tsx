@@ -323,6 +323,7 @@ function EditShowingModal({
             subject={showing.feedbackDraftSubject}
             body={showing.feedbackDraftBody}
             generatedAt={showing.feedbackDraftGeneratedAt}
+            buyerAgentEmail={showing.buyerAgentEmail}
           />
         </div>
         <div className="flex justify-end gap-2 border-t border-kp-outline p-5">

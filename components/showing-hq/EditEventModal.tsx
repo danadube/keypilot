@@ -55,6 +55,7 @@ export function EditEventModal({
     subject: string | null;
     body: string | null;
     generatedAt: string | null;
+    buyerAgentEmail: string | null;
   } | null>(null);
 
   const isOpenHouse = eventType === "open_house";
@@ -123,6 +124,7 @@ export function EditEventModal({
           const fr = (d as { feedbackRequests?: { token: string; status: string }[] }).feedbackRequests?.[0];
           setFeedbackRequest(fr ?? null);
           const draft = d as {
+            buyerAgentEmail?: string | null;
             feedbackDraftSubject?: string | null;
             feedbackDraftBody?: string | null;
             feedbackDraftGeneratedAt?: string | null;
@@ -131,6 +133,7 @@ export function EditEventModal({
             subject: draft.feedbackDraftSubject ?? null,
             body: draft.feedbackDraftBody ?? null,
             generatedAt: draft.feedbackDraftGeneratedAt ?? null,
+            buyerAgentEmail: draft.buyerAgentEmail ?? null,
           });
         }
       })
@@ -356,6 +359,7 @@ export function EditEventModal({
               subject={buyerAgentFeedbackDraft.subject}
               body={buyerAgentFeedbackDraft.body}
               generatedAt={buyerAgentFeedbackDraft.generatedAt}
+              buyerAgentEmail={buyerAgentFeedbackDraft.buyerAgentEmail}
             />
           )}
 

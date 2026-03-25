@@ -2,25 +2,44 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Check, Copy, Mail } from "lucide-react";
+import { Check, Copy, Mail, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/** Browsers and mail clients vary; very long mailto URLs may be truncated or ignored. */
+export const BUYER_AGENT_FEEDBACK_MAILTO_MAX_LENGTH = 1950;
+
+export function buildBuyerAgentFeedbackMailtoHref(
+  recipient: string,
+  subject: string,
+  body: string
+): string | null {
+  const to = recipient.trim();
+  if (!to || !subject.trim() || !body.trim()) return null;
+  const params = new URLSearchParams();
+  params.set("subject", subject);
+  params.set("body", body);
+  return `mailto:${encodeURIComponent(to)}?${params.toString()}`;
+}
 
 export type ShowingBuyerAgentFeedbackDraftProps = {
   subject: string | null | undefined;
   body: string | null | undefined;
   generatedAt: string | null | undefined;
+  /** Required to enable “Create email” (mailto). */
+  buyerAgentEmail?: string | null | undefined;
   className?: string;
   /** Calendar BrandModal uses theme vars; showings list uses kp tokens */
   variant?: "kp" | "brand";
 };
 
 /**
- * Read-only buyer-agent feedback email draft with copy actions (v1 — no send).
+ * Buyer-agent feedback draft: copy actions + optional mailto “Create email” (opens default mail client).
  */
 export function ShowingBuyerAgentFeedbackDraftPanel({
   subject,
   body,
   generatedAt,
+  buyerAgentEmail,
   className,
   variant = "kp",
 }: ShowingBuyerAgentFeedbackDraftProps) {
@@ -28,7 +47,11 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
 
   const sub = subject?.trim() ?? "";
   const bod = body?.trim() ?? "";
+  const to = buyerAgentEmail?.trim() ?? "";
   if (!sub || !bod) return null;
+
+  const mailtoHref = to ? buildBuyerAgentFeedbackMailtoHref(to, sub, bod) : null;
+  const mailtoTooLong = mailtoHref != null && mailtoHref.length > BUYER_AGENT_FEEDBACK_MAILTO_MAX_LENGTH;
 
   const copy = (kind: "subject" | "body" | "both") => {
     const text = kind === "subject" ? sub : kind === "body" ? bod : `${sub}\n\n${bod}`;
@@ -70,6 +93,11 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
         Buyer-agent feedback email
       </div>
       {genLabel && <p className={cn("mt-1 text-xs", mutedCls)}>Generated {genLabel}</p>}
+      {to && (
+        <p className={cn("mt-1 truncate text-xs", mutedCls)} title={to}>
+          To: {to}
+        </p>
+      )}
 
       <p className={cn("mt-2 text-xs font-medium uppercase tracking-wide", mutedCls)}>Subject</p>
       <p className={cn("mt-0.5 text-sm", titleCls)}>{sub}</p>
@@ -86,7 +114,29 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
         {bod}
       </pre>
 
-      <div className="mt-3 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {mailtoHref && !mailtoTooLong && (
+          <Button asChild variant="default" size="sm" className="h-8 gap-1.5 text-xs font-semibold">
+            <a href={mailtoHref}>
+              <Send className="h-3.5 w-3.5" />
+              Create email
+            </a>
+          </Button>
+        )}
+        {mailtoHref && mailtoTooLong && (
+          <Button
+            type="button"
+            variant="default"
+            size="sm"
+            className="h-8 text-xs opacity-60"
+            disabled
+            title="This draft is too long for a mailto link on some systems. Use copy actions below."
+          >
+            <Send className="h-3.5 w-3.5" />
+            Create email
+          </Button>
+        )}
+
         <Button
           type="button"
           variant="outline"
