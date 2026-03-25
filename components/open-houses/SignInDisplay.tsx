@@ -173,7 +173,7 @@ export function SignInDisplay({ openHouseId }: { openHouseId: string }) {
             >
               Scan to sign in on your phone
             </CardTitle>
-            <CardDescription className="mt-1.5 text-sm">
+            <CardDescription className="mt-1.5 text-sm text-[var(--brand-text-muted)]">
               Visitors can point their camera at the QR code to open the sign-in
               page instantly
             </CardDescription>
@@ -211,7 +211,7 @@ export function SignInDisplay({ openHouseId }: { openHouseId: string }) {
             >
               Check in here
             </CardTitle>
-            <CardDescription className="mt-1.5">
+            <CardDescription className="mt-1.5 text-[var(--brand-text-muted)]">
               Sign in directly on this tablet
             </CardDescription>
           </CardHeader>

@@ -9,6 +9,8 @@ const sizeClasses = {
   md: "max-w-[560px]",
   lg: "max-w-[720px]",
   xl: "max-w-[960px]",
+  /** Wider work surfaces (e.g. Supra review form) */
+  "2xl": "max-w-[1152px]",
 } as const;
 
 export interface BrandModalProps {
@@ -19,6 +21,8 @@ export interface BrandModalProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   size?: keyof typeof sizeClasses;
+  /** Override scroll area (e.g. taller modal body). */
+  bodyClassName?: string;
   closeOnBackdrop?: boolean;
   className?: string;
 }
@@ -31,6 +35,7 @@ export function BrandModal({
   children,
   footer,
   size = "md",
+  bodyClassName,
   closeOnBackdrop = true,
   className,
 }: BrandModalProps) {
@@ -117,7 +122,12 @@ export function BrandModal({
             )}
           </div>
         )}
-        <div className="max-h-[min(72vh,520px)] overflow-y-auto px-4 py-4">
+        <div
+          className={cn(
+            "max-h-[min(72vh,520px)] overflow-y-auto px-4 py-4",
+            bodyClassName
+          )}
+        >
           {children}
         </div>
         {footer && (

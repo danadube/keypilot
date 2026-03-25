@@ -6,13 +6,14 @@ import { GET } from "@/app/api/v1/feedback/by-token/[token]/route";
 
 const mockFeedbackRequestFindUnique = jest.fn();
 
-jest.mock("@/lib/db", () => ({
-  prisma: {
+jest.mock("@/lib/db", () => {
+  const db = {
     feedbackRequest: {
       findUnique: (...args: unknown[]) => mockFeedbackRequestFindUnique(...args),
     },
-  },
-}));
+  };
+  return { prisma: db, prismaAdmin: db };
+});
 
 beforeEach(() => {
   jest.clearAllMocks();

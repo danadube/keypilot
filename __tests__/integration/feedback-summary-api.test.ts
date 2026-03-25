@@ -7,12 +7,13 @@ import { GET } from "@/app/api/v1/showing-hq/properties/[propertyId]/feedback-su
 const mockPropertyFindFirst = jest.fn();
 const mockFeedbackRequestFindMany = jest.fn();
 
-jest.mock("@/lib/db", () => ({
-  prisma: {
+jest.mock("@/lib/db", () => {
+  const db = {
     property: { findFirst: (...args: unknown[]) => mockPropertyFindFirst(...args) },
     feedbackRequest: { findMany: (...args: unknown[]) => mockFeedbackRequestFindMany(...args) },
-  },
-}));
+  };
+  return { prisma: db, prismaAdmin: db };
+});
 
 jest.mock("@/lib/auth", () => ({
   getCurrentUser: jest.fn().mockResolvedValue({ id: "user-1" }),

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { BrandCard } from "@/components/ui/BrandCard";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { Button } from "@/components/ui/button";
+import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ImagePlus, Loader2, User } from "lucide-react";
@@ -236,6 +237,7 @@ export function BrandingPageContent() {
                     type="button"
                     variant="outline"
                     size="sm"
+                    className={kpBtnSecondary}
                     disabled={headshotUploading}
                     onClick={() => headshotInputRef.current?.click()}
                   >
@@ -274,6 +276,7 @@ export function BrandingPageContent() {
                     type="button"
                     variant="outline"
                     size="sm"
+                    className={kpBtnSecondary}
                     disabled={logoUploading}
                     onClick={() => logoInputRef.current?.click()}
                   >

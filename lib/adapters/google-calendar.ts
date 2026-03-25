@@ -4,6 +4,7 @@
  */
 
 import { google } from "googleapis";
+import { ensureValidGoogleOAuth2Client } from "@/lib/oauth/google-connection-auth";
 import type { NormalizedCalendarEvent } from "./calendar-types";
 
 export interface GoogleCalendarConnection {
@@ -14,32 +15,6 @@ export interface GoogleCalendarConnection {
   accountEmail: string | null;
 }
 
-function getOAuth2Client(conn: GoogleCalendarConnection) {
-  const oauth2 = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/v1/auth/google/callback`
-  );
-
-  oauth2.setCredentials({
-    access_token: conn.accessToken,
-    refresh_token: conn.refreshToken ?? undefined,
-    expiry_date: conn.tokenExpiresAt?.getTime(),
-  });
-
-  return oauth2;
-}
-
-async function ensureValidToken(conn: GoogleCalendarConnection) {
-  const oauth2 = getOAuth2Client(conn);
-  const now = Date.now();
-  const expiresAt = conn.tokenExpiresAt?.getTime() ?? 0;
-  if (expiresAt > 0 && now >= expiresAt - 5 * 60 * 1000) {
-    await oauth2.refreshAccessToken();
-  }
-  return oauth2;
-}
-
 /**
  * Fetch upcoming events from Google Calendar (primary calendar).
  * Normalizes to NormalizedCalendarEvent for Home widget.
@@ -48,7 +23,7 @@ export async function fetchGoogleCalendarEvents(
   conn: GoogleCalendarConnection,
   options: { timeMin?: Date; timeMax?: Date; maxResults?: number } = {}
 ): Promise<NormalizedCalendarEvent[]> {
-  const auth = await ensureValidToken(conn);
+  const auth = await ensureValidGoogleOAuth2Client(conn);
   const calendar = google.calendar({ version: "v3", auth });
 
   const timeMin = options.timeMin ?? new Date();

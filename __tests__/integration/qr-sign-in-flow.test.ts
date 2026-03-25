@@ -16,8 +16,8 @@ const mockUserFindUnique = jest.fn();
 const mockFollowUpDraftCreate = jest.fn();
 const mockVisitorUpdate = jest.fn();
 
-jest.mock("@/lib/db", () => ({
-  prisma: {
+jest.mock("@/lib/db", () => {
+  const db = {
     openHouse: {
       findFirst: (...args: unknown[]) => mockOpenHouseFindFirst(...args),
     },
@@ -30,8 +30,9 @@ jest.mock("@/lib/db", () => ({
     },
     user: { findUnique: (...args: unknown[]) => mockUserFindUnique(...args) },
     followUpDraft: { create: (...args: unknown[]) => mockFollowUpDraftCreate(...args) },
-  },
-}));
+  };
+  return { prisma: db, prismaAdmin: db };
+});
 
 jest.mock("@/lib/contact-dedupe", () => ({
   findOrCreateContact: (...args: unknown[]) => mockFindOrCreateContact(...args),

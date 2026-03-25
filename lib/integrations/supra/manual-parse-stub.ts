@@ -1,0 +1,31 @@
+/**
+ * Back-compat entry: re-exports the Supra v1 email parser.
+ * Prefer importing from `./parse-supra-email` in new code.
+ */
+
+export {
+  parseSupraEmailToDraft,
+  detectIntent,
+  isPlausibleStreetAddressLine,
+  type SupraParseDraft,
+  type SupraEventIntent,
+  type SupraAddressParseKind,
+} from "./parse-supra-email";
+
+import { parseSupraEmailToDraft, type SupraParseDraft } from "./parse-supra-email";
+
+/** Shape expected by Prisma update (no debug-only columns) */
+export type SupraManualParseDraft = Omit<
+  SupraParseDraft,
+  "parsedSourceHint" | "parsedShowingBeganAt"
+>;
+
+export function buildManualParseDraftFromRaw(
+  input: Parameters<typeof parseSupraEmailToDraft>[0]
+): SupraManualParseDraft {
+  const r = parseSupraEmailToDraft(input);
+  const { parsedSourceHint, parsedShowingBeganAt, ...rest } = r;
+  void parsedSourceHint;
+  void parsedShowingBeganAt;
+  return rest;
+}

@@ -13,6 +13,12 @@ import {
   Sun,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  kpBtnPrimary,
+  kpBtnSecondary,
+  kpBtnTertiary,
+} from "@/components/ui/kp-dashboard-button-tiers";
 import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
 
 export type WorkbenchOpenHouse = {
@@ -124,7 +130,7 @@ export function ShowingHQWorkbenchQueue({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-7 gap-1 px-2 text-[11px]"
+                    className={cn(kpBtnSecondary, "h-7 gap-1 px-2 text-[11px]")}
                     onClick={onCopySignIn(signInUrl)}
                   >
                     {linkCopied ? (
@@ -135,7 +141,12 @@ export function ShowingHQWorkbenchQueue({
                     {linkCopied ? "Copied" : "Copy link"}
                   </Button>
                 ) : null}
-                <Button variant="default" size="sm" className="h-7 px-2 text-[11px]" asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(kpBtnPrimary, "h-7 border-transparent px-2 text-[11px]")}
+                  asChild
+                >
                   <Link href={`/showing-hq/open-houses/${activeOpenHouse.id}`}>Host</Link>
                 </Button>
               </>
@@ -153,13 +164,13 @@ export function ShowingHQWorkbenchQueue({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-7 gap-1 px-2 text-[11px]"
+                  className={cn(kpBtnSecondary, "h-7 gap-1 px-2 text-[11px]")}
                   onClick={onCopySignIn(signInUrl)}
                 >
                   {linkCopied ? <CheckSquare className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                   {linkCopied ? "Copied" : "Copy"}
                 </Button>
-                <Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" asChild>
+                <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 px-2 text-[11px]")} asChild>
                   <Link href={`/showing-hq/open-houses/${ohForSignIn.id}`}>Open house</Link>
                 </Button>
               </>
@@ -174,7 +185,12 @@ export function ShowingHQWorkbenchQueue({
             title={`Review ${followUpDraftCount} follow-up draft${followUpDraftCount === 1 ? "" : "s"}`}
             meta="Visitors waiting on your message"
             actions={
-              <Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnSecondary, "h-7 px-2 text-[11px]")}
+                asChild
+              >
                 <Link
                   href={
                     firstFollowUpDraftId
@@ -196,7 +212,7 @@ export function ShowingHQWorkbenchQueue({
             title={`${feedbackPendingCount} feedback request${feedbackPendingCount === 1 ? "" : "s"} pending`}
             meta="Seller feedback links to send"
             actions={
-              <Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" asChild>
+              <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 px-2 text-[11px]")} asChild>
                 <Link href="/showing-hq/feedback-requests">Queue</Link>
               </Button>
             }
@@ -209,7 +225,7 @@ export function ShowingHQWorkbenchQueue({
             tone="neutral"
             title={`${reportsReadyCount} seller report${reportsReadyCount === 1 ? "" : "s"} ready`}
             actions={
-              <Button variant="outline" size="sm" className="h-7 px-2 text-[11px]" asChild>
+              <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 px-2 text-[11px]")} asChild>
                 <Link
                   href={firstReportId ? `/open-houses/${firstReportId}/report` : "/open-houses"}
                 >
@@ -258,7 +274,7 @@ export function ShowingHQWorkbenchQueue({
             title="Prep tomorrow"
             meta={`${formatDateShort(tomorrowItem.at)} · ${formatTime(tomorrowItem.at)} · ${tomorrowItem.property?.address1 ?? tomorrowItem.title}`}
             actions={
-              <Button variant="ghost" size="sm" className="h-7 px-2 text-[11px]" asChild>
+              <Button variant="ghost" size="sm" className={cn(kpBtnTertiary, "h-7 px-2 text-[11px]")} asChild>
                 <Link
                   href={
                     tomorrowItem.type === "open_house"
@@ -283,10 +299,15 @@ export function ShowingHQWorkbenchQueue({
           <div className="px-3 py-8 text-center">
             <p className="text-xs text-kp-on-surface-variant">Nothing queued. Add an open house or showing.</p>
             <div className="mt-3 flex justify-center gap-2">
-              <Button variant="outline" size="sm" className="h-7 text-xs" asChild>
+              <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 text-xs")} asChild>
                 <Link href="/properties/new">New property</Link>
               </Button>
-              <Button size="sm" className="h-7 text-xs" asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnPrimary, "h-7 border-transparent text-xs")}
+                asChild
+              >
                 <Link href="/open-houses/new">Create open house</Link>
               </Button>
             </div>

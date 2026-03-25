@@ -43,6 +43,8 @@ model User {
   hostInvitesSent     OpenHouseHostInvite[]
   transactions        Transaction[]
   commissions         Commission[]
+  supraQueueItems     SupraQueueItem[]
+  supraQueueReviewed  SupraQueueItem[] @relation("SupraQueueReviewedBy")
 
   @@index([clerkId])
   @@map("users")
@@ -95,6 +97,7 @@ model Property {
   activities    Activity[]
   deals         Deal[]
   transactions  Transaction[]
+  supraQueueMatches SupraQueueItem[] @relation("SupraQueueMatchedProperty")
 
   @@index([createdByUserId, deletedAt])
   @@index([city, state])
@@ -323,6 +326,7 @@ model Showing {
   property   Property          @relation(fields: [propertyId], references: [id])
   hostUser   User              @relation(fields: [hostUserId], references: [id])
   feedbackRequests FeedbackRequest[]
+  supraQueueMatches SupraQueueItem[] @relation("SupraQueueMatchedShowing")
 
   @@index([hostUserId])
   @@index([propertyId])
@@ -371,6 +375,96 @@ enum FeedbackRequestStatus {
 enum ShowingSource {
   MANUAL
   SUPRA_SCRAPE
+}
+
+/** Review queue for Supra (and future) email ingests — human confirm before showings/properties change. */
+enum SupraQueueState {
+  INGESTED
+  PARSED
+  NEEDS_REVIEW
+  READY_TO_APPLY
+  APPLIED
+  FAILED_PARSE
+  DISMISSED
+  DUPLICATE
+}
+
+enum SupraParseConfidence {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum SupraPropertyMatchStatus {
+  UNSET
+  NO_MATCH
+  MATCHED
+  AMBIGUOUS
+  POSSIBLE_DUPLICATE
+}
+
+enum SupraShowingMatchStatus {
+  UNSET
+  NO_SHOWING
+  MATCHED
+  AMBIGUOUS
+  POSSIBLE_DUPLICATE
+}
+
+enum SupraProposedAction {
+  UNKNOWN
+  CREATE_SHOWING
+  UPDATE_SHOWING
+  CREATE_PROPERTY_AND_SHOWING
+  DISMISS
+  NEEDS_MANUAL_REVIEW
+}
+
+model SupraQueueItem {
+  id           String @id @default(uuid())
+  hostUserId   String
+
+  source            String   @default("supra")
+  externalMessageId String
+  subject           String
+  receivedAt        DateTime
+  rawBodyText       String   @db.Text
+  sender            String?
+
+  parsedAddress1    String?
+  parsedCity        String?
+  parsedState       String?
+  parsedZip         String?
+  parsedScheduledAt DateTime?
+  parsedEventKind   String?
+  parsedStatus      String?
+  parsedAgentName   String?
+  parsedAgentEmail  String?
+  parseConfidence   SupraParseConfidence   @default(LOW)
+  proposedAction    SupraProposedAction     @default(UNKNOWN)
+
+  matchedPropertyId String?
+  matchedShowingId  String?
+  propertyMatchStatus SupraPropertyMatchStatus @default(UNSET)
+  showingMatchStatus  SupraShowingMatchStatus  @default(UNSET)
+
+  queueState       SupraQueueState @default(INGESTED)
+  reviewedAt       DateTime?
+  reviewedByUserId String?
+  resolutionNotes  String?         @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  hostUser         User      @relation(fields: [hostUserId], references: [id], onDelete: Cascade)
+  matchedProperty  Property? @relation("SupraQueueMatchedProperty", fields: [matchedPropertyId], references: [id], onDelete: SetNull)
+  matchedShowing   Showing?  @relation("SupraQueueMatchedShowing", fields: [matchedShowingId], references: [id], onDelete: SetNull)
+  reviewedBy       User?     @relation("SupraQueueReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([hostUserId, externalMessageId])
+  @@index([hostUserId, queueState])
+  @@index([hostUserId, receivedAt])
+  @@map("supra_queue_items")
 }
 
 model Activity {

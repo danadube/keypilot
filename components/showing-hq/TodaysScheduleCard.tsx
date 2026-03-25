@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { Calendar, Building2, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { Badge } from "@/components/ui/badge";
 
 export type ScheduleItem = {
@@ -81,7 +83,12 @@ export function TodaysScheduleCard({
                   {item.property.address1}
                 </p>
               </div>
-              <Button variant="outline" size="sm" className="h-7 shrink-0 text-xs" asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnSecondary, "h-7 shrink-0 text-xs")}
+                asChild
+              >
                 <Link
                   href={
                     item.type === "open_house"
@@ -117,7 +124,12 @@ export function TodaysScheduleCard({
                   {tomorrowItem.property.address1}
                 </p>
               </div>
-              <Button variant="outline" size="sm" className="h-7 shrink-0 text-xs" asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnSecondary, "h-7 shrink-0 text-xs")}
+                asChild
+              >
                 <Link
                   href={
                     tomorrowItem.type === "open_house"
@@ -137,10 +149,10 @@ export function TodaysScheduleCard({
             Nothing on the schedule for today.
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
               <Link href="/showing-hq/showings/new">Add showing</Link>
             </Button>
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
               <Link href="/open-houses/new">Create open house</Link>
             </Button>
           </div>

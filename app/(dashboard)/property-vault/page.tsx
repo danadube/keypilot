@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import {
   Card,
   CardContent,
@@ -95,16 +96,16 @@ export default function PropertyVaultOverviewPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
               <Link href="/properties">All properties</Link>
             </Button>
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
               <Link href="/properties/new">
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 Add property
               </Link>
             </Button>
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
               <Link href="/open-houses/new">New open house</Link>
             </Button>
           </CardContent>

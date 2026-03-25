@@ -5,6 +5,12 @@ import { useRouter } from "next/navigation";
 import { trackEvent } from "@/lib/track-usage-client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  kpBtnPrimary,
+  kpBtnSecondary,
+  kpBtnTertiary,
+} from "@/components/ui/kp-dashboard-button-tiers";
 import {
   Card,
   CardContent,
@@ -128,13 +134,23 @@ export default function OpenSignInPage() {
           <CardTitle className="text-base">Shortcuts</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <Button variant="outline" className="w-full justify-start" size="sm" asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(kpBtnSecondary, "w-full justify-start")}
+            asChild
+          >
             <Link href="/open-houses">
               <List className="mr-2 h-4 w-4" />
               All open houses
             </Link>
           </Button>
-          <Button variant="outline" className="w-full justify-start" size="sm" asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(kpBtnSecondary, "w-full justify-start")}
+            asChild
+          >
             <Link href="/open-houses/new">
               <Plus className="mr-2 h-4 w-4" />
               New open house
@@ -173,7 +189,7 @@ export default function OpenSignInPage() {
           <BrandButton variant="primary" size="sm" asChild>
             <Link href="#host-sign-in">Open host sign-in</Link>
           </BrandButton>
-          <Button variant="outline" size="sm" className="border-kp-outline bg-kp-surface-high text-kp-on-surface hover:bg-kp-surface-higher" asChild>
+          <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "shrink-0")} asChild>
             <Link href="/open-houses">View open houses</Link>
           </Button>
         </div>
@@ -191,10 +207,10 @@ export default function OpenSignInPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
-                <Button asChild>
+                <Button variant="outline" className={cn(kpBtnPrimary, "border-transparent")} asChild>
                   <Link href="/open-houses/new">New open house</Link>
                 </Button>
-                <Button variant="outline" asChild>
+                <Button variant="outline" className={kpBtnSecondary} asChild>
                   <Link href="/open-houses">View open houses</Link>
                 </Button>
               </CardContent>
@@ -225,19 +241,24 @@ export default function OpenSignInPage() {
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Button asChild size="sm">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn(kpBtnPrimary, "border-transparent")}
+                            asChild
+                          >
                             <Link href={`/open-houses/${oh.id}/sign-in`}>
                               <Tablet className="mr-2 h-4 w-4" />
                               Host sign-in
                             </Link>
                           </Button>
-                          <Button variant="outline" size="sm" asChild>
+                          <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
                             <Link href={`/open-houses/${oh.id}/sign-in/print`}>
                               <Printer className="mr-2 h-4 w-4" />
                               Print QR
                             </Link>
                           </Button>
-                          <Button variant="ghost" size="sm" asChild>
+                          <Button variant="ghost" size="sm" className={kpBtnTertiary} asChild>
                             <Link href={`/open-houses/${oh.id}`}>
                               View <ArrowRight className="ml-1 h-3.5 w-3.5" />
                             </Link>
@@ -269,7 +290,7 @@ export default function OpenSignInPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary" className="text-xs">{oh.status}</Badge>
-                          <Button asChild variant="outline" size="sm">
+                          <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
                             <Link href={`/open-houses/${oh.id}/sign-in`}>Open</Link>
                           </Button>
                         </div>

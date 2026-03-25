@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { BrandButton } from "@/components/ui/BrandButton";
+import { cn } from "@/lib/utils";
+import { kpBtnSecondary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
 import {
   Card,
@@ -92,7 +94,7 @@ export function PropertiesList() {
         </div>
         <div className="rounded-lg border bg-card px-4 py-3 sm:col-span-2 lg:col-span-1">
           <p className="text-xs font-medium text-muted-foreground">Quick action</p>
-          <Button variant="outline" size="sm" className="mt-1" asChild>
+          <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "mt-1")} asChild>
             <Link href="/open-houses/new">Schedule open house</Link>
           </Button>
         </div>
@@ -136,7 +138,7 @@ export function PropertiesList() {
                     <TableCell>{formatPrice(p.listingPrice)}</TableCell>
                     <TableCell>{p._count?.openHouses ?? 0}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" asChild>
+                      <Button variant="ghost" size="sm" className={kpBtnTertiary} asChild>
                         <Link href={`/properties/${p.id}`}>View</Link>
                       </Button>
                     </TableCell>

@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  kpBtnPrimary,
+  kpBtnSecondary,
+  kpBtnTertiary,
+} from "@/components/ui/kp-dashboard-button-tiers";
 import {
   Card,
   CardContent,
@@ -117,7 +123,12 @@ export function OpenHousesList() {
             <BrandButton variant="primary" size="sm" asChild>
               <Link href="/open-houses/new">New Open House</Link>
             </BrandButton>
-            <Button variant="outline" size="sm" className="border-slate-300 bg-white/5 text-white hover:bg-white/10" asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-slate-300 bg-white/5 text-white shadow-sm hover:bg-white/10 hover:text-white"
+              asChild
+            >
               <Link href="/open-houses/sign-in">
                 <QrCode className="mr-2 h-4 w-4" />
                 Open sign-in page
@@ -214,11 +225,11 @@ export function OpenHousesList() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" asChild>
+                          <Button variant="ghost" size="sm" className={kpBtnTertiary} asChild>
                             <Link href={`/open-houses/${oh.id}`}>View</Link>
                           </Button>
                           {(oh.status === "ACTIVE" || oh.status === "SCHEDULED") && (
-                            <Button variant="outline" size="sm" asChild>
+                            <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
                               <Link href={`/open-houses/${oh.id}/sign-in`}>Sign-in</Link>
                             </Button>
                           )}
@@ -240,19 +251,34 @@ export function OpenHousesList() {
               <CardDescription>Common next steps</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start" size="sm" asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnSecondary, "w-full justify-start")}
+                asChild
+              >
                 <Link href="/open-houses/new">
                   <Plus className="mr-2 h-4 w-4" />
                   New open house
                 </Link>
               </Button>
-              <Button variant="outline" className="w-full justify-start" size="sm" asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnSecondary, "w-full justify-start")}
+                asChild
+              >
                 <Link href="/open-houses/sign-in">
                   <QrCode className="mr-2 h-4 w-4" />
                   Launch sign-in & QR
                 </Link>
               </Button>
-              <Button variant="outline" className="w-full justify-start" size="sm" asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnSecondary, "w-full justify-start")}
+                asChild
+              >
                 <Link href="/properties">View properties</Link>
               </Button>
             </CardContent>
@@ -273,10 +299,15 @@ export function OpenHousesList() {
                   {formatDate(nextUp.startAt)} · {formatTime(nextUp.startAt)}–{formatTime(nextUp.endAt)}
                 </p>
                 <div className="mt-3 flex gap-2">
-                  <Button size="sm" asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(kpBtnPrimary, "border-transparent")}
+                    asChild
+                  >
                     <Link href={`/open-houses/${nextUp.id}/sign-in`}>Open sign-in</Link>
                   </Button>
-                  <Button variant="outline" size="sm" asChild>
+                  <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
                     <Link href={`/open-houses/${nextUp.id}`}>View</Link>
                   </Button>
                 </div>
@@ -291,7 +322,11 @@ export function OpenHousesList() {
                 <CardDescription>Schedule a new open house to get a sign-in link and QR.</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full" asChild>
+                <Button
+                  variant="outline"
+                  className={cn(kpBtnPrimary, "w-full border-transparent")}
+                  asChild
+                >
                   <Link href="/open-houses/new">New open house</Link>
                 </Button>
               </CardContent>

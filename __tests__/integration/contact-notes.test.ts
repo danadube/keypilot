@@ -14,8 +14,8 @@ jest.mock("@/lib/auth", () => ({
   getCurrentUser: () => mockGetCurrentUser(),
 }));
 
-jest.mock("@/lib/db", () => ({
-  prisma: {
+jest.mock("@/lib/db", () => {
+  const db = {
     openHouse: {
       findMany: (...args: unknown[]) => mockOpenHouseFindMany(...args),
     },
@@ -28,8 +28,9 @@ jest.mock("@/lib/db", () => ({
     activity: {
       create: (...args: unknown[]) => mockActivityCreate(...args),
     },
-  },
-}));
+  };
+  return { prisma: db, prismaAdmin: db };
+});
 
 const mockUser = { id: "user-1", name: "Agent", email: "a@x.com", productTier: "FULL_CRM" as const };
 const mockContact = { id: "contact-1", firstName: "Jane", lastName: "Doe" };
