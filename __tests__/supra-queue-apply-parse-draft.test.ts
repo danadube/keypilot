@@ -18,6 +18,7 @@ describe("comparePersistedToManualDraft", () => {
       parsedState: draft.parsedState,
       parsedZip: draft.parsedZip,
       parsedScheduledAt: draft.parsedScheduledAt,
+      parsedShowingBeganAt: draft.parsedShowingBeganAt,
       parsedEventKind: draft.parsedEventKind,
       parsedStatus: draft.parsedStatus,
       parsedAgentName: draft.parsedAgentName,

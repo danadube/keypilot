@@ -46,6 +46,7 @@ export async function GET(
         parsedState: true,
         parsedZip: true,
         parsedScheduledAt: true,
+        parsedShowingBeganAt: true,
         parsedEventKind: true,
         parsedStatus: true,
         parsedAgentName: true,

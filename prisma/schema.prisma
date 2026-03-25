@@ -440,6 +440,8 @@ model SupraQueueItem {
   parsedState       String?
   parsedZip         String?
   parsedScheduledAt DateTime?
+  /** Supra end-of-showing: \"that began …\" time — aligns with Showing.scheduledAt for linking */
+  parsedShowingBeganAt DateTime?
   parsedEventKind   String?
   parsedStatus      String?
   parsedAgentName   String?

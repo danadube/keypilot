@@ -9,6 +9,7 @@ import {
   buildManualParseDraftFromRaw,
   type SupraManualParseDraft,
 } from "@/lib/integrations/supra/manual-parse-stub";
+import { linkShowingEndedSupraQueueItem } from "@/lib/showing-hq/link-showing-ended-supra-queue-item";
 
 export const supraQueueParseDraftListInclude = {
   matchedProperty: {
@@ -35,6 +36,7 @@ export type PersistedVsParserFieldKey =
   | "parsedState"
   | "parsedZip"
   | "parsedScheduledAt"
+  | "parsedShowingBeganAt"
   | "parsedEventKind"
   | "parsedStatus"
   | "parsedAgentName"
@@ -50,6 +52,7 @@ export function comparePersistedToManualDraft(
     parsedState: string | null;
     parsedZip: string | null;
     parsedScheduledAt: Date | null;
+    parsedShowingBeganAt: Date | null;
     parsedEventKind: string | null;
     parsedStatus: string | null;
     parsedAgentName: string | null;
@@ -69,6 +72,7 @@ export function comparePersistedToManualDraft(
     parsedState: item.parsedState === draft.parsedState,
     parsedZip: item.parsedZip === draft.parsedZip,
     parsedScheduledAt: dateEq(item.parsedScheduledAt, draft.parsedScheduledAt),
+    parsedShowingBeganAt: dateEq(item.parsedShowingBeganAt, draft.parsedShowingBeganAt),
     parsedEventKind: item.parsedEventKind === draft.parsedEventKind,
     parsedStatus: item.parsedStatus === draft.parsedStatus,
     parsedAgentName: item.parsedAgentName === draft.parsedAgentName,
@@ -107,7 +111,7 @@ export async function applySupraV1ParseDraftToQueueItem(args: {
     sender: item.sender,
   });
 
-  const updated = await prismaAdmin.supraQueueItem.update({
+  await prismaAdmin.supraQueueItem.update({
     where: { id: args.queueItemId },
     data: {
       parsedAddress1: draft.parsedAddress1,
@@ -115,6 +119,7 @@ export async function applySupraV1ParseDraftToQueueItem(args: {
       parsedState: draft.parsedState,
       parsedZip: draft.parsedZip,
       parsedScheduledAt: draft.parsedScheduledAt,
+      parsedShowingBeganAt: draft.parsedShowingBeganAt,
       parsedEventKind: draft.parsedEventKind,
       parsedStatus: draft.parsedStatus,
       parsedAgentName: draft.parsedAgentName,
@@ -123,8 +128,22 @@ export async function applySupraV1ParseDraftToQueueItem(args: {
       proposedAction: draft.proposedAction,
       queueState: SupraQueueState.NEEDS_REVIEW,
     },
-    include: supraQueueParseDraftListInclude,
   });
 
-  return { ok: true, item: updated };
+  try {
+    await linkShowingEndedSupraQueueItem({
+      hostUserId: args.hostUserId,
+      queueItemId: args.queueItemId,
+    });
+  } catch (e) {
+    console.error("[supra-parse] link showing ended failed (non-fatal)", e);
+  }
+
+  const afterLink = await prismaAdmin.supraQueueItem.findFirst({
+    where: { id: args.queueItemId },
+    include: supraQueueParseDraftListInclude,
+  });
+  if (!afterLink) return { ok: false, code: "NOT_FOUND" };
+
+  return { ok: true, item: afterLink };
 }

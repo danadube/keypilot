@@ -100,6 +100,7 @@ export async function ingestSupraQueueItemIfNew(
       parsedState: null,
       parsedZip: null,
       parsedScheduledAt: null,
+      parsedShowingBeganAt: null,
       parsedEventKind: null,
       parsedStatus: null,
       parsedAgentName: null,

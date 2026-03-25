@@ -15,17 +15,13 @@ export {
 import { parseSupraEmailToDraft, type SupraParseDraft } from "./parse-supra-email";
 
 /** Shape expected by Prisma update (no debug-only columns) */
-export type SupraManualParseDraft = Omit<
-  SupraParseDraft,
-  "parsedSourceHint" | "parsedShowingBeganAt"
->;
+export type SupraManualParseDraft = Omit<SupraParseDraft, "parsedSourceHint">;
 
 export function buildManualParseDraftFromRaw(
   input: Parameters<typeof parseSupraEmailToDraft>[0]
 ): SupraManualParseDraft {
   const r = parseSupraEmailToDraft(input);
-  const { parsedSourceHint, parsedShowingBeganAt, ...rest } = r;
+  const { parsedSourceHint, ...rest } = r;
   void parsedSourceHint;
-  void parsedShowingBeganAt;
   return rest;
 }

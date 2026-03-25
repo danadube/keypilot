@@ -83,6 +83,7 @@ export async function POST(req: NextRequest) {
         parsedState: d.parsedState?.trim() || null,
         parsedZip: d.parsedZip?.trim() || null,
         parsedScheduledAt: d.parsedScheduledAt ?? null,
+        parsedShowingBeganAt: d.parsedShowingBeganAt ?? null,
         parsedEventKind: d.parsedEventKind?.trim() || null,
         parsedStatus: d.parsedStatus?.trim() || null,
         parsedAgentName: d.parsedAgentName?.trim() || null,
