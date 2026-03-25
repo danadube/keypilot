@@ -1,15 +1,19 @@
 /**
  * UserActivity + ActivityTemplate foundation (CRM tasks / follow-ups).
  * Does not touch legacy `Activity` (open-house timeline).
+ *
+ * All mutators take `Prisma.TransactionClient` — call inside `withRLSContext` so RLS applies.
  */
 
-import type { Prisma, PrismaClient } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import type {
   CreateActivityTemplateInput,
   CreateUserActivityInput,
   UpdateActivityTemplateInput,
   UpdateUserActivityInput,
 } from "@/lib/validations/user-activity";
+
+export type ActivityTx = Prisma.TransactionClient;
 
 function buildActivityUpdateData(
   patch: UpdateUserActivityInput
@@ -35,31 +39,63 @@ function buildActivityUpdateData(
   return data;
 }
 
+/**
+ * Ensure propertyId / contactId (when set) refer to rows visible under current RLS
+ * (e.g. property.createdByUserId, contact visibility). Call in the same tx as the write.
+ */
+export async function assertPropertyAndContactAccessible(
+  tx: ActivityTx,
+  input: { propertyId?: string | null; contactId?: string | null }
+): Promise<void> {
+  if (input.propertyId) {
+    const property = await tx.property.findFirst({
+      where: { id: input.propertyId },
+      select: { id: true },
+    });
+    if (!property) {
+      throw Object.assign(new Error("Property not found or not accessible"), {
+        status: 404,
+      });
+    }
+  }
+  if (input.contactId) {
+    const contact = await tx.contact.findFirst({
+      where: { id: input.contactId },
+      select: { id: true },
+    });
+    if (!contact) {
+      throw Object.assign(new Error("Contact not found or not accessible"), {
+        status: 404,
+      });
+    }
+  }
+}
+
 /** Create a user activity and append a CREATED log entry. */
 export async function createUserActivity(
-  db: PrismaClient,
+  tx: ActivityTx,
   input: CreateUserActivityInput
 ) {
-  return db.$transaction(async (tx) => {
-    const activity = await tx.userActivity.create({
-      data: {
-        userId: input.userId,
-        propertyId: input.propertyId ?? undefined,
-        contactId: input.contactId ?? undefined,
-        type: input.type,
-        title: input.title,
-        description: input.description ?? undefined,
-        dueAt: input.dueAt ?? undefined,
-      },
-    });
-    await tx.activityLog.create({
-      data: {
-        activityId: activity.id,
-        action: "CREATED",
-      },
-    });
-    return activity;
+  await assertPropertyAndContactAccessible(tx, input);
+
+  const activity = await tx.userActivity.create({
+    data: {
+      userId: input.userId,
+      propertyId: input.propertyId ?? undefined,
+      contactId: input.contactId ?? undefined,
+      type: input.type,
+      title: input.title,
+      description: input.description ?? undefined,
+      dueAt: input.dueAt ?? undefined,
+    },
   });
+  await tx.activityLog.create({
+    data: {
+      activityId: activity.id,
+      action: "CREATED",
+    },
+  });
+  return activity;
 }
 
 /**
@@ -67,32 +103,35 @@ export async function createUserActivity(
  * Returns null if the row is missing or not owned by this user.
  */
 export async function updateUserActivity(
-  db: PrismaClient,
+  tx: ActivityTx,
   args: { id: string; userId: string; patch: UpdateUserActivityInput }
 ) {
-  const owned = await db.userActivity.findFirst({
+  const owned = await tx.userActivity.findFirst({
     where: { id: args.id, userId: args.userId },
   });
   if (!owned) return null;
+
+  await assertPropertyAndContactAccessible(tx, {
+    propertyId: args.patch.propertyId,
+    contactId: args.patch.contactId,
+  });
 
   const data = buildActivityUpdateData(args.patch);
   if (Object.keys(data).length === 0) {
     return owned;
   }
 
-  return db.$transaction(async (tx) => {
-    const activity = await tx.userActivity.update({
-      where: { id: args.id },
-      data,
-    });
-    await tx.activityLog.create({
-      data: {
-        activityId: activity.id,
-        action: "UPDATED",
-      },
-    });
-    return activity;
+  const activity = await tx.userActivity.update({
+    where: { id: args.id },
+    data,
   });
+  await tx.activityLog.create({
+    data: {
+      activityId: activity.id,
+      action: "UPDATED",
+    },
+  });
+  return activity;
 }
 
 /**
@@ -100,36 +139,34 @@ export async function updateUserActivity(
  * Appends COMPLETED log. Returns null if not found / not owned.
  */
 export async function completeUserActivity(
-  db: PrismaClient,
+  tx: ActivityTx,
   args: { id: string; userId: string; completedAt?: Date }
 ) {
   const at = args.completedAt ?? new Date();
-  const owned = await db.userActivity.findFirst({
+  const owned = await tx.userActivity.findFirst({
     where: { id: args.id, userId: args.userId },
   });
   if (!owned) return null;
 
-  return db.$transaction(async (tx) => {
-    const activity = await tx.userActivity.update({
-      where: { id: args.id },
-      data: { completedAt: at },
-    });
-    await tx.activityLog.create({
-      data: {
-        activityId: activity.id,
-        action: "COMPLETED",
-      },
-    });
-    return activity;
+  const activity = await tx.userActivity.update({
+    where: { id: args.id },
+    data: { completedAt: at },
   });
+  await tx.activityLog.create({
+    data: {
+      activityId: activity.id,
+      action: "COMPLETED",
+    },
+  });
+  return activity;
 }
 
 /** Create a reusable template for the given user. */
 export async function createActivityTemplate(
-  db: PrismaClient,
+  tx: ActivityTx,
   input: CreateActivityTemplateInput
 ) {
-  return db.activityTemplate.create({
+  return tx.activityTemplate.create({
     data: {
       userId: input.userId,
       name: input.name,
@@ -143,10 +180,10 @@ export async function createActivityTemplate(
 
 /** Update a template owned by `userId`. Returns null if missing / wrong owner. */
 export async function updateActivityTemplate(
-  db: PrismaClient,
+  tx: ActivityTx,
   args: { id: string; userId: string; patch: UpdateActivityTemplateInput }
 ) {
-  const owned = await db.activityTemplate.findFirst({
+  const owned = await tx.activityTemplate.findFirst({
     where: { id: args.id, userId: args.userId },
   });
   if (!owned) return null;
@@ -165,7 +202,7 @@ export async function updateActivityTemplate(
     return owned;
   }
 
-  return db.activityTemplate.update({
+  return tx.activityTemplate.update({
     where: { id: args.id },
     data,
   });
