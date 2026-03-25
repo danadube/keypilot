@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { MetricCard } from "@/components/ui/metric-card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
+import { ShowingBuyerAgentFeedbackDraftPanel } from "@/components/showing-hq/ShowingBuyerAgentFeedbackDraftPanel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,9 @@ type Showing = {
   source: string;
   scrapeStatus: string | null;
   feedbackRequestStatus: string | null;
+  feedbackDraftSubject?: string | null;
+  feedbackDraftBody?: string | null;
+  feedbackDraftGeneratedAt?: string | null;
   property: { address1: string; city: string; state: string };
 };
 
@@ -313,6 +317,13 @@ function EditShowingModal({
               className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
             />
           </div>
+
+          <ShowingBuyerAgentFeedbackDraftPanel
+            variant="kp"
+            subject={showing.feedbackDraftSubject}
+            body={showing.feedbackDraftBody}
+            generatedAt={showing.feedbackDraftGeneratedAt}
+          />
         </div>
         <div className="flex justify-end gap-2 border-t border-kp-outline p-5">
           <button
@@ -395,6 +406,13 @@ function ShowingsTable({ showings, onEdit }: { showings: Showing[]; onEdit: (s: 
               <td className={cn(TD, "hidden sm:table-cell")}>
                 {s.feedbackRequired ? (
                   <StatusBadge variant="pending">Requested</StatusBadge>
+                ) : s.feedbackDraftGeneratedAt ? (
+                  <span
+                    className="text-xs text-kp-teal"
+                    title="Buyer-agent email draft — open edit to copy"
+                  >
+                    Draft ready
+                  </span>
                 ) : (
                   <span className="text-kp-on-surface-variant">—</span>
                 )}

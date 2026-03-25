@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { kpCalendarModalField } from "@/components/showing-hq/calendar-modal-field-classes";
+import { ShowingBuyerAgentFeedbackDraftPanel } from "@/components/showing-hq/ShowingBuyerAgentFeedbackDraftPanel";
 import { cn } from "@/lib/utils";
 import { Copy, Check, ClipboardCheck } from "lucide-react";
 
@@ -50,6 +51,11 @@ export function EditEventModal({
   const [notes, setNotes] = useState("");
   const [feedbackRequest, setFeedbackRequest] = useState<{ token: string; status: string } | null>(null);
   const [feedbackLinkCopied, setFeedbackLinkCopied] = useState(false);
+  const [buyerAgentFeedbackDraft, setBuyerAgentFeedbackDraft] = useState<{
+    subject: string | null;
+    body: string | null;
+    generatedAt: string | null;
+  } | null>(null);
 
   const isOpenHouse = eventType === "open_house";
   const canDelete = isOpenHouse && !!onDeleted;
@@ -61,6 +67,7 @@ export function EditEventModal({
     setDeleting(false);
     setFeedbackRequest(null);
     setFeedbackLinkCopied(false);
+    setBuyerAgentFeedbackDraft(null);
     fetch("/api/v1/properties")
       .then((res) => res.json())
       .then((json) => {
@@ -74,6 +81,7 @@ export function EditEventModal({
     if (!open || !eventId) return;
     setLoading(true);
     setError(null);
+    setBuyerAgentFeedbackDraft(null);
     const url = isOpenHouse
       ? `/api/v1/open-houses/${eventId}`
       : `/api/v1/showing-hq/showings/${eventId}`;
@@ -114,6 +122,16 @@ export function EditEventModal({
           setNotes(d.notes ?? "");
           const fr = (d as { feedbackRequests?: { token: string; status: string }[] }).feedbackRequests?.[0];
           setFeedbackRequest(fr ?? null);
+          const draft = d as {
+            feedbackDraftSubject?: string | null;
+            feedbackDraftBody?: string | null;
+            feedbackDraftGeneratedAt?: string | null;
+          };
+          setBuyerAgentFeedbackDraft({
+            subject: draft.feedbackDraftSubject ?? null,
+            body: draft.feedbackDraftBody ?? null,
+            generatedAt: draft.feedbackDraftGeneratedAt ?? null,
+          });
         }
       })
       .catch(() => setError("Failed to load event"))
@@ -331,6 +349,15 @@ export function EditEventModal({
               rows={2}
             />
           </div>
+
+          {!isOpenHouse && buyerAgentFeedbackDraft && (
+            <ShowingBuyerAgentFeedbackDraftPanel
+              variant="brand"
+              subject={buyerAgentFeedbackDraft.subject}
+              body={buyerAgentFeedbackDraft.body}
+              generatedAt={buyerAgentFeedbackDraft.generatedAt}
+            />
+          )}
 
           {!isOpenHouse && feedbackRequest && (
             <div className="rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/30 p-3">
