@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams, type ReadonlyURLSearchParams } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
@@ -29,8 +29,8 @@ const FEEDBACK_MAILTO =
 
 /** Platform rail order: Dashboard first, then modules (not home module id — uses "/"). */
 const PLATFORM_MODULE_IDS: ModuleId[] = [
-  "property-vault",
   "showing-hq",
+  "property-vault",
   "client-keep",
   "farm-trackr",
   "seller-pulse",
@@ -62,12 +62,40 @@ function getModuleChildNavItems(moduleConfig: ModuleConfig): ModuleSidebarItem[]
   );
 }
 
-function isItemActive(pathname: string, item: ModuleSidebarItem): boolean {
-  if (pathname === item.href) return true;
-  if (item.href !== "/" && !item.href.includes("?") && pathname.startsWith(item.href))
+/**
+ * List base paths that expose both an unfiltered sidebar link and ?status=… variants.
+ * The unfiltered link must not stay active when a status filter is applied.
+ * (Property list uses a single sidebar entry; /contacts still has All + filtered rows.)
+ */
+const STATUS_FILTER_BASE_PATHS = new Set(["/contacts"]);
+
+function isItemActive(
+  pathname: string,
+  item: ModuleSidebarItem,
+  searchParams: ReadonlyURLSearchParams
+): boolean {
+  const href = item.href;
+  const qIdx = href.indexOf("?");
+
+  if (qIdx !== -1) {
+    const basePath = href.slice(0, qIdx);
+    if (pathname !== basePath) return false;
+    const itemQuery = new URLSearchParams(href.slice(qIdx + 1));
+    const pairs = Array.from(itemQuery.entries());
+    for (const [key, value] of pairs) {
+      if (searchParams.get(key) !== value) return false;
+    }
     return true;
-  if (item.href.includes("?") && pathname.startsWith(item.href.split("?")[0]))
+  }
+
+  if (pathname === href) {
+    if (STATUS_FILTER_BASE_PATHS.has(href) && searchParams.get("status")) {
+      return false;
+    }
     return true;
+  }
+
+  if (href !== "/" && pathname.startsWith(href)) return true;
   return false;
 }
 
@@ -75,10 +103,12 @@ function isItemActive(pathname: string, item: ModuleSidebarItem): boolean {
 function ModuleChildNavList({
   items,
   pathname,
+  searchParams,
   ariaLabel,
 }: {
   items: ModuleSidebarItem[];
   pathname: string;
+  searchParams: ReadonlyURLSearchParams;
   ariaLabel: string;
 }) {
   if (items.length === 0) return null;
@@ -89,7 +119,7 @@ function ModuleChildNavList({
     >
       {items.map((item) => {
         const SubIcon = item.icon;
-        const subActive = isItemActive(pathname, item);
+        const subActive = isItemActive(pathname, item, searchParams);
         return (
           <li key={item.href + item.label}>
             <Link
@@ -114,7 +144,8 @@ function ModuleChildNavList({
 }
 
 export function ModuleSidebar() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams();
   const activeId = getModuleFromPath(pathname);
   const { hasModuleAccess: checkAccess, isLoading } = useProductTier();
 
@@ -224,6 +255,7 @@ export function ModuleSidebar() {
                     <ModuleChildNavList
                       items={childItems}
                       pathname={pathname}
+                      searchParams={searchParams}
                       ariaLabel={`${cfg.name} pages`}
                     />
                   ) : null}
@@ -259,6 +291,7 @@ export function ModuleSidebar() {
                   <ModuleChildNavList
                     items={childItems}
                     pathname={pathname}
+                    searchParams={searchParams}
                     ariaLabel={`${orphan.name} pages`}
                   />
                 </li>
@@ -291,6 +324,7 @@ export function ModuleSidebar() {
               <ModuleChildNavList
                 items={settingsChildItems}
                 pathname={pathname}
+                searchParams={searchParams}
                 ariaLabel="Settings pages"
               />
             ) : null}

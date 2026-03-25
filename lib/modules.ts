@@ -14,7 +14,6 @@ import {
   Megaphone,
   BarChart3,
   FileText,
-  Image,
   QrCode,
   Settings,
   List,
@@ -63,8 +62,8 @@ export interface ModuleConfig {
 
 export const MODULE_ORDER: ModuleId[] = [
   "home",
-  "property-vault",
   "showing-hq",
+  "property-vault",
   "client-keep",
   "farm-trackr",
   "task-pilot",
@@ -92,14 +91,7 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     available: true,
     sidebar: [
       { label: "Overview", href: "/property-vault", icon: LayoutDashboard, section: "OVERVIEW" },
-      { label: "All Properties", href: "/properties", icon: Building2, section: "PROPERTIES" },
-      { label: "Active Listings", href: "/properties?status=active", icon: List, section: "PROPERTIES" },
-      { label: "Pending", href: "/properties?status=pending", icon: List, section: "PROPERTIES" },
-      { label: "Sold", href: "/properties?status=sold", icon: List, section: "PROPERTIES" },
-      { label: "Archived", href: "/properties?status=archived", icon: List, section: "PROPERTIES" },
-      { label: "Property Documents", href: "/property-vault/documents", icon: FileText, section: "ASSETS" },
-      { label: "Photos & Media", href: "/property-vault/media", icon: Image, section: "ASSETS" },
-      { label: "Open Houses", href: "/open-houses", icon: Calendar, section: "ACTIVITY" },
+      { label: "Properties", href: "/properties", icon: Building2, section: "PROPERTIES" },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
     ],
   },
