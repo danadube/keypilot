@@ -8,7 +8,12 @@ import type {
   SupraProposedAction,
 } from "@prisma/client";
 import { Button } from "@/components/ui/button";
-import { supraBtnPrimary, supraBtnSecondary } from "@/components/modules/showing-hq/supra-inbox-button-tiers";
+import {
+  supraBtnDangerSecondary,
+  supraBtnPrimary,
+  supraBtnSecondary,
+  supraBtnTertiary,
+} from "@/components/modules/showing-hq/supra-inbox-button-tiers";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { cn } from "@/lib/utils";
 import { Sparkles } from "lucide-react";
@@ -175,6 +180,12 @@ export type SupraInboxQueueRowProps = {
   applyBlockedByOtherRow?: boolean;
   onReview: () => void;
   onApply: () => void;
+  /** PATCH queueState → DISMISSED; hidden when already APPLIED or DISMISSED */
+  onArchive: () => void;
+  /** DELETE queue row; hidden when APPLIED */
+  onDelete: () => void;
+  archiveLoading?: boolean;
+  deleteLoading?: boolean;
 };
 
 /**
@@ -189,6 +200,10 @@ export function SupraInboxQueueRow({
   applyBlockedByOtherRow,
   onReview,
   onApply,
+  onArchive,
+  onDelete,
+  archiveLoading,
+  deleteLoading,
 }: SupraInboxQueueRowProps) {
   const addr = formatParsedAddressBlock(row);
   const agent = row.parsedAgentName?.trim() || "—";
@@ -201,6 +216,10 @@ export function SupraInboxQueueRow({
   const queueChip = linkedEnd
     ? { variant: "sold" as const, label: "Lifecycle linked" }
     : listQueueBadge(row.queueState, applyReadinessOk);
+
+  const showArchive =
+    row.queueState !== "APPLIED" && row.queueState !== "DISMISSED";
+  const showDelete = row.queueState !== "APPLIED";
 
   const openReviewFromCard = () => {
     onReview();
@@ -359,6 +378,36 @@ export function SupraInboxQueueRow({
           >
             Review
           </Button>
+          {showArchive ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn(supraBtnTertiary, "h-8 px-3 text-xs font-semibold")}
+              disabled={archiveLoading || deleteLoading}
+              onClick={(e) => {
+                e.stopPropagation();
+                onArchive();
+              }}
+            >
+              {archiveLoading ? "Archiving…" : "Archive"}
+            </Button>
+          ) : null}
+          {showDelete ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn(supraBtnDangerSecondary, "h-8 px-3 text-xs font-semibold")}
+              disabled={archiveLoading || deleteLoading}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            >
+              {deleteLoading ? "Deleting…" : "Delete"}
+            </Button>
+          ) : null}
         </div>
       </div>
     </article>

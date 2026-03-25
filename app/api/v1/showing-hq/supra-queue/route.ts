@@ -17,7 +17,7 @@ const listInclude = {
     select: { id: true, address1: true, city: true, state: true, zip: true },
   },
   matchedShowing: {
-    select: { id: true, scheduledAt: true },
+    select: { id: true, scheduledAt: true, propertyId: true },
   },
 } as const;
 
