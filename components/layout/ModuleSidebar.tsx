@@ -65,8 +65,9 @@ function getModuleChildNavItems(moduleConfig: ModuleConfig): ModuleSidebarItem[]
 /**
  * List base paths that expose both an unfiltered sidebar link and ?status=… variants.
  * The unfiltered link must not stay active when a status filter is applied.
+ * (Property list uses a single sidebar entry; /contacts still has All + filtered rows.)
  */
-const STATUS_FILTER_BASE_PATHS = new Set(["/properties", "/contacts"]);
+const STATUS_FILTER_BASE_PATHS = new Set(["/contacts"]);
 
 function isItemActive(
   pathname: string,

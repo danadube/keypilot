@@ -224,13 +224,10 @@ export function PropertiesListView() {
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
-      {/* ── Page header ─────────────────────────────────────────────────────── */}
+      {/* ── Page intro (title lives in DashboardShell) ───────────────────────── */}
       <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-3 sm:px-8">
         <div>
-          <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
-            Properties
-          </h1>
-          <p className="mt-0.5 text-sm text-kp-on-surface-variant">
+          <p className="max-w-xl text-sm text-kp-on-surface-variant">
             Manage listings for open house events
           </p>
         </div>
