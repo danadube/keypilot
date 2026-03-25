@@ -5,38 +5,48 @@ import { CreateDealSchema } from "@/lib/validations/deal";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { DealStatus } from "@prisma/client";
 
+const dealListIncludeBase = {
+  contact: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+      status: true,
+    },
+  },
+  property: {
+    select: {
+      id: true,
+      address1: true,
+      city: true,
+      state: true,
+      zip: true,
+    },
+  },
+} as const;
+
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status") as DealStatus | null;
+    const propertyId = searchParams.get("propertyId")?.trim() || null;
 
     const deals = await withRLSContext(user.id, (tx) =>
       tx.deal.findMany({
         where: {
           userId: user.id,
           ...(status ? { status } : {}),
+          ...(propertyId ? { propertyId } : {}),
         },
         include: {
-          contact: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phone: true,
-              status: true,
-            },
-          },
-          property: {
-            select: {
-              id: true,
-              address1: true,
-              city: true,
-              state: true,
-              zip: true,
-            },
-          },
+          ...dealListIncludeBase,
+          // For transaction deal picker: know if another closing already claims this deal.
+          ...(propertyId
+            ? { linkedTransaction: { select: { id: true } } }
+            : {}),
         },
         orderBy: { createdAt: "desc" },
       })

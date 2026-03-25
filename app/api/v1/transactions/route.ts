@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
+import {
+  assertValidTransactionDealLink,
+  responseIfDealIdUniqueViolation,
+  transactionLinkedDealSelect,
+} from "@/lib/transaction-deal-link";
 import { CreateTransactionSchema } from "@/lib/validations/transaction";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { TransactionStatus } from "@prisma/client";
@@ -30,7 +35,10 @@ export async function GET(req: NextRequest) {
           userId: user.id,
           ...(status ? { status } : {}),
         },
-        include: { property: { select: propertySelect } },
+        include: {
+          property: { select: propertySelect },
+          deal: { select: transactionLinkedDealSelect },
+        },
         orderBy: { createdAt: "desc" },
       })
     );
@@ -56,6 +64,7 @@ export async function POST(req: NextRequest) {
 
     const {
       propertyId,
+      dealId,
       status: createStatus,
       salePrice,
       closingDate,
@@ -76,25 +85,42 @@ export async function POST(req: NextRequest) {
         });
       }
 
+      if (dealId) {
+        await assertValidTransactionDealLink(tx, {
+          userId: user.id,
+          propertyId,
+          dealId,
+        });
+      }
+
       return tx.transaction.create({
         data: {
           propertyId,
           userId: user.id,
+          ...(dealId !== undefined && { dealId }),
           ...(createStatus !== undefined && { status: createStatus }),
           ...(salePrice !== undefined && { salePrice }),
           ...(closingDate !== undefined && { closingDate }),
           ...(brokerageName !== undefined && { brokerageName }),
           ...(notes !== undefined && { notes }),
         },
-        include: { property: { select: propertySelect } },
+        include: {
+          property: { select: propertySelect },
+          deal: { select: transactionLinkedDealSelect },
+        },
       });
     });
 
     return NextResponse.json({ data: transaction }, { status: 201 });
   } catch (e) {
+    const uniqueResp = responseIfDealIdUniqueViolation(e);
+    if (uniqueResp) return uniqueResp;
     const err = e as { status?: number; message?: string };
     if (err.status === 404) {
       return apiError(err.message ?? "Not found", 404);
+    }
+    if (err.status === 400) {
+      return apiError(err.message ?? "Invalid request", 400);
     }
     return apiErrorFromCaught(e);
   }
