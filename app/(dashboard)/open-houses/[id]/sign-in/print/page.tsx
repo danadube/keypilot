@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnPrimary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { ChevronLeft, Printer } from "lucide-react";
@@ -68,13 +70,17 @@ export default function PrintQRPosterPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 py-8 px-4">
         <div className="no-print flex flex-wrap items-center justify-between gap-4">
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="sm" className={cn(kpBtnTertiary)} asChild>
             <Link href={`/open-houses/${id}/sign-in`} className="inline-flex items-center gap-1.5">
               <ChevronLeft className="h-4 w-4" />
               Back to host sign-in
             </Link>
           </Button>
-          <Button onClick={handlePrint} className="inline-flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handlePrint}
+            className={cn(kpBtnPrimary, "border-transparent inline-flex items-center gap-2")}
+          >
             <Printer className="h-4 w-4" />
             Print QR poster
           </Button>

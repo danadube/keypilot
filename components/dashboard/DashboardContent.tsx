@@ -1,5 +1,11 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  kpBtnPrimary,
+  kpBtnSecondary,
+  kpBtnTertiary,
+} from "@/components/ui/kp-dashboard-button-tiers";
 import {
   Card,
   CardContent,
@@ -52,10 +58,10 @@ export function DashboardContent({ stats }: { stats: Stats }) {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
         <div className="flex gap-2">
-          <Button asChild>
+          <Button asChild variant="outline" className={cn(kpBtnPrimary, "border-transparent")}>
             <Link href="/properties/new">Add property</Link>
           </Button>
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className={kpBtnSecondary}>
             <Link href="/open-houses/new">New open house</Link>
           </Button>
         </div>
@@ -70,7 +76,14 @@ export function DashboardContent({ stats }: { stats: Stats }) {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold">{stats.propertiesCount}</p>
-            <Button variant="link" className="h-auto p-0" asChild>
+            <Button
+              variant="ghost"
+              className={cn(
+                kpBtnTertiary,
+                "h-auto min-h-0 p-0 font-normal text-kp-teal hover:bg-transparent hover:text-kp-teal hover:underline"
+              )}
+              asChild
+            >
               <Link href="/properties">View all</Link>
             </Button>
           </CardContent>
@@ -83,7 +96,14 @@ export function DashboardContent({ stats }: { stats: Stats }) {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold">{stats.openHousesCount}</p>
-            <Button variant="link" className="h-auto p-0" asChild>
+            <Button
+              variant="ghost"
+              className={cn(
+                kpBtnTertiary,
+                "h-auto min-h-0 p-0 font-normal text-kp-teal hover:bg-transparent hover:text-kp-teal hover:underline"
+              )}
+              asChild
+            >
               <Link href="/open-houses">View all</Link>
             </Button>
           </CardContent>
@@ -96,7 +116,14 @@ export function DashboardContent({ stats }: { stats: Stats }) {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold">{stats.contactsCount}</p>
-            <Button variant="link" className="h-auto p-0" asChild>
+            <Button
+              variant="ghost"
+              className={cn(
+                kpBtnTertiary,
+                "h-auto min-h-0 p-0 font-normal text-kp-teal hover:bg-transparent hover:text-kp-teal hover:underline"
+              )}
+              asChild
+            >
               <Link href="/contacts">View all</Link>
             </Button>
           </CardContent>
@@ -133,7 +160,7 @@ export function DashboardContent({ stats }: { stats: Stats }) {
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant={statusVariant(oh.status)}>{oh.status}</Badge>
-                    <Button variant="outline" size="sm" asChild>
+                    <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
                       <Link href={`/open-houses/${oh.id}`}>View</Link>
                     </Button>
                   </div>
@@ -141,7 +168,7 @@ export function DashboardContent({ stats }: { stats: Stats }) {
               ))}
             </div>
           )}
-          <Button className="mt-4" variant="outline" asChild>
+          <Button className={cn(kpBtnSecondary, "mt-4")} variant="outline" asChild>
             <Link href="/open-houses">All open houses</Link>
           </Button>
         </CardContent>

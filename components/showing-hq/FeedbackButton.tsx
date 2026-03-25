@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { trackEvent } from "@/lib/track-usage-client";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { MessageSquare, Send } from "lucide-react";
 import {
@@ -83,10 +85,21 @@ export function FeedbackButton({
         size="sm"
         footer={
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-end">
-            <Button variant="outline" size="sm" onClick={() => handleOpenChange(false)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(kpBtnSecondary)}
+              onClick={() => handleOpenChange(false)}
+            >
               Cancel
             </Button>
-            <Button size="sm" onClick={handleSubmit} disabled={!message.trim()}>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(kpBtnPrimary, "border-transparent")}
+              onClick={handleSubmit}
+              disabled={!message.trim()}
+            >
               <Send className="mr-2 h-4 w-4" />
               Open email
             </Button>

@@ -18,6 +18,14 @@ import {
   Pencil,
   ImagePlus,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import {
+  kpBtnDangerSecondary,
+  kpBtnPrimary,
+  kpBtnSecondary,
+  kpBtnSave,
+  kpBtnTertiary,
+} from "@/components/ui/kp-dashboard-button-tiers";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -236,11 +244,12 @@ export function PropertyDetailView({ id }: { id: string }) {
       <Button
         variant="outline"
         size="sm"
-        className={
-          hasHeroImage
-            ? "h-8 border-white/35 bg-black/35 text-xs text-white backdrop-blur-sm hover:bg-black/50 hover:text-white"
-            : "h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
-        }
+        className={cn(
+          kpBtnSecondary,
+          "h-8 text-xs",
+          hasHeroImage &&
+            "border-white/35 bg-black/35 text-white backdrop-blur-sm hover:border-white/50 hover:bg-black/50 hover:text-white"
+        )}
         onClick={() => startEditing(property)}
       >
         <Pencil className="mr-1.5 h-3.5 w-3.5" />
@@ -263,7 +272,7 @@ export function PropertyDetailView({ id }: { id: string }) {
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 gap-1.5 px-2 text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+          className={cn(kpBtnTertiary, "h-8 gap-1.5 px-2")}
           asChild
         >
           <Link href="/properties">
@@ -294,7 +303,7 @@ export function PropertyDetailView({ id }: { id: string }) {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 border-kp-outline bg-kp-surface text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                className={cn(kpBtnSecondary, "h-8 text-xs")}
                 disabled={photoUploading}
                 onClick={() => photoInputRef.current?.click()}
               >
@@ -326,9 +335,12 @@ export function PropertyDetailView({ id }: { id: string }) {
                   </p>
                 )}
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
-                  className="h-8 border-0 bg-black/50 text-xs text-white backdrop-blur-sm hover:bg-black/65"
+                  className={cn(
+                    kpBtnSecondary,
+                    "h-8 border-0 bg-black/50 text-xs text-white backdrop-blur-sm hover:bg-black/65 hover:text-white"
+                  )}
                   disabled={photoUploading}
                   onClick={() => photoInputRef.current?.click()}
                 >
@@ -336,9 +348,12 @@ export function PropertyDetailView({ id }: { id: string }) {
                   {photoUploading ? "…" : "Replace"}
                 </Button>
                 <Button
-                  variant="secondary"
+                  variant="outline"
                   size="sm"
-                  className="h-8 border-0 bg-black/50 text-xs text-red-200 backdrop-blur-sm hover:bg-red-950/70 hover:text-red-100"
+                  className={cn(
+                    kpBtnDangerSecondary,
+                    "h-8 border-0 bg-black/50 text-xs backdrop-blur-sm hover:text-red-100"
+                  )}
                   disabled={photoUploading}
                   onClick={handleRemovePhoto}
                 >
@@ -458,20 +473,23 @@ export function PropertyDetailView({ id }: { id: string }) {
                   />
                 </div>
                 <div className="flex gap-2 pt-1">
-                  <button
+                  <Button
+                    type="button"
                     onClick={handleSaveEdit}
                     disabled={saving}
-                    className="rounded-lg bg-kp-gold px-4 py-1.5 text-sm font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright disabled:opacity-60"
+                    className={cn(kpBtnSave, "h-9 px-4")}
                   >
                     {saving ? "Saving…" : "Save changes"}
-                  </button>
-                  <button
-                    onClick={() => setIsEditing(false)}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
                     disabled={saving}
-                    className="rounded-lg border border-kp-outline px-4 py-1.5 text-sm text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high"
+                    onClick={() => setIsEditing(false)}
+                    className={cn(kpBtnSecondary, "h-9 px-4")}
                   >
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -522,7 +540,7 @@ export function PropertyDetailView({ id }: { id: string }) {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 text-xs text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+                      className={cn(kpBtnTertiary, "h-7 text-xs")}
                       asChild
                     >
                       <Link href={`/open-houses/${oh.id}`}>View</Link>
@@ -533,8 +551,9 @@ export function PropertyDetailView({ id }: { id: string }) {
             )}
 
             <Button
+              variant="outline"
               size="sm"
-              className="h-8 border-0 bg-kp-teal px-3 text-xs text-kp-bg hover:opacity-90"
+              className={cn(kpBtnPrimary, "h-8 border-transparent px-3 text-xs")}
               asChild
             >
               <Link href="/open-houses/new">New open house</Link>

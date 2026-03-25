@@ -5,6 +5,8 @@ import Link from "next/link";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { ClipboardCheck, Copy, Check } from "lucide-react";
 
 type FeedbackRequest = {
@@ -97,7 +99,7 @@ export function FeedbackRequestsView() {
             <Button
               variant="outline"
               size="sm"
-              className="mt-3 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+              className={cn(kpBtnSecondary, "mt-3 text-xs")}
               asChild
             >
               <Link href="/showing-hq/showings/new">Add showing with feedback</Link>
@@ -134,7 +136,7 @@ export function FeedbackRequestsView() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="h-7 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                              className={cn(kpBtnSecondary, "h-7 text-xs")}
                               onClick={() => copyLink(r.id, r.token)}
                             >
                               {copiedId === r.id ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}

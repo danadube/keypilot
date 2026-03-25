@@ -2,6 +2,8 @@
 
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnDangerSecondary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { FileText, Upload, Trash2, ExternalLink } from "lucide-react";
 
 export type PropertyFlyerFields = {
@@ -118,7 +120,7 @@ export function PropertyFlyerPanel({ propertyId, flyer, onFlyerPatch }: Property
             <Button
               variant="outline"
               size="sm"
-              className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+              className={cn(kpBtnSecondary, "h-8 text-xs")}
               asChild
             >
               <a href={flyer.flyerUrl!} target="_blank" rel="noopener noreferrer">
@@ -129,7 +131,7 @@ export function PropertyFlyerPanel({ propertyId, flyer, onFlyerPatch }: Property
             <Button
               variant="outline"
               size="sm"
-              className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+              className={cn(kpBtnSecondary, "h-8 text-xs")}
               disabled={busy}
               onClick={() => fileInputRef.current?.click()}
             >
@@ -137,9 +139,9 @@ export function PropertyFlyerPanel({ propertyId, flyer, onFlyerPatch }: Property
               {busy ? "Uploading…" : "Replace"}
             </Button>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="h-8 text-xs text-red-400 hover:bg-red-500/10 hover:text-red-400"
+              className={cn(kpBtnDangerSecondary, "h-8 text-xs")}
               disabled={busy}
               onClick={handleRemoveFlyer}
             >
@@ -152,7 +154,7 @@ export function PropertyFlyerPanel({ propertyId, flyer, onFlyerPatch }: Property
         <Button
           variant="outline"
           size="sm"
-          className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+          className={cn(kpBtnSecondary, "h-8 text-xs")}
           disabled={busy}
           onClick={() => fileInputRef.current?.click()}
         >

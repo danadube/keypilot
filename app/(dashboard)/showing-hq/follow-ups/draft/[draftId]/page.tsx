@@ -4,6 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  kpBtnPrimary,
+  kpBtnSave,
+  kpBtnSecondary,
+  kpBtnTertiary,
+} from "@/components/ui/kp-dashboard-button-tiers";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -149,7 +156,7 @@ export default function DraftReviewPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 gap-1.5 px-2 text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+            className={cn(kpBtnTertiary, "h-8 gap-1.5 px-2")}
             asChild
           >
             <Link href="/showing-hq/follow-ups">
@@ -167,12 +174,7 @@ export default function DraftReviewPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <FollowUpStatusBadge status={draft.status} />
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
-            asChild
-          >
+          <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-8 text-xs")} asChild>
             <Link href={`/contacts/${draft.contact.id}`}>View contact</Link>
           </Button>
         </div>
@@ -220,7 +222,8 @@ export default function DraftReviewPage() {
           <div className="flex flex-wrap items-center gap-2 border-t border-kp-outline pt-4">
             <Button
               size="sm"
-              className="h-8 border-0 bg-kp-teal px-4 text-xs text-kp-bg hover:opacity-90"
+              variant="outline"
+              className={cn(kpBtnSave, "h-8 border-transparent px-4 text-xs")}
               onClick={handleSave}
               disabled={saving || (subject === draft.subject && body === draft.body)}
             >
@@ -230,7 +233,7 @@ export default function DraftReviewPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                className={cn(kpBtnSecondary, "h-8 text-xs")}
                 disabled={!!statusAction}
                 onClick={handleMarkReviewed}
               >
@@ -241,7 +244,7 @@ export default function DraftReviewPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                className={cn(kpBtnPrimary, "h-8 border-transparent text-xs")}
                 disabled={!!statusAction}
                 onClick={handleSendEmail}
               >
@@ -252,7 +255,7 @@ export default function DraftReviewPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 text-xs text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+                className={cn(kpBtnTertiary, "h-8 text-xs")}
                 disabled={!!statusAction}
                 onClick={handleDismiss}
               >
@@ -260,12 +263,7 @@ export default function DraftReviewPage() {
               </Button>
             )}
             {(draft.status === "DRAFT" || draft.status === "REVIEWED") && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
-                asChild
-              >
+              <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-8 text-xs")} asChild>
                 <Link href="/showing-hq/visitors">Back to visitors</Link>
               </Button>
             )}

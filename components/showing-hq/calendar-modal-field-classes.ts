@@ -1,3 +1,5 @@
+import { kpBtnSecondary, kpBtnSave } from "@/components/ui/kp-dashboard-button-tiers";
+
 /**
  * Tailwind classes for ShowingHQ calendar modals (BrandModal uses kp surfaces;
  * fields portaled outside .kp-dashboard-app need explicit dark-theme text/background).
@@ -28,9 +30,7 @@ export const kpCalendarModalField = {
   error:
     "rounded-md border border-red-500/40 bg-red-950/35 px-3 py-2 text-sm text-red-200",
   /** Cancel-style actions in modal footers */
-  buttonCancel:
-    "border-kp-outline bg-kp-surface-high text-kp-on-surface hover:bg-kp-surface-higher hover:text-kp-on-surface",
-  /** Primary save in modal footers */
-  buttonSave:
-    "bg-kp-gold font-semibold text-kp-bg shadow-none hover:bg-kp-gold-bright",
+  buttonCancel: kpBtnSecondary,
+  /** Primary save in modal footers (pair with Button variant="outline" + border-transparent) */
+  buttonSave: `${kpBtnSave} border-transparent`,
 } as const;

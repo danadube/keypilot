@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { pdf } from "@react-pdf/renderer";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnPrimary, kpBtnSecondary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { SellerReportPDF } from "@/components/reports/SellerReportPDF";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ArrowLeft, FileText, Download, RefreshCw, BarChart2, MessageSquare } from "lucide-react";
@@ -122,7 +124,7 @@ export function OpenHouseSellerReportView({ openHouseId }: { openHouseId: string
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 gap-1.5 px-2 text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+            className={cn(kpBtnTertiary, "h-8 gap-1.5 px-2")}
             asChild
           >
             <Link href={`/open-houses/${openHouseId}`}>
@@ -135,8 +137,9 @@ export function OpenHouseSellerReportView({ openHouseId }: { openHouseId: string
         </div>
         {!report && (
           <Button
+            variant="outline"
             size="sm"
-            className="h-8 border-0 bg-kp-teal px-3 text-xs text-kp-bg hover:opacity-90"
+            className={cn(kpBtnPrimary, "h-8 border-transparent px-3 text-xs")}
             onClick={handleGenerate}
             disabled={generating}
           >
@@ -164,8 +167,9 @@ export function OpenHouseSellerReportView({ openHouseId }: { openHouseId: string
               Generate a report to share open house metrics with the seller.
             </p>
             <Button
+              variant="outline"
               size="sm"
-              className="mt-4 h-8 border-0 bg-kp-teal px-4 text-xs text-kp-bg hover:opacity-90"
+              className={cn(kpBtnPrimary, "mt-4 h-8 border-transparent px-4 text-xs")}
               onClick={handleGenerate}
               disabled={generating}
             >
@@ -225,8 +229,9 @@ export function OpenHouseSellerReportView({ openHouseId }: { openHouseId: string
             {/* Actions */}
             <div className="mt-5 flex flex-wrap gap-2 border-t border-kp-outline pt-4">
               <Button
+                variant="outline"
                 size="sm"
-                className="h-8 border-0 bg-kp-teal px-3 text-xs text-kp-bg hover:opacity-90"
+                className={cn(kpBtnPrimary, "h-8 border-transparent px-3 text-xs")}
                 onClick={handleDownloadPDF}
                 disabled={downloading}
               >
@@ -236,7 +241,7 @@ export function OpenHouseSellerReportView({ openHouseId }: { openHouseId: string
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                className={cn(kpBtnSecondary, "h-8 text-xs")}
                 onClick={handleGenerate}
                 disabled={generating}
               >

@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { kpCalendarModalField } from "@/components/showing-hq/calendar-modal-field-classes";
+import { kpBtnDangerSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { ShowingBuyerAgentFeedbackDraftPanel } from "@/components/showing-hq/ShowingBuyerAgentFeedbackDraftPanel";
 import { cn } from "@/lib/utils";
 import { Copy, Check, ClipboardCheck } from "lucide-react";
@@ -229,8 +230,8 @@ export function EditEventModal({
             {canDelete && (
               <Button
                 type="button"
-                variant="ghost"
-                className="text-red-400 hover:bg-red-950/30 hover:text-red-300"
+                variant="outline"
+                className={cn(kpBtnDangerSecondary)}
                 disabled={deleting || submitting}
                 onClick={handleDelete}
               >
@@ -250,6 +251,7 @@ export function EditEventModal({
             <Button
               type="submit"
               form="edit-event-form"
+              variant="outline"
               disabled={!canSave || submitting || loading}
               className={kpCalendarModalField.buttonSave}
             >

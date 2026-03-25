@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import { cn } from "@/lib/utils";
+import {
+  kpBtnPrimary,
+  kpBtnSecondary,
+  kpBtnTertiary,
+} from "@/components/ui/kp-dashboard-button-tiers";
 import {
   Card,
   CardContent,
@@ -56,7 +61,11 @@ export default function PropertyVaultOverviewPage() {
           message={vaultContextMessage}
           className="min-w-0 flex-1 sm:max-w-2xl"
         />
-        <Button asChild className="w-full shrink-0 sm:w-auto">
+        <Button
+          asChild
+          variant="outline"
+          className={cn(kpBtnPrimary, "w-full shrink-0 border-transparent sm:w-auto")}
+        >
           <Link href="/properties/new">Add property</Link>
         </Button>
       </div>
@@ -71,7 +80,14 @@ export default function PropertyVaultOverviewPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold">{stats?.propertiesCount ?? 0}</p>
-            <Button variant="link" className="h-auto p-0 text-sm" asChild>
+            <Button
+              variant="ghost"
+              className={cn(
+                kpBtnTertiary,
+                "h-auto min-h-0 p-0 text-sm font-normal text-kp-teal hover:bg-transparent hover:text-kp-teal hover:underline"
+              )}
+              asChild
+            >
               <Link href="/properties">View all →</Link>
             </Button>
           </CardContent>
@@ -84,7 +100,14 @@ export default function PropertyVaultOverviewPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold">{stats?.openHousesCount ?? 0}</p>
-            <Button variant="link" className="h-auto p-0 text-sm" asChild>
+            <Button
+              variant="ghost"
+              className={cn(
+                kpBtnTertiary,
+                "h-auto min-h-0 p-0 text-sm font-normal text-kp-teal hover:bg-transparent hover:text-kp-teal hover:underline"
+              )}
+              asChild
+            >
               <Link href="/open-houses">View all →</Link>
             </Button>
           </CardContent>
@@ -124,7 +147,7 @@ export default function PropertyVaultOverviewPage() {
           <p className="text-sm text-muted-foreground">
             Manage properties from the list, then schedule open house events and view activity per property.
           </p>
-          <Button variant="secondary" size="sm" asChild>
+          <Button variant="outline" size="sm" className={cn(kpBtnSecondary)} asChild>
             <Link href="/properties">Go to properties</Link>
           </Button>
         </CardContent>

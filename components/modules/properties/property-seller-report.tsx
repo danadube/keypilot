@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { FileText, Users, Mail, ThumbsUp, AlertCircle, Quote } from "lucide-react";
 import type { SellerReportData } from "@/lib/seller-report";
 import {
@@ -127,7 +129,7 @@ export function PropertySellerReportView({ propertyId, propertyAddress }: Proper
           <Button
             variant="outline"
             size="sm"
-            className="no-print h-7 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+            className={cn(kpBtnSecondary, "no-print h-7 text-xs")}
             onClick={() => window.print()}
           >
             Print report

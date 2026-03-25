@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { ArrowLeft, Users } from "lucide-react";
@@ -58,7 +60,7 @@ export function OpenHouseVisitorsView({ openHouseId }: { openHouseId: string }) 
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 gap-1.5 px-2 text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+          className={cn(kpBtnTertiary, "h-8 gap-1.5 px-2")}
           asChild
         >
           <Link href={`/open-houses/${openHouseId}`}>
@@ -121,7 +123,7 @@ export function OpenHouseVisitorsView({ openHouseId }: { openHouseId: string }) 
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 text-xs text-kp-on-surface-variant hover:bg-kp-surface-higher hover:text-kp-on-surface"
+                        className={cn(kpBtnTertiary, "h-7 text-xs")}
                         asChild
                       >
                         <Link href={`/contacts/${v.contact.id}`}>View</Link>

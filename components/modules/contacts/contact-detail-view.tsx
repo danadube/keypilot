@@ -18,6 +18,12 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { useProductTier } from "@/components/ProductTierProvider";
 import { cn } from "@/lib/utils";
 import {
+  kpBtnPrimary,
+  kpBtnSave,
+  kpBtnSecondary,
+  kpBtnTertiary,
+} from "@/components/ui/kp-dashboard-button-tiers";
+import {
   ArrowLeft,
   Bell,
   Check,
@@ -347,7 +353,7 @@ export function ContactDetailView({ id }: { id: string }) {
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 gap-1.5 px-2 text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+          className={cn(kpBtnTertiary, "h-8 gap-1.5 px-2")}
           asChild
         >
           <Link href="/contacts">
@@ -381,7 +387,7 @@ export function ContactDetailView({ id }: { id: string }) {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 shrink-0 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                  className={cn(kpBtnSecondary, "h-7 shrink-0 text-xs")}
                   onClick={isAssignedToMe ? unassign : assignToMe}
                 >
                   <User className="mr-1.5 h-3 w-3" />
@@ -485,8 +491,9 @@ export function ContactDetailView({ id }: { id: string }) {
                   className="h-8 flex-1 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
                 />
                 <Button
+                  variant="outline"
                   size="sm"
-                  className="h-8 border-0 bg-kp-teal px-3 text-xs text-kp-bg hover:opacity-90"
+                  className={cn(kpBtnPrimary, "h-8 border-transparent px-3 text-xs")}
                   onClick={addTag}
                   disabled={!tagName.trim() || addingTag}
                 >
@@ -522,7 +529,7 @@ export function ContactDetailView({ id }: { id: string }) {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-6 px-2 text-xs text-kp-teal hover:bg-kp-teal/10"
+                          className={cn(kpBtnTertiary, "h-6 px-2 text-xs text-kp-teal hover:bg-kp-teal/10 hover:text-kp-teal")}
                           onClick={() => updateReminderStatus(r.id, "DONE")}
                         >
                           <Check className="h-3 w-3" />
@@ -530,7 +537,7 @@ export function ContactDetailView({ id }: { id: string }) {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-6 px-2 text-xs text-kp-on-surface-variant hover:bg-kp-surface-higher"
+                          className={cn(kpBtnTertiary, "h-6 px-2 text-xs")}
                           onClick={() => updateReminderStatus(r.id, "DISMISSED")}
                         >
                           <X className="h-3 w-3" />
@@ -560,8 +567,9 @@ export function ContactDetailView({ id }: { id: string }) {
                   className="resize-none border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
                 />
                 <Button
+                  variant="outline"
                   size="sm"
-                  className="h-8 border-0 bg-kp-gold px-3 text-xs text-kp-bg hover:bg-kp-gold-bright"
+                  className={cn(kpBtnSave, "h-8 border-transparent px-3 text-xs")}
                   onClick={addReminder}
                   disabled={!reminderBody.trim() || !reminderDue || addingReminder}
                 >
@@ -591,8 +599,9 @@ export function ContactDetailView({ id }: { id: string }) {
                 className="resize-none border-kp-outline bg-kp-surface text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
               />
               <Button
+                variant="outline"
                 size="sm"
-                className="h-7 border-0 bg-kp-teal px-3 text-xs text-kp-bg hover:opacity-90"
+                className={cn(kpBtnPrimary, "h-7 border-transparent px-3 text-xs")}
                 onClick={addNote}
                 disabled={!noteBody.trim() || addingNote}
               >
@@ -627,7 +636,7 @@ export function ContactDetailView({ id }: { id: string }) {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7 border-kp-outline bg-transparent px-3 text-xs text-kp-on-surface hover:bg-kp-surface"
+                className={cn(kpBtnSecondary, "h-7 px-3 text-xs")}
                 onClick={logCommunication}
                 disabled={!commBody.trim() || loggingComm}
               >

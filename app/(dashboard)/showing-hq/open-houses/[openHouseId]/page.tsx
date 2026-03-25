@@ -8,6 +8,12 @@ import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { LeadStatusBadge } from "@/components/shared/LeadStatusBadge";
 import { InterestBadge } from "@/components/shared/InterestBadge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  kpBtnPrimary,
+  kpBtnSecondary,
+  kpBtnTertiary,
+} from "@/components/ui/kp-dashboard-button-tiers";
 import { InviteHostDialog } from "@/components/open-houses/InviteHostDialog";
 import {
   Select,
@@ -193,7 +199,7 @@ export default function ShowingHQOpenHouseDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 gap-1.5 px-2 text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+            className={cn(kpBtnTertiary, "h-8 gap-1.5 px-2")}
             asChild
           >
             <Link href="/showing-hq">
@@ -228,7 +234,7 @@ export default function ShowingHQOpenHouseDetailPage() {
           <Button
             size="sm"
             variant="outline"
-            className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+            className={cn(kpBtnSecondary, "h-8 text-xs")}
             asChild
           >
             <Link href={`/open-houses/${openHouseId}/report`}>
@@ -240,7 +246,7 @@ export default function ShowingHQOpenHouseDetailPage() {
           <Button
             size="sm"
             variant="outline"
-            className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+            className={cn(kpBtnSecondary, "h-8 text-xs")}
             asChild
           >
             <Link href="/open-houses">All open houses</Link>
@@ -333,7 +339,7 @@ export default function ShowingHQOpenHouseDetailPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 text-xs text-kp-on-surface-variant hover:bg-kp-surface-higher hover:text-kp-on-surface"
+                          className={cn(kpBtnTertiary, "h-7 text-xs")}
                           asChild
                         >
                           <Link href={`/showing-hq/visitors/${v.id}`}>Profile</Link>
@@ -370,7 +376,7 @@ export default function ShowingHQOpenHouseDetailPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-7 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-higher"
+                      className={cn(kpBtnSecondary, "h-7 text-xs")}
                       asChild
                     >
                       <Link href={`/open-houses/${openHouseId}/follow-ups`}>View</Link>
@@ -384,7 +390,7 @@ export default function ShowingHQOpenHouseDetailPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+              className={cn(kpBtnSecondary, "h-8 text-xs")}
               asChild
             >
               <Link href={`/open-houses/${openHouseId}/follow-ups`}>Manage follow-ups</Link>
@@ -418,7 +424,8 @@ export default function ShowingHQOpenHouseDetailPage() {
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
-                className="h-8 border-0 bg-kp-teal px-3 text-xs text-kp-bg hover:opacity-90"
+                variant="outline"
+                className={cn(kpBtnPrimary, "h-8 border-transparent px-3 text-xs")}
                 onClick={handleCopyLink}
                 disabled={!signInUrl}
               >
@@ -428,7 +435,7 @@ export default function ShowingHQOpenHouseDetailPage() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                className={cn(kpBtnSecondary, "h-8 text-xs")}
                 onClick={handleRegenerateQr}
                 disabled={regenerating}
               >
@@ -438,7 +445,7 @@ export default function ShowingHQOpenHouseDetailPage() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                className={cn(kpBtnSecondary, "h-8 text-xs")}
                 asChild
               >
                 <Link href={`/open-houses/${openHouseId}/sign-in`}>
@@ -449,7 +456,7 @@ export default function ShowingHQOpenHouseDetailPage() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                className={cn(kpBtnSecondary, "h-8 text-xs")}
                 asChild
               >
                 <Link href={`/open-houses/${openHouseId}/sign-in/print`}>Print QR poster</Link>
@@ -457,7 +464,7 @@ export default function ShowingHQOpenHouseDetailPage() {
               <Button
                 size="sm"
                 variant="outline"
-                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                className={cn(kpBtnSecondary, "h-8 text-xs")}
                 asChild
               >
                 <a href={signInUrl} target="_blank" rel="noopener noreferrer">

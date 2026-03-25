@@ -4,6 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  kpBtnPrimary,
+  kpBtnSecondary,
+  kpBtnTertiary,
+} from "@/components/ui/kp-dashboard-button-tiers";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -178,7 +184,7 @@ export function NewOpenHouseForm() {
   return (
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" asChild>
+        <Button variant="ghost" size="sm" className={cn(kpBtnTertiary)} asChild>
           <Link href="/open-houses">← Back</Link>
         </Button>
         <h1 className="text-2xl font-semibold">New Open House</h1>
@@ -193,7 +199,7 @@ export function NewOpenHouseForm() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild>
+            <Button variant="outline" className={cn(kpBtnPrimary, "border-transparent")} asChild>
               <Link href="/properties/new">Add Property</Link>
             </Button>
           </CardContent>
@@ -260,6 +266,7 @@ export function NewOpenHouseForm() {
                         type="button"
                         variant="outline"
                         size="sm"
+                        className={cn(kpBtnSecondary)}
                         disabled={photoUploading}
                         onClick={() => fileInputRef.current?.click()}
                       >
@@ -380,10 +387,15 @@ export function NewOpenHouseForm() {
               </div>
 
               <div className="flex gap-3">
-                <Button type="submit" disabled={submitting}>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={submitting}
+                  className={cn(kpBtnPrimary, "border-transparent")}
+                >
                   {submitting ? "Creating..." : "Create Open House"}
                 </Button>
-                <Button type="button" variant="outline" asChild>
+                <Button type="button" variant="outline" className={cn(kpBtnSecondary)} asChild>
                   <Link href="/open-houses">Cancel</Link>
                 </Button>
               </div>

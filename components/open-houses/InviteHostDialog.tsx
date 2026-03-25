@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import {
@@ -68,7 +70,7 @@ export function InviteHostDialog({
     <>
       <div onClick={() => setOpen(true)}>
         {trigger ?? (
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className={cn(kpBtnSecondary)}>
             <UserPlus className="mr-1.5 h-3.5 w-3.5" />
             Invite host
           </Button>
@@ -83,10 +85,21 @@ export function InviteHostDialog({
         footer={
           success ? undefined : (
             <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                className={cn(kpBtnSecondary)}
+                onClick={() => setOpen(false)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" form="invite-host-form" disabled={loading}>
+              <Button
+                type="submit"
+                form="invite-host-form"
+                variant="outline"
+                className={cn(kpBtnPrimary, "border-transparent")}
+                disabled={loading}
+              >
                 {loading ? "Sending..." : "Send invite"}
               </Button>
             </div>

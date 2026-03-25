@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { BrandCard } from "@/components/ui/BrandCard";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { QrCode, ExternalLink, Copy, Link2 } from "lucide-react";
 
 export interface SignInQuickCardProps {
@@ -42,17 +44,17 @@ export function SignInQuickCard({
           </span>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" className={cn(kpBtnSecondary)} asChild>
             <a href={signInUrl} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="mr-2 h-4 w-4" />
               Preview
             </a>
           </Button>
-          <Button variant="outline" size="sm" onClick={handleCopyLink}>
+          <Button variant="outline" size="sm" className={cn(kpBtnSecondary)} onClick={handleCopyLink}>
             <Copy className="mr-2 h-4 w-4" />
             {copied ? "Copied!" : "Copy link"}
           </Button>
-          <Button variant="outline" size="sm" asChild>
+          <Button variant="outline" size="sm" className={cn(kpBtnSecondary)} asChild>
             <Link href={`/open-houses/${openHouseId}/sign-in`}>
               <QrCode className="mr-2 h-4 w-4" />
               View QR

@@ -7,6 +7,11 @@ import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ArrowLeft, Mail, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  kpBtnPrimary,
+  kpBtnSecondary,
+  kpBtnTertiary,
+} from "@/components/ui/kp-dashboard-button-tiers";
 
 type FollowUpDraft = {
   id: string;
@@ -110,7 +115,7 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 gap-1.5 px-2 text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+            className={cn(kpBtnTertiary, "h-8 gap-1.5 px-2")}
             asChild
           >
             <Link href={`/open-houses/${openHouseId}`}>
@@ -127,8 +132,9 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
           )}
         </div>
         <Button
+          variant="outline"
           size="sm"
-          className="h-8 border-0 bg-kp-teal px-3 text-xs text-kp-bg hover:opacity-90"
+          className={cn(kpBtnPrimary, "h-8 border-transparent px-3 text-xs")}
           onClick={handleGenerate}
           disabled={generating}
         >
@@ -211,7 +217,7 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                            className={cn(kpBtnSecondary, "h-7 text-xs")}
                             onClick={() => handleSend(d.id)}
                             disabled={sendingId === d.id}
                           >
@@ -221,7 +227,7 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 text-xs text-kp-on-surface-variant hover:bg-kp-surface-higher hover:text-kp-on-surface"
+                          className={cn(kpBtnTertiary, "h-7 text-xs")}
                           asChild
                         >
                           <Link href={`/contacts/${d.contact.id}`}>View</Link>

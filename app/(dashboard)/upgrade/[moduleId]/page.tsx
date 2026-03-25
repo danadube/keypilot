@@ -4,6 +4,8 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Lock, Check, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { getUpgradeConfig } from "@/lib/upgrade-modules";
 import { isUpgradeModule } from "@/lib/module-access";
 import type { ModuleId } from "@/lib/modules";
@@ -25,7 +27,7 @@ export default function UpgradeModulePage() {
         <Button
           variant="outline"
           size="sm"
-          className="w-fit border-kp-outline bg-transparent text-kp-on-surface hover:bg-kp-surface-high"
+          className={cn(kpBtnSecondary, "w-fit")}
           asChild
         >
           <Link href="/showing-hq">
@@ -51,7 +53,8 @@ export default function UpgradeModulePage() {
         </div>
         <Button
           size="sm"
-          className="h-8 border-0 bg-kp-teal px-4 text-xs text-kp-bg hover:opacity-90"
+          variant="outline"
+          className={cn(kpBtnPrimary, "h-8 border-transparent px-4 text-xs")}
           asChild
         >
           <Link href="/settings/modules">{ctaLabel}</Link>
@@ -90,7 +93,8 @@ export default function UpgradeModulePage() {
             <div className="mt-8 flex flex-wrap gap-3">
               <Button
                 size="sm"
-                className="h-8 border-0 bg-kp-teal px-4 text-xs text-kp-bg hover:opacity-90"
+                variant="outline"
+                className={cn(kpBtnPrimary, "h-8 border-transparent px-4 text-xs")}
                 asChild
               >
                 <Link href="/settings/modules">{ctaLabel}</Link>
@@ -98,7 +102,7 @@ export default function UpgradeModulePage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                className={cn(kpBtnSecondary, "h-8 text-xs")}
                 asChild
               >
                 <Link href="/showing-hq">
