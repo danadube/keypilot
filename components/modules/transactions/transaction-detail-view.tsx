@@ -1,5 +1,6 @@
 "use client";
 
+import type { ComponentProps } from "react";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -76,7 +77,7 @@ const STATUS_LABELS: Record<TxStatus, string> = {
 
 function statusBadgeVariant(
   s: TxStatus
-): React.ComponentProps<typeof StatusBadge>["variant"] {
+): ComponentProps<typeof StatusBadge>["variant"] {
   switch (s) {
     case "LEAD":
       return "pending";

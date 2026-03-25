@@ -263,8 +263,10 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
+      const id = json.data?.id as string | undefined;
+      if (!id) throw new Error("Invalid response from server");
       onClose();
-      router.push(`/transactions/${json.data.id}`);
+      router.push(`/transactions/${id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create transaction");
       setSubmitting(false);
