@@ -14,6 +14,7 @@ import {
   MapPin,
   TrendingUp,
   Megaphone,
+  Handshake,
 } from "lucide-react";
 import { MODULES, getModuleFromPath } from "@/lib/modules";
 import { UPGRADE_MODULES } from "@/lib/module-access";
@@ -32,6 +33,7 @@ const PLATFORM_MODULE_IDS: ModuleId[] = [
   "showing-hq",
   "property-vault",
   "client-keep",
+  "transactions",
   "farm-trackr",
   "seller-pulse",
   "market-pilot",
@@ -41,6 +43,7 @@ const MODULE_ICON: Partial<Record<ModuleId, React.ComponentType<{ className?: st
   "property-vault": Building2,
   "showing-hq": Calendar,
   "client-keep": Users,
+  transactions: Handshake,
   "farm-trackr": MapPin,
   "seller-pulse": TrendingUp,
   "market-pilot": Megaphone,

@@ -10,6 +10,7 @@ export type ModuleAccessMap = Record<string, boolean>;
 /** Default: ShowingHQ + property-vault enabled; CRM/premium modules require upgrade */
 const DEFAULT_ACCESS: ModuleAccessMap = {
   "showing-hq": true,
+  transactions: true,
   "client-keep": false,
   "farm-trackr": false,
   "seller-pulse": false,
