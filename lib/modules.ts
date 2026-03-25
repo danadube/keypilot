@@ -65,6 +65,7 @@ export const MODULE_ORDER: ModuleId[] = [
   "showing-hq",
   "property-vault",
   "client-keep",
+  "transactions",
   "farm-trackr",
   "task-pilot",
   "market-pilot",
@@ -187,7 +188,7 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     id: "transactions",
     name: "Transactions",
     href: "/transactions",
-    available: false,
+    available: true,
     sidebar: [
       { label: "Overview", href: "/transactions", icon: LayoutDashboard, section: "OVERVIEW" },
       { label: "Pipeline", href: "/transactions/pipeline", icon: List, section: "CLOSING" },

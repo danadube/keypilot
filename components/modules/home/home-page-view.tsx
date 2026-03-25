@@ -29,6 +29,7 @@ import {
   MapPin,
   TrendingUp,
   BarChart3,
+  Handshake,
   Loader2,
   AlertCircle,
 } from "lucide-react";
@@ -218,6 +219,7 @@ const MODULE_ICONS: Record<string, React.ElementType> = {
   "property-vault": Building2,
   "showing-hq":     Calendar,
   "client-keep":    Users,
+  transactions:     Handshake,
   "farm-trackr":    MapPin,
   "task-pilot":     CheckSquare,
   "market-pilot":   TrendingUp,

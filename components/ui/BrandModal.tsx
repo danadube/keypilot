@@ -23,6 +23,8 @@ export interface BrandModalProps {
   size?: keyof typeof sizeClasses;
   /** Override scroll area (e.g. taller modal body). */
   bodyClassName?: string;
+  /** Optional typography overrides for the description line (kp-* tokens). */
+  descriptionClassName?: string;
   closeOnBackdrop?: boolean;
   className?: string;
 }
@@ -36,6 +38,7 @@ export function BrandModal({
   footer,
   size = "md",
   bodyClassName,
+  descriptionClassName,
   closeOnBackdrop = true,
   className,
 }: BrandModalProps) {
@@ -102,7 +105,10 @@ export function BrandModal({
               {description && (
                 <p
                   id="brand-modal-desc"
-                  className="mt-1 text-sm leading-snug text-kp-on-surface/80"
+                  className={cn(
+                    "mt-1 text-sm leading-snug text-kp-on-surface/88",
+                    descriptionClassName
+                  )}
                 >
                   {description}
                 </p>
