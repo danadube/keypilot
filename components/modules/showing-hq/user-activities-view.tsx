@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,28 @@ type UserActivityRow = {
   updatedAt: string;
 };
 
+const TEMPLATE_SELECT_NONE = "__none__";
+
+type ActivityTemplateRow = {
+  id: string;
+  name: string;
+  type: (typeof ACTIVITY_TYPES)[number];
+  titleTemplate: string;
+  descriptionTemplate: string | null;
+  offsetDays: number | null;
+};
+
+/**
+ * Due date for datetime-local: current local date/time plus `offsetDays` calendar days
+ * (same local hours and minutes).
+ */
+function dueDatetimeLocalFromOffsetDays(offsetDays: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 function formatWhen(iso: string | null) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("en-US", {
@@ -51,6 +74,8 @@ function formatWhen(iso: string | null) {
 
 export function UserActivitiesView() {
   const [rows, setRows] = useState<UserActivityRow[]>([]);
+  const [templates, setTemplates] = useState<ActivityTemplateRow[]>([]);
+  const [templatesLoaded, setTemplatesLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -58,6 +83,9 @@ export function UserActivitiesView() {
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [completeError, setCompleteError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const [templateId, setTemplateId] = useState<string>(TEMPLATE_SELECT_NONE);
+  const [duePresetFromTemplateDays, setDuePresetFromTemplateDays] = useState<number | null>(null);
 
   const [type, setType] = useState<string>("TASK");
   const [title, setTitle] = useState("");
@@ -79,12 +107,60 @@ export function UserActivitiesView() {
     load().finally(() => setLoading(false));
   }, [load]);
 
+  const loadTemplates = useCallback(() => {
+    return fetch("/api/v1/activity-templates")
+      .then((res) => res.json())
+      .then((json: { error?: { message?: string }; data?: ActivityTemplateRow[] }) => {
+        if (!json.error && Array.isArray(json.data)) {
+          setTemplates(json.data);
+        } else {
+          setTemplates([]);
+        }
+      })
+      .catch(() => setTemplates([]))
+      .finally(() => setTemplatesLoaded(true));
+  }, []);
+
+  useEffect(() => {
+    void loadTemplates();
+  }, [loadTemplates]);
+
+  const applyTemplate = useCallback((tpl: ActivityTemplateRow) => {
+    setType(tpl.type);
+    setTitle(tpl.titleTemplate);
+    setDescription(tpl.descriptionTemplate?.trim() ? tpl.descriptionTemplate : "");
+    if (tpl.offsetDays != null) {
+      setDueLocal(dueDatetimeLocalFromOffsetDays(tpl.offsetDays));
+      setDuePresetFromTemplateDays(tpl.offsetDays);
+    } else {
+      setDueLocal("");
+      setDuePresetFromTemplateDays(null);
+    }
+  }, []);
+
   const resetForm = () => {
+    setTemplateId(TEMPLATE_SELECT_NONE);
+    setDuePresetFromTemplateDays(null);
     setType("TASK");
     setTitle("");
     setDescription("");
     setDueLocal("");
     setFormError(null);
+  };
+
+  const handleTemplateSelect = (value: string) => {
+    setTemplateId(value);
+    setFormError(null);
+    if (value === TEMPLATE_SELECT_NONE) {
+      setType("TASK");
+      setTitle("");
+      setDescription("");
+      setDueLocal("");
+      setDuePresetFromTemplateDays(null);
+      return;
+    }
+    const tpl = templates.find((t) => t.id === value);
+    if (tpl) applyTemplate(tpl);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -161,9 +237,20 @@ export function UserActivitiesView() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-kp-on-surface/88">
-          Personal tasks and follow-ups. (Open-house timeline items stay on the dashboard.)
-        </p>
+        <div className="max-w-xl space-y-1 text-xs text-kp-on-surface/88">
+          <p>
+            Personal tasks and follow-ups. (Open-house timeline items stay on the dashboard.)
+          </p>
+          <p className="text-kp-on-surface-variant">
+            <Link
+              href="/showing-hq/templates"
+              className="font-medium text-kp-teal underline-offset-2 hover:underline"
+            >
+              Templates
+            </Link>{" "}
+            prefill new activities here—faster than typing the same follow-ups every time.
+          </p>
+        </div>
         <Button
           type="button"
           size="sm"
@@ -193,6 +280,37 @@ export function UserActivitiesView() {
             New activity
           </p>
           <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label className="text-kp-on-surface/90">From template</Label>
+              {!templatesLoaded ? (
+                <p className="text-xs text-kp-on-surface-variant">Loading templates…</p>
+              ) : templates.length === 0 ? (
+                <p className="text-xs text-kp-on-surface-variant">
+                  No templates yet.{" "}
+                  <Link
+                    href="/showing-hq/templates"
+                    className="font-medium text-kp-teal underline-offset-2 hover:underline"
+                  >
+                    Add templates
+                  </Link>{" "}
+                  to reuse titles, notes, and due offsets.
+                </p>
+              ) : (
+                <Select value={templateId} onValueChange={handleTemplateSelect}>
+                  <SelectTrigger className="border-kp-outline bg-kp-surface-high text-kp-on-surface">
+                    <SelectValue placeholder="Choose a template (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={TEMPLATE_SELECT_NONE}>None — start blank</SelectItem>
+                    {templates.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
             <div className="space-y-1.5">
               <Label className="text-kp-on-surface/90">Type</Label>
               <Select value={type} onValueChange={setType}>
@@ -231,9 +349,23 @@ export function UserActivitiesView() {
               <Input
                 type="datetime-local"
                 value={dueLocal}
-                onChange={(e) => setDueLocal(e.target.value)}
+                onChange={(e) => {
+                  setDueLocal(e.target.value);
+                  setDuePresetFromTemplateDays(null);
+                }}
                 className="border-kp-outline bg-kp-surface-high text-kp-on-surface"
               />
+              {duePresetFromTemplateDays !== null && (
+                <p className="text-xs text-kp-on-surface-variant">
+                  Due from template:{" "}
+                  {duePresetFromTemplateDays === 0
+                    ? "now (same local date and time)"
+                    : duePresetFromTemplateDays > 0
+                      ? `today plus ${duePresetFromTemplateDays} day${duePresetFromTemplateDays === 1 ? "" : "s"}, same local time`
+                      : `today minus ${Math.abs(duePresetFromTemplateDays)} day${duePresetFromTemplateDays === -1 ? "" : "s"}, same local time`}
+                  .
+                </p>
+              )}
             </div>
           </div>
           {formError && (
@@ -272,7 +404,11 @@ export function UserActivitiesView() {
             </div>
             <p className="text-sm font-medium text-kp-on-surface">No activities yet</p>
             <p className="mt-1 max-w-sm text-xs text-kp-on-surface-variant">
-              Create calls, tasks, and follow-ups here. Linking to properties or contacts can be added from the API later.
+              Create calls, tasks, and follow-ups here—or start from a saved template on{" "}
+              <Link href="/showing-hq/templates" className="text-kp-teal hover:underline">
+                Templates
+              </Link>
+              . Linking to properties or contacts can be added from the API later.
             </p>
           </div>
         ) : (
