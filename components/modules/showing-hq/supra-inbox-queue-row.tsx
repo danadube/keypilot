@@ -29,6 +29,19 @@ export type SupraInboxQueueItemRow = SupraQueueItem & {
   } | null;
 };
 
+/** Auto-linked “end of showing” row: same lifecycle as an existing showing (backend linker). */
+export function isLinkedEndOfShowingQueueRow(row: {
+  parsedStatus: string | null;
+  matchedShowingId: string | null;
+  matchedShowing: { id: string } | null;
+}): boolean {
+  return (
+    row.parsedStatus === "showing_ended" &&
+    Boolean(row.matchedShowingId?.trim()) &&
+    row.matchedShowing != null
+  );
+}
+
 /** Short, action-oriented copy for the board (avoid noisy system labels). */
 const LIST_ACTION_LABEL: Record<SupraProposedAction, string> = {
   UNKNOWN: "Set action in review",
@@ -99,9 +112,7 @@ export function formatParsedAddressBlock(row: SupraInboxQueueItemRow): string {
   return parts.length > 0 ? parts.join("\n") : "—";
 }
 
-function formatShowingDateTime(row: SupraInboxQueueItemRow): string {
-  if (!row.parsedScheduledAt) return "—";
-  const d = new Date(row.parsedScheduledAt);
+function formatDateTime(d: Date): string {
   return d.toLocaleString(undefined, {
     weekday: "short",
     month: "short",
@@ -110,6 +121,11 @@ function formatShowingDateTime(row: SupraInboxQueueItemRow): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function formatShowingDateTime(row: SupraInboxQueueItemRow): string {
+  if (!row.parsedScheduledAt) return "—";
+  return formatDateTime(new Date(row.parsedScheduledAt));
 }
 
 function stopCardOpenReview(e: MouseEvent | KeyboardEvent) {
@@ -169,7 +185,14 @@ export function SupraInboxQueueRow({
   const addr = formatParsedAddressBlock(row);
   const agent = row.parsedAgentName?.trim() || "—";
   const when = formatShowingDateTime(row);
-  const queueChip = listQueueBadge(row.queueState, applyReadinessOk);
+  const linkedEnd = isLinkedEndOfShowingQueueRow(row);
+  const matchedWhen =
+    linkedEnd && row.matchedShowing
+      ? formatDateTime(new Date(row.matchedShowing.scheduledAt))
+      : null;
+  const queueChip = linkedEnd
+    ? { variant: "sold" as const, label: "Lifecycle linked" }
+    : listQueueBadge(row.queueState, applyReadinessOk);
 
   const openReviewFromCard = () => {
     onReview();
@@ -228,6 +251,11 @@ export function SupraInboxQueueRow({
               <StatusBadge variant={queueChip.variant} dot className="text-[10px]">
                 {queueChip.label}
               </StatusBadge>
+              {linkedEnd ? (
+                <span className="rounded border border-emerald-500/55 bg-emerald-950/50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-100">
+                  Matched end notification
+                </span>
+              ) : null}
             </div>
           </header>
 
@@ -242,9 +270,20 @@ export function SupraInboxQueueRow({
             </div>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider text-kp-on-surface">
-                Showing time
+                {linkedEnd ? "Matched showing" : "Showing time"}
               </p>
-              <p className="mt-1 text-sm font-medium tabular-nums text-kp-on-surface">{when}</p>
+              {linkedEnd && matchedWhen ? (
+                <div className="mt-1 space-y-0.5">
+                  <p className="text-sm font-medium tabular-nums text-kp-on-surface">{matchedWhen}</p>
+                  {row.parsedScheduledAt ? (
+                    <p className="text-[11px] tabular-nums text-kp-on-surface/75">
+                      End notice · {when}
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="mt-1 text-sm font-medium tabular-nums text-kp-on-surface">{when}</p>
+              )}
             </div>
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider text-kp-on-surface">
@@ -256,9 +295,15 @@ export function SupraInboxQueueRow({
 
           <div className="flex flex-wrap items-center gap-2">
             <ConfidenceBadge confidence={row.parseConfidence} />
-            <span className="text-sm font-semibold text-kp-on-surface">
-              {LIST_ACTION_LABEL[row.proposedAction]}
-            </span>
+            {linkedEnd ? (
+              <span className="text-sm font-semibold text-emerald-100/95">
+                Linked to existing showing — dismiss when done
+              </span>
+            ) : (
+              <span className="text-sm font-semibold text-kp-on-surface">
+                {LIST_ACTION_LABEL[row.proposedAction]}
+              </span>
+            )}
           </div>
 
           <p className="border-t border-kp-outline pt-2 text-[11px] tabular-nums text-kp-on-surface/78">

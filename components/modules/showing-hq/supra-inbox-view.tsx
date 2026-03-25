@@ -17,7 +17,10 @@ import { BrandModal } from "@/components/ui/BrandModal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
-import { SupraInboxQueueRow } from "@/components/modules/showing-hq/supra-inbox-queue-row";
+import {
+  SupraInboxQueueRow,
+  isLinkedEndOfShowingQueueRow,
+} from "@/components/modules/showing-hq/supra-inbox-queue-row";
 import {
   supraBtnDangerSecondary,
   supraBtnPrimary,
@@ -364,6 +367,14 @@ function getApplyReadiness(detail: ItemWithRelations | null): { ok: boolean; rea
   if (TERMINAL_STATES.includes(detail.queueState)) {
     return { ok: false, reasons: [] };
   }
+  if (isLinkedEndOfShowingQueueRow(detail)) {
+    return {
+      ok: false,
+      reasons: [
+        "This end-of-showing notice is already linked to an existing appointment. Dismiss when you are done—no apply needed.",
+      ],
+    };
+  }
   const reasons: string[] = [];
   if (!detail.parsedScheduledAt) {
     reasons.push("Set parsed scheduled date and time.");
@@ -394,6 +405,7 @@ function normalizeItem(row: ItemWithRelations): ItemWithRelations {
     ...row,
     receivedAt: new Date(row.receivedAt),
     parsedScheduledAt: row.parsedScheduledAt ? new Date(row.parsedScheduledAt) : null,
+    parsedShowingBeganAt: row.parsedShowingBeganAt ? new Date(row.parsedShowingBeganAt) : null,
     reviewedAt: row.reviewedAt ? new Date(row.reviewedAt) : null,
     createdAt: new Date(row.createdAt),
     updatedAt: new Date(row.updatedAt),
@@ -1948,6 +1960,26 @@ export function SupraInboxView() {
               <div className="min-w-0 space-y-4 md:sticky md:top-0 md:z-[1] md:max-h-[min(85vh,840px)] md:self-start md:overflow-y-auto md:pb-1 md:pr-0.5">
                 <p className={reviewRightRailIntro}>Match · apply</p>
 
+                {isLinkedEndOfShowingQueueRow(detail) && detail.matchedShowing ? (
+                  <div
+                    className="rounded-lg border border-emerald-500/50 bg-emerald-950/40 px-3 py-2.5 shadow-sm"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    <p className="text-sm font-semibold text-emerald-50">
+                      Matched end-of-showing notification
+                    </p>
+                    <p className={cn("mt-1.5 leading-snug", reviewRightHelper, "text-emerald-50/90")}>
+                      KeyPilot linked this email to your existing showing scheduled for{" "}
+                      <span className="font-semibold tabular-nums text-emerald-100">
+                        {new Date(detail.matchedShowing.scheduledAt).toLocaleString()}
+                      </span>
+                      . Nothing further is required for your calendar record—dismiss this row when you have finished
+                      reviewing it. Apply is not used for linked end notices.
+                    </p>
+                  </div>
+                ) : null}
+
                 <section className="space-y-2" aria-label="Parser">
                   <p className={reviewRightRailStep}>Parse</p>
                   <div className={cn(reviewRightPanel, "space-y-3")}>
@@ -1957,6 +1989,12 @@ export function SupraInboxView() {
                         {PROPOSED_ACTION_LABELS[detail.proposedAction]}
                       </p>
                       <p className={reviewRightCodeMeta}>{detail.proposedAction}</p>
+                      {isLinkedEndOfShowingQueueRow(detail) ? (
+                        <p className={cn("mt-2", reviewRightHelper)}>
+                          The parser labels this as dismiss. Your queue row is already tied to the original showing
+                          above—treat it as resolved from a data standpoint.
+                        </p>
+                      ) : null}
                     </div>
                     <div className="border-t border-kp-outline/55 pt-3">
                       <p className={reviewRightFieldLabel}>Parse risk</p>
