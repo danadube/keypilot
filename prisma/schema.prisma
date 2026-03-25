@@ -45,6 +45,8 @@ model User {
   commissions         Commission[]
   supraQueueItems     SupraQueueItem[]
   supraQueueReviewed  SupraQueueItem[] @relation("SupraQueueReviewedBy")
+  userActivities      UserActivity[]
+  activityTemplates   ActivityTemplate[]
 
   @@index([clerkId])
   @@map("users")
@@ -98,6 +100,7 @@ model Property {
   deals         Deal[]
   transactions  Transaction[]
   supraQueueMatches SupraQueueItem[] @relation("SupraQueueMatchedProperty")
+  userActivities    UserActivity[]
 
   @@index([createdByUserId, deletedAt])
   @@index([city, state])
@@ -132,6 +135,7 @@ model Contact {
   contactTags       ContactTag[]
   followUpReminders FollowUpReminder[]
   deals             Deal[]
+  userActivities    UserActivity[]
 
   @@index([email])
   @@index([phone])
@@ -492,6 +496,79 @@ model Activity {
   @@index([openHouseId])
   @@index([occurredAt])
   @@map("activities")
+}
+
+/** User-owned CRM activities (calls, tasks, follow-ups). Distinct from `Activity` (open-house timeline events). */
+model UserActivity {
+  id          String            @id @default(uuid())
+  userId      String
+  propertyId  String?
+  contactId   String?
+  type        UserActivityType
+  title       String
+  description String?           @db.Text
+  dueAt       DateTime?
+  completedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  contact  Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  logs     ActivityLog[]
+
+  @@index([userId])
+  @@index([propertyId])
+  @@index([contactId])
+  @@index([userId, dueAt])
+  @@index([userId, type])
+  @@map("user_activities")
+}
+
+enum UserActivityType {
+  CALL
+  EMAIL
+  NOTE
+  TASK
+  SHOWING
+  FOLLOW_UP
+}
+
+model ActivityTemplate {
+  id                  String         @id @default(uuid())
+  userId              String
+  name                String
+  type                UserActivityType
+  titleTemplate       String
+  descriptionTemplate String?        @db.Text
+  offsetDays          Int?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, type])
+  @@map("activity_templates")
+}
+
+model ActivityLog {
+  id         String            @id @default(uuid())
+  activityId String
+  action     ActivityLogAction
+  createdAt  DateTime          @default(now())
+
+  activity UserActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([activityId])
+  @@index([activityId, createdAt])
+  @@map("activity_logs")
+}
+
+enum ActivityLogAction {
+  CREATED
+  COMPLETED
+  UPDATED
 }
 
 enum ActivityType {
