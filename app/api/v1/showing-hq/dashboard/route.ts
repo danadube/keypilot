@@ -4,11 +4,27 @@
  */
 
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
+
+/** Calendar / schedule slice only — avoids SELECT * on showings (fewer brittle drift issues vs schema). */
+const dashboardShowingSelect = {
+  id: true,
+  scheduledAt: true,
+  property: {
+    select: {
+      id: true,
+      address1: true,
+      city: true,
+      state: true,
+      zip: true,
+    },
+  },
+} satisfies Prisma.ShowingSelect;
 
 export async function GET() {
   try {
@@ -96,7 +112,7 @@ export async function GET() {
           deletedAt: null,
           scheduledAt: { gte: monthStart, lte: monthEnd },
         },
-        include: { property: true },
+        select: dashboardShowingSelect,
         orderBy: { scheduledAt: "asc" },
       }),
       prismaAdmin.showing.findMany({
@@ -105,7 +121,7 @@ export async function GET() {
           deletedAt: null,
           scheduledAt: { gte: todayStart, lt: todayEnd },
         },
-        include: { property: true },
+        select: dashboardShowingSelect,
         orderBy: { scheduledAt: "asc" },
       }),
       prismaAdmin.openHouseVisitor.findMany({
@@ -280,7 +296,7 @@ export async function GET() {
         deletedAt: null,
         scheduledAt: { gte: tomorrowStart, lt: tomorrowEnd },
       },
-      include: { property: true },
+      select: dashboardShowingSelect,
       orderBy: { scheduledAt: "asc" },
     });
     const tomorrowFirstEvent =
