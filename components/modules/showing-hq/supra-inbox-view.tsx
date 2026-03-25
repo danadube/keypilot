@@ -750,7 +750,9 @@ export function SupraInboxView() {
         setPastedReviewBannerId(null);
       }
       await load();
-      setSuccessInfo({ message: "Archived." });
+      setSuccessInfo({
+        message: "Archived — off the action board; queue row kept as dismissed.",
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Archive failed");
     } finally {
@@ -760,7 +762,7 @@ export function SupraInboxView() {
 
   const handleDeleteFromList = async (row: ItemWithRelations) => {
     const ok = window.confirm(
-      "Delete this Supra queue row? This cannot be undone. Properties and showings are not removed."
+      "Permanently delete this Supra queue row? This cannot be undone. Properties and showings are not removed."
     );
     if (!ok) return;
     setDeletingRowId(row.id);
@@ -1681,7 +1683,11 @@ export function SupraInboxView() {
                 variant="outline"
                 size="sm"
                 className={cn(supraBtnSecondary, "h-8 border-kp-teal")}
-                disabled={saving || !detail}
+                disabled={
+                  saving ||
+                  !detail ||
+                  detail.queueState === QueueStates.APPLIED
+                }
                 onClick={() => applyStateWithCurrentEdits(QueueStates.READY_TO_APPLY)}
               >
                 Mark ready to apply
@@ -1691,7 +1697,11 @@ export function SupraInboxView() {
                 variant="outline"
                 size="sm"
                 className={cn(supraBtnSecondary, "h-8")}
-                disabled={saving || !detail}
+                disabled={
+                  saving ||
+                  !detail ||
+                  detail.queueState === QueueStates.APPLIED
+                }
                 onClick={() => applyStateWithCurrentEdits(QueueStates.NEEDS_REVIEW)}
               >
                 Back to needs review
@@ -1701,7 +1711,11 @@ export function SupraInboxView() {
                 variant="outline"
                 size="sm"
                 className={cn(supraBtnDangerSecondary, "h-8")}
-                disabled={saving || !detail}
+                disabled={
+                  saving ||
+                  !detail ||
+                  detail.queueState === QueueStates.APPLIED
+                }
                 onClick={() => applyStateWithCurrentEdits(QueueStates.FAILED_PARSE)}
               >
                 Mark failed parse
@@ -1711,7 +1725,11 @@ export function SupraInboxView() {
                 variant="outline"
                 size="sm"
                 className={cn(supraBtnSecondary, "h-8")}
-                disabled={saving || !detail}
+                disabled={
+                  saving ||
+                  !detail ||
+                  detail.queueState === QueueStates.APPLIED
+                }
                 onClick={() => applyStateWithCurrentEdits(QueueStates.DISMISSED)}
               >
                 Dismiss
@@ -1721,7 +1739,11 @@ export function SupraInboxView() {
                 variant="outline"
                 size="sm"
                 className={cn(supraBtnSecondary, "h-8")}
-                disabled={saving || !detail}
+                disabled={
+                  saving ||
+                  !detail ||
+                  detail.queueState === QueueStates.APPLIED
+                }
                 onClick={() => applyStateWithCurrentEdits(QueueStates.DUPLICATE)}
               >
                 Mark duplicate
