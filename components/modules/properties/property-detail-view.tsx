@@ -16,6 +16,7 @@ import {
   Calendar,
   DollarSign,
   Pencil,
+  ImagePlus,
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -34,6 +35,7 @@ type Property = {
   flyerFilename?: string | null;
   flyerUploadedAt?: string | null;
   flyerEnabled?: boolean;
+  imageUrl?: string | null;
   openHouses?: { id: string; title: string; startAt: string }[];
 };
 
@@ -84,6 +86,9 @@ export function PropertyDetailView({ id }: { id: string }) {
   const [flyerUploading, setFlyerUploading] = useState(false);
   const [flyerError, setFlyerError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   // ── Edit state ──────────────────────────────────────────────────────────────
   const [isEditing, setIsEditing] = useState(false);
@@ -208,21 +213,108 @@ export function PropertyDetailView({ id }: { id: string }) {
       .finally(() => setFlyerUploading(false));
   }, [id]);
 
+  const handlePhotoUpload = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      e.target.value = "";
+      setPhotoError(null);
+      setPhotoUploading(true);
+      const formData = new FormData();
+      formData.set("file", file);
+      fetch(`/api/v1/properties/${id}/photo`, { method: "POST", body: formData })
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.error) throw new Error(json.error.message);
+          setProperty((p) => (p ? { ...p, imageUrl: json.data.imageUrl } : p));
+        })
+        .catch((err) =>
+          setPhotoError(err instanceof Error ? err.message : "Photo upload failed")
+        )
+        .finally(() => setPhotoUploading(false));
+    },
+    [id]
+  );
+
+  const handleRemovePhoto = useCallback(() => {
+    if (
+      !confirm(
+        "Remove this key photo? It will no longer appear here or on visitor sign-in pages."
+      )
+    )
+      return;
+    setPhotoError(null);
+    setPhotoUploading(true);
+    fetch(`/api/v1/properties/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageUrl: null }),
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.error) throw new Error(json.error.message);
+        setProperty((p) => (p ? { ...p, imageUrl: null } : p));
+      })
+      .catch((err) =>
+        setPhotoError(err instanceof Error ? err.message : "Could not remove photo")
+      )
+      .finally(() => setPhotoUploading(false));
+  }, [id]);
+
   if (loading) return <PageLoading message="Loading property…" />;
   if (error || !property)
     return <ErrorMessage message={error || "Not found"} onRetry={loadData} />;
 
   const hasFlyer = !!(property.flyerUrl?.trim() && property.flyerEnabled !== false);
+  const hasHeroImage = !!property.imageUrl?.trim();
   const fullAddress = [property.address1, property.address2].filter(Boolean).join(" ");
   const locationLine = [property.city, property.state, property.zip].filter(Boolean).join(", ");
   const fullAddressForReport = [property.address1, property.city, property.state, property.zip]
     .filter(Boolean)
     .join(", ");
 
+  const priceBadge = property.listingPrice ? (
+    <span
+      className={
+        hasHeroImage
+          ? "flex items-center gap-1 rounded-lg border border-white/30 bg-black/35 px-3 py-1 text-sm font-semibold text-white backdrop-blur-sm"
+          : "flex items-center gap-1 rounded-lg border border-kp-gold/40 bg-kp-gold/10 px-3 py-1 text-sm font-semibold text-kp-gold"
+      }
+    >
+      <DollarSign className="h-3.5 w-3.5" />
+      {formatPrice(property.listingPrice)}
+    </span>
+  ) : null;
+
+  const editButton =
+    !isEditing ? (
+      <Button
+        variant="outline"
+        size="sm"
+        className={
+          hasHeroImage
+            ? "h-8 border-white/35 bg-black/35 text-xs text-white backdrop-blur-sm hover:bg-black/50 hover:text-white"
+            : "h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+        }
+        onClick={() => startEditing(property)}
+      >
+        <Pencil className="mr-1.5 h-3.5 w-3.5" />
+        Edit
+      </Button>
+    ) : null;
+
   return (
     <div className="flex flex-col gap-6">
-      {/* ── Page header ─────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-start gap-3">
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="hidden"
+        onChange={handlePhotoUpload}
+      />
+
+      {/* ── Back ───────────────────────────────────────────────────────────── */}
+      <div>
         <Button
           variant="ghost"
           size="sm"
@@ -234,26 +326,92 @@ export function PropertyDetailView({ id }: { id: string }) {
             Properties
           </Link>
         </Button>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold text-kp-on-surface">{fullAddress}</h1>
-          <p className="mt-0.5 text-sm text-kp-on-surface-variant">{locationLine}</p>
+      </div>
+
+      {/* ── Hero + property header ─────────────────────────────────────────── */}
+      <div className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
+        <div className="relative aspect-[2/1] max-h-[300px] min-h-[168px] w-full bg-kp-surface-high sm:max-h-[340px]">
+          {hasHeroImage ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={property.imageUrl!}
+              alt={`${fullAddress}`}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4">
+              <p className="text-center text-sm text-kp-on-surface-variant">
+                Add a key photo for this listing. It appears here and on open house sign-in.
+              </p>
+              {photoError && <p className="text-center text-sm text-red-400">{photoError}</p>}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 border-kp-outline bg-kp-surface text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                disabled={photoUploading}
+                onClick={() => photoInputRef.current?.click()}
+              >
+                <ImagePlus className="mr-1.5 h-3.5 w-3.5" />
+                {photoUploading ? "Uploading…" : "Upload photo"}
+              </Button>
+            </div>
+          )}
+
+          {hasHeroImage && (
+            <>
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-20 sm:pt-28" />
+              <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 p-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="min-w-0">
+                  <h1 className="text-lg font-bold text-white drop-shadow-md sm:text-xl">
+                    {fullAddress}
+                  </h1>
+                  <p className="mt-0.5 text-sm text-white/90 drop-shadow">{locationLine}</p>
+                </div>
+                <div className="pointer-events-auto flex flex-wrap items-center gap-2">
+                  {priceBadge}
+                  {editButton}
+                </div>
+              </div>
+              <div className="absolute right-2 top-2 flex flex-wrap justify-end gap-1.5">
+                {photoError && (
+                  <p className="w-full max-w-[240px] rounded-md bg-red-950/90 px-2 py-1 text-right text-xs text-red-200">
+                    {photoError}
+                  </p>
+                )}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 border-0 bg-black/50 text-xs text-white backdrop-blur-sm hover:bg-black/65"
+                  disabled={photoUploading}
+                  onClick={() => photoInputRef.current?.click()}
+                >
+                  <Upload className="mr-1.5 h-3.5 w-3.5" />
+                  {photoUploading ? "…" : "Replace"}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 border-0 bg-black/50 text-xs text-red-200 backdrop-blur-sm hover:bg-red-950/70 hover:text-red-100"
+                  disabled={photoUploading}
+                  onClick={handleRemovePhoto}
+                >
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                  Remove
+                </Button>
+              </div>
+            </>
+          )}
         </div>
-        {property.listingPrice && !isEditing && (
-          <span className="flex items-center gap-1 rounded-lg border border-kp-gold/40 bg-kp-gold/10 px-3 py-1 text-sm font-semibold text-kp-gold">
-            <DollarSign className="h-3.5 w-3.5" />
-            {formatPrice(property.listingPrice)}
-          </span>
-        )}
-        {!isEditing && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
-            onClick={() => startEditing(property)}
-          >
-            <Pencil className="mr-1.5 h-3.5 w-3.5" />
-            Edit
-          </Button>
+
+        {!hasHeroImage && (
+          <div className="flex flex-wrap items-start gap-3 border-t border-kp-outline p-4">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl font-bold text-kp-on-surface">{fullAddress}</h1>
+              <p className="mt-0.5 text-sm text-kp-on-surface-variant">{locationLine}</p>
+            </div>
+            {priceBadge}
+            {editButton}
+          </div>
         )}
       </div>
 
