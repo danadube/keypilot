@@ -63,8 +63,8 @@ export interface ModuleConfig {
 
 export const MODULE_ORDER: ModuleId[] = [
   "home",
-  "property-vault",
   "showing-hq",
+  "property-vault",
   "client-keep",
   "farm-trackr",
   "task-pilot",
@@ -99,7 +99,6 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
       { label: "Archived", href: "/properties?status=archived", icon: List, section: "PROPERTIES" },
       { label: "Property Documents", href: "/property-vault/documents", icon: FileText, section: "ASSETS" },
       { label: "Photos & Media", href: "/property-vault/media", icon: Image, section: "ASSETS" },
-      { label: "Open Houses", href: "/open-houses", icon: Calendar, section: "ACTIVITY" },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
     ],
   },
