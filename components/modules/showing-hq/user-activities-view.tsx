@@ -125,6 +125,14 @@ export function UserActivitiesView() {
     void loadTemplates();
   }, [loadTemplates]);
 
+  /** If the selected template was removed (e.g. deleted in another tab), avoid an invalid Select value. */
+  useEffect(() => {
+    if (templateId === TEMPLATE_SELECT_NONE) return;
+    if (templates.length === 0 || !templates.some((t) => t.id === templateId)) {
+      setTemplateId(TEMPLATE_SELECT_NONE);
+    }
+  }, [templates, templateId]);
+
   const applyTemplate = useCallback((tpl: ActivityTemplateRow) => {
     setType(tpl.type);
     setTitle(tpl.titleTemplate);
