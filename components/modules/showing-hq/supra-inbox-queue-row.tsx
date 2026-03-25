@@ -132,12 +132,20 @@ function stopCardOpenReview(e: MouseEvent | KeyboardEvent) {
   e.stopPropagation();
 }
 
-function rowBoardChrome(state: SupraQueueState, applyReady: boolean): string {
+function rowBoardChrome(
+  state: SupraQueueState,
+  applyReady: boolean,
+  linkedEnd: boolean
+): string {
   if (state === "FAILED_PARSE") {
     return "border-l-[4px] border-l-red-500";
   }
   if (state === "APPLIED" || state === "DISMISSED" || state === "DUPLICATE") {
     return "border-l-[4px] border-l-transparent";
+  }
+  /** Linked end-of-showing: lifecycle resolved — match emerald “linked” chips, not amber “needs work”. */
+  if (linkedEnd) {
+    return "border-l-[4px] border-l-emerald-500/75";
   }
   if (applyReady || state === "READY_TO_APPLY") {
     return "border-l-[4px] border-l-emerald-500";
@@ -210,7 +218,7 @@ export function SupraInboxQueueRow({
       id={`supra-queue-row-${row.id}`}
       className={cn(
         "rounded-lg border border-kp-outline bg-kp-surface px-3 py-3 shadow-sm sm:px-4 sm:py-3.5",
-        rowBoardChrome(row.queueState, applyReadinessOk),
+        rowBoardChrome(row.queueState, applyReadinessOk, linkedEnd),
         highlighted && "ring-2 ring-kp-teal/50 ring-offset-2 ring-offset-kp-bg"
       )}
     >
