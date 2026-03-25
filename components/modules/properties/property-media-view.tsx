@@ -80,8 +80,9 @@ export function PropertyMediaView({ id }: { id: string }) {
       <PropertyKeyPhotoPanel propertyId={id} imageUrl={property.imageUrl} onImagePatch={patchImage} />
 
       <p className="text-xs text-kp-on-surface-variant">
+        Need the full property record?{" "}
         <Link href={`/properties/${id}`} className="font-medium text-kp-teal hover:underline">
-          Back to property overview
+          Back to overview
         </Link>
       </p>
     </div>

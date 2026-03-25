@@ -27,6 +27,7 @@ export function PropertyVaultPropertySubnav({
         <Link
           key={key}
           href={href(propertyId)}
+          aria-current={current === key ? "page" : undefined}
           className={cn(
             "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
             current === key

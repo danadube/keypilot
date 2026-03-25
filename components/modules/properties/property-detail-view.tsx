@@ -489,25 +489,17 @@ export function PropertyDetailView({ id }: { id: string }) {
             )}
           </div>
 
-          {/* Flyer — full editor on Documents; quick jump link */}
-          <div className="space-y-2">
-            <PropertyFlyerPanel
-              propertyId={id}
-              flyer={{
-                flyerUrl: property.flyerUrl,
-                flyerFilename: property.flyerFilename,
-                flyerUploadedAt: property.flyerUploadedAt,
-                flyerEnabled: property.flyerEnabled,
-              }}
-              onFlyerPatch={patchFlyer}
-            />
-            <p className="text-xs text-kp-on-surface-variant">
-              <Link href={`/properties/${id}/documents`} className="font-medium text-kp-teal hover:underline">
-                Open documents page
-              </Link>{" "}
-              for a focused flyer workflow.
-            </p>
-          </div>
+          {/* Flyer — same panel as /properties/[id]/documents; subnav switches context */}
+          <PropertyFlyerPanel
+            propertyId={id}
+            flyer={{
+              flyerUrl: property.flyerUrl,
+              flyerFilename: property.flyerFilename,
+              flyerUploadedAt: property.flyerUploadedAt,
+              flyerEnabled: property.flyerEnabled,
+            }}
+            onFlyerPatch={patchFlyer}
+          />
 
           {/* Open houses */}
           <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
