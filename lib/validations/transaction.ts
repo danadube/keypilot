@@ -13,6 +13,11 @@ export const CreateTransactionSchema = z.object({
   // Accept any non-empty string — DB FK constraint handles invalid IDs.
   // z.string().uuid() would couple validation to the ID generation strategy.
   propertyId: z.string().min(1),
+  status: TransactionStatusEnum.optional(),
+  closingDate: z.coerce.date().optional().nullable(),
+  salePrice: z.number().positive().optional().nullable(),
+  brokerageName: z.string().max(200).optional().nullable(),
+  notes: z.string().max(5000).optional().nullable(),
 });
 
 export const UpdateTransactionSchema = z.object({
