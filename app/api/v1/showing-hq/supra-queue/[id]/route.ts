@@ -109,6 +109,8 @@ export async function PATCH(
     if (d.parsedState !== undefined) data.parsedState = d.parsedState;
     if (d.parsedZip !== undefined) data.parsedZip = d.parsedZip;
     if (d.parsedScheduledAt !== undefined) data.parsedScheduledAt = d.parsedScheduledAt;
+    if (d.parsedShowingBeganAt !== undefined)
+      data.parsedShowingBeganAt = d.parsedShowingBeganAt;
     if (d.parsedEventKind !== undefined) data.parsedEventKind = d.parsedEventKind;
     if (d.parsedStatus !== undefined) data.parsedStatus = d.parsedStatus;
     if (d.parsedAgentName !== undefined) data.parsedAgentName = d.parsedAgentName;
