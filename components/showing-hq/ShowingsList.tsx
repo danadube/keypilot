@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
 import { BrandCard } from "@/components/ui/BrandCard";
 import { BrandButton } from "@/components/ui/BrandButton";
@@ -68,13 +69,13 @@ export function ShowingsList() {
       />
 
       <div className="flex gap-2">
-        <Button variant="outline" size="sm" asChild>
+        <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
           <Link href="/showing-hq/supra-inbox">
             <Inbox className="mr-1.5 h-3.5 w-3.5" />
             Supra Inbox
           </Link>
         </Button>
-        <Button variant="outline" size="sm" asChild>
+        <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
           <Link href="/showing-hq/feedback-requests">
             <ClipboardCheck className="mr-1.5 h-3.5 w-3.5" />
             Feedback Requests

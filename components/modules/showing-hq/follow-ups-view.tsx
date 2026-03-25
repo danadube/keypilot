@@ -7,6 +7,8 @@ import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { LeadStatusBadge } from "@/components/shared/LeadStatusBadge";
 import { FollowUpStatusBadge } from "@/components/shared/FollowUpStatusBadge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { Mail, Bell, CheckCircle } from "lucide-react";
 
 type Task =
@@ -52,7 +54,7 @@ function TaskItem({ task }: { task: Task }) {
         <Button
           variant="outline"
           size="sm"
-          className="h-7 shrink-0 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+          className={cn(kpBtnSecondary, "h-7 shrink-0 text-xs")}
           asChild
         >
           <Link href={`/showing-hq/follow-ups/draft/${task.id}`}>Review</Link>
@@ -71,7 +73,7 @@ function TaskItem({ task }: { task: Task }) {
       <Button
         variant="outline"
         size="sm"
-        className="h-7 shrink-0 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+        className={cn(kpBtnSecondary, "h-7 shrink-0 text-xs")}
         asChild
       >
         <Link href={`/contacts/${task.contact.id}`}>View contact</Link>
@@ -190,7 +192,7 @@ export function FollowUpsView() {
             <Button
               variant="outline"
               size="sm"
-              className="border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+              className={cn(kpBtnSecondary, "text-xs")}
               asChild
             >
               <Link href="/open-houses">View open houses</Link>

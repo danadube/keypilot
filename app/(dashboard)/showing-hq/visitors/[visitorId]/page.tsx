@@ -6,6 +6,12 @@ import { useParams } from "next/navigation";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  kpBtnPrimary,
+  kpBtnSecondary,
+  kpBtnTertiary,
+} from "@/components/ui/kp-dashboard-button-tiers";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -170,7 +176,7 @@ export default function VisitorProfilePage() {
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 gap-1.5 px-2 text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+            className={cn(kpBtnTertiary, "h-8 gap-1.5 px-2")}
             asChild
           >
             <Link href="/showing-hq/visitors">
@@ -188,7 +194,8 @@ export default function VisitorProfilePage() {
           {contact.email && (
             <Button
               size="sm"
-              className="h-8 border-0 bg-kp-teal px-3 text-xs text-kp-bg hover:opacity-90"
+              variant="outline"
+              className={cn(kpBtnPrimary, "h-8 border-transparent px-3 text-xs")}
               disabled={resendFlyerLoading}
               onClick={async () => {
                 setResendFlyerLoading(true);
@@ -210,12 +217,7 @@ export default function VisitorProfilePage() {
               {resendFlyerLoading ? "Sending…" : "Resend flyer"}
             </Button>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
-            asChild
-          >
+          <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-8 text-xs")} asChild>
             <Link href={`/contacts/${contact.id}`}>View contact</Link>
           </Button>
         </div>
@@ -396,7 +398,7 @@ export default function VisitorProfilePage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-higher"
+                    className={cn(kpBtnSecondary, "h-7 text-xs")}
                     asChild
                   >
                     <Link href={`/showing-hq/open-houses/${v.openHouse.id}`}>View</Link>
@@ -460,7 +462,7 @@ export default function VisitorProfilePage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-3 h-7 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                className={cn(kpBtnSecondary, "mt-3 h-7 text-xs")}
                 asChild
               >
                 <Link href="/showing-hq/follow-ups">View follow-ups</Link>
@@ -487,7 +489,7 @@ export default function VisitorProfilePage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-7 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-higher"
+                      className={cn(kpBtnSecondary, "h-7 text-xs")}
                       asChild
                     >
                       <Link href={`/showing-hq/follow-ups/draft/${d.id}`}>Review draft</Link>
@@ -496,7 +498,7 @@ export default function VisitorProfilePage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 text-xs text-kp-on-surface-variant hover:bg-kp-surface-higher hover:text-kp-on-surface"
+                        className={cn(kpBtnTertiary, "h-7 text-xs")}
                         disabled={statusSavingId === d.id}
                         onClick={async () => {
                           setStatusSavingId(d.id);
@@ -520,7 +522,7 @@ export default function VisitorProfilePage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 text-xs text-kp-on-surface-variant hover:bg-kp-surface-higher hover:text-kp-on-surface"
+                      className={cn(kpBtnTertiary, "h-7 text-xs")}
                       onClick={async () => {
                         const text = `Subject: ${d.subject}\n\n${d.body}`;
                         await navigator.clipboard.writeText(text);
@@ -534,7 +536,7 @@ export default function VisitorProfilePage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 text-xs text-kp-on-surface-variant hover:bg-kp-surface-higher hover:text-kp-on-surface"
+                      className={cn(kpBtnTertiary, "h-7 text-xs")}
                       asChild
                     >
                       <Link href={`/showing-hq/open-houses/${d.openHouse.id}`}>
@@ -562,7 +564,8 @@ export default function VisitorProfilePage() {
             />
             <Button
               size="sm"
-              className="h-8 border-0 bg-kp-teal px-4 text-xs text-kp-bg hover:opacity-90"
+              variant="outline"
+              className={cn(kpBtnPrimary, "h-8 border-transparent px-4 text-xs")}
               disabled={notesSaving}
               onClick={async () => {
                 setNotesSaving(true);

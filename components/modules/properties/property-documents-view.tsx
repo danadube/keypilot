@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { PropertyVaultPropertySubnav } from "./property-vault-property-subnav";
@@ -60,7 +62,7 @@ export function PropertyDocumentsView({ id }: { id: string }) {
         <Button
           variant="ghost"
           size="sm"
-          className="h-8 gap-1.5 px-2 text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+          className={cn(kpBtnTertiary, "h-8 gap-1.5 px-2")}
           asChild
         >
           <Link href="/properties">

@@ -166,6 +166,7 @@ export function QuickCreateEventModal({
           <Button
             type="submit"
             form="quick-create-form"
+            variant="outline"
             disabled={!canSave || submitting}
             className={kpCalendarModalField.buttonSave}
           >

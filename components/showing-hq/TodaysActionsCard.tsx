@@ -10,6 +10,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnSave } from "@/components/ui/kp-dashboard-button-tiers";
 
 export type TodaysActionItem = {
   id: string;
@@ -66,7 +68,12 @@ export function TodaysActionsCard({ items }: TodaysActionsCardProps) {
                     </p>
                   ) : null}
                 </div>
-                <Button size="sm" className="shrink-0 bg-kp-gold text-kp-bg hover:bg-kp-gold-bright border-0" asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(kpBtnSave, "shrink-0 border-transparent")}
+                  asChild
+                >
                   <Link href={item.actionHref}>
                     {item.actionLabel}
                     <ChevronRight className="ml-0.5 h-3.5 w-3.5" />

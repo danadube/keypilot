@@ -5,6 +5,8 @@ import Link from "next/link";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnSecondary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -178,7 +180,7 @@ export function VisitorsListView() {
               <Button
                 variant="outline"
                 size="sm"
-                className="mt-3 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                className={cn(kpBtnSecondary, "mt-3 text-xs")}
                 asChild
               >
                 <Link href="/open-houses/sign-in">Set up sign-in page</Link>
@@ -236,12 +238,17 @@ export function VisitorsListView() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                            className={cn(kpBtnSecondary, "h-7 text-xs")}
                             asChild
                           >
                             <Link href={`/showing-hq/visitors/${v.id}`}>View</Link>
                           </Button>
-                          <Button variant="ghost" size="sm" className="h-7 text-xs text-kp-on-surface-variant hover:text-kp-on-surface" asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn(kpBtnTertiary, "h-7 text-xs")}
+                            asChild
+                          >
                             <Link href={`/contacts/${v.contact.id}`}>Contact</Link>
                           </Button>
                         </div>
@@ -262,7 +269,7 @@ export function VisitorsListView() {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full justify-start border-kp-outline bg-transparent text-kp-on-surface hover:bg-kp-surface-high"
+                className={cn(kpBtnSecondary, "w-full justify-start")}
                 asChild
               >
                 <Link href="/open-houses/sign-in">
@@ -273,7 +280,7 @@ export function VisitorsListView() {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full justify-start border-kp-outline bg-transparent text-kp-on-surface hover:bg-kp-surface-high"
+                className={cn(kpBtnSecondary, "w-full justify-start")}
                 asChild
               >
                 <Link href="/open-houses">
@@ -284,7 +291,7 @@ export function VisitorsListView() {
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full justify-start border-kp-outline bg-transparent text-kp-on-surface hover:bg-kp-surface-high"
+                className={cn(kpBtnSecondary, "w-full justify-start")}
                 asChild
               >
                 <Link href="/showing-hq/follow-ups">

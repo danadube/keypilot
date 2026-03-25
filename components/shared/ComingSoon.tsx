@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import {
   Card,
   CardContent,
@@ -31,7 +33,7 @@ export function ComingSoon({ moduleName, description, backHref = "/" }: ComingSo
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className={cn(kpBtnSecondary)}>
             <Link href={backHref}>← Back to platform</Link>
           </Button>
         </CardContent>

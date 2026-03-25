@@ -72,7 +72,12 @@ export function GettingStartedCard({
               {completed}/{total}
             </span>
             {onDismiss && (
-              <Button variant="ghost" size="sm" onClick={onDismiss}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="font-semibold text-[var(--brand-text-muted)] hover:bg-[var(--brand-surface-alt)] hover:text-[var(--brand-text)]"
+                onClick={onDismiss}
+              >
                 Dismiss
               </Button>
             )}

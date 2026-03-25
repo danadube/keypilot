@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnPrimary } from "@/components/ui/kp-dashboard-button-tiers";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -150,7 +152,12 @@ export function HostFeedbackForm({
         />
       </div>
 
-      <Button type="submit" disabled={saving}>
+      <Button
+        type="submit"
+        variant="outline"
+        className={cn(kpBtnPrimary, "border-transparent")}
+        disabled={saving}
+      >
         {saving ? "Saving..." : "Save feedback"}
       </Button>
     </form>

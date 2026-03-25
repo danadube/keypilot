@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Check, Copy, Mail, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 
 /** Browsers and mail clients vary; very long mailto URLs may be truncated or ignored. */
 export const BUYER_AGENT_FEEDBACK_MAILTO_MAX_LENGTH = 1950;
@@ -116,7 +117,15 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {mailtoHref && !mailtoTooLong && (
-          <Button asChild variant="default" size="sm" className="h-8 gap-1.5 text-xs font-semibold">
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className={cn(
+              kpBtnPrimary,
+              "border-transparent h-8 gap-1.5 text-xs font-semibold"
+            )}
+          >
             <a href={mailtoHref}>
               <Send className="h-3.5 w-3.5" />
               Create email
@@ -126,9 +135,9 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
         {mailtoHref && mailtoTooLong && (
           <Button
             type="button"
-            variant="default"
+            variant="outline"
             size="sm"
-            className="h-8 text-xs opacity-60"
+            className={cn(kpBtnPrimary, "border-transparent h-8 text-xs opacity-60")}
             disabled
             title="This draft is too long for a mailto link on some systems. Use copy actions below."
           >
@@ -141,7 +150,10 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
           type="button"
           variant="outline"
           size="sm"
-          className={cn("h-8 text-xs", btnOutline)}
+          className={cn(
+            "h-8 text-xs",
+            variant === "brand" ? btnOutline : kpBtnSecondary
+          )}
           onClick={() => copy("subject")}
         >
           {copied === "subject" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -151,7 +163,10 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
           type="button"
           variant="outline"
           size="sm"
-          className={cn("h-8 text-xs", btnOutline)}
+          className={cn(
+            "h-8 text-xs",
+            variant === "brand" ? btnOutline : kpBtnSecondary
+          )}
           onClick={() => copy("body")}
         >
           {copied === "body" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
@@ -161,7 +176,10 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
           type="button"
           variant="outline"
           size="sm"
-          className={cn("h-8 text-xs", btnOutline)}
+          className={cn(
+            "h-8 text-xs",
+            variant === "brand" ? btnOutline : kpBtnSecondary
+          )}
           onClick={() => copy("both")}
         >
           {copied === "both" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}

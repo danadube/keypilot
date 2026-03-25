@@ -9,6 +9,7 @@ import { ProductTierProvider } from "@/components/ProductTierProvider";
 import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { kpBtnSave, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
 
 function getPageTitle(pathname: string): string {
@@ -82,7 +83,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-7 shrink-0 border-kp-outline bg-transparent px-2.5 text-[11px] text-kp-on-surface hover:bg-kp-surface-high hover:text-kp-on-surface [&_svg]:h-3 [&_svg]:w-3"
+                  className={cn(
+                    kpBtnSecondary,
+                    "h-7 shrink-0 px-2.5 text-[11px] [&_svg]:h-3 [&_svg]:w-3"
+                  )}
                   asChild
                 >
                   <Link href="/properties/new">
@@ -91,8 +95,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                   </Link>
                 </Button>
                 <Button
+                  variant="outline"
                   size="sm"
-                  className="h-7 shrink-0 border-0 bg-kp-gold px-2.5 text-[11px] font-semibold text-kp-bg hover:bg-kp-gold-bright [&_svg]:h-3 [&_svg]:w-3"
+                  className={cn(
+                    kpBtnSave,
+                    "h-7 shrink-0 border-transparent px-2.5 text-[11px] [&_svg]:h-3 [&_svg]:w-3"
+                  )}
                   asChild
                 >
                   <Link href="/open-houses/new">

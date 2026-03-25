@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  kpBtnPrimary,
+  kpBtnSecondary,
+  kpBtnTertiary,
+} from "@/components/ui/kp-dashboard-button-tiers";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -97,7 +103,7 @@ export function NewShowingForm() {
         title="Schedule Showing"
         description="Create a single private showing (different from an open house)."
         action={
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="sm" className={cn(kpBtnTertiary)} asChild>
             <Link href="/showing-hq/showings">← Back</Link>
           </Button>
         }
@@ -186,10 +192,15 @@ export function NewShowingForm() {
               </Label>
             </div>
             <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={submitting}>
+              <Button
+                type="submit"
+                variant="outline"
+                disabled={submitting}
+                className={cn(kpBtnPrimary, "border-transparent")}
+              >
                 {submitting ? "Creating..." : "Create Showing"}
               </Button>
-              <Button variant="outline" type="button" asChild>
+              <Button variant="outline" type="button" className={cn(kpBtnSecondary)} asChild>
                 <Link href="/showing-hq/showings">Cancel</Link>
               </Button>
             </div>

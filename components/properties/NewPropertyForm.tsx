@@ -4,6 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  kpBtnPrimary,
+  kpBtnSecondary,
+  kpBtnTertiary,
+} from "@/components/ui/kp-dashboard-button-tiers";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -110,7 +116,7 @@ export function NewPropertyForm() {
   return (
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" asChild>
+        <Button variant="ghost" size="sm" className={cn(kpBtnTertiary)} asChild>
           <Link href="/properties">← Back</Link>
         </Button>
         <h1 className="text-2xl font-semibold">Add property</h1>
@@ -146,7 +152,8 @@ export function NewPropertyForm() {
                 />
                 <Button
                   type="button"
-                  variant="secondary"
+                  variant="outline"
+                  className={cn(kpBtnSecondary)}
                   onClick={handleAddressLookup}
                   disabled={lookupLoading}
                 >
@@ -164,7 +171,8 @@ export function NewPropertyForm() {
                 />
                 <Button
                   type="button"
-                  variant="secondary"
+                  variant="outline"
+                  className={cn(kpBtnSecondary)}
                   onClick={handleMlsLookup}
                   disabled={lookupLoading}
                 >
@@ -251,10 +259,15 @@ export function NewPropertyForm() {
             </div>
 
             <div className="flex gap-3">
-              <Button type="submit" disabled={submitting}>
+              <Button
+                type="submit"
+                variant="outline"
+                disabled={submitting}
+                className={cn(kpBtnPrimary, "border-transparent")}
+              >
                 {submitting ? "Creating..." : "Add property"}
               </Button>
-              <Button type="button" variant="outline" asChild>
+              <Button type="button" variant="outline" className={cn(kpBtnSecondary)} asChild>
                 <Link href="/properties">Cancel</Link>
               </Button>
             </div>

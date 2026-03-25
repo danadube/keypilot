@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { trackEvent } from "@/lib/track-usage-client";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  kpBtnDangerSecondary,
+  kpBtnPrimary,
+  kpBtnSecondary,
+  kpBtnTertiary,
+} from "@/components/ui/kp-dashboard-button-tiers";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { MessageSquare, Send } from "lucide-react";
 import {
@@ -60,12 +67,26 @@ export function FeedbackButton({
     }
   };
 
+  /** Align trigger with kp-dashboard tiers (modal footers already use tiers). */
+  const trigger =
+    variant === "default"
+      ? { buttonVariant: "outline" as const, tierClass: cn(kpBtnPrimary, "border-transparent") }
+      : variant === "secondary"
+        ? { buttonVariant: "outline" as const, tierClass: kpBtnSecondary }
+        : variant === "destructive"
+          ? { buttonVariant: "outline" as const, tierClass: kpBtnDangerSecondary }
+        : variant === "outline"
+          ? { buttonVariant: "outline" as const, tierClass: kpBtnSecondary }
+          : variant === "ghost"
+            ? { buttonVariant: "ghost" as const, tierClass: kpBtnTertiary }
+            : { buttonVariant: variant, tierClass: undefined };
+
   return (
     <>
       <Button
-        variant={variant}
+        variant={trigger.buttonVariant}
         size={size}
-        className={className}
+        className={cn(trigger.tierClass, className)}
         onClick={() => setOpen(true)}
       >
         {children ?? (
@@ -83,10 +104,21 @@ export function FeedbackButton({
         size="sm"
         footer={
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-end">
-            <Button variant="outline" size="sm" onClick={() => handleOpenChange(false)}>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(kpBtnSecondary)}
+              onClick={() => handleOpenChange(false)}
+            >
               Cancel
             </Button>
-            <Button size="sm" onClick={handleSubmit} disabled={!message.trim()}>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(kpBtnPrimary, "border-transparent")}
+              onClick={handleSubmit}
+              disabled={!message.trim()}
+            >
               <Send className="mr-2 h-4 w-4" />
               Open email
             </Button>

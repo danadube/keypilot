@@ -2,6 +2,8 @@
 
 import { useCallback, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnDangerSecondary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { ImagePlus, Upload, Trash2 } from "lucide-react";
 
 type PropertyKeyPhotoPanelProps = {
@@ -96,7 +98,7 @@ export function PropertyKeyPhotoPanel({ propertyId, imageUrl, onImagePatch }: Pr
             <Button
               variant="outline"
               size="sm"
-              className="h-8 border-kp-outline bg-transparent text-xs text-kp-on-surface hover:bg-kp-surface-high"
+              className={cn(kpBtnSecondary, "h-8 text-xs")}
               disabled={busy}
               onClick={() => inputRef.current?.click()}
             >
@@ -104,9 +106,9 @@ export function PropertyKeyPhotoPanel({ propertyId, imageUrl, onImagePatch }: Pr
               {busy ? "Uploading…" : "Replace image"}
             </Button>
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="h-8 text-xs text-red-400 hover:bg-red-500/10 hover:text-red-400"
+              className={cn(kpBtnDangerSecondary, "h-8 text-xs")}
               disabled={busy}
               onClick={handleRemove}
             >
@@ -123,7 +125,7 @@ export function PropertyKeyPhotoPanel({ propertyId, imageUrl, onImagePatch }: Pr
           <Button
             variant="outline"
             size="sm"
-            className="h-8 border-kp-outline bg-kp-surface text-xs text-kp-on-surface hover:bg-kp-surface-high"
+            className={cn(kpBtnSecondary, "h-8 text-xs")}
             disabled={busy}
             onClick={() => inputRef.current?.click()}
           >

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnPrimary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { ModuleGate } from "@/components/shared/ModuleGate";
 import {
   Card,
@@ -44,7 +46,7 @@ export default function ClientKeepOverviewPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">ClientKeep</h1>
-        <Button asChild>
+        <Button variant="outline" className={cn(kpBtnPrimary, "border-transparent")} asChild>
           <Link href="/contacts">View all contacts</Link>
         </Button>
       </div>
@@ -57,7 +59,14 @@ export default function ClientKeepOverviewPage() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold">{stats?.contactsCount ?? 0}</p>
-            <Button variant="link" className="h-auto p-0" asChild>
+            <Button
+              variant="ghost"
+              className={cn(
+                kpBtnTertiary,
+                "h-auto justify-start p-0 text-kp-teal hover:bg-transparent hover:text-kp-teal hover:underline"
+              )}
+              asChild
+            >
               <Link href="/contacts">View all →</Link>
             </Button>
           </CardContent>

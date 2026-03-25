@@ -5,6 +5,8 @@ import Link from "next/link";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { Home, Calendar, Users, Mail, Send, MessageSquare, ArrowLeft } from "lucide-react";
 
 type SummaryData = {
@@ -65,12 +67,7 @@ export default function ShowingHQAnalyticsPage() {
             ShowingHQ beta event counts. Internal use.
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 gap-1.5 px-2 text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
-          asChild
-        >
+        <Button variant="ghost" size="sm" className={cn(kpBtnTertiary, "h-8 gap-1.5 px-2")} asChild>
           <Link href="/showing-hq">
             <ArrowLeft className="h-4 w-4" />
             Back
