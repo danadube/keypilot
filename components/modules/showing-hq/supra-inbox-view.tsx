@@ -1273,14 +1273,14 @@ export function SupraInboxView() {
               "needs_review",
               "Needs review",
               counts.needsReview,
-              "bg-kp-gold font-semibold text-kp-bg shadow-md hover:bg-kp-gold-bright"
+              "bg-kp-gold font-semibold text-kp-bg shadow-md hover:bg-kp-gold-bright hover:text-kp-bg"
             )}
             {filterChip("ready_to_apply", "Ready to apply", counts.ready)}
             {filterChip(
               "failed_parse",
               "Failed parse",
               counts.failed,
-              "bg-red-700 font-semibold text-white shadow-md hover:bg-red-600"
+              "bg-red-700 font-semibold text-white shadow-md hover:bg-red-600 hover:text-white"
             )}
             {filterChip("closed", "Closed", counts.closed)}
           </div>
