@@ -260,7 +260,7 @@ export function SupraInboxQueueRow({
             </span>
           </div>
 
-          <p className="border-t border-kp-outline pt-2 text-[11px] tabular-nums text-kp-on-surface-variant">
+          <p className="border-t border-kp-outline pt-2 text-[11px] tabular-nums text-kp-on-surface/78">
             Received {new Date(row.receivedAt).toLocaleString()}
           </p>
         </div>
@@ -275,7 +275,7 @@ export function SupraInboxQueueRow({
             <Button
               type="button"
               size="sm"
-              className="h-9 min-h-9 bg-kp-teal px-4 font-bold text-kp-bg shadow-sm hover:bg-kp-teal/90"
+              className="h-9 min-h-9 bg-kp-teal px-4 font-bold text-kp-bg shadow-md ring-2 ring-kp-teal/35 hover:bg-kp-teal/92 hover:ring-kp-teal/50"
               disabled={applyLoading || applyBlockedByOtherRow}
               onClick={(e) => {
                 e.stopPropagation();
@@ -296,7 +296,7 @@ export function SupraInboxQueueRow({
             type="button"
             variant="outline"
             size="sm"
-            className="h-9 min-h-9 min-w-[6.5rem] border-2 border-kp-teal/70 bg-kp-surface-high px-4 font-bold text-kp-on-surface shadow-sm hover:border-kp-teal hover:bg-kp-surface-higher"
+            className="h-9 min-h-9 min-w-[6.5rem] border-2 border-kp-outline bg-kp-surface-high px-4 font-bold text-kp-on-surface shadow-sm hover:border-kp-teal/80 hover:bg-kp-surface-higher hover:text-kp-on-surface"
             onClick={(e) => {
               e.stopPropagation();
               onReview();

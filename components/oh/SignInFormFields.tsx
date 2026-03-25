@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { BrandButton } from "@/components/ui/BrandButton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -154,7 +154,7 @@ export function SignInFormFields({
           className="h-11 text-base"
         />
       </div>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-[var(--brand-text-muted)]">
         Please provide at least email or phone so we can follow up.
       </p>
       <div className="space-y-2">
@@ -165,40 +165,40 @@ export function SignInFormFields({
             { value: "MAYBE_INTERESTED", label: "Maybe interested" },
             { value: "JUST_BROWSING", label: "Just browsing" },
           ].map((opt) => (
-            <Button
+            <BrandButton
               key={opt.value}
               type="button"
-              variant={interestLevel === opt.value ? "default" : "outline"}
+              variant={interestLevel === opt.value ? "primary" : "secondary"}
               size="sm"
-              className="h-10 touch-manipulation"
+              className="h-10 touch-manipulation font-semibold shadow-sm"
               onClick={() => setInterestLevel(interestLevel === opt.value ? "" : opt.value)}
             >
               {opt.label}
-            </Button>
+            </BrandButton>
           ))}
         </div>
       </div>
       <div className="space-y-2">
         <Label>Do you have a real estate agent?</Label>
         <div className="flex gap-2">
-          <Button
+          <BrandButton
             type="button"
-            variant={hasAgent === "yes" ? "default" : "outline"}
+            variant={hasAgent === "yes" ? "primary" : "secondary"}
             size="sm"
-            className="h-10 flex-1 touch-manipulation"
+            className="h-10 flex-1 touch-manipulation font-semibold shadow-sm"
             onClick={() => setHasAgent(hasAgent === "yes" ? "" : "yes")}
           >
             Yes
-          </Button>
-          <Button
+          </BrandButton>
+          <BrandButton
             type="button"
-            variant={hasAgent === "no" ? "default" : "outline"}
+            variant={hasAgent === "no" ? "primary" : "secondary"}
             size="sm"
-            className="h-10 flex-1 touch-manipulation"
+            className="h-10 flex-1 touch-manipulation font-semibold shadow-sm"
             onClick={() => setHasAgent(hasAgent === "no" ? "" : "no")}
           >
             No
-          </Button>
+          </BrandButton>
         </div>
       </div>
       <div className="space-y-2">
@@ -211,14 +211,15 @@ export function SignInFormFields({
           rows={compact ? 2 : 2}
         />
       </div>
-      <Button
+      <BrandButton
         type="submit"
-        className="h-12 w-full text-base font-semibold sm:h-12"
-        size={compact ? "default" : "lg"}
+        variant="primary"
+        size={compact ? "md" : "lg"}
+        className="h-12 w-full text-base font-semibold shadow-md sm:h-12"
         disabled={submitting}
       >
         {submitting ? "Checking in..." : "Check in"}
-      </Button>
+      </BrandButton>
     </form>
   );
 }

@@ -125,7 +125,7 @@ const fieldInput =
 const fieldTextarea =
   "min-h-[72px] w-full rounded-md border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal focus-visible:border-kp-teal";
 
-const reviewFormLabel = "text-xs text-kp-on-surface/70 uppercase tracking-wide";
+const reviewFormLabel = "text-xs font-medium text-kp-on-surface/82 uppercase tracking-wide";
 
 const reviewSectionTitle = "text-sm font-semibold text-kp-on-surface";
 
@@ -140,17 +140,18 @@ const reviewRawBodyTextarea = cn(
 
 /** Subtle workflow rails (review modal). */
 const reviewWorkflowRail =
-  "text-[11px] font-medium uppercase tracking-wide text-kp-on-surface/55";
+  "text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface/70";
 
-const reviewRightCard = "rounded-lg border border-kp-outline/70 bg-kp-surface p-3 shadow-sm";
+const reviewRightCard =
+  "rounded-lg border border-kp-outline bg-kp-surface p-3 shadow-sm ring-1 ring-black/[0.04] dark:ring-white/[0.06]";
 
-/** Work-queue typography: readable primary + visible secondary (avoid muddy variant stacking) */
+/** Work-queue typography: strong primary, readable secondary, metadata still legible on dark surfaces. */
 const t = {
   label: "text-sm font-medium text-kp-on-surface",
-  section: "text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface/72",
+  section: "text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface/85",
   body: "text-sm leading-snug text-kp-on-surface",
-  meta: "text-xs leading-snug text-kp-on-surface/78",
-  metaQuiet: "text-[11px] leading-snug text-kp-on-surface/68",
+  meta: "text-xs leading-snug text-kp-on-surface/88",
+  metaQuiet: "text-[11px] leading-snug text-kp-on-surface/80",
 } as const;
 
 function rawBodyLines(text: string): string[] {
@@ -1355,7 +1356,7 @@ export function SupraInboxView() {
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 self-start text-xs font-medium text-kp-on-surface/55 hover:bg-kp-surface-high hover:text-kp-on-surface/80"
+            className="h-8 self-start text-xs font-semibold text-kp-on-surface/75 hover:bg-kp-surface-high hover:text-kp-on-surface"
             disabled={
               clearingTestInbox || loading || pasting || gmailImporting || clearableQueueCount === 0
             }
@@ -1885,7 +1886,7 @@ export function SupraInboxView() {
                   <p className={reviewWorkflowRail}>Match</p>
                   <div className={cn(reviewRightCard, "space-y-3")}>
                     <p className="text-xs font-semibold text-kp-on-surface">Property &amp; showing</p>
-                    <p className="text-[11px] leading-snug text-kp-on-surface/68">
+                    <p className={cn("text-[11px] leading-snug", t.meta)}>
                       Suggestions are hints — pick one or type IDs. New listing: leave property blank if apply creates
                       from parsed address.
                     </p>
@@ -1896,8 +1897,8 @@ export function SupraInboxView() {
                 (detail.parsedZip?.replace(/\D/g, "").length ?? 0) >= 5) ? (
                 <div
                   className={cn(
-                    "mb-2 rounded-lg border border-kp-outline/50 bg-transparent p-2",
-                    detail.parseConfidence === Confidences.LOW && "opacity-[0.92]"
+                    "mb-2 rounded-lg border border-kp-outline/70 bg-kp-bg/30 p-2",
+                    detail.parseConfidence === Confidences.LOW && "border-amber-500/35 ring-1 ring-amber-500/15"
                   )}
                 >
                   <p className={t.section}>Suggested properties</p>
@@ -1923,7 +1924,7 @@ export function SupraInboxView() {
                             <span className="font-semibold text-kp-on-surface">
                               {s.address1}, {s.city}, {s.state} {s.zip}
                             </span>
-                            <span className="ml-2 text-[10px] font-semibold uppercase text-kp-on-surface/65">
+                            <span className="ml-2 text-[10px] font-semibold uppercase text-kp-on-surface/78">
                               {propertyMatchKindLabel(s.matchKind)}
                             </span>
                           </button>
@@ -1940,8 +1941,8 @@ export function SupraInboxView() {
                 propertySuggestions.length > 0) ? (
                 <div
                   className={cn(
-                    "mb-2 rounded-lg border border-kp-outline/50 bg-transparent p-2",
-                    detail.parseConfidence === Confidences.LOW && "opacity-[0.92]"
+                    "mb-2 rounded-lg border border-kp-outline/70 bg-kp-bg/30 p-2",
+                    detail.parseConfidence === Confidences.LOW && "border-amber-500/35 ring-1 ring-amber-500/15"
                   )}
                 >
                   <p className={t.section}>Possible showings (±4h)</p>
@@ -1976,13 +1977,13 @@ export function SupraInboxView() {
                             onClick={() => selectShowingSuggestion(s)}
                           >
                             {showingSuggestMultiProperty ? (
-                              <span className="mb-0.5 block truncate text-[10px] font-normal text-kp-on-surface/65">
+                              <span className="mb-0.5 block truncate text-[10px] font-medium text-kp-on-surface/78">
                                 {s.property.address1}, {s.property.city} {s.property.state}
                               </span>
                             ) : null}
                             <span className="text-kp-on-surface">
                               {new Date(s.scheduledAt).toLocaleString()}{" "}
-                              <span className="text-kp-on-surface/70">(±{s.minutesDelta} min)</span>
+                              <span className="text-kp-on-surface/82">(±{s.minutesDelta} min)</span>
                             </span>
                           </button>
                         </li>
@@ -1993,7 +1994,7 @@ export function SupraInboxView() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="mt-2 h-8 px-2 text-xs font-medium text-kp-on-surface/80 hover:text-kp-on-surface"
+                    className="mt-2 h-8 px-2 text-xs font-semibold text-kp-on-surface/90 hover:bg-kp-surface-high hover:text-kp-on-surface"
                     onClick={clearShowingMatch}
                   >
                     Clear showing match (create new showing on apply)
@@ -2039,7 +2040,7 @@ export function SupraInboxView() {
                     }
                   />
                   {detail.matchedShowing ? (
-                    <p className="mt-1 text-xs text-kp-on-surface/78">
+                    <p className={cn("mt-1 text-xs", t.meta)}>
                       {new Date(detail.matchedShowing.scheduledAt).toLocaleString()}
                     </p>
                   ) : null}
@@ -2089,7 +2090,7 @@ export function SupraInboxView() {
                 <section className="space-y-2" aria-label="Apply to KeyPilot">
                   <p className={reviewWorkflowRail}>Apply</p>
                   {detail && !TERMINAL_STATES.includes(detail.queueState) ? (
-              <div className="rounded-lg border border-kp-teal/40 bg-kp-teal/[0.06] p-3 shadow-sm">
+              <div className="rounded-lg border border-kp-teal/50 bg-kp-teal/[0.1] p-3 shadow-sm ring-1 ring-kp-teal/15">
                 <div className="flex items-start gap-2">
                   <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" />
                   <div className="min-w-0 flex-1">
@@ -2106,7 +2107,7 @@ export function SupraInboxView() {
                       </ul>
                     ) : null}
                     {applyDuplicate && applyDuplicate.conflicts.length > 0 ? (
-                      <div className="mt-2 rounded-md border border-kp-outline/90 bg-kp-surface-high p-2.5">
+                      <div className="mt-2 rounded-md border border-kp-outline bg-kp-surface-high p-2.5 shadow-sm">
                         <p className="text-sm font-semibold text-kp-on-surface">
                           Duplicate check (±{applyDuplicate.context.windowHours}h)
                         </p>
@@ -2118,7 +2119,7 @@ export function SupraInboxView() {
                           . Another showing on this listing falls in that window.
                         </p>
                         {applyDuplicate.serverGuidance ? (
-                          <p className={cn("mt-1.5 text-xs leading-snug text-kp-on-surface/88", t.meta)}>
+                          <p className={cn("mt-1.5 text-xs leading-snug", t.body)}>
                             {applyDuplicate.serverGuidance}
                           </p>
                         ) : null}
@@ -2129,13 +2130,13 @@ export function SupraInboxView() {
                         </p>
                         {applyDuplicate.context.property ? (
                           <p className={cn("mt-2 text-xs font-medium text-kp-on-surface", t.meta)}>
-                            <span className="text-kp-on-surface/70">Property: </span>
+                            <span className="text-kp-on-surface/80">Property: </span>
                             {applyDuplicate.context.property.address1}, {applyDuplicate.context.property.city},{" "}
                             {applyDuplicate.context.property.state} {applyDuplicate.context.property.zip}
                           </p>
                         ) : detail.parsedAddress1?.trim() ? (
                           <p className={cn("mt-2 text-xs font-medium text-kp-on-surface", t.meta)}>
-                            <span className="text-kp-on-surface/70">Parsed address: </span>
+                            <span className="text-kp-on-surface/80">Parsed address: </span>
                             {detail.parsedAddress1}
                             {detail.parsedCity ? `, ${detail.parsedCity}` : ""}
                             {detail.parsedState ? `, ${detail.parsedState}` : ""}
@@ -2146,20 +2147,20 @@ export function SupraInboxView() {
                           {applyDuplicate.conflicts.map((c) => (
                             <li
                               key={c.id}
-                              className="rounded-md border border-kp-outline/60 bg-kp-bg/40 px-2 py-1.5"
+                              className="rounded-md border border-kp-outline/80 bg-kp-surface-high/90 px-2 py-1.5"
                             >
                               <p className="text-xs font-semibold text-kp-on-surface">
                                 {new Date(c.scheduledAt).toLocaleString()}
-                                <span className="ml-1.5 font-normal text-kp-on-surface/75">
+                                <span className="ml-1.5 font-normal text-kp-on-surface/85">
                                   ({c.minutesFromParsed === 0 ? "same time" : `±${c.minutesFromParsed} min`} vs parsed)
                                 </span>
                               </p>
-                              <p className="mt-0.5 font-mono text-[10px] text-kp-on-surface/65">{c.id}</p>
+                              <p className="mt-0.5 font-mono text-[10px] text-kp-on-surface/78">{c.id}</p>
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="mt-1.5 h-7 border-kp-outline/70 px-2 text-[11px] font-semibold"
+                                className="mt-1.5 h-7 border-kp-outline bg-kp-surface-high px-2 text-[11px] font-semibold text-kp-on-surface shadow-sm hover:border-kp-teal/40 hover:bg-kp-surface-high"
                                 disabled={Boolean(dupLinkShowingId) || applying}
                                 onClick={() => void linkQueueToExistingShowing(c, applyDuplicate)}
                               >
@@ -2194,7 +2195,7 @@ export function SupraInboxView() {
                 <Button
                   type="button"
                   size="sm"
-                  className="mt-3 w-full bg-kp-teal font-semibold text-kp-bg hover:bg-kp-teal/90"
+                  className="mt-3 w-full bg-kp-teal font-semibold text-kp-bg shadow-md ring-2 ring-kp-teal/30 hover:bg-kp-teal/92 hover:ring-kp-teal/45"
                   disabled={
                     applying ||
                     !applyReadiness.ok ||
@@ -2221,37 +2222,37 @@ export function SupraInboxView() {
                 </Button>
               </div>
                   ) : (
-                    <p className="rounded-md border border-kp-outline/35 bg-kp-surface-high/40 px-2.5 py-2 text-[11px] leading-snug text-kp-on-surface/58">
+                    <p className="rounded-md border border-kp-outline/50 bg-kp-surface-high px-2.5 py-2 text-[11px] leading-snug text-kp-on-surface/80">
                       Apply is not available for this queue state.
                     </p>
                   )}
                 </section>
 
-                <div className="rounded-lg border border-kp-outline/40 bg-transparent">
+                <div className="rounded-lg border border-kp-outline/55 bg-transparent">
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-kp-surface-high/35"
+                    className="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-kp-surface-high/50"
                     onClick={() => setReviewAdvancedOpen((o) => !o)}
                     aria-expanded={reviewAdvancedOpen}
                   >
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/50">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/72">
                       Advanced — queue &amp; routing
                     </span>
                     <ChevronDown
                       className={cn(
-                        "h-4 w-4 shrink-0 text-kp-on-surface/45 transition-transform",
+                        "h-4 w-4 shrink-0 text-kp-on-surface/65 transition-transform",
                         reviewAdvancedOpen && "rotate-180"
                       )}
                     />
                   </button>
                   {reviewAdvancedOpen ? (
-                    <div className="space-y-2.5 border-t border-kp-outline/35 px-2.5 pb-3 pt-2.5">
-                      <p className="text-[10px] leading-snug text-kp-on-surface/55">
+                    <div className="space-y-2.5 border-t border-kp-outline/50 px-2.5 pb-3 pt-2.5">
+                      <p className="text-[10px] leading-snug text-kp-on-surface/72">
                         Queue metadata overrides and internal notes — use when debugging or closing items.
                       </p>
                       <div className="grid grid-cols-1 gap-2">
                         <div>
-                          <Label className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/50">
+                          <Label className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/72">
                             Queue state
                           </Label>
                           <select
@@ -2269,7 +2270,7 @@ export function SupraInboxView() {
                           </select>
                         </div>
                         <div>
-                          <Label className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/50">
+                          <Label className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/72">
                             Parse confidence
                           </Label>
                           <select
@@ -2290,7 +2291,7 @@ export function SupraInboxView() {
                           </select>
                         </div>
                         <div>
-                          <Label className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/50">
+                          <Label className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/72">
                             Proposed action
                           </Label>
                           <select
@@ -2312,7 +2313,7 @@ export function SupraInboxView() {
                         </div>
                       </div>
                       <div>
-                        <Label className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/50">
+                        <Label className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/72">
                           Resolution notes
                         </Label>
                         <textarea

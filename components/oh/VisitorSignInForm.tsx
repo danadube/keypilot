@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { BrandButton } from "@/components/ui/BrandButton";
 import {
   Card,
   CardContent,
@@ -87,13 +87,14 @@ export function VisitorSignInForm({ slug }: { slug: string }) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button
-              variant="outline"
-              className="w-full"
+            <BrandButton
+              variant="secondary"
+              size="md"
+              className="w-full font-semibold shadow-sm"
               onClick={() => setSuccess(false)}
             >
               Sign in another person
-            </Button>
+            </BrandButton>
           </CardContent>
         </Card>
       </div>
