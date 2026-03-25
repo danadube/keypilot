@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import {
   Card,
   CardContent,
@@ -188,7 +189,7 @@ export function ContactsList() {
                     <TableCell>{c.phone || "—"}</TableCell>
                     <TableCell>{c.source}</TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="sm" asChild>
+                      <Button variant="ghost" size="sm" className={kpBtnTertiary} asChild>
                         <Link href={`/contacts/${c.id}`}>View</Link>
                       </Button>
                     </TableCell>

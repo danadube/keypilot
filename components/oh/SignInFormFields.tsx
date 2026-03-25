@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -95,8 +96,11 @@ export function SignInFormFields({
     }
   };
 
+  const fieldClass =
+    "border-[var(--brand-border)] bg-[var(--brand-surface)] text-[var(--brand-text)] placeholder:text-[var(--brand-text-muted)]";
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 text-[var(--brand-text)]">
       {error && (
         <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
           {error}
@@ -104,7 +108,7 @@ export function SignInFormFields({
       )}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="firstName" className="text-sm font-medium">
+          <Label htmlFor="firstName" className="text-sm font-medium text-[var(--brand-text)]">
             First name <span className="text-destructive">*</span>
           </Label>
           <Input
@@ -112,11 +116,11 @@ export function SignInFormFields({
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
             required
-            className="h-12 text-base"
+            className={cn("h-12 text-base", fieldClass)}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="lastName" className="text-sm font-medium">
+          <Label htmlFor="lastName" className="text-sm font-medium text-[var(--brand-text)]">
             Last name <span className="text-destructive">*</span>
           </Label>
           <Input
@@ -124,12 +128,12 @@ export function SignInFormFields({
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
             required
-            className="h-12 text-base"
+            className={cn("h-12 text-base", fieldClass)}
           />
         </div>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="email" className="text-sm font-medium">
+        <Label htmlFor="email" className="text-sm font-medium text-[var(--brand-text)]">
           Email
         </Label>
         <Input
@@ -138,11 +142,11 @@ export function SignInFormFields({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="you@example.com"
-          className="h-11 text-base"
+          className={cn("h-11 text-base", fieldClass)}
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="phone" className="text-sm font-medium">
+        <Label htmlFor="phone" className="text-sm font-medium text-[var(--brand-text)]">
           Phone
         </Label>
         <Input
@@ -151,14 +155,14 @@ export function SignInFormFields({
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           placeholder="(555) 123-4567"
-          className="h-11 text-base"
+          className={cn("h-11 text-base", fieldClass)}
         />
       </div>
       <p className="text-xs text-[var(--brand-text-muted)]">
         Please provide at least email or phone so we can follow up.
       </p>
       <div className="space-y-2">
-        <Label>What best describes your interest in this home?</Label>
+        <Label className="text-[var(--brand-text)]">What best describes your interest in this home?</Label>
         <div className="flex flex-wrap gap-2">
           {[
             { value: "VERY_INTERESTED", label: "Very interested" },
@@ -179,7 +183,7 @@ export function SignInFormFields({
         </div>
       </div>
       <div className="space-y-2">
-        <Label>Do you have a real estate agent?</Label>
+        <Label className="text-[var(--brand-text)]">Do you have a real estate agent?</Label>
         <div className="flex gap-2">
           <BrandButton
             type="button"
@@ -202,13 +206,16 @@ export function SignInFormFields({
         </div>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="notes">Notes</Label>
+        <Label htmlFor="notes" className="text-[var(--brand-text)]">
+          Notes
+        </Label>
         <Textarea
           id="notes"
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Anything you'd like to share?"
           rows={compact ? 2 : 2}
+          className={cn(fieldClass, "min-h-[80px]")}
         />
       </div>
       <BrandButton

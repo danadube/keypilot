@@ -22,17 +22,17 @@ const sizeClasses: Record<BrandButtonSize, string> = {
 
 const variantClasses: Record<BrandButtonVariant, string> = {
   primary:
-    "bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)] hover:bg-[var(--brand-primary-hover)] active:bg-[var(--brand-primary-active)] shadow-[var(--shadow-sm)]",
+    "bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)] hover:bg-[var(--brand-primary-hover)] hover:text-[var(--brand-primary-foreground)] active:bg-[var(--brand-primary-active)] shadow-[var(--shadow-sm)]",
   secondary:
-    "bg-[var(--brand-surface)] text-[var(--brand-text)] border border-[var(--brand-border)] hover:bg-[var(--brand-surface-alt)]",
+    "bg-[var(--brand-surface)] text-[var(--brand-text)] border border-[var(--brand-border)] hover:bg-[var(--brand-surface-alt)] hover:text-[var(--brand-text)]",
   accent:
-    "bg-[var(--brand-accent)] text-white hover:opacity-90 active:opacity-80 shadow-[var(--shadow-sm)]",
+    "bg-[var(--brand-accent)] text-white hover:opacity-90 hover:text-white active:opacity-80 shadow-[var(--shadow-sm)]",
   success:
-    "bg-[var(--brand-secondary)] text-white hover:opacity-90 active:opacity-80 shadow-[var(--shadow-sm)]",
+    "bg-[var(--brand-secondary)] text-white hover:opacity-90 hover:text-white active:opacity-80 shadow-[var(--shadow-sm)]",
   ghost:
-    "bg-transparent text-[var(--brand-text)] hover:bg-[var(--brand-surface-alt)]",
+    "bg-transparent text-[var(--brand-text)] hover:bg-[var(--brand-surface-alt)] hover:text-[var(--brand-text)]",
   danger:
-    "bg-[var(--brand-danger)] text-[var(--brand-danger-foreground)] hover:opacity-90 active:opacity-80",
+    "bg-[var(--brand-danger)] text-[var(--brand-danger-foreground)] hover:opacity-90 hover:text-[var(--brand-danger-foreground)] active:opacity-80",
 };
 
 export const BrandButton = React.forwardRef<HTMLButtonElement, BrandButtonProps>(

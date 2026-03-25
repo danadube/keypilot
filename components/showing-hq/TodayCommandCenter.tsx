@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandButton } from "@/components/ui/BrandButton";
+import { cn } from "@/lib/utils";
+import { kpBtnSecondary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { getRelativeTimeLabel } from "@/lib/relative-time-label";
 
 type OpenHouseItem = {
@@ -189,10 +191,10 @@ export function TodayCommandCenter({
                   View showing
                 </Link>
               </BrandButton>
-              <Button variant="outline" size="sm" className="h-9" asChild>
+              <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-9")} asChild>
                 <Link href="/showing-hq/showings">Reschedule</Link>
               </Button>
-              <Button variant="outline" size="sm" className="h-9" asChild>
+              <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-9")} asChild>
                 <Link href="/showing-hq/feedback-requests">Request feedback</Link>
               </Button>
             </>
@@ -213,13 +215,18 @@ export function TodayCommandCenter({
                   </a>
                 </BrandButton>
               )}
-              <Button variant="outline" size="sm" className="h-9" asChild>
+              <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-9")} asChild>
                 <Link href={`/open-houses/${primaryOh.id}/sign-in/print`}>
                   Print QR Poster
                 </Link>
               </Button>
               {signInUrl && (
-                <Button variant="ghost" size="sm" className="h-9" onClick={onCopyLink(signInUrl)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(kpBtnTertiary, "h-9")}
+                  onClick={onCopyLink(signInUrl)}
+                >
                   <Copy className="mr-1.5 h-3.5 w-3.5" />
                   {linkCopied ? "Copied" : "Copy link"}
                 </Button>
@@ -242,7 +249,7 @@ export function TodayCommandCenter({
                   </a>
                 </BrandButton>
               )}
-              <Button variant="outline" size="sm" className="h-9" asChild>
+              <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-9")} asChild>
                 <Link href={`/open-houses/${primaryOh.id}/sign-in/print`}>
                   Print QR Poster
                 </Link>
