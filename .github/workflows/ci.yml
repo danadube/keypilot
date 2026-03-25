@@ -71,10 +71,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run RLS isolation tests
-        run: npm run test:integration
+      # Keep preview DB in sync with prisma/migrations (e.g. new columns). RLS tests
+      # seed via Prisma and fail if the schema lags (P2022 column does not exist).
+      - name: Apply Prisma migrations (preview DB)
+        shell: bash
+        run: |
+          export DIRECT_URL="${DIRECT_URL:-$DATABASE_URL}"
+          npx prisma migrate deploy
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+      - name: Run RLS isolation tests
+        shell: bash
+        run: |
+          export DIRECT_URL="${DIRECT_URL:-$DATABASE_URL}"
+          npm run test:integration
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
           CLERK_SECRET_KEY: sk_test_placeholder
           NEXT_PUBLIC_APP_URL: https://keypilot.vercel.app
