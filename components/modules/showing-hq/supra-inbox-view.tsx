@@ -439,6 +439,8 @@ export function SupraInboxView() {
   const [sampleMenuOpen, setSampleMenuOpen] = useState(false);
   const [applying, setApplying] = useState(false);
   const [applyingRowId, setApplyingRowId] = useState<string | null>(null);
+  const [archivingRowId, setArchivingRowId] = useState<string | null>(null);
+  const [deletingRowId, setDeletingRowId] = useState<string | null>(null);
   const [applyDuplicate, setApplyDuplicate] = useState<ApplyDuplicateBundle | null>(null);
   const [applyDuplicateAck, setApplyDuplicateAck] = useState(false);
   const [dupLinkShowingId, setDupLinkShowingId] = useState<string | null>(null);
@@ -732,6 +734,58 @@ export function SupraInboxView() {
     const json = await res.json();
     if (!res.ok) throw new Error(json.error?.message ?? "Update failed");
     return normalizeItem(json.data as ItemWithRelations);
+  };
+
+  const handleArchiveFromList = async (row: ItemWithRelations) => {
+    setArchivingRowId(row.id);
+    setError(null);
+    try {
+      await performPatchQueueItem(row.id, { queueState: QueueStates.DISMISSED });
+      if (detail?.id === row.id) {
+        setModalOpen(false);
+        setDetail(null);
+        setSavedModalFingerprint(null);
+        setApplyDuplicate(null);
+        setApplyDuplicateAck(false);
+        setPastedReviewBannerId(null);
+      }
+      await load();
+      setSuccessInfo({ message: "Archived." });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Archive failed");
+    } finally {
+      setArchivingRowId(null);
+    }
+  };
+
+  const handleDeleteFromList = async (row: ItemWithRelations) => {
+    const ok = window.confirm(
+      "Delete this Supra queue row? This cannot be undone. Properties and showings are not removed."
+    );
+    if (!ok) return;
+    setDeletingRowId(row.id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/showing-hq/supra-queue/${row.id}`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message ?? "Delete failed");
+      if (detail?.id === row.id) {
+        setModalOpen(false);
+        setDetail(null);
+        setSavedModalFingerprint(null);
+        setApplyDuplicate(null);
+        setApplyDuplicateAck(false);
+        setPastedReviewBannerId(null);
+      }
+      await load();
+      setSuccessInfo({ message: "Queue row deleted." });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeletingRowId(null);
+    }
   };
 
   const modalHasUnsavedEdits = useMemo(() => {
@@ -1589,6 +1643,10 @@ export function SupraInboxView() {
                   }
                   onReview={() => openDetail(row)}
                   onApply={() => void handleApplyFromList(row)}
+                  onArchive={() => void handleArchiveFromList(row)}
+                  onDelete={() => void handleDeleteFromList(row)}
+                  archiveLoading={archivingRowId === row.id}
+                  deleteLoading={deletingRowId === row.id}
                 />
               );
             })}

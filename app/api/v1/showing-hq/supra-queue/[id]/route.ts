@@ -93,6 +93,19 @@ export async function PATCH(
     }
 
     const d = parsed.data;
+
+    if (
+      d.queueState !== undefined &&
+      existing.queueState === SupraQueueState.APPLIED &&
+      d.queueState !== SupraQueueState.APPLIED
+    ) {
+      return apiError(
+        "Applied queue items cannot change queue state",
+        403,
+        "APPLIED_QUEUE_LOCKED"
+      );
+    }
+
     if (d.matchedPropertyId !== undefined) {
       await assertPropertyOwned(user.id, d.matchedPropertyId);
     }
@@ -154,6 +167,33 @@ export async function PATCH(
     if (code === "NOT_FOUND") {
       return apiError("Property or showing not found", 404, "NOT_FOUND");
     }
+    return apiErrorFromCaught(e);
+  }
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getCurrentUser();
+    const { id } = await params;
+    const existing = await prismaAdmin.supraQueueItem.findFirst({
+      where: { id, hostUserId: user.id },
+    });
+    if (!existing) {
+      return apiError("Queue item not found", 404, "NOT_FOUND");
+    }
+    if (existing.queueState === SupraQueueState.APPLIED) {
+      return apiError(
+        "Applied queue items cannot be deleted",
+        403,
+        "APPLIED_QUEUE_LOCKED"
+      );
+    }
+    await prismaAdmin.supraQueueItem.delete({ where: { id } });
+    return NextResponse.json({ data: { deleted: true } });
+  } catch (e) {
     return apiErrorFromCaught(e);
   }
 }
