@@ -1,47 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import {
   Banknote,
   Search,
   X,
-  ExternalLink,
   AlertCircle,
   Loader2,
   LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SectionTabs } from "@/components/ui/section-tabs";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { Button } from "@/components/ui/button";
+import { kpBtnSave } from "@/components/ui/kp-dashboard-button-tiers";
 import { CreateTransactionModal } from "./create-transaction-modal";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-type TxStatus =
-  | "LEAD"
-  | "UNDER_CONTRACT"
-  | "PENDING"
-  | "IN_ESCROW"
-  | "CLOSED"
-  | "FALLEN_APART";
-
-type TransactionRow = {
-  id: string;
-  status: TxStatus;
-  salePrice: string | number | null;
-  closingDate: string | null;
-  brokerageName: string | null;
-  notes: string | null;
-  createdAt: string;
-  property: {
-    id: string;
-    address1: string;
-    city: string;
-    state: string;
-    zip: string;
-  };
-};
+import {
+  type TransactionRow,
+  TransactionsListTableRow,
+  TH,
+} from "./transactions-shared";
 
 const STATUS_TABS = [
   { label: "All", value: "__all__" },
@@ -54,34 +31,6 @@ const STATUS_TABS = [
 ] as const;
 
 type StatusTabValue = (typeof STATUS_TABS)[number]["value"];
-
-const STATUS_LABELS: Record<TxStatus, string> = {
-  LEAD: "Lead",
-  UNDER_CONTRACT: "Under contract",
-  IN_ESCROW: "In escrow",
-  PENDING: "Pending",
-  CLOSED: "Closed",
-  FALLEN_APART: "Fallen apart",
-};
-
-function statusBadgeVariant(
-  s: TxStatus
-): React.ComponentProps<typeof StatusBadge>["variant"] {
-  switch (s) {
-    case "LEAD":
-      return "pending";
-    case "PENDING":
-      return "upcoming";
-    case "UNDER_CONTRACT":
-      return "sold";
-    case "IN_ESCROW":
-      return "live";
-    case "CLOSED":
-      return "closed";
-    case "FALLEN_APART":
-      return "cancelled";
-  }
-}
 
 function useTransactions(statusFilter: StatusTabValue) {
   const [rows, setRows] = useState<TransactionRow[]>([]);
@@ -119,22 +68,6 @@ function matchesSearch(t: TransactionRow, q: string): boolean {
     t.property.city.toLowerCase().includes(lq) ||
     (t.brokerageName?.toLowerCase().includes(lq) ?? false)
   );
-}
-
-function formatMoney(v: string | number | null | undefined) {
-  if (v == null || v === "") return "—";
-  const n = typeof v === "string" ? parseFloat(v) : v;
-  if (Number.isNaN(n)) return "—";
-  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-}
-
-function formatDate(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
 }
 
 function LoadingState() {
@@ -226,10 +159,6 @@ function SearchInput({ value, onChange }: { value: string; onChange: (v: string)
   );
 }
 
-const TH =
-  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
-const TD = "px-4 py-3.5 text-sm";
-
 function TransactionsTable({ rows }: { rows: TransactionRow[] }) {
   return (
     <div className="overflow-x-auto">
@@ -241,53 +170,12 @@ function TransactionsTable({ rows }: { rows: TransactionRow[] }) {
             <th className={cn(TH, "hidden md:table-cell")}>Sale price</th>
             <th className={cn(TH, "hidden lg:table-cell")}>Closing</th>
             <th className={cn(TH, "hidden xl:table-cell")}>Brokerage</th>
-            <th className={cn(TH, "w-16")} />
+            <th className={cn(TH, "w-28 text-right")} />
           </tr>
         </thead>
         <tbody>
           {rows.map((t, i) => (
-            <tr
-              key={t.id}
-              className={cn(
-                "border-b border-kp-outline-variant transition-colors hover:bg-kp-surface-high",
-                i % 2 === 1 && "bg-kp-surface/40"
-              )}
-            >
-              <td className={TD}>
-                <p className="font-medium text-kp-on-surface">{t.property.address1}</p>
-                <p className="text-xs text-kp-on-surface-variant">
-                  {t.property.city}, {t.property.state} {t.property.zip}
-                </p>
-                <span className="mt-1 inline-block sm:hidden">
-                  <StatusBadge variant={statusBadgeVariant(t.status)}>
-                    {STATUS_LABELS[t.status]}
-                  </StatusBadge>
-                </span>
-              </td>
-              <td className={cn(TD, "hidden sm:table-cell")}>
-                <StatusBadge variant={statusBadgeVariant(t.status)}>
-                  {STATUS_LABELS[t.status]}
-                </StatusBadge>
-              </td>
-              <td className={cn(TD, "hidden tabular-nums text-kp-on-surface md:table-cell")}>
-                {formatMoney(t.salePrice)}
-              </td>
-              <td className={cn(TD, "hidden text-kp-on-surface-variant lg:table-cell")}>
-                {formatDate(t.closingDate)}
-              </td>
-              <td className={cn(TD, "hidden max-w-[200px] truncate xl:table-cell")} title={t.brokerageName ?? undefined}>
-                {t.brokerageName || "—"}
-              </td>
-              <td className={cn(TD, "text-right")}>
-                <Link
-                  href={`/transactions/${t.id}`}
-                  className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-kp-teal transition-colors hover:bg-kp-teal/10"
-                >
-                  View
-                  <ExternalLink className="h-3 w-3 opacity-70" />
-                </Link>
-              </td>
-            </tr>
+            <TransactionsListTableRow key={t.id} row={t} index={i} />
           ))}
         </tbody>
       </table>
@@ -339,16 +227,14 @@ export function TransactionsListView() {
             Closings, sale details, and commission splits per property
           </p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() => setCreateOpen(true)}
-          className={cn(
-            "mt-0.5 shrink-0 rounded-lg bg-kp-gold px-3 py-1.5 text-xs font-semibold text-kp-bg",
-            "transition-colors hover:bg-kp-gold-bright"
-          )}
+          className={cn(kpBtnSave, "mt-0.5 h-9 shrink-0 border-transparent px-3 text-xs")}
         >
           + Add transaction
-        </button>
+        </Button>
       </div>
 
       <div className="mx-6 mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
