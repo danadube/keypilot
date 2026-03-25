@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Calendar,
   Search,
@@ -370,6 +371,7 @@ function ShowingsTable({ showings, onEdit }: { showings: Showing[]; onEdit: (s: 
         <tbody>
           {showings.map((s, i) => (
             <tr
+              id={`showing-row-${s.id}`}
               key={s.id}
               className={cn(
                 "border-b border-kp-outline-variant transition-colors hover:bg-kp-surface-high",
@@ -451,11 +453,41 @@ function ShowingsTable({ showings, onEdit }: { showings: Showing[]; onEdit: (s: 
  * Client-side search layered on top.
  *
  * Route: app/(dashboard)/showing-hq/showings/page.tsx
+ *
+ * `initialOpenShowingId` — set via `?openShowing=` (e.g. after Supra apply) to open Edit for that row.
  */
-export function ShowingsListView() {
+export function ShowingsListView({
+  initialOpenShowingId,
+}: {
+  initialOpenShowingId?: string;
+} = {}) {
+  const router = useRouter();
   const { showings, loading, error, reload } = useShowings();
   const [search, setSearch] = useState("");
   const [editingShowing, setEditingShowing] = useState<Showing | null>(null);
+  const lastHandledOpenShowingRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const oid = initialOpenShowingId?.trim() ?? null;
+    if (!oid) {
+      lastHandledOpenShowingRef.current = null;
+      return;
+    }
+    if (loading) return;
+    if (lastHandledOpenShowingRef.current === oid) return;
+    const match = showings.find((s) => s.id === oid);
+    if (!match) return;
+
+    lastHandledOpenShowingRef.current = oid;
+    setEditingShowing(match);
+    router.replace("/showing-hq/showings", { scroll: false });
+    requestAnimationFrame(() => {
+      document.getElementById(`showing-row-${oid}`)?.scrollIntoView({
+        block: "nearest",
+        behavior: "smooth",
+      });
+    });
+  }, [initialOpenShowingId, loading, showings, router]);
 
   const visibleShowings = useMemo(() => {
     if (!search.trim()) return showings;

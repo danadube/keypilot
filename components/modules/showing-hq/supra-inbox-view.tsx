@@ -410,6 +410,8 @@ type SupraInboxSuccessInfo = {
   message: string;
   /** Set when apply API saved a buyer-agent feedback draft */
   buyerAgentFeedbackDraftReady?: boolean;
+  /** Showing id from apply response — deep-link to Showings edit when draft is ready */
+  applyShowingId?: string;
 };
 
 export function SupraInboxView() {
@@ -1031,6 +1033,7 @@ export function SupraInboxView() {
         createdProperty?: boolean;
         updatedShowing?: boolean;
         buyerAgentFeedbackDraftReady?: boolean;
+        showingId?: string;
       };
       const base = applyMeta?.updatedShowing
         ? "Applied: showing updated and queue item marked complete."
@@ -1039,11 +1042,12 @@ export function SupraInboxView() {
         ? `${base} A new property was created from the parsed address.`
         : base;
       const draftReady = Boolean(applyMeta?.buyerAgentFeedbackDraftReady);
+      const sid =
+        typeof applyMeta?.showingId === "string" && applyMeta.showingId.trim() ? applyMeta.showingId.trim() : undefined;
       setSuccessInfo({
-        message: draftReady
-          ? `${msgCore} Buyer-agent feedback email draft is ready.`
-          : msgCore,
+        message: draftReady ? `${msgCore} Buyer-agent feedback email draft is ready.` : msgCore,
         buyerAgentFeedbackDraftReady: draftReady,
+        applyShowingId: draftReady ? sid : undefined,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Apply failed");
@@ -1079,6 +1083,7 @@ export function SupraInboxView() {
         createdProperty?: boolean;
         updatedShowing?: boolean;
         buyerAgentFeedbackDraftReady?: boolean;
+        showingId?: string;
       };
       const base = d?.updatedShowing
         ? "Applied: showing updated and queue item marked complete."
@@ -1087,11 +1092,12 @@ export function SupraInboxView() {
         ? `${base} A new property was created from the parsed address.`
         : base;
       const draftReady = Boolean(d?.buyerAgentFeedbackDraftReady);
+      const sid =
+        typeof d?.showingId === "string" && d.showingId.trim() ? d.showingId.trim() : undefined;
       setSuccessInfo({
-        message: draftReady
-          ? `${msgCore} Buyer-agent feedback email draft is ready.`
-          : msgCore,
+        message: draftReady ? `${msgCore} Buyer-agent feedback email draft is ready.` : msgCore,
         buyerAgentFeedbackDraftReady: draftReady,
+        applyShowingId: draftReady ? sid : undefined,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Apply failed");
@@ -1326,10 +1332,16 @@ export function SupraInboxView() {
             <p className="leading-snug">{successInfo.message}</p>
             {successInfo.buyerAgentFeedbackDraftReady ? (
               <Link
-                href="/showing-hq/showings"
+                href={
+                  successInfo.applyShowingId
+                    ? `/showing-hq/showings?openShowing=${encodeURIComponent(successInfo.applyShowingId)}`
+                    : "/showing-hq/showings"
+                }
                 className="inline-flex text-xs font-semibold text-kp-teal underline-offset-2 hover:underline"
               >
-                Open Showings — Edit the row to copy, mailto, or review the draft
+                {successInfo.applyShowingId
+                  ? "Open this showing"
+                  : "Open Showings — edit the row to use the draft"}
               </Link>
             ) : null}
           </div>
