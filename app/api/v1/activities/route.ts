@@ -15,6 +15,14 @@ export async function GET() {
       tx.userActivity.findMany({
         where: { userId: user.id },
         orderBy: { updatedAt: "desc" },
+        include: {
+          property: {
+            select: { id: true, address1: true, city: true, state: true },
+          },
+          contact: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+        },
       })
     );
 
