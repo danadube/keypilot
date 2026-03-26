@@ -76,7 +76,10 @@ jobs:
 
       # Single :5432 URL for prisma migrate deploy and prismaAdmin in Jest (both read DATABASE_URL).
       # If DATABASE_URL secret is transaction pooler (:6543), DIRECT_URL secret must be session/direct :5432.
+      # Use GITHUB_OUTPUT + step env (not GITHUB_ENV echo) so passwords with $/# and multiline do not break parsing;
+      # explicitly set DATABASE_URL on migrate + test steps so Jest never inherits a stale :6543 from the job env.
       - name: Resolve Prisma URLs for isolation job (reject :6543 for runtime)
+        id: resolve_prisma_db
         shell: bash
         run: |
           set -euo pipefail
@@ -111,9 +114,11 @@ jobs:
           fi
 
           {
-            echo "DATABASE_URL=$resolved"
-            echo "DIRECT_URL=$resolved"
-          } >> "$GITHUB_ENV"
+            echo "prisma_database_url<<PRISMA_DB_URL_EOF"
+            printf '%s' "$resolved"
+            echo
+            echo "PRISMA_DB_URL_EOF"
+          } >> "$GITHUB_OUTPUT"
         env:
           DATABASE_URL_RAW: ${{ secrets.DATABASE_URL }}
           DIRECT_URL_RAW: ${{ secrets.DIRECT_URL }}
@@ -121,11 +126,16 @@ jobs:
       # Keep preview DB in sync with prisma/migrations (e.g. new columns). RLS tests
       # seed via Prisma and fail if the schema lags (P2022 column does not exist).
       - name: Apply Prisma migrations (preview DB)
+        env:
+          DATABASE_URL: ${{ steps.resolve_prisma_db.outputs.prisma_database_url }}
+          DIRECT_URL: ${{ steps.resolve_prisma_db.outputs.prisma_database_url }}
         run: npx prisma migrate deploy
 
       - name: Run RLS isolation tests
-        run: npm run test:integration
         env:
+          DATABASE_URL: ${{ steps.resolve_prisma_db.outputs.prisma_database_url }}
+          DIRECT_URL: ${{ steps.resolve_prisma_db.outputs.prisma_database_url }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
           CLERK_SECRET_KEY: sk_test_placeholder
           NEXT_PUBLIC_APP_URL: https://keypilot.vercel.app
+        run: npm run test:integration
