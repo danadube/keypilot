@@ -81,4 +81,13 @@ describe("substituteActivityTemplatePlaceholders", () => {
       })
     ).toBe("");
   });
+
+  it("treats explicit null contact like missing contact", () => {
+    expect(
+      substituteActivityTemplatePlaceholders("{{contact.firstName}}", {
+        contact: null,
+        property: fullCtx.property,
+      })
+    ).toBe("");
+  });
 });

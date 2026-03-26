@@ -334,11 +334,19 @@ export function UserActivitiesView() {
     };
   }, [needLinkPickers]);
 
-  /** If the selected template was removed (e.g. deleted in another tab), avoid an invalid Select value. */
+  /**
+   * If the selected template was removed (e.g. deleted elsewhere), reset the form fields that came from it
+   * so we do not leave substituted title/description or template due offset orphaned.
+   */
   useEffect(() => {
     if (templateId === TEMPLATE_SELECT_NONE) return;
     if (templates.length === 0 || !templates.some((t) => t.id === templateId)) {
       setTemplateId(TEMPLATE_SELECT_NONE);
+      setDuePresetFromTemplateDays(null);
+      setType("TASK");
+      setTitle("");
+      setDescription("");
+      setDueLocal("");
     }
   }, [templates, templateId]);
 
