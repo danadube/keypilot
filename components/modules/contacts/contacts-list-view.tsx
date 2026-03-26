@@ -170,17 +170,38 @@ function LoadingState() {
   );
 }
 
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+function ErrorState({
+  message,
+  onRetry,
+  onClearFilters,
+}: {
+  message: string;
+  onRetry: () => void;
+  /** Shown when URL filters may be invalid (e.g. bad tagId) or load failed while filtered */
+  onClearFilters?: () => void;
+}) {
   return (
-    <div className="flex min-h-[280px] flex-col items-center justify-center gap-3">
+    <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 px-4">
       <AlertCircle className="h-5 w-5 text-red-400" />
-      <p className="text-sm text-kp-on-surface-variant">{message}</p>
-      <button
-        onClick={onRetry}
-        className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
-      >
-        Try again
-      </button>
+      <p className="text-center text-sm text-kp-on-surface-variant">{message}</p>
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+        <button
+          type="button"
+          onClick={onRetry}
+          className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
+        >
+          Try again
+        </button>
+        {onClearFilters && (
+          <button
+            type="button"
+            onClick={onClearFilters}
+            className="text-sm font-medium text-kp-on-surface underline-offset-2 hover:underline"
+          >
+            Clear filters
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -585,7 +606,15 @@ export function ContactsListView() {
         {loading ? (
           <LoadingState />
         ) : error ? (
-          <ErrorState message={error} onRetry={reload} />
+          <ErrorState
+            message={error}
+            onRetry={reload}
+            onClearFilters={
+              tagIdFilter !== null || statusFilter !== "__all__"
+                ? handleClearFilters
+                : undefined
+            }
+          />
         ) : visibleContacts.length === 0 ? (
           <EmptyState isFiltered={isFiltered} onReset={handleClearFilters} />
         ) : (
