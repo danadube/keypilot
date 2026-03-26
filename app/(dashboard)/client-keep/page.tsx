@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { kpBtnPrimary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
+import { kpBtnPrimary, kpBtnSecondary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { ModuleGate } from "@/components/shared/ModuleGate";
 import {
   Card,
@@ -76,13 +76,21 @@ export default function ClientKeepOverviewPage() {
         <CardHeader>
           <CardTitle>Customer relationship management</CardTitle>
           <CardDescription>
-            Manage contacts, leads, communication history, and follow-ups.
+            Manage contacts, leads, communication history, and open-house follow-ups.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Use the sidebar to navigate to All Contacts, Leads, Tags, or Communication Log.
+            Use the sidebar for Contacts, Communications (hub), and Follow-ups. Tags are edited on each contact’s profile until a dedicated tags page ships.
           </p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" className={cn(kpBtnPrimary, "border-transparent text-xs")} asChild>
+              <Link href="/client-keep/communications">Communications hub</Link>
+            </Button>
+            <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "text-xs")} asChild>
+              <Link href="/client-keep/follow-ups">Follow-ups</Link>
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
