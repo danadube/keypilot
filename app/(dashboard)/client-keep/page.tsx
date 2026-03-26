@@ -81,7 +81,7 @@ export default function ClientKeepOverviewPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Use the sidebar for Contacts, Communications (hub), and Follow-ups. Tags are edited on each contact’s profile until a dedicated tags page ships.
+            Use the sidebar for Contacts, Communications, Follow-ups, and Tags. Tags themselves are added or removed on each contact’s profile; the Tags page is a quick pointer to contacts.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" className={cn(kpBtnPrimary, "border-transparent text-xs")} asChild>
