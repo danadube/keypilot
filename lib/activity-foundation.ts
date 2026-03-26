@@ -22,6 +22,32 @@ export type ActivityTx = Prisma.TransactionClient;
 const EMPTY_TITLE_AFTER_PLACEHOLDERS =
   "Title is empty after resolving placeholders";
 
+function substituteActivityTitleOrThrow(
+  rawTitle: string,
+  placeholderCtx: ActivityTemplatePlaceholderContext
+): string {
+  const titleResolved = substituteActivityTemplatePlaceholders(
+    rawTitle.trim(),
+    placeholderCtx
+  ).trim();
+  if (titleResolved === "") {
+    throw Object.assign(new Error(EMPTY_TITLE_AFTER_PLACEHOLDERS), {
+      status: 400,
+    });
+  }
+  return titleResolved;
+}
+
+function substituteActivityDescriptionPlain(
+  rawDescription: string,
+  placeholderCtx: ActivityTemplatePlaceholderContext
+): string {
+  return substituteActivityTemplatePlaceholders(
+    rawDescription.trim(),
+    placeholderCtx
+  );
+}
+
 /**
  * Loads contact/property fields for template substitution under the current RLS tx.
  * When an id is set but the row is not visible, throws the same 404 as assertPropertyAndContactAccessible.
@@ -133,24 +159,12 @@ export async function createUserActivity(
 ) {
   const placeholderCtx = await loadActivityTemplatePlaceholderContext(tx, input);
 
-  const titleRaw = input.title.trim();
-  const titleResolved = substituteActivityTemplatePlaceholders(
-    titleRaw,
-    placeholderCtx
-  ).trim();
-  if (titleResolved === "") {
-    throw Object.assign(new Error(EMPTY_TITLE_AFTER_PLACEHOLDERS), {
-      status: 400,
-    });
-  }
+  const titleResolved = substituteActivityTitleOrThrow(input.title, placeholderCtx);
 
   const descriptionResolved =
     input.description == null
       ? undefined
-      : substituteActivityTemplatePlaceholders(
-          input.description.trim(),
-          placeholderCtx
-        );
+      : substituteActivityDescriptionPlain(input.description, placeholderCtx);
 
   const activity = await tx.userActivity.create({
     data: {
@@ -185,12 +199,46 @@ export async function updateUserActivity(
   });
   if (!owned) return null;
 
+  const { patch } = args;
+
   await assertPropertyAndContactAccessible(tx, {
-    propertyId: args.patch.propertyId,
-    contactId: args.patch.contactId,
+    propertyId: patch.propertyId,
+    contactId: patch.contactId,
   });
 
-  const data = buildActivityUpdateData(args.patch);
+  const effectivePropertyId =
+    patch.propertyId !== undefined ? patch.propertyId : owned.propertyId;
+  const effectiveContactId =
+    patch.contactId !== undefined ? patch.contactId : owned.contactId;
+
+  const needsPlaceholderCtx =
+    patch.title !== undefined ||
+    (patch.description !== undefined && patch.description !== null);
+
+  let resolvedPatch = patch;
+
+  if (needsPlaceholderCtx) {
+    const placeholderCtx = await loadActivityTemplatePlaceholderContext(tx, {
+      propertyId: effectivePropertyId ?? undefined,
+      contactId: effectiveContactId ?? undefined,
+    });
+    resolvedPatch = { ...patch };
+    if (patch.title !== undefined) {
+      resolvedPatch.title = substituteActivityTitleOrThrow(patch.title, placeholderCtx);
+    }
+    if (patch.description !== undefined) {
+      if (patch.description === null) {
+        resolvedPatch.description = null;
+      } else {
+        resolvedPatch.description = substituteActivityDescriptionPlain(
+          patch.description,
+          placeholderCtx
+        );
+      }
+    }
+  }
+
+  const data = buildActivityUpdateData(resolvedPatch);
   if (Object.keys(data).length === 0) {
     return owned;
   }
