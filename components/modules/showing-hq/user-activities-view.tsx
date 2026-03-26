@@ -106,7 +106,8 @@ function formatWhen(iso: string | null) {
 }
 
 function propertyPickerLabel(p: PropertyPickerOption): string {
-  return `${p.address1}, ${p.city}, ${p.state}`;
+  const tail = [p.city, p.state].filter((s) => s.trim() !== "");
+  return tail.length ? `${p.address1}, ${tail.join(", ")}` : p.address1;
 }
 
 function contactPickerLabel(c: ContactPickerOption): string {
@@ -153,23 +154,60 @@ function contactFromApiRow(c: {
   };
 }
 
-/** Keeps Select values valid if an activity links a record not present in the latest picker fetch. */
+/**
+ * Keeps Select values valid if an activity links a record missing from the picker fetch,
+ * or if the FK is set but the included relation is null (defensive).
+ */
 function mergePropertyOptions(
   list: PropertyPickerOption[],
   row: UserActivityRow | undefined
 ): PropertyPickerOption[] {
-  if (!row?.propertyId || !row.property) return list;
+  if (!row?.propertyId) return list;
   if (list.some((p) => p.id === row.propertyId)) return list;
-  return [propertyFromApiRow(row.property), ...list];
+  if (row.property) {
+    return [propertyFromApiRow(row.property), ...list];
+  }
+  return [
+    {
+      id: row.propertyId,
+      address1: "Linked property (details unavailable)",
+      city: "",
+      state: "",
+    },
+    ...list,
+  ];
 }
 
 function mergeContactOptions(
   list: ContactPickerOption[],
   row: UserActivityRow | undefined
 ): ContactPickerOption[] {
-  if (!row?.contactId || !row.contact) return list;
+  if (!row?.contactId) return list;
   if (list.some((c) => c.id === row.contactId)) return list;
-  return [contactFromApiRow(row.contact), ...list];
+  if (row.contact) {
+    return [contactFromApiRow(row.contact), ...list];
+  }
+  return [
+    {
+      id: row.contactId,
+      firstName: "Linked",
+      lastName: "contact",
+      email: null,
+    },
+    ...list,
+  ];
+}
+
+function linkedPropertyCell(r: UserActivityRow): string {
+  if (r.property) return formatLinkedProperty(r.property);
+  if (r.propertyId) return "Linked property";
+  return "—";
+}
+
+function linkedContactCell(r: UserActivityRow): string {
+  if (r.contact) return formatLinkedContact(r.contact);
+  if (r.contactId) return "Linked contact";
+  return "—";
 }
 
 export function UserActivitiesView() {
@@ -751,13 +789,13 @@ export function UserActivitiesView() {
                             <span>
                               <span className="text-kp-on-surface-variant/85">Property:</span>{" "}
                               <span className="text-kp-on-surface">
-                                {r.property ? formatLinkedProperty(r.property) : "—"}
+                                {linkedPropertyCell(r)}
                               </span>
                             </span>
                             <span>
                               <span className="text-kp-on-surface-variant/85">Contact:</span>{" "}
                               <span className="text-kp-on-surface">
-                                {r.contact ? formatLinkedContact(r.contact) : "—"}
+                                {linkedContactCell(r)}
                               </span>
                             </span>
                           </div>
