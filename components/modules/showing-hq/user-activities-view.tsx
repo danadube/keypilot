@@ -21,7 +21,8 @@ import {
   type ActivityTemplatePlaceholderContext,
 } from "@/lib/activity-template-placeholders";
 import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
-import { CheckCircle2, Link2, ListTodo, Plus } from "lucide-react";
+import { BrandModal } from "@/components/ui/BrandModal";
+import { CheckCircle2, LayoutTemplate, Link2, ListTodo, Plus } from "lucide-react";
 
 const ACTIVITY_TYPES = [
   "CALL",
@@ -250,6 +251,12 @@ export function UserActivitiesView() {
   const [editContactId, setEditContactId] = useState<string>(LINK_SELECT_NONE);
   const [linkEditError, setLinkEditError] = useState<string | null>(null);
   const [linkSavingId, setLinkSavingId] = useState<string | null>(null);
+
+  const [applyTemplateRowId, setApplyTemplateRowId] = useState<string | null>(null);
+  const [applyTemplatePickId, setApplyTemplatePickId] =
+    useState<string>(TEMPLATE_SELECT_NONE);
+  const [applyTemplateError, setApplyTemplateError] = useState<string | null>(null);
+  const [applyTemplateSubmitting, setApplyTemplateSubmitting] = useState(false);
 
   const editingRow = useMemo(
     () => (linkEditRowId ? rows.find((r) => r.id === linkEditRowId) : undefined),
@@ -550,6 +557,61 @@ export function UserActivitiesView() {
       setLinkEditError("Could not clear links");
     } finally {
       setLinkSavingId(null);
+    }
+  };
+
+  const openApplyTemplate = (rowId: string) => {
+    setApplyTemplateRowId(rowId);
+    setApplyTemplatePickId(TEMPLATE_SELECT_NONE);
+    setApplyTemplateError(null);
+  };
+
+  const closeApplyTemplate = () => {
+    if (applyTemplateSubmitting) return;
+    setApplyTemplateRowId(null);
+    setApplyTemplatePickId(TEMPLATE_SELECT_NONE);
+    setApplyTemplateError(null);
+  };
+
+  const handleConfirmApplyTemplate = async () => {
+    if (!applyTemplateRowId || applyTemplatePickId === TEMPLATE_SELECT_NONE) return;
+    const tpl = templates.find((t) => t.id === applyTemplatePickId);
+    if (!tpl) {
+      setApplyTemplateError("Template not found");
+      return;
+    }
+
+    setApplyTemplateSubmitting(true);
+    setApplyTemplateError(null);
+    try {
+      const descTrimmed = tpl.descriptionTemplate?.trim();
+      const body: Record<string, unknown> = {
+        title: tpl.titleTemplate,
+        description: descTrimmed ? tpl.descriptionTemplate : null,
+      };
+
+      const res = await fetch(`/api/v1/activities/${applyTemplateRowId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: { message?: string };
+      };
+      if (!res.ok) {
+        setApplyTemplateError(
+          json.error?.message ?? "Could not apply template"
+        );
+        return;
+      }
+      setApplyTemplateRowId(null);
+      setApplyTemplatePickId(TEMPLATE_SELECT_NONE);
+      setApplyTemplateError(null);
+      await load();
+    } catch {
+      setApplyTemplateError("Could not apply template");
+    } finally {
+      setApplyTemplateSubmitting(false);
     }
   };
 
@@ -885,16 +947,40 @@ export function UserActivitiesView() {
                               {linkEditRowId === r.id ? "Close" : "Links"}
                             </Button>
                             {!done && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                disabled={completingId === r.id}
-                                className={cn(kpBtnSecondary, "h-7 text-xs")}
-                                onClick={() => void handleComplete(r.id)}
-                              >
-                                {completingId === r.id ? "…" : "Complete"}
-                              </Button>
+                              <>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={
+                                    savingLinks ||
+                                    completingId === r.id ||
+                                    applyTemplateSubmitting ||
+                                    !templatesLoaded ||
+                                    templates.length === 0
+                                  }
+                                  title={
+                                    templates.length === 0 && templatesLoaded
+                                      ? "Add templates on the Templates page first"
+                                      : "Replace title and notes from a saved template (links, type, and due date stay the same)"
+                                  }
+                                  className={cn(kpBtnSecondary, "h-7 gap-1 text-xs")}
+                                  onClick={() => openApplyTemplate(r.id)}
+                                >
+                                  <LayoutTemplate className="h-3 w-3" />
+                                  Template
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={completingId === r.id || applyTemplateSubmitting}
+                                  className={cn(kpBtnSecondary, "h-7 text-xs")}
+                                  onClick={() => void handleComplete(r.id)}
+                                >
+                                  {completingId === r.id ? "…" : "Complete"}
+                                </Button>
+                              </>
                             )}
                           </div>
                         </td>
@@ -996,6 +1082,104 @@ export function UserActivitiesView() {
           </div>
         )}
       </div>
+
+      <BrandModal
+        open={applyTemplateRowId !== null}
+        onOpenChange={(open) => {
+          if (!open) closeApplyTemplate();
+        }}
+        title="Apply template to this activity"
+        size="sm"
+        bodyClassName="max-h-[min(72vh,420px)]"
+        footer={
+          <div className="flex w-full flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className={cn(kpBtnSecondary)}
+              disabled={applyTemplateSubmitting}
+              onClick={closeApplyTemplate}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className={cn(kpBtnPrimary, "border-transparent")}
+              disabled={
+                applyTemplateSubmitting ||
+                applyTemplatePickId === TEMPLATE_SELECT_NONE ||
+                !templatesLoaded ||
+                templates.length === 0
+              }
+              onClick={() => void handleConfirmApplyTemplate()}
+            >
+              {applyTemplateSubmitting ? "Applying…" : "Replace title and notes"}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          {applyTemplateError && (
+            <p className="rounded-md bg-destructive/10 p-2 text-sm text-destructive">
+              {applyTemplateError}
+            </p>
+          )}
+          <div className="space-y-2 text-sm leading-snug text-kp-on-surface/88">
+            <p>
+              This replaces the activity{" "}
+              <strong className="text-kp-on-surface">title</strong> and{" "}
+              <strong className="text-kp-on-surface">notes</strong> with the template you pick.
+              Placeholders are filled from the{" "}
+              <strong className="text-kp-on-surface">
+                property and contact already linked
+              </strong>{" "}
+              to this activity.
+            </p>
+            <ul className="list-disc space-y-1 pl-5 text-xs text-kp-on-surface-variant">
+              <li>Linked property and contact stay the same.</li>
+              <li>Activity type and due date are unchanged.</li>
+            </ul>
+          </div>
+          {!templatesLoaded ? (
+            <p className="text-xs text-kp-on-surface-variant">Loading templates…</p>
+          ) : templates.length === 0 ? (
+            <p className="text-xs text-kp-on-surface-variant">
+              No templates yet.{" "}
+              <Link
+                href="/showing-hq/templates"
+                className="font-medium text-kp-teal underline-offset-2 hover:underline"
+              >
+                Add templates
+              </Link>{" "}
+              first.
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              <Label className="text-kp-on-surface/90">Template</Label>
+              <Select
+                value={applyTemplatePickId}
+                onValueChange={(v) => {
+                  setApplyTemplatePickId(v);
+                  setApplyTemplateError(null);
+                }}
+              >
+                <SelectTrigger className="border-kp-outline bg-kp-surface text-kp-on-surface">
+                  <SelectValue placeholder="Choose a template" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={TEMPLATE_SELECT_NONE}>Choose a template…</SelectItem>
+                  {templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+      </BrandModal>
     </div>
   );
 }
