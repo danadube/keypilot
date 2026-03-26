@@ -16,6 +16,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import {
+  substituteActivityTemplatePlaceholders,
+  type ActivityTemplatePlaceholderContext,
+} from "@/lib/activity-template-placeholders";
 import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { CheckCircle2, Link2, ListTodo, Plus } from "lucide-react";
 
@@ -62,6 +66,7 @@ type PropertyPickerOption = {
   address1: string;
   city: string;
   state: string;
+  zip: string;
 };
 
 type ContactPickerOption = {
@@ -131,12 +136,14 @@ function propertyFromApiRow(p: {
   address1: string;
   city: string;
   state: string;
+  zip?: string;
 }): PropertyPickerOption {
   return {
     id: p.id,
     address1: p.address1,
     city: p.city,
     state: p.state,
+    zip: p.zip ?? "",
   };
 }
 
@@ -173,6 +180,7 @@ function mergePropertyOptions(
       address1: "Linked property (details unavailable)",
       city: "",
       state: "",
+      zip: "",
     },
     ...list,
   ];
@@ -326,18 +334,24 @@ export function UserActivitiesView() {
     };
   }, [needLinkPickers]);
 
-  /** If the selected template was removed (e.g. deleted in another tab), avoid an invalid Select value. */
+  /**
+   * If the selected template was removed (e.g. deleted elsewhere), reset the form fields that came from it
+   * so we do not leave substituted title/description or template due offset orphaned.
+   */
   useEffect(() => {
     if (templateId === TEMPLATE_SELECT_NONE) return;
     if (templates.length === 0 || !templates.some((t) => t.id === templateId)) {
       setTemplateId(TEMPLATE_SELECT_NONE);
+      setDuePresetFromTemplateDays(null);
+      setType("TASK");
+      setTitle("");
+      setDescription("");
+      setDueLocal("");
     }
   }, [templates, templateId]);
 
-  const applyTemplate = useCallback((tpl: ActivityTemplateRow) => {
+  const applyTemplateScheduling = useCallback((tpl: ActivityTemplateRow) => {
     setType(tpl.type);
-    setTitle(tpl.titleTemplate);
-    setDescription(tpl.descriptionTemplate?.trim() ? tpl.descriptionTemplate : "");
     if (tpl.offsetDays != null) {
       setDueLocal(dueDatetimeLocalFromOffsetDays(tpl.offsetDays));
       setDuePresetFromTemplateDays(tpl.offsetDays);
@@ -346,6 +360,45 @@ export function UserActivitiesView() {
       setDuePresetFromTemplateDays(null);
     }
   }, []);
+
+  const placeholderContext = useMemo((): ActivityTemplatePlaceholderContext => {
+    const contactRow =
+      createContactId !== LINK_SELECT_NONE
+        ? contacts.find((c) => c.id === createContactId)
+        : undefined;
+    const propertyRow =
+      createPropertyId !== LINK_SELECT_NONE
+        ? properties.find((p) => p.id === createPropertyId)
+        : undefined;
+    return {
+      contact: contactRow
+        ? {
+            firstName: contactRow.firstName,
+            lastName: contactRow.lastName,
+            email: contactRow.email,
+          }
+        : undefined,
+      property: propertyRow
+        ? {
+            address1: propertyRow.address1,
+            city: propertyRow.city,
+            state: propertyRow.state,
+            zip: propertyRow.zip,
+          }
+        : undefined,
+    };
+  }, [createContactId, createPropertyId, contacts, properties]);
+
+  useEffect(() => {
+    if (templateId === TEMPLATE_SELECT_NONE) return;
+    const tpl = templates.find((t) => t.id === templateId);
+    if (!tpl) return;
+    setTitle(
+      substituteActivityTemplatePlaceholders(tpl.titleTemplate, placeholderContext)
+    );
+    const rawDesc = tpl.descriptionTemplate?.trim() ? tpl.descriptionTemplate : "";
+    setDescription(substituteActivityTemplatePlaceholders(rawDesc, placeholderContext));
+  }, [templateId, templates, placeholderContext]);
 
   const resetForm = () => {
     setTemplateId(TEMPLATE_SELECT_NONE);
@@ -371,7 +424,7 @@ export function UserActivitiesView() {
       return;
     }
     const tpl = templates.find((t) => t.id === value);
-    if (tpl) applyTemplate(tpl);
+    if (tpl) applyTemplateScheduling(tpl);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -685,7 +738,10 @@ export function UserActivitiesView() {
                 </Select>
               )}
               <p className="text-xs text-kp-on-surface-variant">
-                Choose from your PropertyVault and open-house visitor contacts. Not affected by templates.
+                Links the activity to PropertyVault / visitor contacts. Template text can use placeholders
+                like <span className="font-mono text-[10px]">{"{{contact.fullName}}"}</span> or{" "}
+                <span className="font-mono text-[10px]">{"{{property.fullAddress}}"}</span> when a row is
+                selected here.
               </p>
             </div>
           </div>

@@ -132,7 +132,8 @@ export function ActivityTemplatesView() {
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-kp-on-surface/88">
-          Starter text for recurring activity types. Applying a template to a new activity is coming next.
+          Reusable title, description, and due offset. When you create an activity from a template, choose a
+          linked contact and/or property to fill placeholders in the title and notes.
         </p>
         <Button
           type="button"
@@ -199,6 +200,15 @@ export function ActivityTemplatesView() {
                 className="border-kp-outline bg-kp-surface-high text-kp-on-surface"
                 placeholder="Default title when you use this template"
               />
+              <p className="text-[11px] leading-snug text-kp-on-surface-variant">
+                Optional placeholders (only filled when you link a contact/property on the new-activity
+                form):{" "}
+                <span className="font-mono text-[10px] text-kp-on-surface/80">
+                  {"{{contact.firstName}} {{contact.lastName}} {{contact.fullName}} {{contact.email}}"}{" "}
+                  {"{{property.address1}} {{property.city}} {{property.state}} {{property.zip}}"}{" "}
+                  {"{{property.fullAddress}}"}
+                </span>
+              </p>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label className="text-kp-on-surface/90">Description template (optional)</Label>
@@ -207,6 +217,9 @@ export function ActivityTemplatesView() {
                 onChange={(e) => setDescriptionTemplate(e.target.value)}
                 className="min-h-[72px] border-kp-outline bg-kp-surface-high text-kp-on-surface"
               />
+              <p className="text-[11px] text-kp-on-surface-variant">
+                Same placeholders work in the description.
+              </p>
             </div>
           </div>
           {formError && (
