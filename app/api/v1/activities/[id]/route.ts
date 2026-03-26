@@ -37,6 +37,9 @@ export async function PATCH(
     if (err.status === 404) {
       return NextResponse.json({ error: { message: err.message } }, { status: 404 });
     }
+    if (err.status === 400) {
+      return NextResponse.json({ error: { message: err.message } }, { status: 400 });
+    }
     return apiErrorFromCaught(e);
   }
 }

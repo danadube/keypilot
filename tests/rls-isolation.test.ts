@@ -583,6 +583,163 @@ describe("PATCH /api/v1/activities/[id] — update isolation", () => {
     );
     expect(res.status).toBe(404);
   });
+
+  it("PATCH resolves title placeholders using effective property/contact context", async () => {
+    const row = await prismaAdmin.userActivity.create({
+      data: {
+        userId: userA.id,
+        type: "CALL",
+        title: "Initial",
+        propertyId: propAId,
+      },
+    });
+    await prismaAdmin.activityLog.create({
+      data: { activityId: row.id, action: "CREATED" },
+    });
+    try {
+      setUser(userA);
+      const res = await patchActivity(
+        makePatchRequest({
+          title: "Hi {{contact.firstName}} — {{property.city}}, {{property.state}}",
+          contactId,
+        }),
+        { params: Promise.resolve({ id: row.id }) }
+      );
+      const body = await res.json();
+      expect(res.status).toBe(200);
+      expect(body.data.title).toBe("Hi RLS — Testville, TX");
+    } finally {
+      await prismaAdmin.activityLog.deleteMany({ where: { activityId: row.id } });
+      await prismaAdmin.userActivity.deleteMany({ where: { id: row.id } });
+    }
+  });
+
+  it("PATCH applies title substitution against new propertyId when both are sent", async () => {
+    const propOther = await prismaAdmin.property.create({
+      data: {
+        createdByUserId: userA.id,
+        address1: "9 Other St",
+        city: "NewCity",
+        state: "FL",
+        zip: "33101",
+      },
+    });
+    const row = await prismaAdmin.userActivity.create({
+      data: {
+        userId: userA.id,
+        type: "TASK",
+        title: "Initial",
+        propertyId: propAId,
+      },
+    });
+    await prismaAdmin.activityLog.create({
+      data: { activityId: row.id, action: "CREATED" },
+    });
+    try {
+      setUser(userA);
+      const res = await patchActivity(
+        makePatchRequest({
+          propertyId: propOther.id,
+          title: "{{property.city}}, {{property.state}}",
+        }),
+        { params: Promise.resolve({ id: row.id }) }
+      );
+      const body = await res.json();
+      expect(res.status).toBe(200);
+      expect(body.data.title).toBe("NewCity, FL");
+      expect(body.data.propertyId).toBe(propOther.id);
+    } finally {
+      await prismaAdmin.activityLog.deleteMany({ where: { activityId: row.id } });
+      await prismaAdmin.userActivity.deleteMany({ where: { id: row.id } });
+      await prismaAdmin.property.deleteMany({ where: { id: propOther.id } });
+    }
+  });
+
+  it("PATCH resolves description placeholders when description is included", async () => {
+    const row = await prismaAdmin.userActivity.create({
+      data: {
+        userId: userA.id,
+        type: "NOTE",
+        title: "Keep title",
+        description: "old",
+        propertyId: propAId,
+      },
+    });
+    await prismaAdmin.activityLog.create({
+      data: { activityId: row.id, action: "CREATED" },
+    });
+    try {
+      setUser(userA);
+      const res = await patchActivity(
+        makePatchRequest({
+          description: "Zip {{property.zip}} / {{property.address1}}",
+        }),
+        { params: Promise.resolve({ id: row.id }) }
+      );
+      const body = await res.json();
+      expect(res.status).toBe(200);
+      expect(body.data.description).toBe("Zip 00001 / 1 RLS Test St");
+      expect(body.data.title).toBe("Keep title");
+    } finally {
+      await prismaAdmin.activityLog.deleteMany({ where: { activityId: row.id } });
+      await prismaAdmin.userActivity.deleteMany({ where: { id: row.id } });
+    }
+  });
+
+  it("PATCH returns 400 when title is empty after resolving placeholders", async () => {
+    const row = await prismaAdmin.userActivity.create({
+      data: {
+        userId: userA.id,
+        type: "TASK",
+        title: "Initial",
+      },
+    });
+    await prismaAdmin.activityLog.create({
+      data: { activityId: row.id, action: "CREATED" },
+    });
+    try {
+      setUser(userA);
+      const res = await patchActivity(
+        makePatchRequest({ title: "{{contact.firstName}}" }),
+        { params: Promise.resolve({ id: row.id }) }
+      );
+      const body = await res.json();
+      expect(res.status).toBe(400);
+      expect(body.error?.message).toBe("Title is empty after resolving placeholders");
+    } finally {
+      await prismaAdmin.activityLog.deleteMany({ where: { activityId: row.id } });
+      await prismaAdmin.userActivity.deleteMany({ where: { id: row.id } });
+    }
+  });
+
+  it("link-only PATCH does not rewrite title or description", async () => {
+    const row = await prismaAdmin.userActivity.create({
+      data: {
+        userId: userA.id,
+        type: "NOTE",
+        title: "Stable title",
+        description: "Stable notes",
+        propertyId: propAId,
+      },
+    });
+    await prismaAdmin.activityLog.create({
+      data: { activityId: row.id, action: "CREATED" },
+    });
+    try {
+      setUser(userA);
+      const res = await patchActivity(
+        makePatchRequest({ contactId }),
+        { params: Promise.resolve({ id: row.id }) }
+      );
+      const body = await res.json();
+      expect(res.status).toBe(200);
+      expect(body.data.title).toBe("Stable title");
+      expect(body.data.description).toBe("Stable notes");
+    } finally {
+      await prismaAdmin.activityLog.deleteMany({ where: { activityId: row.id } });
+      await prismaAdmin.userActivity.deleteMany({ where: { id: row.id } });
+    }
+  });
 });
 
 describe("POST /api/v1/activities/[id]/complete — complete isolation", () => {
