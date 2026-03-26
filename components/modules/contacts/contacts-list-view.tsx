@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Users,
   Search,
@@ -49,6 +50,23 @@ const STATUS_TAB_VALUES = [
 
 type StatusTabValue = (typeof STATUS_TAB_VALUES)[number]["value"];
 
+const STATUS_QUERY_VALUES: Set<string> = new Set(
+  STATUS_TAB_VALUES.filter((t) => t.value !== "__all__").map((t) => t.value)
+);
+
+function parseStatusFromSearchParams(sp: URLSearchParams): StatusTabValue {
+  const raw = sp.get("status")?.toUpperCase();
+  if (raw && STATUS_QUERY_VALUES.has(raw)) {
+    return raw as StatusTabValue;
+  }
+  return "__all__";
+}
+
+function parseTagIdFromSearchParams(sp: URLSearchParams): string | null {
+  const tid = sp.get("tagId")?.trim();
+  return tid || null;
+}
+
 function statusBadgeVariant(
   s: ContactStatus | null | undefined
 ): React.ComponentProps<typeof StatusBadge>["variant"] {
@@ -74,37 +92,57 @@ function statusLabel(s: ContactStatus | null | undefined): string {
 }
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
-// Server-side status filter — identical behavior to ContactsList.
-// On status tab change, refetch with ?status=X (or no param for all).
+// Server-side status and optional tag filters — same visibility as GET /api/v1/contacts.
 // Client-side search is layered on top of the fetched result.
 
-function useContacts(statusFilter: StatusTabValue) {
+function buildContactsApiUrl(status: StatusTabValue, tagId: string | null) {
+  const params = new URLSearchParams();
+  if (status !== "__all__") params.set("status", status);
+  if (tagId) params.set("tagId", tagId);
+  const q = params.toString();
+  return q ? `/api/v1/contacts?${q}` : "/api/v1/contacts";
+}
+
+function useContacts(statusFilter: StatusTabValue, tagIdFilter: string | null) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  function load(status: StatusTabValue) {
+  function load(status: StatusTabValue, tagId: string | null) {
     setError(null);
     setLoading(true);
-    const url =
-      status !== "__all__"
-        ? `/api/v1/contacts?status=${encodeURIComponent(status)}`
-        : "/api/v1/contacts";
-    fetch(url)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) setError(json.error.message);
-        else setContacts(json.data ?? []);
+    fetch(buildContactsApiUrl(status, tagId))
+      .then((res) => res.json().then((json) => ({ res, json })))
+      .then(({ res, json }) => {
+        if (!res.ok) {
+          setError((json.error?.message as string) ?? "Failed to load contacts");
+          setContacts([]);
+          return;
+        }
+        setContacts((json.data as Contact[]) ?? []);
       })
       .catch(() => setError("Failed to load contacts"))
       .finally(() => setLoading(false));
   }
 
   useEffect(() => {
-    load(statusFilter);
-  }, [statusFilter]);
+    load(statusFilter, tagIdFilter);
+  }, [statusFilter, tagIdFilter]);
 
-  return { contacts, loading, error, reload: () => load(statusFilter) };
+  return {
+    contacts,
+    loading,
+    error,
+    reload: () => load(statusFilter, tagIdFilter),
+  };
+}
+
+function buildContactsPageHref(status: StatusTabValue, tagId: string | null) {
+  const params = new URLSearchParams();
+  if (status !== "__all__") params.set("status", status);
+  if (tagId) params.set("tagId", tagId);
+  const q = params.toString();
+  return q ? `/contacts?${q}` : "/contacts";
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -392,10 +430,22 @@ function ContactsTable({
  * app/(dashboard)/contacts/page.tsx. ContactsList.tsx is untouched.
  */
 export function ContactsListView() {
-  const [statusFilter, setStatusFilter] = useState<StatusTabValue>("__all__");
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [statusFilter, setStatusFilter] = useState<StatusTabValue>(() =>
+    parseStatusFromSearchParams(searchParams)
+  );
+  const [tagIdFilter, setTagIdFilter] = useState<string | null>(() =>
+    parseTagIdFromSearchParams(searchParams)
+  );
   const [search, setSearch] = useState("");
   const { hasCrm } = useProductTier();
-  const { contacts, loading, error, reload } = useContacts(statusFilter);
+  const { contacts, loading, error, reload } = useContacts(statusFilter, tagIdFilter);
+
+  useEffect(() => {
+    setStatusFilter(parseStatusFromSearchParams(searchParams));
+    setTagIdFilter(parseTagIdFromSearchParams(searchParams));
+  }, [searchParams]);
 
   // Client-side search on top of server-filtered results
   const visibleContacts = useMemo(() => {
@@ -420,11 +470,14 @@ export function ContactsListView() {
         : undefined,
   }));
 
-  const isFiltered = statusFilter !== "__all__" || search.trim().length > 0;
+  const isFiltered =
+    statusFilter !== "__all__" || search.trim().length > 0 || tagIdFilter !== null;
 
   function handleClearFilters() {
     setStatusFilter("__all__");
     setSearch("");
+    setTagIdFilter(null);
+    router.replace("/contacts", { scroll: false });
   }
 
   const showContent = !loading && !error;
@@ -468,13 +521,31 @@ export function ContactsListView() {
       <div className="mx-6 mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
         {/* Panel header */}
         <div className="flex items-start justify-between gap-4 border-b border-kp-outline px-5 py-4">
-          <div>
+          <div className="space-y-1">
             <p className="text-sm font-semibold text-kp-on-surface">
               Leads from open houses
             </p>
             <p className="text-xs text-kp-on-surface-variant">
               Contacts who signed in at your open house events
             </p>
+            {tagIdFilter && (
+              <p className="text-xs text-kp-teal">
+                Filtered by tag ·{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTagIdFilter(null);
+                    router.replace(
+                      buildContactsPageHref(statusFilter, null),
+                      { scroll: false }
+                    );
+                  }}
+                  className="font-medium underline-offset-2 hover:underline"
+                >
+                  Clear tag filter
+                </button>
+              </p>
+            )}
           </div>
           {showContent && contacts.length > 0 && (
             <span className="shrink-0 text-xs tabular-nums text-kp-on-surface-variant">
@@ -493,7 +564,11 @@ export function ContactsListView() {
               active={statusFilter}
               onChange={(v) => {
                 setSearch(""); // clear search when switching status tabs
-                setStatusFilter(v as StatusTabValue);
+                const next = v as StatusTabValue;
+                setStatusFilter(next);
+                router.replace(buildContactsPageHref(next, tagIdFilter), {
+                  scroll: false,
+                });
               }}
             />
           </div>

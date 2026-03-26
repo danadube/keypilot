@@ -15,9 +15,18 @@ export async function GET() {
       tx.tag.findMany({
         where: { userId: user.id },
         orderBy: { name: "asc" },
+        include: {
+          _count: { select: { contactTags: true } },
+        },
       })
     );
-    return NextResponse.json({ data: tags });
+    const data = tags.map((t) => ({
+      id: t.id,
+      name: t.name,
+      createdAt: t.createdAt,
+      usageCount: t._count.contactTags,
+    }));
+    return NextResponse.json({ data });
   } catch (err) {
     return apiErrorFromCaught(err);
   }
