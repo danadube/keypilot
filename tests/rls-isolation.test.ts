@@ -487,6 +487,71 @@ describe("POST /api/v1/activities — write + FK isolation", () => {
     );
     expect(res.status).toBe(404);
   });
+
+  it("POST resolves whitelisted placeholders when contact and property are linked", async () => {
+    setUser(userA);
+    const res = await postActivities(
+      makePostRequest({
+        type: "CALL",
+        title: "Hi {{contact.firstName}} — {{property.city}}, {{property.state}}",
+        description: "Addr: {{property.address1}} ({{property.zip}}) / {{contact.lastName}}",
+        propertyId: propAId,
+        contactId,
+      })
+    );
+    const body = await res.json();
+    expect(res.status).toBe(201);
+    createdUserActivityId = body.data.id;
+    expect(body.data.title).toBe("Hi RLS — Testville, TX");
+    expect(body.data.description).toBe(
+      "Addr: 1 RLS Test St (00001) / Contact"
+    );
+  });
+
+  it("POST clears known placeholders when links are missing", async () => {
+    setUser(userA);
+    const res = await postActivities(
+      makePostRequest({
+        type: "TASK",
+        title: "x{{contact.firstName}}y{{property.city}}z",
+      })
+    );
+    const body = await res.json();
+    expect(res.status).toBe(201);
+    createdUserActivityId = body.data.id;
+    expect(body.data.title).toBe("xyz");
+  });
+
+  it("POST leaves already-resolved title unchanged", async () => {
+    setUser(userA);
+    const res = await postActivities(
+      makePostRequest({
+        type: "NOTE",
+        title: "Plain title no tokens",
+        propertyId: propAId,
+        contactId,
+      })
+    );
+    const body = await res.json();
+    expect(res.status).toBe(201);
+    createdUserActivityId = body.data.id;
+    expect(body.data.title).toBe("Plain title no tokens");
+  });
+
+  it("POST returns 400 when substitution yields an empty title", async () => {
+    setUser(userA);
+    const res = await postActivities(
+      makePostRequest({
+        type: "TASK",
+        title: "{{contact.firstName}}",
+      })
+    );
+    const body = await res.json();
+    expect(res.status).toBe(400);
+    expect(body.error?.message).toBe(
+      "Title is empty after resolving placeholders"
+    );
+  });
 });
 
 describe("PATCH /api/v1/activities/[id] — update isolation", () => {

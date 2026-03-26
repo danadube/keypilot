@@ -12,8 +12,63 @@ import type {
   UpdateActivityTemplateInput,
   UpdateUserActivityInput,
 } from "@/lib/validations/user-activity";
+import {
+  substituteActivityTemplatePlaceholders,
+  type ActivityTemplatePlaceholderContext,
+} from "@/lib/activity-template-placeholders";
 
 export type ActivityTx = Prisma.TransactionClient;
+
+const EMPTY_TITLE_AFTER_PLACEHOLDERS =
+  "Title is empty after resolving placeholders";
+
+/**
+ * Loads contact/property fields for template substitution under the current RLS tx.
+ * When an id is set but the row is not visible, throws the same 404 as assertPropertyAndContactAccessible.
+ */
+export async function loadActivityTemplatePlaceholderContext(
+  tx: ActivityTx,
+  input: { propertyId?: string | null; contactId?: string | null }
+): Promise<ActivityTemplatePlaceholderContext> {
+  const ctx: ActivityTemplatePlaceholderContext = {};
+
+  if (input.propertyId) {
+    const property = await tx.property.findFirst({
+      where: { id: input.propertyId },
+      select: { address1: true, city: true, state: true, zip: true },
+    });
+    if (!property) {
+      throw Object.assign(new Error("Property not found or not accessible"), {
+        status: 404,
+      });
+    }
+    ctx.property = {
+      address1: property.address1,
+      city: property.city,
+      state: property.state,
+      zip: property.zip,
+    };
+  }
+
+  if (input.contactId) {
+    const contact = await tx.contact.findFirst({
+      where: { id: input.contactId },
+      select: { firstName: true, lastName: true, email: true },
+    });
+    if (!contact) {
+      throw Object.assign(new Error("Contact not found or not accessible"), {
+        status: 404,
+      });
+    }
+    ctx.contact = {
+      firstName: contact.firstName,
+      lastName: contact.lastName,
+      email: contact.email,
+    };
+  }
+
+  return ctx;
+}
 
 function buildActivityUpdateData(
   patch: UpdateUserActivityInput
@@ -76,7 +131,26 @@ export async function createUserActivity(
   tx: ActivityTx,
   input: CreateUserActivityInput
 ) {
-  await assertPropertyAndContactAccessible(tx, input);
+  const placeholderCtx = await loadActivityTemplatePlaceholderContext(tx, input);
+
+  const titleRaw = input.title.trim();
+  const titleResolved = substituteActivityTemplatePlaceholders(
+    titleRaw,
+    placeholderCtx
+  ).trim();
+  if (titleResolved === "") {
+    throw Object.assign(new Error(EMPTY_TITLE_AFTER_PLACEHOLDERS), {
+      status: 400,
+    });
+  }
+
+  const descriptionResolved =
+    input.description == null
+      ? undefined
+      : substituteActivityTemplatePlaceholders(
+          input.description.trim(),
+          placeholderCtx
+        );
 
   const activity = await tx.userActivity.create({
     data: {
@@ -84,8 +158,8 @@ export async function createUserActivity(
       propertyId: input.propertyId ?? undefined,
       contactId: input.contactId ?? undefined,
       type: input.type,
-      title: input.title,
-      description: input.description ?? undefined,
+      title: titleResolved,
+      description: descriptionResolved,
       dueAt: input.dueAt ?? undefined,
     },
   });
