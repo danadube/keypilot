@@ -1,5 +1,6 @@
 /**
- * Whitelisted plain-text placeholders for Activity Templates (browser-side v1).
+ * Whitelisted plain-text placeholders for Activity Templates (v1).
+ * Used by the ShowingHQ activity UI and by POST /api/v1/activities for parity.
  * Unknown tokens are left unchanged. Known tokens with no data resolve to "".
  */
 
