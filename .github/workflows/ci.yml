@@ -73,10 +73,32 @@ jobs:
 
       # Keep preview DB in sync with prisma/migrations (e.g. new columns). RLS tests
       # seed via Prisma and fail if the schema lags (P2022 column does not exist).
+      # Supabase: prisma migrate deploy must use a non-pooled connection. If DATABASE_URL
+      # uses the transaction pooler (?pgbouncer=true or port 6543), set DIRECT_URL to the
+      # direct/session URL (db.<project>.supabase.co:5432) in repo secrets.
       - name: Apply Prisma migrations (preview DB)
         shell: bash
         run: |
-          export DIRECT_URL="${DIRECT_URL:-$DATABASE_URL}"
+          set -euo pipefail
+          db_url="${DATABASE_URL:?DATABASE_URL secret is not set}"
+          direct="${DIRECT_URL:-}"
+          lower_db="$(printf '%s' "$db_url" | tr '[:upper:]' '[:lower:]')"
+          poolerish=false
+          case "$lower_db" in
+            *pgbouncer=true*|*pgbouncer=1*) poolerish=true ;;
+          esac
+          case "$db_url" in
+            *:6543/*|*:6543\?*) poolerish=true ;;
+          esac
+          if [ "$poolerish" = true ]; then
+            if [ -z "$direct" ] || [ "$direct" = "$db_url" ]; then
+              echo "::error::Prisma migrations cannot use a transaction-pooled Supabase URL alone. Add DIRECT_URL (direct db host, port 5432, no pgbouncer) alongside DATABASE_URL in repo secrets."
+              exit 1
+            fi
+            export DIRECT_URL="$direct"
+          else
+            export DIRECT_URL="${direct:-$db_url}"
+          fi
           npx prisma migrate deploy
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
