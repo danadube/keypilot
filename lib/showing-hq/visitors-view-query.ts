@@ -76,9 +76,9 @@ export function visitorsViewToHref(view: NormalizedVisitorsView): string {
 
 export function buildVisitorsListApiUrl(view: NormalizedVisitorsView): string {
   const params = new URLSearchParams();
-  if (view.q) params.set("q", view.q);
   if (view.openHouseId) params.set("openHouseId", view.openHouseId);
   if (view.sort !== DEFAULT_VISITORS_SORT) params.set("sort", view.sort);
+  if (view.q) params.set("q", view.q);
   const qs = params.toString();
   return qs
     ? `/api/v1/showing-hq/visitors?${qs}`

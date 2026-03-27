@@ -77,9 +77,9 @@ export function buildShowingsListApiUrl(
   view: NormalizedShowingsListView
 ): string {
   const params = new URLSearchParams();
-  if (view.q) params.set("q", view.q);
   if (view.source) params.set("source", view.source);
   if (view.feedbackOnly) params.set("feedbackOnly", "true");
+  if (view.q) params.set("q", view.q);
   const qs = params.toString();
   return qs
     ? `/api/v1/showing-hq/showings?${qs}`

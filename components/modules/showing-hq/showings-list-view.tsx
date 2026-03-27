@@ -608,11 +608,18 @@ export function ShowingsListView() {
     }
     if (loading) return;
     if (lastHandledOpenShowingRef.current === oid) return;
+    /** Same canonical list shape as page + fetch; merge draft q so we do not drop in-flight search when clearing deep link. */
+    const listWhenClearingDeepLink: NormalizedShowingsListView = {
+      ...listView,
+      q: normalizeShowingHqListSearchQ(qInput),
+    };
     const match = showings.find((s) => s.id === oid);
     if (match) {
       lastHandledOpenShowingRef.current = oid;
       setEditingShowing(match);
-      router.replace(showingsListViewToHref(listView), { scroll: false });
+      router.replace(showingsListViewToHref(listWhenClearingDeepLink), {
+        scroll: false,
+      });
       requestAnimationFrame(() => {
         document.getElementById(`showing-row-${oid}`)?.scrollIntoView({
           block: "nearest",
@@ -622,7 +629,10 @@ export function ShowingsListView() {
       return;
     }
     lastHandledOpenShowingRef.current = oid;
-    router.replace(showingsListViewToHref(listView), { scroll: false });
+    router.replace(showingsListViewToHref(listWhenClearingDeepLink), {
+      scroll: false,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- qInput merged only when clearing one-shot openShowing; omit deps so typing with deep link in URL does not re-run
   }, [openShowingFromUrl, loading, showings, router, listView]);
 
   const feedbackCount = useMemo(
@@ -634,7 +644,7 @@ export function ShowingsListView() {
     [showings]
   );
 
-  const isFiltered = listView.q != null || hasListFilters;
+  const isFiltered = hasListFilters;
   const showContent = !loading && !error;
 
   const sourceSelectValue = listView.source ?? "__all__";

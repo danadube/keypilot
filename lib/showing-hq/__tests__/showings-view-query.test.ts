@@ -72,7 +72,7 @@ describe("showings-view-query", () => {
         "/showing-hq/showings?source=MANUAL&q=oak+ridge"
       );
       expect(buildShowingsListApiUrl(v)).toBe(
-        "/api/v1/showing-hq/showings?q=oak+ridge&source=MANUAL"
+        "/api/v1/showing-hq/showings?source=MANUAL&q=oak+ridge"
       );
     });
   });

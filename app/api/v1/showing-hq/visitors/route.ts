@@ -8,6 +8,7 @@ import type { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
 import { apiErrorFromCaught } from "@/lib/api-response";
+import { normalizeShowingHqListSearchQ } from "@/lib/showing-hq/list-search-q";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     const searchParams = req.nextUrl.searchParams;
-    const q = searchParams.get("q")?.trim() ?? "";
+    const q = normalizeShowingHqListSearchQ(searchParams.get("q")) ?? "";
     const openHouseId = searchParams.get("openHouseId")?.trim();
     const sort = searchParams.get("sort")?.trim() || "date-desc"; // date-desc | date-asc | name-asc | name-desc
 
