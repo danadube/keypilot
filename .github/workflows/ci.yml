@@ -59,8 +59,8 @@ jobs:
   isolation-tests:
     name: RLS isolation tests (preview DB)
     runs-on: ubuntu-latest
-    # secrets context is not available in `if` for fork PRs — this safely skips fork workflows.
-    # When DATABASE_URL is unset, an early step skips the rest of the job (optional integration).
+    # Skip entirely for PRs from forks (untrusted code; secrets are not exposed to those runs).
+    # When DATABASE_URL is unset or blank, an early step skips the rest of the job (optional integration).
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
     steps:
@@ -72,8 +72,9 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
-          if [ -z "${DATABASE_URL:-}" ]; then
-            echo "RLS isolation tests skipped: DATABASE_URL secret is not set."
+          raw="${DATABASE_URL:-}"
+          if [[ -z "$raw" || "$raw" =~ ^[[:space:]]+$ ]]; then
+            echo "RLS isolation tests skipped: DATABASE_URL secret is not set or is blank."
             echo "skip=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
