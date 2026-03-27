@@ -37,6 +37,25 @@ function visitorsSummary(rec: ShowingHqSavedViewRecord): string {
   return parts.join(" · ");
 }
 
+/** Second-chance copy when Clipboard API is denied (e.g. some Safari / HTTP). */
+function copyTextViaExecCommand(text: string): boolean {
+  if (typeof document === "undefined") return false;
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 export default function ShowingHqSavedViewsPage() {
   const [saved, setSaved] = useState<ShowingHqSavedViewRecord[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -109,12 +128,25 @@ export default function ShowingHqSavedViewsPage() {
         ? `${window.location.origin}${path}`
         : path;
     try {
-      await navigator.clipboard.writeText(full);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(full);
+      } else if (!copyTextViaExecCommand(full)) {
+        throw new Error("clipboard unavailable");
+      }
       setCopyHint(`Copied “${row.name}” link.`);
       window.setTimeout(() => setCopyHint(null), 2500);
     } catch {
-      setCopyHint("Copy blocked — open the view and copy from the address bar.");
-      window.setTimeout(() => setCopyHint(null), 4000);
+      if (copyTextViaExecCommand(full)) {
+        setCopyHint(`Copied “${row.name}” link.`);
+        window.setTimeout(() => setCopyHint(null), 2500);
+        return;
+      }
+      const short =
+        full.length > 96 ? `${full.slice(0, 92)}…` : full;
+      setCopyHint(
+        `Copy could not run automatically. Copy this link manually: ${short}`
+      );
+      window.setTimeout(() => setCopyHint(null), 12000);
     }
   }
 

@@ -29,6 +29,7 @@ import {
   Layers,
 } from "lucide-react";
 import {
+  DEFAULT_VISITORS_SORT,
   VISITORS_BASE_PATH,
   buildVisitorsListApiUrl,
   hasVisitorsSaveableFiltersInSearchParams,
@@ -99,9 +100,21 @@ export function VisitorsListView() {
     setLoading(true);
     const url = buildVisitorsListApiUrl(view, { q: searchDebounce });
     fetch(url)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) setError(json.error.message);
+      .then(async (res) => {
+        const json = (await res.json().catch(() => ({}))) as {
+          error?: { message?: string };
+          data?: { visitors?: Visitor[]; openHouses?: OpenHouse[] };
+        };
+        if (!res.ok) {
+          setError(
+            json.error?.message ??
+              (res.status === 401 || res.status === 403
+                ? "You may need to sign in again."
+                : "Failed to load visitors")
+          );
+          return;
+        }
+        if (json.error) setError(json.error.message ?? "Failed to load visitors");
         else {
           setVisitors(json.data?.visitors ?? []);
           setOpenHouses(json.data?.openHouses ?? []);
@@ -122,6 +135,13 @@ export function VisitorsListView() {
 
   function replaceView(next: NormalizedVisitorsView) {
     router.replace(visitorsViewToHref(next), { scroll: false });
+  }
+
+  /** Reset URL-backed filters and client-only search so fetch matches the address bar. */
+  function clearAllFilters() {
+    setSearch("");
+    setSearchDebounce("");
+    router.replace(VISITORS_BASE_PATH, { scroll: false });
   }
 
   const selectOpenHouseValue = view.openHouseId ?? "all";
@@ -154,7 +174,7 @@ export function VisitorsListView() {
     if (!result.ok) {
       if (result.reason === "duplicate") {
         setSaveError(
-          "A shortcut with these same filters already exists. Open ShowingHQ → Saved views to manage it, or change filters first."
+          "A shortcut with the same open house and sort already exists. Open ShowingHQ → Saved views (/showing-hq/saved-views) to rename or remove it, or change filters here first."
         );
       } else if (result.reason === "limit") {
         setSaveError(
@@ -268,10 +288,10 @@ export function VisitorsListView() {
                 <SelectItem value="name-desc">Name Z–A</SelectItem>
               </SelectContent>
             </Select>
-            {hasVisitorsSaveableFiltersInSearchParams(searchParams) && (
+            {canSaveView && (
               <button
                 type="button"
-                onClick={() => router.replace(VISITORS_BASE_PATH, { scroll: false })}
+                onClick={clearAllFilters}
                 className="text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
               >
                 Clear filters
@@ -291,18 +311,60 @@ export function VisitorsListView() {
               <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-kp-surface-high text-kp-on-surface-variant">
                 <Users className="h-5 w-5" />
               </div>
-              <p className="text-sm font-medium text-kp-on-surface">No visitors yet</p>
-              <p className="mt-1 max-w-xs text-xs text-kp-on-surface-variant">
-                Share your sign-in link or QR code at your next open house. Visitors will appear here as they sign in.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(kpBtnSecondary, "mt-3 text-xs")}
-                asChild
-              >
-                <Link href="/open-houses/sign-in">Set up sign-in page</Link>
-              </Button>
+              {urlOpenHouseMissing ? (
+                <>
+                  <p className="text-sm font-medium text-kp-on-surface">
+                    Open house not found
+                  </p>
+                  <p className="mt-1 max-w-sm text-xs text-kp-on-surface-variant">
+                    This saved filter may point at a removed event. Clear filters or pick another open house.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={cn(kpBtnSecondary, "mt-3 text-xs")}
+                    onClick={clearAllFilters}
+                  >
+                    Clear filters
+                  </Button>
+                </>
+              ) : view.openHouseId ||
+                searchDebounce.trim() ||
+                view.sort !== DEFAULT_VISITORS_SORT ? (
+                <>
+                  <p className="text-sm font-medium text-kp-on-surface">
+                    No visitors match
+                  </p>
+                  <p className="mt-1 max-w-sm text-xs text-kp-on-surface-variant">
+                    Try another open house, sort, or search. Search is not saved in shortcuts.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={cn(kpBtnSecondary, "mt-3 text-xs")}
+                    onClick={clearAllFilters}
+                  >
+                    Clear filters and search
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-kp-on-surface">No visitors yet</p>
+                  <p className="mt-1 max-w-xs text-xs text-kp-on-surface-variant">
+                    Share your sign-in link or QR code at your next open house. Visitors will appear here as they sign in.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(kpBtnSecondary, "mt-3 text-xs")}
+                    asChild
+                  >
+                    <Link href="/open-houses/sign-in">Set up sign-in page</Link>
+                  </Button>
+                </>
+              )}
             </div>
           ) : (
             <div className="-mx-1 overflow-x-auto px-1">
