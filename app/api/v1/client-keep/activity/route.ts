@@ -1,8 +1,10 @@
 /**
- * ClientKeep — unified read-only feed of follow-ups (drafts + reminders) and user CRM activities.
+ * ClientKeep — unified feed of follow-ups (drafts + reminders) and user CRM activities (GET only).
  *
  * Each item includes `eventAt` (ISO string): sourced from the row’s `updatedAt` so the feed
  * reflects recency (edits, status changes). Sorted descending by `eventAt`.
+ *
+ * `entityId` plus reminder `status` / activity `completedAt` support quick actions on the client.
  */
 
 import { NextResponse } from "next/server";
@@ -103,6 +105,7 @@ export async function GET() {
             type: true,
             contactId: true,
             propertyId: true,
+            completedAt: true,
             createdAt: true,
             updatedAt: true,
           },
@@ -114,6 +117,7 @@ export async function GET() {
 
     const items: {
       id: string;
+      entityId: string;
       type: "follow_up" | "activity";
       subkind: FeedSubkind;
       href: string;
@@ -122,11 +126,16 @@ export async function GET() {
       contactId?: string;
       propertyId?: string;
       eventAt: string;
+      /** Present when `subkind === "reminder"` */
+      status?: string;
+      /** Present when `subkind === "user_activity"` */
+      completedAt?: string | null;
     }[] = [];
 
     for (const d of drafts) {
       items.push({
         id: `follow-up-draft:${d.id}`,
+        entityId: d.id,
         type: "follow_up",
         subkind: "draft",
         href: `/showing-hq/follow-ups/draft/${d.id}`,
@@ -143,12 +152,14 @@ export async function GET() {
         "Reminder";
       items.push({
         id: `follow-up-reminder:${r.id}`,
+        entityId: r.id,
         type: "follow_up",
         subkind: "reminder",
         href: contactHref(r.contactId),
         title: truncate(firstLine, 120),
         description: `Reminder · ${r.status.toLowerCase()}`,
         contactId: r.contactId,
+        status: r.status,
         eventAt: feedEventTime(r).toISOString(),
       });
     }
@@ -158,6 +169,7 @@ export async function GET() {
         a.description?.trim() ?? formatUserActivityType(a.type);
       items.push({
         id: `activity:${a.id}`,
+        entityId: a.id,
         type: "activity",
         subkind: "user_activity",
         href: userActivityHref(a),
@@ -166,6 +178,7 @@ export async function GET() {
           secondary.length > 200 ? truncate(secondary, 200) : secondary,
         contactId: a.contactId ?? undefined,
         propertyId: a.propertyId ?? undefined,
+        completedAt: a.completedAt ? a.completedAt.toISOString() : null,
         eventAt: feedEventTime(a).toISOString(),
       });
     }
