@@ -18,6 +18,7 @@
 - Shortcuts stored in **browser localStorage** (`kp_showinghq_saved_views_v1`): **this device/browser**, not synced.
 - **Duplicates** blocked by **normalized fingerprint** per surface (`surface` + filter fields).
 - **Search text** (`q` on visitors) and **client-only showings search** are **not** saved (same rule as ClientKeep).
+- **Showings** `openShowing` deep links are **not** saved and **do not** alone show **Save view** (filters only: `source`, `feedbackOnly`).
 - **No** database or RLS changes for v1.
 
 ---
@@ -72,11 +73,11 @@ All list APIs already enforce **host / owner** scoping via `getCurrentUser()` an
 |-------|------|---------------|-------------|
 | `source` | enum? | `MANUAL` \| `SUPRA_SCRAPE`; invalid/empty → omit | `GET …/showings?source=` |
 | `feedbackOnly` | flag | presence of `feedbackOnly=true` only; else omit | `GET …/showings?feedbackOnly=true` |
-| `openShowing` | string? | non-empty trimmed UUID/string = expanded row / deep link | Already on page as `searchParams.openShowing`; optional in saved views |
+| `openShowing` | string? | non-empty trimmed id = one-shot edit modal / scroll target | Deep link only — **excluded** from Saved Views v1 (not saved, not fingerprinted); **Save view** does **not** appear for `openShowing`-only URLs |
 
 **Defaults:** no `source` → all sources; no `feedbackOnly` → false; no `openShowing` → no row forced open.
 
-**Save visibility:** Show **Save view** when at least one of `source`, `feedbackOnly=true`, or `openShowing` is present in the URL **or** when product chooses to treat “feedback only” toggles as URL-backed (implementation must write URL before save).
+**Save visibility (Showings v1):** Show **Save view** only when `source` is set to a known value **or** `feedbackOnly=true` is in the URL. A deep link with **only** `openShowing` does **not** enable Save (list filters are unchanged; use filters first if you want a named shortcut).
 
 **Not in v1 grammar (API does not support — do not save):**
 
@@ -149,7 +150,7 @@ type ShowingHqSavedViewRecord = {
   // Normalized — omit or null for “unset” per surface rules
   source?: string | null;
   feedbackOnly?: boolean | null; // true | null
-  openShowing?: string | null;
+  openShowing?: string | null; // not populated for SHOWINGS saves in v1
   openHouseId?: string | null;
   sort?: string | null;
   status?: string | null; // OPEN_HOUSES only
@@ -172,12 +173,12 @@ type ShowingHqSavedViewRecord = {
 
 | Action | Behavior |
 |--------|----------|
-| **Save view** | Shown only when URL encodes at least one **saveable** param for that surface (per grammar). Modal: name input, copy that persistence is **this browser only**; **no** `q` / client-only search. |
+| **Save view** | Shown only when URL encodes at least one **saveable** param for that surface (per grammar). **Showings:** `source` or `feedbackOnly` only — not `openShowing` alone. Modal: name input, copy that persistence is **this browser only**; **no** `q` / client-only search. |
 | **List** | New hub route e.g. `/showing-hq/saved-views` **or** section on ShowingHQ dashboard — list by name, show surface + human-readable filter summary. |
 | **Open** | `Link` / `router.push` to `*ToHref(...)`. |
 | **Rename / Delete** | Inline or modal; delete confirmation recommended. |
 | **Cross-tab** | `storage` event on `kp_showinghq_saved_views_v1` + `window` `focus` refresh (same as ClientKeep). |
-| **Stale references** | Footer note if any saved view uses `openHouseId` (visitors) or `openShowing` (deleted showing): recovery path = clear filters on target page or delete shortcut. |
+| **Stale references** | Footer note if a visitor shortcut uses `openHouseId` (event removed). **`openShowing` is not stored** in Saved Views; manual bookmarks with a deleted id can still be cleared on Showings or by editing the URL. |
 
 ---
 
@@ -202,9 +203,9 @@ Second-module proof of `docs/platform/saved-views-spec.md`: **prove** URL + loca
 
 **Showings**
 
-- [ ] URL drives `source` / `feedbackOnly` / optional `openShowing`; fetch matches `GET /api/v1/showing-hq/showings?…`.  
-- [ ] **Save view** only when URL has saveable params (per product rule for defaults).  
-- [ ] Saved Open restores list + expanded row when `openShowing` invalid → sensible error / collapse (define minimal behavior).  
+- [ ] URL drives `source` / `feedbackOnly`; `openShowing` is client deep-link only; fetch matches `GET /api/v1/showing-hq/showings?…` (invalid `source` values normalized / stripped from URL).  
+- [ ] **Save view** only when `source` or `feedbackOnly=true` is present — **not** for `openShowing`-only URLs.  
+- [ ] Deep link `openShowing`: modal opens when id exists; unknown id strips `openShowing` and preserves list filters.  
 - [ ] Duplicate surface + filters blocked; max list enforced.
 
 **Visitors**

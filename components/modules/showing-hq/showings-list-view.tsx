@@ -33,6 +33,7 @@ import {
   type ShowingsSource,
   buildShowingsListApiUrl,
   hasShowingsSaveableFiltersInSearchParams,
+  normalizeShowingsSourceParam,
   parseShowingsListViewFromSearchParams,
   showingsListViewToHref,
   type NormalizedShowingsListView,
@@ -539,6 +540,18 @@ export function ShowingsListView() {
   const canSaveView = hasShowingsSaveableFiltersInSearchParams(searchParams);
   const hasListFilters = canSaveView;
 
+  /** Drop unknown `source=` from the address bar so URL matches fetch normalization. */
+  useEffect(() => {
+    const raw = searchParams.get("source");
+    if (
+      raw != null &&
+      raw.trim() !== "" &&
+      normalizeShowingsSourceParam(raw) === null
+    ) {
+      router.replace(showingsListViewToHref(listView), { scroll: false });
+    }
+  }, [searchParams, listView, router]);
+
   useEffect(() => {
     const oid = openShowingFromUrl;
     if (!oid) {
@@ -646,7 +659,13 @@ export function ShowingsListView() {
           label="Total showings"
           value={loading ? "—" : showings.length}
           accent="teal"
-          sub={!loading && showings.length > 0 ? "All time" : undefined}
+          sub={
+            !loading && showings.length > 0
+              ? hasListFilters
+                ? "Matches current URL filters"
+                : "All time"
+              : undefined
+          }
         />
         <MetricCard
           label="Feedback requested"

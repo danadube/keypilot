@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ModuleGate } from "@/components/shared/ModuleGate";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
@@ -119,9 +119,18 @@ export default function ShowingHqSavedViewsPage() {
     };
   }, [refreshSaved]);
 
-  const hubRows = saved.filter(
-    (r) => r.surface === "VISITORS" || r.surface === "SHOWINGS"
-  );
+  const hubRows = useMemo(() => {
+    const rows = saved.filter(
+      (r) => r.surface === "VISITORS" || r.surface === "SHOWINGS"
+    );
+    const surfaceOrder = (s: ShowingHqSavedViewRecord["surface"]) =>
+      s === "SHOWINGS" ? 0 : s === "VISITORS" ? 1 : 2;
+    return [...rows].sort((a, b) => {
+      const o = surfaceOrder(a.surface) - surfaceOrder(b.surface);
+      if (o !== 0) return o;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+    });
+  }, [saved]);
 
   function startRename(row: ShowingHqSavedViewRecord) {
     setRenameHint(null);
