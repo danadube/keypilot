@@ -1,0 +1,211 @@
+/**
+ * Browser-only ShowingHQ saved views (v1). Single key per playbook; surface field
+ * discriminates. Visitors-only writers in this slice; load tolerates future surfaces.
+ */
+
+import {
+  normalizeVisitorsOpenHouseId,
+  normalizeVisitorsSortParam,
+  type VisitorsSort,
+  visitorsViewFingerprint,
+} from "./visitors-view-query";
+
+export const SHOWINGHQ_SAVED_VIEWS_STORAGE_KEY = "kp_showinghq_saved_views_v1";
+
+export const MAX_SHOWINGHQ_SAVED_VIEWS = 50;
+
+export const MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH = 80;
+
+export type ShowingHqSavedViewSurface = "SHOWINGS" | "VISITORS" | "OPEN_HOUSES";
+
+export type ShowingHqSavedViewRecord = {
+  id: string;
+  name: string;
+  surface: ShowingHqSavedViewSurface;
+  source?: string | null;
+  feedbackOnly?: boolean | null;
+  openShowing?: string | null;
+  openHouseId?: string | null;
+  sort?: string | null;
+  status?: string | null;
+};
+
+export type AddShowingHqSavedViewResult =
+  | { ok: true; record: ShowingHqSavedViewRecord }
+  | { ok: false; reason: "duplicate" | "empty_name" | "limit" };
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+function isSurface(s: unknown): s is ShowingHqSavedViewSurface {
+  return s === "SHOWINGS" || s === "VISITORS" || s === "OPEN_HOUSES";
+}
+
+function normalizedVisitorsFields(
+  openHouseId: unknown,
+  sort: unknown
+): { openHouseId: string | null; sort: VisitorsSort } {
+  return {
+    openHouseId: normalizeVisitorsOpenHouseId(
+      typeof openHouseId === "string" ? openHouseId : null
+    ),
+    sort: normalizeVisitorsSortParam(
+      typeof sort === "string" ? sort : null
+    ),
+  };
+}
+
+function visitorsFingerprintFromRecord(
+  rec: ShowingHqSavedViewRecord
+): string | null {
+  if (rec.surface !== "VISITORS") return null;
+  const { openHouseId, sort } = normalizedVisitorsFields(
+    rec.openHouseId,
+    rec.sort
+  );
+  return visitorsViewFingerprint({ openHouseId, sort });
+}
+
+function normalizeRecord(raw: unknown): ShowingHqSavedViewRecord | null {
+  if (!isRecord(raw)) return null;
+  const id = typeof raw.id === "string" ? raw.id.trim() : "";
+  const name = typeof raw.name === "string" ? raw.name.trim() : "";
+  if (!id || !name) return null;
+  if (!isSurface(raw.surface)) return null;
+
+  const nameSlice = name.slice(0, MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH);
+
+  if (raw.surface === "VISITORS") {
+    const { openHouseId, sort } = normalizedVisitorsFields(
+      raw.openHouseId,
+      raw.sort
+    );
+    return {
+      id,
+      name: nameSlice,
+      surface: "VISITORS",
+      openHouseId,
+      sort,
+    };
+  }
+
+  // Forward-compatible pass-through for future SHOWINGS / OPEN_HOUSES rows
+  return {
+    id,
+    name: nameSlice,
+    surface: raw.surface,
+    source:
+      raw.source === null || raw.source === undefined
+        ? null
+        : typeof raw.source === "string"
+          ? raw.source.trim() || null
+          : null,
+    feedbackOnly: raw.feedbackOnly === true ? true : null,
+    openShowing:
+      typeof raw.openShowing === "string"
+        ? raw.openShowing.trim() || null
+        : null,
+    openHouseId:
+      typeof raw.openHouseId === "string"
+        ? raw.openHouseId.trim() || null
+        : null,
+    sort: typeof raw.sort === "string" ? raw.sort.trim() || null : null,
+    status:
+      typeof raw.status === "string" ? raw.status.trim() || null : null,
+  };
+}
+
+export function loadSavedViews(): ShowingHqSavedViewRecord[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(SHOWINGHQ_SAVED_VIEWS_STORAGE_KEY);
+    if (!raw || raw.trim() === "") return [];
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    const out: ShowingHqSavedViewRecord[] = [];
+    for (const item of parsed) {
+      const rec = normalizeRecord(item);
+      if (rec) out.push(rec);
+    }
+    return out.slice(0, MAX_SHOWINGHQ_SAVED_VIEWS);
+  } catch {
+    return [];
+  }
+}
+
+export function persistSavedViews(views: ShowingHqSavedViewRecord[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    const trimmed = views.slice(0, MAX_SHOWINGHQ_SAVED_VIEWS);
+    window.localStorage.setItem(
+      SHOWINGHQ_SAVED_VIEWS_STORAGE_KEY,
+      JSON.stringify(trimmed)
+    );
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+/** Add a VISITORS saved view; filters normalized; q never stored. */
+export function addSavedVisitorsView(
+  rec: Omit<ShowingHqSavedViewRecord, "id" | "surface"> & {
+    id?: string;
+    surface?: ShowingHqSavedViewSurface;
+  }
+): AddShowingHqSavedViewResult {
+  const name = rec.name.trim().slice(0, MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH);
+  if (!name) return { ok: false, reason: "empty_name" };
+
+  const { openHouseId, sort } = normalizedVisitorsFields(
+    rec.openHouseId,
+    rec.sort
+  );
+  const nextPartial: ShowingHqSavedViewRecord = {
+    id: "",
+    name,
+    surface: "VISITORS",
+    openHouseId,
+    sort,
+  };
+  const fpNew = visitorsViewFingerprint({ openHouseId, sort });
+
+  const list = loadSavedViews();
+  if (list.length >= MAX_SHOWINGHQ_SAVED_VIEWS) {
+    return { ok: false, reason: "limit" };
+  }
+
+  if (
+    list.some((row) => {
+      if (row.surface !== "VISITORS") return false;
+      return visitorsFingerprintFromRecord(row) === fpNew;
+    })
+  ) {
+    return { ok: false, reason: "duplicate" };
+  }
+
+  const id =
+    rec.id?.trim() ||
+    (typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`);
+
+  const next: ShowingHqSavedViewRecord = { ...nextPartial, id };
+  persistSavedViews([...list, next]);
+  return { ok: true, record: next };
+}
+
+export function renameSavedView(id: string, name: string): boolean {
+  const trimmed = name.trim().slice(0, MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH);
+  if (!trimmed) return false;
+  const list = loadSavedViews();
+  persistSavedViews(
+    list.map((s) => (s.id === id ? { ...s, name: trimmed } : s))
+  );
+  return true;
+}
+
+export function deleteSavedView(id: string): void {
+  const list = loadSavedViews();
+  persistSavedViews(list.filter((s) => s.id !== id));
+}

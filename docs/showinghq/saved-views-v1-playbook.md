@@ -251,7 +251,7 @@ Second-module proof of `docs/platform/saved-views-spec.md`: **prove** URL + loca
 | Module | Surface | Base path | Grammar helper | Storage key (v1) |
 |--------|---------|-----------|----------------|------------------|
 | ShowingHQ | Private showings | `/showing-hq/showings` | `lib/showing-hq/showings-view-query.ts` (TBD) | `kp_showinghq_saved_views_v1` |
-| ShowingHQ | Visitors | `/showing-hq/visitors` | `lib/showing-hq/visitors-view-query.ts` (TBD) | *(same key, `surface` field)* |
+| ShowingHQ | Visitors | `/showing-hq/visitors` | `lib/showing-hq/visitors-view-query.ts` | *(same key, `surface` field)* |
 | ShowingHQ | Open houses | `/open-houses` | `lib/showing-hq/open-houses-view-query.ts` (TBD, P1) | *(same)* |
 
 ---

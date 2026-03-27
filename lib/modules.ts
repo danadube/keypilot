@@ -29,6 +29,7 @@ import {
   BookText,
   ClipboardCheck,
   Layers,
+  Bookmark,
 } from "lucide-react";
 
 export type ModuleId =
@@ -109,6 +110,12 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
       { label: "Feedback Requests", href: "/showing-hq/feedback-requests", icon: ClipboardCheck, section: "SHOWINGS" },
       { label: "Open Houses", href: "/open-houses", icon: QrCode, section: "OPEN HOUSES" },
       { label: "Visitors", href: "/showing-hq/visitors", icon: Users, section: "OPEN HOUSES" },
+      {
+        label: "Saved views",
+        href: "/showing-hq/saved-views",
+        icon: Bookmark,
+        section: "OPEN HOUSES",
+      },
       { label: "Sign-In Pages", href: "/open-houses/sign-in", icon: QrCode, section: "OPEN HOUSES" },
       { label: "Follow-ups", href: "/showing-hq/follow-ups", icon: CheckSquare, section: "ACTIVITY" },
       { label: "Activity", href: "/showing-hq/activity", icon: BarChart3, section: "ACTIVITY" },

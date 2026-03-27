@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Button } from "@/components/ui/button";
+import { BrandModal } from "@/components/ui/BrandModal";
 import { cn } from "@/lib/utils";
 import { kpBtnSecondary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { Input } from "@/components/ui/input";
@@ -17,7 +19,28 @@ import {
 } from "@/components/ui/select";
 import { LeadStatusBadge } from "@/components/shared/LeadStatusBadge";
 import { InterestBadge } from "@/components/shared/InterestBadge";
-import { Users, Search, QrCode, Calendar, Mail } from "lucide-react";
+import {
+  Users,
+  Search,
+  QrCode,
+  Calendar,
+  Mail,
+  BookmarkPlus,
+  Layers,
+} from "lucide-react";
+import {
+  VISITORS_BASE_PATH,
+  buildVisitorsListApiUrl,
+  hasVisitorsSaveableFiltersInSearchParams,
+  normalizeVisitorsSortParam,
+  parseVisitorsViewFromSearchParams,
+  visitorsViewToHref,
+  type NormalizedVisitorsView,
+} from "@/lib/showing-hq/visitors-view-query";
+import {
+  MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH,
+  addSavedVisitorsView,
+} from "@/lib/showing-hq/saved-views-storage";
 
 type Visitor = {
   id: string;
@@ -53,24 +76,29 @@ type OpenHouse = {
 };
 
 export function VisitorsListView() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const view = useMemo(
+    () => parseVisitorsViewFromSearchParams(searchParams),
+    [searchParams]
+  );
+
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [openHouses, setOpenHouses] = useState<OpenHouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [filterOpenHouseId, setFilterOpenHouseId] = useState<string>("all");
   const [searchDebounce, setSearchDebounce] = useState("");
-  const [sort, setSort] = useState<string>("date-desc");
+
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const loadData = useCallback(() => {
     setError(null);
     setLoading(true);
-    const params = new URLSearchParams();
-    if (searchDebounce) params.set("q", searchDebounce);
-    if (filterOpenHouseId && filterOpenHouseId !== "all")
-      params.set("openHouseId", filterOpenHouseId);
-    params.set("sort", sort);
-    fetch(`/api/v1/showing-hq/visitors?${params}`)
+    const url = buildVisitorsListApiUrl(view, { q: searchDebounce });
+    fetch(url)
       .then((res) => res.json())
       .then((json) => {
         if (json.error) setError(json.error.message);
@@ -81,7 +109,7 @@ export function VisitorsListView() {
       })
       .catch(() => setError("Failed to load visitors"))
       .finally(() => setLoading(false));
-  }, [searchDebounce, filterOpenHouseId, sort]);
+  }, [view, searchDebounce]);
 
   useEffect(() => {
     loadData();
@@ -91,6 +119,56 @@ export function VisitorsListView() {
     const t = setTimeout(() => setSearchDebounce(search), 300);
     return () => clearTimeout(t);
   }, [search]);
+
+  function replaceView(next: NormalizedVisitorsView) {
+    router.replace(visitorsViewToHref(next), { scroll: false });
+  }
+
+  const selectOpenHouseValue = view.openHouseId ?? "all";
+  const openHouseIdSet = useMemo(
+    () => new Set(openHouses.map((o) => o.id)),
+    [openHouses]
+  );
+  const urlOpenHouseMissing =
+    view.openHouseId !== null && !openHouseIdSet.has(view.openHouseId);
+
+  const canSaveView = hasVisitorsSaveableFiltersInSearchParams(searchParams);
+
+  function openSaveModal() {
+    setSaveError(null);
+    setSaveName("");
+    setSaveModalOpen(true);
+  }
+
+  function handleConfirmSave() {
+    const name = saveName.trim();
+    if (!name) {
+      setSaveError("Enter a name");
+      return;
+    }
+    const result = addSavedVisitorsView({
+      name,
+      openHouseId: view.openHouseId,
+      sort: view.sort,
+    });
+    if (!result.ok) {
+      if (result.reason === "duplicate") {
+        setSaveError(
+          "A shortcut with these same filters already exists. Open ShowingHQ → Saved views to manage it, or change filters first."
+        );
+      } else if (result.reason === "limit") {
+        setSaveError(
+          "You can save up to 50 views. Remove one on Saved views and try again."
+        );
+      } else {
+        setSaveError("Enter a name");
+      }
+      return;
+    }
+    setSaveModalOpen(false);
+    setSaveName("");
+    setSaveError(null);
+  }
 
   const formatDateTime = (d: string) =>
     new Date(d).toLocaleString("en-US", {
@@ -126,6 +204,16 @@ export function VisitorsListView() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {canSaveView && (
+              <button
+                type="button"
+                onClick={openSaveModal}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-xs font-medium text-kp-on-surface transition-colors hover:border-kp-teal/40 hover:bg-kp-teal/5"
+              >
+                <BookmarkPlus className="h-3.5 w-3.5 text-kp-teal" aria-hidden />
+                Save view
+              </button>
+            )}
             <div className="relative min-w-[200px] max-w-sm flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-kp-on-surface-variant" />
               <Input
@@ -135,12 +223,25 @@ export function VisitorsListView() {
                 className="h-9 border-kp-outline bg-kp-surface-high pl-9 text-kp-on-surface placeholder:text-kp-on-surface-variant focus:ring-kp-teal"
               />
             </div>
-            <Select value={filterOpenHouseId} onValueChange={setFilterOpenHouseId}>
+            <Select
+              value={selectOpenHouseValue}
+              onValueChange={(v) =>
+                replaceView({
+                  openHouseId: v === "all" ? null : v,
+                  sort: view.sort,
+                })
+              }
+            >
               <SelectTrigger className="h-9 w-[200px] border-kp-outline bg-kp-surface-high text-kp-on-surface">
                 <SelectValue placeholder="All events" />
               </SelectTrigger>
               <SelectContent className="border-kp-outline bg-kp-surface text-kp-on-surface">
                 <SelectItem value="all">All open houses</SelectItem>
+                {urlOpenHouseMissing && view.openHouseId ? (
+                  <SelectItem value={view.openHouseId}>
+                    Unavailable event (clear or pick another)
+                  </SelectItem>
+                ) : null}
                 {openHouses.map((oh) => (
                   <SelectItem key={oh.id} value={oh.id}>
                     {oh.title} · {formatAddress(oh.property)}
@@ -148,7 +249,15 @@ export function VisitorsListView() {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={sort} onValueChange={setSort}>
+            <Select
+              value={view.sort}
+              onValueChange={(v) =>
+                replaceView({
+                  openHouseId: view.openHouseId,
+                  sort: normalizeVisitorsSortParam(v),
+                })
+              }
+            >
               <SelectTrigger className="h-9 w-[140px] border-kp-outline bg-kp-surface-high text-kp-on-surface">
                 <SelectValue placeholder="Sort" />
               </SelectTrigger>
@@ -159,6 +268,15 @@ export function VisitorsListView() {
                 <SelectItem value="name-desc">Name Z–A</SelectItem>
               </SelectContent>
             </Select>
+            {hasVisitorsSaveableFiltersInSearchParams(searchParams) && (
+              <button
+                type="button"
+                onClick={() => router.replace(VISITORS_BASE_PATH, { scroll: false })}
+                className="text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -272,6 +390,17 @@ export function VisitorsListView() {
                 className={cn(kpBtnSecondary, "w-full justify-start")}
                 asChild
               >
+                <Link href="/showing-hq/saved-views">
+                  <Layers className="mr-2 h-4 w-4" />
+                  Saved views
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnSecondary, "w-full justify-start")}
+                asChild
+              >
                 <Link href="/open-houses/sign-in">
                   <QrCode className="mr-2 h-4 w-4" />
                   Set up sign-in page
@@ -303,6 +432,65 @@ export function VisitorsListView() {
           </div>
         </div>
       </div>
+
+      <BrandModal
+        open={saveModalOpen}
+        onOpenChange={(open) => {
+          setSaveModalOpen(open);
+          if (!open) {
+            setSaveError(null);
+            setSaveName("");
+          }
+        }}
+        title="Save view"
+        description={
+          "Saves open-house and sort filters from the address bar only (search is never included). " +
+          "Stored on this browser only — not synced across devices or browsers."
+        }
+        size="sm"
+        footer={
+          <div className="flex w-full justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setSaveModalOpen(false)}
+              className="rounded-lg border border-kp-outline px-3 py-2 text-xs font-medium text-kp-on-surface transition-colors hover:bg-kp-surface-high"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmSave}
+              className="rounded-lg bg-kp-teal px-3 py-2 text-xs font-medium text-white transition-colors hover:opacity-90"
+            >
+              Save
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-kp-on-surface-variant">
+            Name
+          </label>
+          <input
+            type="text"
+            value={saveName}
+            onChange={(e) => {
+              setSaveName(e.target.value);
+              setSaveError(null);
+            }}
+            placeholder="e.g. Last weekend’s sign-ins"
+            maxLength={MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH}
+            className={cn(
+              "w-full rounded-lg border border-kp-outline bg-kp-bg px-3 py-2 text-sm text-kp-on-surface",
+              "placeholder:text-kp-on-surface-variant focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+            )}
+            autoFocus
+          />
+          {saveError && (
+            <p className="text-xs text-red-400">{saveError}</p>
+          )}
+        </div>
+      </BrandModal>
     </div>
   );
 }
