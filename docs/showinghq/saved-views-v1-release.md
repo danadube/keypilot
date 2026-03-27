@@ -24,7 +24,7 @@ Ship scope: **Visitors** and **Showings** list surfaces. Open Houses remains out
 
 Agents get labeled bookmarks that reopen the same **URL-backed** list filters on **Visitors** and **All Showings**, **including search (`q`)**—normalized and stored in the shortcut. Filters are whatever the address bar encodes for each surface (see playbook). Nothing is written to the database; shortcuts live in **localStorage** on that browser only.
 
-**Entry points:** **Save view** on each list when saveable params are in the URL, and **Saved views** in the ShowingHQ sidebar. The hub lists both Visitors and Showings rows with Open / Rename / Delete / Copy link.
+**Entry points:** **Save view** on each list when the URL includes any saveable list grammar **(including canonical `q`)**, and **Saved views** in the ShowingHQ sidebar. The hub lists both Visitors and Showings rows with Open / Rename / Delete / Copy link.
 
 Set expectations internally: **not synced**, lost if site data is cleared or on another device, and **visitor** shortcuts tied to an `openHouseId` may show an empty list if that open house was removed. **Showings** shortcuts restore **list filters and search (`q`)**, not which row’s edit modal was open (`openShowing` is intentionally excluded from Saved Views).
 
