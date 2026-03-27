@@ -12,12 +12,28 @@ import {
   Loader2,
   UserCheck,
   TrendingUp,
+  BookmarkPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MetricCard } from "@/components/ui/metric-card";
 import { SectionTabs } from "@/components/ui/section-tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { BrandModal } from "@/components/ui/BrandModal";
 import { useProductTier } from "@/components/ProductTierProvider";
+import {
+  STATUS_TAB_VALUES,
+  buildContactsApiUrl,
+  hasSegmentFiltersInSearchParams,
+  parseSegmentFromSearchParams,
+  parseTagIdFromSearchParams,
+  segmentToHref,
+  tabToSavedStatus,
+  type ContactSegmentStatusTab,
+} from "@/lib/client-keep/contact-segment-query";
+import {
+  MAX_SAVED_SEGMENTS,
+  addSavedSegment,
+} from "@/lib/client-keep/saved-segments-storage";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -37,35 +53,7 @@ type Contact = {
   createdAt: string;
 };
 
-// ── Status config ─────────────────────────────────────────────────────────────
-
-const STATUS_TAB_VALUES = [
-  { label: "All",        value: "__all__"   },
-  { label: "Lead",       value: "LEAD"      },
-  { label: "Contacted",  value: "CONTACTED" },
-  { label: "Nurturing",  value: "NURTURING" },
-  { label: "Ready",      value: "READY"     },
-  { label: "Lost",       value: "LOST"      },
-] as const;
-
-type StatusTabValue = (typeof STATUS_TAB_VALUES)[number]["value"];
-
-const STATUS_QUERY_VALUES: Set<string> = new Set(
-  STATUS_TAB_VALUES.filter((t) => t.value !== "__all__").map((t) => t.value)
-);
-
-function parseStatusFromSearchParams(sp: URLSearchParams): StatusTabValue {
-  const raw = sp.get("status")?.toUpperCase();
-  if (raw && STATUS_QUERY_VALUES.has(raw)) {
-    return raw as StatusTabValue;
-  }
-  return "__all__";
-}
-
-function parseTagIdFromSearchParams(sp: URLSearchParams): string | null {
-  const tid = sp.get("tagId")?.trim();
-  return tid || null;
-}
+type StatusTabValue = ContactSegmentStatusTab;
 
 function statusBadgeVariant(
   s: ContactStatus | null | undefined
@@ -94,14 +82,6 @@ function statusLabel(s: ContactStatus | null | undefined): string {
 // ── Data fetching ─────────────────────────────────────────────────────────────
 // Server-side status and optional tag filters — same visibility as GET /api/v1/contacts.
 // Client-side search is layered on top of the fetched result.
-
-function buildContactsApiUrl(status: StatusTabValue, tagId: string | null) {
-  const params = new URLSearchParams();
-  if (status !== "__all__") params.set("status", status);
-  if (tagId) params.set("tagId", tagId);
-  const q = params.toString();
-  return q ? `/api/v1/contacts?${q}` : "/api/v1/contacts";
-}
 
 function useContacts(statusFilter: StatusTabValue, tagIdFilter: string | null) {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -135,14 +115,6 @@ function useContacts(statusFilter: StatusTabValue, tagIdFilter: string | null) {
     error,
     reload: () => load(statusFilter, tagIdFilter),
   };
-}
-
-function buildContactsPageHref(status: StatusTabValue, tagId: string | null) {
-  const params = new URLSearchParams();
-  if (status !== "__all__") params.set("status", status);
-  if (tagId) params.set("tagId", tagId);
-  const q = params.toString();
-  return q ? `/contacts?${q}` : "/contacts";
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -454,18 +426,22 @@ export function ContactsListView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [statusFilter, setStatusFilter] = useState<StatusTabValue>(() =>
-    parseStatusFromSearchParams(searchParams)
+    parseSegmentFromSearchParams(searchParams).status
   );
   const [tagIdFilter, setTagIdFilter] = useState<string | null>(() =>
     parseTagIdFromSearchParams(searchParams)
   );
   const [search, setSearch] = useState("");
+  const [saveSegmentOpen, setSaveSegmentOpen] = useState(false);
+  const [saveSegmentName, setSaveSegmentName] = useState("");
+  const [saveSegmentError, setSaveSegmentError] = useState<string | null>(null);
   const { hasCrm } = useProductTier();
   const { contacts, loading, error, reload } = useContacts(statusFilter, tagIdFilter);
 
   useEffect(() => {
-    setStatusFilter(parseStatusFromSearchParams(searchParams));
-    setTagIdFilter(parseTagIdFromSearchParams(searchParams));
+    const { status, tagId } = parseSegmentFromSearchParams(searchParams);
+    setStatusFilter(status);
+    setTagIdFilter(tagId);
   }, [searchParams]);
 
   // Client-side search on top of server-filtered results
@@ -501,18 +477,60 @@ export function ContactsListView() {
     router.replace("/contacts", { scroll: false });
   }
 
+  const canSaveSegment = hasSegmentFiltersInSearchParams(searchParams);
+
+  function openSaveSegmentModal() {
+    setSaveSegmentError(null);
+    setSaveSegmentName("");
+    setSaveSegmentOpen(true);
+  }
+
+  function handleConfirmSaveSegment() {
+    const name = saveSegmentName.trim();
+    if (!name) {
+      setSaveSegmentError("Enter a name");
+      return;
+    }
+    const created = addSavedSegment({
+      name,
+      status: tabToSavedStatus(statusFilter),
+      tagId: tagIdFilter,
+    });
+    if (!created) {
+      setSaveSegmentError(
+        `You can save up to ${MAX_SAVED_SEGMENTS} segments. Remove one on Segments and try again.`
+      );
+      return;
+    }
+    setSaveSegmentOpen(false);
+    setSaveSegmentName("");
+    setSaveSegmentError(null);
+  }
+
   const showContent = !loading && !error;
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
       {/* ── Page header ─────────────────────────────────────────────────── */}
-      <div className="px-6 pb-4 pt-3 sm:px-8">
-        <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
-          Contacts
-        </h1>
-        <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-          Leads from open house sign-ins
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3 px-6 pb-4 pt-3 sm:px-8">
+        <div>
+          <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
+            Contacts
+          </h1>
+          <p className="mt-0.5 text-sm text-kp-on-surface-variant">
+            Leads from open house sign-ins
+          </p>
+        </div>
+        {canSaveSegment && (
+          <button
+            type="button"
+            onClick={openSaveSegmentModal}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-xs font-medium text-kp-on-surface transition-colors hover:border-kp-teal/40 hover:bg-kp-teal/5"
+          >
+            <BookmarkPlus className="h-3.5 w-3.5 text-kp-teal" aria-hidden />
+            Save segment
+          </button>
+        )}
       </div>
 
       {/* ── Metric cards (CRM tier only) ─────────────────────────────────── */}
@@ -556,10 +574,9 @@ export function ContactsListView() {
                   type="button"
                   onClick={() => {
                     setTagIdFilter(null);
-                    router.replace(
-                      buildContactsPageHref(statusFilter, null),
-                      { scroll: false }
-                    );
+                    router.replace(segmentToHref(statusFilter, null), {
+                      scroll: false,
+                    });
                   }}
                   className="font-medium underline-offset-2 hover:underline"
                 >
@@ -587,7 +604,7 @@ export function ContactsListView() {
                 setSearch(""); // clear search when switching status tabs
                 const next = v as StatusTabValue;
                 setStatusFilter(next);
-                router.replace(buildContactsPageHref(next, tagIdFilter), {
+                router.replace(segmentToHref(next, tagIdFilter), {
                   scroll: false,
                 });
               }}
@@ -634,6 +651,55 @@ export function ContactsListView() {
           </div>
         )}
       </div>
+
+      <BrandModal
+        open={saveSegmentOpen}
+        onOpenChange={setSaveSegmentOpen}
+        title="Save segment"
+        description="Saves the status and tag filters from the address bar only. Search text is not included."
+        size="sm"
+        footer={
+          <div className="flex w-full justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setSaveSegmentOpen(false)}
+              className="rounded-lg border border-kp-outline px-3 py-2 text-xs font-medium text-kp-on-surface transition-colors hover:bg-kp-surface-high"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmSaveSegment}
+              className="rounded-lg bg-kp-teal px-3 py-2 text-xs font-medium text-white transition-colors hover:opacity-90"
+            >
+              Save
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-kp-on-surface-variant">
+            Name
+          </label>
+          <input
+            type="text"
+            value={saveSegmentName}
+            onChange={(e) => {
+              setSaveSegmentName(e.target.value);
+              setSaveSegmentError(null);
+            }}
+            placeholder="e.g. Open house nurtures"
+            className={cn(
+              "w-full rounded-lg border border-kp-outline bg-kp-bg px-3 py-2 text-sm text-kp-on-surface",
+              "placeholder:text-kp-on-surface-variant focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+            )}
+            autoFocus
+          />
+          {saveSegmentError && (
+            <p className="text-xs text-red-400">{saveSegmentError}</p>
+          )}
+        </div>
+      </BrandModal>
     </div>
   );
 }
