@@ -129,6 +129,7 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
       { label: "Tags", href: "/client-keep/tags", icon: Tag, section: "RELATIONSHIPS" },
       { label: "Communications", href: "/client-keep/communications", icon: MessageSquare, section: "RELATIONSHIPS" },
       { label: "Follow-ups", href: "/client-keep/follow-ups", icon: Bell, section: "RELATIONSHIPS" },
+      { label: "Recent activity", href: "/client-keep/activity", icon: History, section: "RELATIONSHIPS" },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
     ],
   },

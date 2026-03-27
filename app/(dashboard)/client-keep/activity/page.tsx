@@ -1,0 +1,146 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { ModuleGate } from "@/components/shared/ModuleGate";
+import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import { AlertCircle, ExternalLink, History, Loader2 } from "lucide-react";
+
+type FeedItem = {
+  id: string;
+  type: "follow_up" | "activity";
+  title: string;
+  description?: string;
+  contactId?: string;
+  /** ISO timestamp from API; corresponds to source row `updatedAt` (feed recency). */
+  eventAt: string;
+};
+
+const formatWhen = (iso: string) =>
+  new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+export default function ClientKeepRecentActivityPage() {
+  const [items, setItems] = useState<FeedItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/v1/client-keep/activity");
+      const json = await res.json();
+      if (!res.ok) {
+        setError((json.error?.message as string) ?? "Failed to load activity");
+        setItems([]);
+        return;
+      }
+      setItems(Array.isArray(json.data) ? json.data : []);
+    } catch {
+      setError("Failed to load activity");
+      setItems([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <ModuleGate
+      moduleId="client-keep"
+      moduleName="ClientKeep"
+      valueProposition="Full CRM for contacts, leads, tags, communication logs, and follow-ups."
+      backHref="/showing-hq"
+    >
+      <div className="flex flex-col gap-4">
+        <DashboardContextStrip message="A single chronological view of open-house follow-ups and your CRM tasks. Read-only in v1 — edit from Follow-ups or a contact’s profile." />
+
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold text-kp-on-surface">Recent activity</h1>
+          <p className="max-w-2xl text-sm text-kp-on-surface-variant">
+            Newest first — up to 50 items from follow-up drafts, reminders, and activities.
+          </p>
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {error}
+          </div>
+        )}
+
+        <div className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
+          <div className="border-b border-kp-outline px-4 py-3">
+            <p className="text-sm font-semibold text-kp-on-surface">Feed</p>
+            <p className="text-xs text-kp-on-surface-variant">ShowingHQ follow-ups and ClientKeep activities.</p>
+          </div>
+          {loading ? (
+            <div className="flex min-h-[200px] items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-kp-on-surface-variant" />
+            </div>
+          ) : items.length === 0 ? (
+            <div className="flex min-h-[200px] flex-col items-center justify-center gap-2 px-4 py-10 text-center">
+              <History className="h-8 w-8 text-kp-on-surface-variant opacity-70" />
+              <p className="text-sm font-medium text-kp-on-surface">No recent activity</p>
+              <p className="max-w-sm text-xs text-kp-on-surface-variant">
+                Follow-up drafts, reminders, and logged activities will appear here as you use ShowingHQ and ClientKeep.
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-kp-outline">
+              {items.map((row) => (
+                <li key={row.id} className="px-4 py-3.5">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <span
+                        className={cn(
+                          "inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                          row.type === "follow_up"
+                            ? "bg-kp-teal/15 text-kp-teal"
+                            : "bg-kp-surface-high text-kp-on-surface-variant"
+                        )}
+                      >
+                        {row.type === "follow_up" ? "Follow-up" : "Activity"}
+                      </span>
+                      <p className="font-medium text-kp-on-surface">{row.title}</p>
+                      {row.description && (
+                        <p className="text-sm text-kp-on-surface-variant line-clamp-2">
+                          {row.description}
+                        </p>
+                      )}
+                      <p className="text-xs text-kp-on-surface-variant">{formatWhen(row.eventAt)}</p>
+                    </div>
+                    {row.contactId && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn(kpBtnSecondary, "h-8 shrink-0 gap-1 text-xs")}
+                        asChild
+                      >
+                        <Link href={`/contacts/${encodeURIComponent(row.contactId)}`}>
+                          Contact
+                          <ExternalLink className="h-3 w-3 opacity-70" />
+                        </Link>
+                      </Button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </ModuleGate>
+  );
+}
