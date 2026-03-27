@@ -38,6 +38,23 @@ function formatUserActivityType(type: string): string {
     .join(" ");
 }
 
+const ACTIVITY_HUB_HREF = "/showing-hq/activity";
+
+type FeedSubkind = "draft" | "reminder" | "user_activity";
+
+function contactHref(contactId: string): string {
+  return `/contacts/${encodeURIComponent(contactId)}`;
+}
+
+function userActivityHref(row: {
+  contactId: string | null;
+  propertyId: string | null;
+}): string {
+  if (row.contactId) return contactHref(row.contactId);
+  if (row.propertyId) return `/properties/${row.propertyId}`;
+  return ACTIVITY_HUB_HREF;
+}
+
 export async function GET() {
   try {
     const user = await getCurrentUser();
@@ -85,6 +102,7 @@ export async function GET() {
             description: true,
             type: true,
             contactId: true,
+            propertyId: true,
             createdAt: true,
             updatedAt: true,
           },
@@ -97,9 +115,12 @@ export async function GET() {
     const items: {
       id: string;
       type: "follow_up" | "activity";
+      subkind: FeedSubkind;
+      href: string;
       title: string;
       description?: string;
       contactId?: string;
+      propertyId?: string;
       eventAt: string;
     }[] = [];
 
@@ -107,6 +128,8 @@ export async function GET() {
       items.push({
         id: `follow-up-draft:${d.id}`,
         type: "follow_up",
+        subkind: "draft",
+        href: `/showing-hq/follow-ups/draft/${d.id}`,
         title: d.subject,
         description: `${formatFollowUpStatus(d.status)} · ${truncate(d.body, 200)}`,
         contactId: d.contactId,
@@ -121,6 +144,8 @@ export async function GET() {
       items.push({
         id: `follow-up-reminder:${r.id}`,
         type: "follow_up",
+        subkind: "reminder",
+        href: contactHref(r.contactId),
         title: truncate(firstLine, 120),
         description: `Reminder · ${r.status.toLowerCase()}`,
         contactId: r.contactId,
@@ -134,10 +159,13 @@ export async function GET() {
       items.push({
         id: `activity:${a.id}`,
         type: "activity",
+        subkind: "user_activity",
+        href: userActivityHref(a),
         title: a.title,
         description:
           secondary.length > 200 ? truncate(secondary, 200) : secondary,
         contactId: a.contactId ?? undefined,
+        propertyId: a.propertyId ?? undefined,
         eventAt: feedEventTime(a).toISOString(),
       });
     }
