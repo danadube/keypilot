@@ -75,6 +75,7 @@ export default function ClientKeepSegmentsPage() {
   const [savedSegments, setSavedSegments] = useState<SavedSegmentRecord[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [renameHint, setRenameHint] = useState<string | null>(null);
 
   const refreshSaved = useCallback(() => {
     setSavedSegments(loadSavedSegments());
@@ -129,6 +130,7 @@ export default function ClientKeepSegmentsPage() {
   }, [loadTags]);
 
   function startRename(seg: SavedSegmentRecord) {
+    setRenameHint(null);
     setEditingId(seg.id);
     setEditingName(seg.name);
   }
@@ -136,21 +138,30 @@ export default function ClientKeepSegmentsPage() {
   function commitRename() {
     if (!editingId) return;
     const ok = renameSavedSegment(editingId, editingName);
-    if (!ok) return;
+    if (!ok) {
+      setRenameHint("Enter a name (cannot be only spaces).");
+      return;
+    }
+    setRenameHint(null);
     setEditingId(null);
     setEditingName("");
     refreshSaved();
   }
 
   function cancelRename() {
+    setRenameHint(null);
     setEditingId(null);
     setEditingName("");
   }
 
-  function handleDelete(id: string) {
-    deleteSavedSegment(id);
+  function handleDelete(seg: SavedSegmentRecord) {
+    const ok = window.confirm(
+      `Remove saved segment "${seg.name}"? This only deletes the shortcut on this browser.`
+    );
+    if (!ok) return;
+    deleteSavedSegment(seg.id);
     refreshSaved();
-    if (editingId === id) cancelRename();
+    if (editingId === seg.id) cancelRename();
   }
 
   return (
@@ -224,18 +235,26 @@ export default function ClientKeepSegmentsPage() {
                   >
                     <div className="min-w-0 flex-1">
                       {isEditing ? (
-                        <input
-                          type="text"
-                          value={editingName}
-                          maxLength={MAX_SAVED_SEGMENT_NAME_LENGTH}
-                          onChange={(e) => setEditingName(e.target.value)}
-                          className="w-full max-w-md rounded-md border border-kp-outline bg-kp-bg px-2 py-1 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") commitRename();
-                            if (e.key === "Escape") cancelRename();
-                          }}
-                        />
+                        <div className="w-full max-w-md space-y-1">
+                          <input
+                            type="text"
+                            value={editingName}
+                            maxLength={MAX_SAVED_SEGMENT_NAME_LENGTH}
+                            onChange={(e) => {
+                              setEditingName(e.target.value);
+                              setRenameHint(null);
+                            }}
+                            className="w-full rounded-md border border-kp-outline bg-kp-bg px-2 py-1 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") commitRename();
+                              if (e.key === "Escape") cancelRename();
+                            }}
+                          />
+                          {renameHint && (
+                            <p className="text-xs text-amber-400">{renameHint}</p>
+                          )}
+                        </div>
                       ) : (
                         <p className="font-medium text-kp-on-surface">
                           {seg.name}
@@ -279,7 +298,7 @@ export default function ClientKeepSegmentsPage() {
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleDelete(seg.id)}
+                            onClick={() => handleDelete(seg)}
                             className="inline-flex items-center gap-1 rounded-md border border-kp-outline px-2 py-1 text-xs font-medium text-red-400 hover:bg-red-500/10"
                             aria-label={`Delete ${seg.name}`}
                           >
@@ -307,6 +326,17 @@ export default function ClientKeepSegmentsPage() {
               })}
             </ul>
           )}
+          {savedSegments.length > 0 &&
+            savedSegments.some((s) => s.tagId) && (
+              <p className="border-t border-kp-outline px-4 py-2.5 text-[11px] text-kp-on-surface-variant">
+                Segments that include a tag may break if the tag is deleted.
+                Contacts will show an error — use{" "}
+                <span className="font-medium text-kp-on-surface">
+                  Clear filters
+                </span>{" "}
+                there or remove the shortcut here.
+              </p>
+            )}
         </div>
 
         {/* Status-based segments */}

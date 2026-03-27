@@ -96,7 +96,17 @@ function useContacts(statusFilter: StatusTabValue, tagIdFilter: string | null) {
       .then((res) => res.json().then((json) => ({ res, json })))
       .then(({ res, json }) => {
         if (!res.ok) {
-          setError((json.error?.message as string) ?? "Failed to load contacts");
+          let msg =
+            (json.error?.message as string) ?? "Failed to load contacts";
+          if (
+            res.status === 404 &&
+            tagId &&
+            /tag not found/i.test(String(msg))
+          ) {
+            msg =
+              "Tag not found — it may have been deleted. Clear the tag filter (above) or remove this shortcut from ClientKeep → Segments.";
+          }
+          setError(msg);
           setContacts([]);
           return;
         }
@@ -500,7 +510,7 @@ export function ContactsListView() {
     if (!result.ok) {
       if (result.reason === "duplicate") {
         setSaveSegmentError(
-          "A saved segment with these filters already exists. Open Segments or pick another name after changing filters."
+          "A shortcut with these same filters already exists. Open ClientKeep → Segments to use or remove it, or change the status/tag on Contacts first."
         );
       } else if (result.reason === "limit") {
         setSaveSegmentError(
@@ -663,7 +673,13 @@ export function ContactsListView() {
 
       <BrandModal
         open={saveSegmentOpen}
-        onOpenChange={setSaveSegmentOpen}
+        onOpenChange={(open) => {
+          setSaveSegmentOpen(open);
+          if (!open) {
+            setSaveSegmentError(null);
+            setSaveSegmentName("");
+          }
+        }}
         title="Save segment"
         description={
           "Saves the status and tag filters from the address bar only (search text is never included). " +
