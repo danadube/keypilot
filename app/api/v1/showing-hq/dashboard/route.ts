@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
+import { withRLSContext } from "@/lib/db-context";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
@@ -45,30 +46,34 @@ export async function GET() {
     const followUpStaleBefore = new Date();
     followUpStaleBefore.setDate(followUpStaleBefore.getDate() - 5);
 
-    const [
-      todaysOpenHouses,
-      upcomingOpenHouses,
-      openHousesInMonth,
-      showingsInMonth,
-      todaysPrivateShowings,
-      recentVisitorsData,
-      followUpDrafts,
-      totalVisitorsCount,
-      openHousesCount,
-      followUpTasksCount,
-      contactsFromVisitorsCount,
-      connections,
-      userProfile,
-      privateShowingsTodayCount,
-      feedbackRequestsPendingCount,
-      pendingFeedbackRequests,
-      recentReportsOpenHouses,
-      upcomingOpenHousesFromTodayCount,
-      nextOpenHouseSoon,
-      visitorsLast30dCount,
-      visitorsLast7dCount,
-      followUpsOverdueCount,
-    ] = await Promise.all([
+    // connections + feedback_requests are RLS-protected for keypilot_app; read them inside
+    // withRLSContext (matches /api/v1/settings/connections). prismaAdmin alone can 500 when
+    // the pool role does not BYPASSRLS.
+    const [rlsDashboardSlice, parallelResults] = await Promise.all([
+      withRLSContext(user.id, async (tx) => {
+        const [connections, feedbackRequestsPendingCount, pendingFeedbackRequests] =
+          await Promise.all([
+            tx.connection.findMany({
+              where: { userId: user.id },
+              select: { service: true, enabledForCalendar: true },
+            }),
+            tx.feedbackRequest.count({
+              where: { hostUserId: user.id, status: "PENDING" },
+            }),
+            tx.feedbackRequest.findMany({
+              where: { hostUserId: user.id, status: "PENDING" },
+              include: { property: { select: { address1: true } } },
+              orderBy: { requestedAt: "desc" },
+              take: 20,
+            }),
+          ]);
+        return {
+          connections,
+          feedbackRequestsPendingCount,
+          pendingFeedbackRequests,
+        };
+      }),
+      Promise.all([
       prismaAdmin.openHouse.findMany({
         where: {
           hostUserId: user.id,
@@ -184,10 +189,6 @@ export async function GET() {
           where: { id: { in: contactIds }, deletedAt: null },
         });
       })(),
-      prismaAdmin.connection.findMany({
-        where: { userId: user.id },
-        select: { service: true, enabledForCalendar: true },
-      }),
       prismaAdmin.userProfile.findUnique({
         where: { userId: user.id },
         select: { displayName: true, brokerageName: true, headshotUrl: true, logoUrl: true },
@@ -198,15 +199,6 @@ export async function GET() {
           deletedAt: null,
           scheduledAt: { gte: todayStart, lt: todayEnd },
         },
-      }),
-      prismaAdmin.feedbackRequest.count({
-        where: { hostUserId: user.id, status: "PENDING" },
-      }),
-      prismaAdmin.feedbackRequest.findMany({
-        where: { hostUserId: user.id, status: "PENDING" },
-        include: { property: { select: { address1: true } } },
-        orderBy: { requestedAt: "desc" },
-        take: 20,
       }),
       prismaAdmin.openHouse.findMany({
         where: {
@@ -259,7 +251,33 @@ export async function GET() {
           createdAt: { lt: followUpStaleBefore },
         },
       }),
+      ]),
     ]);
+
+    const { connections, feedbackRequestsPendingCount, pendingFeedbackRequests } =
+      rlsDashboardSlice;
+
+    const [
+      todaysOpenHouses,
+      upcomingOpenHouses,
+      openHousesInMonth,
+      showingsInMonth,
+      todaysPrivateShowings,
+      recentVisitorsData,
+      followUpDrafts,
+      totalVisitorsCount,
+      openHousesCount,
+      followUpTasksCount,
+      contactsFromVisitorsCount,
+      userProfile,
+      privateShowingsTodayCount,
+      recentReportsOpenHouses,
+      upcomingOpenHousesFromTodayCount,
+      nextOpenHouseSoon,
+      visitorsLast30dCount,
+      visitorsLast7dCount,
+      followUpsOverdueCount,
+    ] = parallelResults;
 
     const showingEndAt = (s: { scheduledAt: Date }) =>
       new Date(s.scheduledAt.getTime() + 60 * 60 * 1000);

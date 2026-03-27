@@ -29,6 +29,8 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/properties/new")) return "New Property";
   if (pathname.startsWith("/properties")) return "Properties";
   if (pathname.startsWith("/property-vault")) return "PropertyVault";
+  if (pathname.startsWith("/market-pilot/campaigns")) return "Campaigns";
+  if (pathname.startsWith("/market-pilot")) return "MarketPilot";
   if (pathname.startsWith("/contacts")) return "Contacts";
   if (pathname.startsWith("/deals")) return "Deals";
   if (pathname.startsWith("/client-keep/activity")) return "Recent activity";
