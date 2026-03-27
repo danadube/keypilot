@@ -52,12 +52,16 @@ jobs:
   # ── RLS isolation tests ───────────────────────────────────────────────────
   # Connects to the real preview Supabase project. Skipped on forks and when
   # the DATABASE_URL secret is not set.
-  # To enable: add DATABASE_URL as a repository secret (Settings → Secrets).
+  #
+  # Prisma (migrate + prismaAdmin in Jest) must not use Supabase transaction
+  # pooler (:6543). Use session pooler or direct IPv4 on :5432 — see resolve step.
+  # To enable: add DATABASE_URL (and optionally DIRECT_URL) as repository secrets.
   isolation-tests:
     name: RLS isolation tests (preview DB)
     runs-on: ubuntu-latest
-    # secrets context is not available in `if` for fork PRs — this safely skips
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    # secrets context is not available in `if` for fork PRs — this safely skips.
+    # Skip entirely when DATABASE_URL is not configured (optional integration job).
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.DATABASE_URL != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -71,25 +75,71 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Single :5432 URL for prisma migrate deploy and prismaAdmin in Jest (both read DATABASE_URL).
+      # If DATABASE_URL secret is transaction pooler (:6543), DIRECT_URL secret must be session/direct :5432.
+      # Use GITHUB_OUTPUT + step env (not GITHUB_ENV echo) so passwords with $/# and multiline do not break parsing;
+      # explicitly set DATABASE_URL on migrate + test steps so Jest never inherits a stale :6543 from the job env.
+      - name: Resolve Prisma URLs for isolation job (reject :6543 for runtime)
+        id: resolve_prisma_db
+        shell: bash
+        run: |
+          set -euo pipefail
+          raw_db="${DATABASE_URL_RAW:?DATABASE_URL secret is not set}"
+          raw_direct="${DIRECT_URL_RAW:-}"
+
+          uses_6543() {
+            case "$1" in
+              *:6543/* | *:6543\?* | *:6543) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+          err_6543() {
+            echo "::error::$1"
+            exit 1
+          }
+
+          if uses_6543 "$raw_db"; then
+            if [ -z "$raw_direct" ] || [ "$raw_direct" = "$raw_db" ]; then
+              err_6543 "DATABASE_URL uses port 6543 (transaction pooler). Set DIRECT_URL to a PostgreSQL URL on port 5432 (Supabase session pooler or db.<project>.supabase.co). That value is used for DATABASE_URL and DIRECT_URL for migrate and RLS tests."
+            fi
+            if uses_6543 "$raw_direct"; then
+              err_6543 "DIRECT_URL must not use port 6543. Use session pooler :5432 or direct db host :5432."
+            fi
+            resolved="$raw_direct"
+          else
+            if [ -n "$raw_direct" ] && uses_6543 "$raw_direct"; then
+              err_6543 "When DATABASE_URL is not :6543, DIRECT_URL must not use port 6543 either."
+            fi
+            resolved="$raw_db"
+          fi
+
+          if uses_6543 "$resolved"; then
+            err_6543 "Resolved Prisma URL must not use port 6543."
+          fi
+
+          {
+            echo "prisma_database_url<<PRISMA_DB_URL_EOF"
+            printf '%s' "$resolved"
+            echo
+            echo "PRISMA_DB_URL_EOF"
+          } >> "$GITHUB_OUTPUT"
+        env:
+          DATABASE_URL_RAW: ${{ secrets.DATABASE_URL }}
+          DIRECT_URL_RAW: ${{ secrets.DIRECT_URL }}
+
       # Keep preview DB in sync with prisma/migrations (e.g. new columns). RLS tests
       # seed via Prisma and fail if the schema lags (P2022 column does not exist).
       - name: Apply Prisma migrations (preview DB)
-        shell: bash
-        run: |
-          export DIRECT_URL="${DIRECT_URL:-$DATABASE_URL}"
-          npx prisma migrate deploy
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          DATABASE_URL: ${{ steps.resolve_prisma_db.outputs.prisma_database_url }}
+          DIRECT_URL: ${{ steps.resolve_prisma_db.outputs.prisma_database_url }}
+        run: npx prisma migrate deploy
 
       - name: Run RLS isolation tests
-        shell: bash
-        run: |
-          export DIRECT_URL="${DIRECT_URL:-$DATABASE_URL}"
-          npm run test:integration
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          DATABASE_URL: ${{ steps.resolve_prisma_db.outputs.prisma_database_url }}
+          DIRECT_URL: ${{ steps.resolve_prisma_db.outputs.prisma_database_url }}
           NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_placeholder
           CLERK_SECRET_KEY: sk_test_placeholder
           NEXT_PUBLIC_APP_URL: https://keypilot.vercel.app
+        run: npm run test:integration
