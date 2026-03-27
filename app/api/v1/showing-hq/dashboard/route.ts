@@ -45,23 +45,33 @@ export async function GET() {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const followUpStaleBefore = new Date();
     followUpStaleBefore.setDate(followUpStaleBefore.getDate() - 5);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    const tomorrowEnd = new Date(tomorrowStart);
+    tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
 
     if (process.env.NODE_ENV !== "production") {
       console.log("[showing-hq/dashboard] parallel: rls slice + prismaAdmin batch");
     }
 
-    // connections, feedback_requests, and user_profiles are RLS-protected for keypilot_app.
+    // connections, feedback_requests, user_profiles, and showings are RLS-protected for keypilot_app.
     // Read them inside withRLSContext (same pattern as /api/v1/settings/connections).
     const [rlsDashboardSlice, parallelResults] = await Promise.all([
       withRLSContext(user.id, async (tx) => {
         if (process.env.NODE_ENV !== "production") {
-          console.log("[showing-hq/dashboard] rls: connections, feedback_requests, userProfile");
+          console.log(
+            "[showing-hq/dashboard] rls: connections, feedback_requests, userProfile, showings"
+          );
         }
         const [
           connections,
           feedbackRequestsPendingCount,
           pendingFeedbackRequests,
           userProfile,
+          showingsInMonth,
+          todaysPrivateShowings,
+          privateShowingsTodayCount,
+          firstShowingTomorrow,
         ] = await Promise.all([
           tx.connection.findMany({
             where: { userId: user.id },
@@ -85,12 +95,50 @@ export async function GET() {
               logoUrl: true,
             },
           }),
+          tx.showing.findMany({
+            where: {
+              hostUserId: user.id,
+              deletedAt: null,
+              scheduledAt: { gte: monthStart, lte: monthEnd },
+            },
+            select: dashboardShowingSelect,
+            orderBy: { scheduledAt: "asc" },
+          }),
+          tx.showing.findMany({
+            where: {
+              hostUserId: user.id,
+              deletedAt: null,
+              scheduledAt: { gte: todayStart, lt: todayEnd },
+            },
+            select: dashboardShowingSelect,
+            orderBy: { scheduledAt: "asc" },
+          }),
+          tx.showing.count({
+            where: {
+              hostUserId: user.id,
+              deletedAt: null,
+              scheduledAt: { gte: todayStart, lt: todayEnd },
+            },
+          }),
+          tx.showing.findFirst({
+            where: {
+              hostUserId: user.id,
+              deletedAt: null,
+              scheduledAt: { gte: tomorrowStart, lt: tomorrowEnd },
+            },
+            select: dashboardShowingSelect,
+            orderBy: { scheduledAt: "asc" },
+          }),
         ]);
         return {
           connections,
           feedbackRequestsPendingCount,
           pendingFeedbackRequests,
           userProfile,
+          showingsInMonth,
+          todaysPrivateShowings,
+          privateShowingsTodayCount,
+          firstShowingTomorrow,
         };
       }),
       Promise.all([
@@ -130,24 +178,6 @@ export async function GET() {
         },
         include: { property: true },
         orderBy: { startAt: "asc" },
-      }),
-      prismaAdmin.showing.findMany({
-        where: {
-          hostUserId: user.id,
-          deletedAt: null,
-          scheduledAt: { gte: monthStart, lte: monthEnd },
-        },
-        select: dashboardShowingSelect,
-        orderBy: { scheduledAt: "asc" },
-      }),
-      prismaAdmin.showing.findMany({
-        where: {
-          hostUserId: user.id,
-          deletedAt: null,
-          scheduledAt: { gte: todayStart, lt: todayEnd },
-        },
-        select: dashboardShowingSelect,
-        orderBy: { scheduledAt: "asc" },
       }),
       prismaAdmin.openHouseVisitor.findMany({
         where: {
@@ -209,13 +239,6 @@ export async function GET() {
           where: { id: { in: contactIds }, deletedAt: null },
         });
       })(),
-      prismaAdmin.showing.count({
-        where: {
-          hostUserId: user.id,
-          deletedAt: null,
-          scheduledAt: { gte: todayStart, lt: todayEnd },
-        },
-      }),
       prismaAdmin.openHouse.findMany({
         where: {
           hostUserId: user.id,
@@ -275,21 +298,22 @@ export async function GET() {
       feedbackRequestsPendingCount,
       pendingFeedbackRequests,
       userProfile,
+      showingsInMonth,
+      todaysPrivateShowings,
+      privateShowingsTodayCount,
+      firstShowingTomorrow,
     } = rlsDashboardSlice;
 
     const [
       todaysOpenHouses,
       upcomingOpenHouses,
       openHousesInMonth,
-      showingsInMonth,
-      todaysPrivateShowings,
       recentVisitorsData,
       followUpDrafts,
       totalVisitorsCount,
       openHousesCount,
       followUpTasksCount,
       contactsFromVisitorsCount,
-      privateShowingsTodayCount,
       recentReportsOpenHouses,
       upcomingOpenHousesFromTodayCount,
       nextOpenHouseSoon,
@@ -320,25 +344,9 @@ export async function GET() {
       })),
     ].sort((a, b) => a.at.getTime() - b.at.getTime());
 
-    const tomorrowStart = new Date(todayStart);
-    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
-    const tomorrowEnd = new Date(tomorrowStart);
-    tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
     const firstOpenHouseTomorrow = upcomingOpenHouses.find(
       (oh) => oh.startAt >= tomorrowStart && oh.startAt < tomorrowEnd
     );
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[showing-hq/dashboard] tomorrow first showing (prismaAdmin)");
-    }
-    const firstShowingTomorrow = await prismaAdmin.showing.findFirst({
-      where: {
-        hostUserId: user.id,
-        deletedAt: null,
-        scheduledAt: { gte: tomorrowStart, lt: tomorrowEnd },
-      },
-      select: dashboardShowingSelect,
-      orderBy: { scheduledAt: "asc" },
-    });
     const tomorrowFirstEvent =
       firstOpenHouseTomorrow || firstShowingTomorrow
         ? firstOpenHouseTomorrow
