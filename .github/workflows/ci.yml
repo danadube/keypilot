@@ -59,20 +59,36 @@ jobs:
   isolation-tests:
     name: RLS isolation tests (preview DB)
     runs-on: ubuntu-latest
-    # secrets context is not available in `if` for fork PRs — this safely skips.
-    # Skip entirely when DATABASE_URL is not configured (optional integration job).
-    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.DATABASE_URL != '' }}
+    # Skip entirely for PRs from forks (untrusted code; secrets are not exposed to those runs).
+    # When DATABASE_URL is unset or blank, an early step skips the rest of the job (optional integration).
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Skip RLS isolation when DATABASE_URL is unset
+        id: isolation_db_config
+        shell: bash
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          raw="${DATABASE_URL:-}"
+          if [[ -z "$raw" || "$raw" =~ ^[[:space:]]+$ ]]; then
+            echo "RLS isolation tests skipped: DATABASE_URL secret is not set or is blank."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
       - name: Setup Node
+        if: steps.isolation_db_config.outputs.skip != 'true'
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
 
       - name: Install dependencies
+        if: steps.isolation_db_config.outputs.skip != 'true'
         run: npm ci
 
       # Single :5432 URL for prisma migrate deploy and prismaAdmin in Jest (both read DATABASE_URL).
@@ -80,6 +96,7 @@ jobs:
       # Use GITHUB_OUTPUT + step env (not GITHUB_ENV echo) so passwords with $/# and multiline do not break parsing;
       # explicitly set DATABASE_URL on migrate + test steps so Jest never inherits a stale :6543 from the job env.
       - name: Resolve Prisma URLs for isolation job (reject :6543 for runtime)
+        if: steps.isolation_db_config.outputs.skip != 'true'
         id: resolve_prisma_db
         shell: bash
         run: |
@@ -130,12 +147,14 @@ jobs:
       # Keep preview DB in sync with prisma/migrations (e.g. new columns). RLS tests
       # seed via Prisma and fail if the schema lags (P2022 column does not exist).
       - name: Apply Prisma migrations (preview DB)
+        if: steps.isolation_db_config.outputs.skip != 'true'
         env:
           DATABASE_URL: ${{ steps.resolve_prisma_db.outputs.prisma_database_url }}
           DIRECT_URL: ${{ steps.resolve_prisma_db.outputs.prisma_database_url }}
         run: npx prisma migrate deploy
 
       - name: Run RLS isolation tests
+        if: steps.isolation_db_config.outputs.skip != 'true'
         env:
           DATABASE_URL: ${{ steps.resolve_prisma_db.outputs.prisma_database_url }}
           DIRECT_URL: ${{ steps.resolve_prisma_db.outputs.prisma_database_url }}
