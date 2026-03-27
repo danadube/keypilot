@@ -28,6 +28,7 @@ import {
   History,
   BookText,
   ClipboardCheck,
+  Layers,
 } from "lucide-react";
 
 export type ModuleId =
@@ -127,6 +128,7 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
       { label: "Clients", href: "/contacts?status=READY", icon: Users, section: "CONTACTS" },
       { label: "Deals", href: "/deals", icon: Briefcase, section: "PIPELINE" },
       { label: "Tags", href: "/client-keep/tags", icon: Tag, section: "RELATIONSHIPS" },
+      { label: "Segments", href: "/client-keep/segments", icon: Layers, section: "RELATIONSHIPS" },
       { label: "Communications", href: "/client-keep/communications", icon: MessageSquare, section: "RELATIONSHIPS" },
       { label: "Follow-ups", href: "/client-keep/follow-ups", icon: Bell, section: "RELATIONSHIPS" },
       { label: "Recent activity", href: "/client-keep/activity", icon: History, section: "RELATIONSHIPS" },
