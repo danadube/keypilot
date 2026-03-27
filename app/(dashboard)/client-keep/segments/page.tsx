@@ -21,6 +21,7 @@ import {
 } from "@/lib/client-keep/contact-segment-query";
 import {
   MAX_SAVED_SEGMENT_NAME_LENGTH,
+  SAVED_SEGMENTS_STORAGE_KEY,
   type SavedSegmentRecord,
   deleteSavedSegment,
   loadSavedSegments,
@@ -82,8 +83,17 @@ export default function ClientKeepSegmentsPage() {
   useEffect(() => {
     refreshSaved();
     const onFocus = () => refreshSaved();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === SAVED_SEGMENTS_STORAGE_KEY || e.key === null) {
+        refreshSaved();
+      }
+    };
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("storage", onStorage);
+    };
   }, [refreshSaved]);
 
   const loadTags = useCallback(async () => {
@@ -125,7 +135,8 @@ export default function ClientKeepSegmentsPage() {
 
   function commitRename() {
     if (!editingId) return;
-    renameSavedSegment(editingId, editingName);
+    const ok = renameSavedSegment(editingId, editingName);
+    if (!ok) return;
     setEditingId(null);
     setEditingName("");
     refreshSaved();
@@ -150,7 +161,7 @@ export default function ClientKeepSegmentsPage() {
       backHref="/showing-hq"
     >
       <div className="flex flex-col gap-4">
-        <DashboardContextStrip message="Segments are saved views into your contacts list. Each link uses the same filters as Contacts — no separate list and nothing new to maintain." />
+        <DashboardContextStrip message='Segments are saved views into your contacts list. Each link uses the same filters as Contacts — no separate list. Named shortcuts in "Your saved segments" live in this browser only (not synced across devices).' />
 
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold text-kp-on-surface">
@@ -173,8 +184,9 @@ export default function ClientKeepSegmentsPage() {
               Your saved segments
             </p>
             <p className="text-xs text-kp-on-surface-variant">
-              Stored on this browser only. Open, rename, or delete shortcuts to
-              your contact filters (
+              Stored on this browser only — not synced across devices or
+              browsers. Open, rename, or delete shortcuts to your contact filters
+              (
               <code className="rounded bg-kp-surface-high px-1 text-[10px]">
                 ?status=
               </code>{" "}

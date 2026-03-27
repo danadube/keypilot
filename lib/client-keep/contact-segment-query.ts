@@ -17,6 +17,28 @@ export type ContactSegmentStatus =
 
 const STATUS_QUERY_SET = new Set<string>(CONTACT_SEGMENT_STATUS_VALUES);
 
+/**
+ * Normalize a raw `status` query value to a known CRM status, or null if missing/invalid.
+ * Trims and uppercases; unknown values become null (caller treats as "all").
+ */
+export function normalizeQueryableStatusParam(
+  raw: string | null | undefined
+): ContactSegmentStatus | null {
+  if (raw == null) return null;
+  const u = raw.trim().toUpperCase();
+  if (!u) return null;
+  return STATUS_QUERY_SET.has(u) ? (u as ContactSegmentStatus) : null;
+}
+
+/** Normalize tagId from URL or storage: trim; empty string → null. */
+export function normalizeSavedTagIdValue(
+  tagId: string | null | undefined
+): string | null {
+  if (tagId == null) return null;
+  const t = tagId.trim();
+  return t || null;
+}
+
 /** Tab state: explicit "all" vs a single CRM status */
 export type ContactSegmentStatusTab = ContactSegmentStatus | "__all__";
 
@@ -42,16 +64,12 @@ export function parseSegmentFromSearchParams(sp: URLSearchParams): {
 export function parseStatusTabFromSearchParams(
   sp: URLSearchParams
 ): ContactSegmentStatusTab {
-  const raw = sp.get("status")?.toUpperCase();
-  if (raw && STATUS_QUERY_SET.has(raw)) {
-    return raw as ContactSegmentStatus;
-  }
-  return "__all__";
+  const v = normalizeQueryableStatusParam(sp.get("status"));
+  return v ?? "__all__";
 }
 
 export function parseTagIdFromSearchParams(sp: URLSearchParams): string | null {
-  const tid = sp.get("tagId")?.trim();
-  return tid || null;
+  return normalizeSavedTagIdValue(sp.get("tagId"));
 }
 
 /** Path for Next.js router / Link (same as historical buildContactsPageHref). */
@@ -81,9 +99,10 @@ export function buildContactsApiUrl(
 export function savedStatusToTab(
   status: string | null | undefined
 ): ContactSegmentStatusTab {
-  if (!status) return "__all__";
-  const u = status.toUpperCase();
-  return STATUS_QUERY_SET.has(u) ? (u as ContactSegmentStatus) : "__all__";
+  const v = normalizeQueryableStatusParam(
+    typeof status === "string" ? status : null
+  );
+  return v ?? "__all__";
 }
 
 export function tabToSavedStatus(

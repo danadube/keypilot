@@ -31,6 +31,7 @@ import {
   type ContactSegmentStatusTab,
 } from "@/lib/client-keep/contact-segment-query";
 import {
+  MAX_SAVED_SEGMENT_NAME_LENGTH,
   MAX_SAVED_SEGMENTS,
   addSavedSegment,
 } from "@/lib/client-keep/saved-segments-storage";
@@ -491,15 +492,23 @@ export function ContactsListView() {
       setSaveSegmentError("Enter a name");
       return;
     }
-    const created = addSavedSegment({
+    const result = addSavedSegment({
       name,
       status: tabToSavedStatus(statusFilter),
       tagId: tagIdFilter,
     });
-    if (!created) {
-      setSaveSegmentError(
-        `You can save up to ${MAX_SAVED_SEGMENTS} segments. Remove one on Segments and try again.`
-      );
+    if (!result.ok) {
+      if (result.reason === "duplicate") {
+        setSaveSegmentError(
+          "A saved segment with these filters already exists. Open Segments or pick another name after changing filters."
+        );
+      } else if (result.reason === "limit") {
+        setSaveSegmentError(
+          `You can save up to ${MAX_SAVED_SEGMENTS} segments. Remove one on Segments and try again.`
+        );
+      } else {
+        setSaveSegmentError("Enter a name");
+      }
       return;
     }
     setSaveSegmentOpen(false);
@@ -656,7 +665,10 @@ export function ContactsListView() {
         open={saveSegmentOpen}
         onOpenChange={setSaveSegmentOpen}
         title="Save segment"
-        description="Saves the status and tag filters from the address bar only. Search text is not included."
+        description={
+          "Saves the status and tag filters from the address bar only (search text is never included). " +
+          "Stored on this browser only — not synced across devices or browsers."
+        }
         size="sm"
         footer={
           <div className="flex w-full justify-end gap-2">
@@ -689,6 +701,7 @@ export function ContactsListView() {
               setSaveSegmentError(null);
             }}
             placeholder="e.g. Open house nurtures"
+            maxLength={MAX_SAVED_SEGMENT_NAME_LENGTH}
             className={cn(
               "w-full rounded-lg border border-kp-outline bg-kp-bg px-3 py-2 text-sm text-kp-on-surface",
               "placeholder:text-kp-on-surface-variant focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
