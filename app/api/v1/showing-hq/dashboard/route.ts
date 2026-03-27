@@ -11,20 +11,20 @@ import { apiErrorFromCaught } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
-/** Calendar / schedule slice only — avoids SELECT * on showings (fewer brittle drift issues vs schema). */
+/** Showing slice without joining `properties` — property RLS is `createdByUserId`, which can differ from `hostUserId` and break required includes under keypilot_app. */
 const dashboardShowingSelect = {
   id: true,
   scheduledAt: true,
-  property: {
-    select: {
-      id: true,
-      address1: true,
-      city: true,
-      state: true,
-      zip: true,
-    },
-  },
+  propertyId: true,
 } satisfies Prisma.ShowingSelect;
+
+const showingPropertyPlaceholder = (propertyId: string) => ({
+  id: propertyId,
+  address1: null as string | null,
+  city: null as string | null,
+  state: null as string | null,
+  zip: null as string | null,
+});
 
 export async function GET() {
   try {
@@ -81,7 +81,7 @@ export async function GET() {
           }),
           tx.feedbackRequest.findMany({
             where: { hostUserId: user.id, status: "PENDING" },
-            include: { property: { select: { address1: true } } },
+            select: { id: true, requestedAt: true },
             orderBy: { requestedAt: "desc" },
             take: 20,
           }),
@@ -155,7 +155,6 @@ export async function GET() {
           status: { in: ["SCHEDULED", "ACTIVE"] },
         },
         include: {
-          property: true,
           _count: { select: { visitors: true } },
         },
         orderBy: { startAt: "asc" },
@@ -168,7 +167,6 @@ export async function GET() {
           status: { in: ["SCHEDULED", "ACTIVE"] },
         },
         include: {
-          property: true,
           _count: { select: { visitors: true } },
         },
         orderBy: { startAt: "asc" },
@@ -181,7 +179,6 @@ export async function GET() {
           startAt: { gte: monthStart, lte: monthEnd },
           status: { in: ["SCHEDULED", "ACTIVE", "COMPLETED"] },
         },
-        include: { property: true },
         orderBy: { startAt: "asc" },
       }),
       tx.openHouseVisitor.findMany({
@@ -193,7 +190,7 @@ export async function GET() {
         },
         include: {
           contact: true,
-          openHouse: { include: { property: true } },
+          openHouse: true,
         },
         orderBy: { submittedAt: "desc" },
         take: 20,
@@ -206,7 +203,7 @@ export async function GET() {
         },
         include: {
           contact: true,
-          openHouse: { include: { property: true } },
+          openHouse: true,
         },
         orderBy: { updatedAt: "desc" },
         take: 10,
@@ -253,7 +250,6 @@ export async function GET() {
         orderBy: { endAt: "desc" },
         take: 5,
         include: {
-          property: { select: { address1: true, city: true } },
           _count: { select: { visitors: true } },
         },
       }),
@@ -304,29 +300,71 @@ export async function GET() {
       feedbackRequestsPendingCount,
       pendingFeedbackRequests,
       userProfile,
-      showingsInMonth,
-      todaysPrivateShowings,
+      showingsInMonth: showingsInMonthRows,
+      todaysPrivateShowings: todaysPrivateShowingsRows,
       privateShowingsTodayCount,
-      firstShowingTomorrow,
+      firstShowingTomorrow: firstShowingTomorrowRow,
     } = rlsDashboardSlice;
 
+    const showingsInMonth = showingsInMonthRows.map((s) => ({
+      ...s,
+      property: showingPropertyPlaceholder(s.propertyId),
+    }));
+    const todaysPrivateShowings = todaysPrivateShowingsRows.map((s) => ({
+      ...s,
+      property: showingPropertyPlaceholder(s.propertyId),
+    }));
+    const firstShowingTomorrow = firstShowingTomorrowRow
+      ? {
+          ...firstShowingTomorrowRow,
+          property: showingPropertyPlaceholder(firstShowingTomorrowRow.propertyId),
+        }
+      : null;
+
     const [
-      todaysOpenHouses,
-      upcomingOpenHouses,
-      openHousesInMonth,
-      recentVisitorsData,
-      followUpDrafts,
+      todaysOpenHousesRaw,
+      upcomingOpenHousesRaw,
+      openHousesInMonthRaw,
+      recentVisitorsDataRaw,
+      followUpDraftsRaw,
       totalVisitorsCount,
       openHousesCount,
       followUpTasksCount,
       contactsFromVisitorsCount,
-      recentReportsOpenHouses,
+      recentReportsOpenHousesRaw,
       upcomingOpenHousesFromTodayCount,
       nextOpenHouseSoon,
       visitorsLast30dCount,
       visitorsLast7dCount,
       followUpsOverdueCount,
     ] = parallelResults;
+
+    const attachOpenHouseProperty = <T extends { propertyId: string }>(rows: T[]) =>
+      rows.map((oh) => ({
+        ...oh,
+        property: showingPropertyPlaceholder(oh.propertyId),
+      }));
+
+    const todaysOpenHouses = attachOpenHouseProperty(todaysOpenHousesRaw);
+    const upcomingOpenHouses = attachOpenHouseProperty(upcomingOpenHousesRaw);
+    const openHousesInMonth = attachOpenHouseProperty(openHousesInMonthRaw);
+    const recentReportsOpenHouses = attachOpenHouseProperty(recentReportsOpenHousesRaw);
+
+    const recentVisitorsData = recentVisitorsDataRaw.map((v) => ({
+      ...v,
+      openHouse: {
+        ...v.openHouse,
+        property: showingPropertyPlaceholder(v.openHouse.propertyId),
+      },
+    }));
+
+    const followUpDrafts = followUpDraftsRaw.map((d) => ({
+      ...d,
+      openHouse: {
+        ...d.openHouse,
+        property: showingPropertyPlaceholder(d.openHouse.propertyId),
+      },
+    }));
 
     const showingEndAt = (s: { scheduledAt: Date }) =>
       new Date(s.scheduledAt.getTime() + 60 * 60 * 1000);
@@ -465,7 +503,7 @@ export async function GET() {
         followUpTasks: followUpDrafts,
         pendingFeedbackRequests: pendingFeedbackRequests.map((fr) => ({
           id: fr.id,
-          property: { address1: fr.property?.address1 ?? "" },
+          property: { address1: "" },
           requestedAt: fr.requestedAt.toISOString(),
         })),
         recentReports: recentReportsOpenHouses.map((oh) => ({
