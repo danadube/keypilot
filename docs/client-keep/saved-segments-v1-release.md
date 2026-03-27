@@ -74,3 +74,58 @@ Set expectations in support and docs: **not synced**, **lost if they clear site 
 - **Tag lifecycle:** show labels; on tag delete, flag or auto-disable shortcuts instead of opaque failures.
 - **Sync** across devices; survive cache clears; optional sharing later.
 - **Preserve URL grammar parity** by continuing to use **`lib/client-keep/contact-segment-query`** (or its successor) for **both** client navigation and **API** validation so v2 cannot drift from `/contacts` behavior.
+
+---
+
+## Why ship browser-only v1 first
+
+**Common mistake:** Jump straight to DB persistence, sharing, teams, and permissions for “saved views.” That is usually **slow**, **complex**, **brittle**, and **overbuilt** before you know the behavior users actually need.
+
+**This v1:** Validate **URL-aligned** saved views with **tight scope**, **no schema/RLS churn**, and **deferred** account-level complexity. Strong SaaS products often evolve in that order: **prove the interaction**, then **invest** where data proves it.
+
+---
+
+## Final action plan
+
+### 1. Preview (short, focused)
+
+Run the **QA checklist** above. Pay extra attention to:
+
+- Stale **tag** behavior  
+- **Duplicate** save messaging  
+- Save **modal** reset on close  
+- **Cross-tab** sync (`storage` + focus)
+
+### 2. Merge
+
+If preview passes, **merge as-is**. **No** feature expansion on this pass.
+
+### 3. Release note usage
+
+Use this document to derive:
+
+| Audience | Use |
+|----------|-----|
+| **External changelog** | Trimmed bullets; honest about browser-only storage |
+| **Internal / Slack** | Internal release note + “validates demand…” line |
+| **Support** | Expectations: not synced, site-data clear, deleted tags |
+
+### 4. Backlog ticket (do **not** build until justified)
+
+**Title:** Saved segments v2 — server persistence  
+
+**Description (stub):**
+
+- **Schema:** rows per user; `normalizedStatus` / `normalizedTagId` (or hash column); display name; timestamps. Unique constraint on `(userId, normalizedStatus, normalizedTagId)` via COALESCE sentinels or deterministic hash (avoid nullable uniqueness traps).  
+- **Migration:** optional one-time **import from** `kp_clientkeep_saved_segments_v1` (merge or replace prompt).  
+- **RLS:** tenant-isolated reads/writes on `user_id` = current app user; no cross-user lists.  
+- **Tag lifecycle:** resolve label for display; on tag delete — soft-disable shortcut, clear message, or offer remap — not only raw 404.  
+- **Parity:** server accepts the same grammar as **`contact-segment-query`**; API validates inputs before write.  
+
+**Exit criteria to start v2:** measurable usage, support load, or product commitment — not “we could.”
+
+---
+
+## Longer-term pattern (platform “Saved views”)
+
+ClientKeep segments are one instance of a repeatable pattern: **canonical URL query grammar → optional local shortcut → optional account persistence later**. The same idea can eventually unify **contacts**, **ShowingHQ** surfaces, **transactions** filters, **analytics** — only where each module has a **stable, documented** query shape. **Do not** generalize until at least one more module proves the pattern; keep **module boundaries** and **shared helpers** (not a premature mega-framework).
