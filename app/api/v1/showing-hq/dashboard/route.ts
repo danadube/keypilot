@@ -11,6 +11,16 @@ import { apiErrorFromCaught } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
+const DASH_TAG = "[showing-hq/dashboard]";
+
+function dashLog(msg: string) {
+  console.log(`${DASH_TAG} ${msg}`);
+}
+
+function errMessage(e: unknown) {
+  return e instanceof Error ? e.message : String(e);
+}
+
 /** Showing slice without joining `properties` — property RLS is `createdByUserId`, which can differ from `hostUserId` and break required includes under keypilot_app. */
 const dashboardShowingSelect = {
   id: true,
@@ -27,8 +37,12 @@ const showingPropertyPlaceholder = (propertyId: string) => ({
 });
 
 export async function GET() {
+  let stage = "init";
   try {
+    stage = "get_current_user";
+    dashLog(`start ${stage}`);
     const user = await getCurrentUser();
+    dashLog(`ok ${stage}`);
 
     const today = new Date();
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
@@ -49,29 +63,27 @@ export async function GET() {
     const tomorrowEnd = new Date(tomorrowStart);
     tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
 
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[showing-hq/dashboard] parallel: two RLS transactions (slice + OH/visitor batch)");
-    }
-
+    stage = "parallel_rls";
+    dashLog(`start ${stage}`);
     // All of the below touch keypilot_app RLS: connections, feedback_requests, user_profiles,
-    // showings, open_houses (+ nested properties), visitors, drafts, contacts.
+    // showings, open_houses, visitors, drafts, contacts.
     const [rlsDashboardSlice, parallelResults] = await Promise.all([
-      withRLSContext(user.id, async (tx) => {
-        if (process.env.NODE_ENV !== "production") {
-          console.log(
-            "[showing-hq/dashboard] rls: connections, feedback_requests, userProfile, showings"
-          );
-        }
-        const [
-          connections,
-          feedbackRequestsPendingCount,
-          pendingFeedbackRequests,
-          userProfile,
-          showingsInMonth,
-          todaysPrivateShowings,
-          privateShowingsTodayCount,
-          firstShowingTomorrow,
-        ] = await Promise.all([
+      (async () => {
+        const slice = "rls_tx_profile_showings";
+        dashLog(`start ${slice}`);
+        try {
+          const out = await withRLSContext(user.id, async (tx) => {
+            dashLog("start rls_inner_profile_showings_queries");
+            const [
+              connections,
+              feedbackRequestsPendingCount,
+              pendingFeedbackRequests,
+              userProfile,
+              showingsInMonth,
+              todaysPrivateShowings,
+              privateShowingsTodayCount,
+              firstShowingTomorrow,
+            ] = await Promise.all([
           tx.connection.findMany({
             where: { userId: user.id },
             select: { service: true, enabledForCalendar: true },
@@ -128,25 +140,36 @@ export async function GET() {
             select: dashboardShowingSelect,
             orderBy: { scheduledAt: "asc" },
           }),
-        ]);
-        return {
-          connections,
-          feedbackRequestsPendingCount,
-          pendingFeedbackRequests,
-          userProfile,
-          showingsInMonth,
-          todaysPrivateShowings,
-          privateShowingsTodayCount,
-          firstShowingTomorrow,
-        };
-      }),
-      withRLSContext(user.id, async (tx) => {
-        if (process.env.NODE_ENV !== "production") {
-          console.log(
-            "[showing-hq/dashboard] rls: open_houses, visitors, follow_up_drafts, contacts"
-          );
+            ]);
+            dashLog("ok rls_inner_profile_showings_queries");
+            return {
+              connections,
+              feedbackRequestsPendingCount,
+              pendingFeedbackRequests,
+              userProfile,
+              showingsInMonth,
+              todaysPrivateShowings,
+              privateShowingsTodayCount,
+              firstShowingTomorrow,
+            };
+          });
+          dashLog(`ok ${slice}`);
+          return out;
+        } catch (sliceErr) {
+          console.error(DASH_TAG, "slice_failed", {
+            slice,
+            message: errMessage(sliceErr),
+          });
+          throw sliceErr;
         }
-        return Promise.all([
+      })(),
+      (async () => {
+        const slice = "rls_tx_open_house_batch";
+        dashLog(`start ${slice}`);
+        try {
+          const out = await withRLSContext(user.id, async (tx) => {
+            dashLog("start rls_inner_open_house_batch_queries");
+            const batch = await Promise.all([
       tx.openHouse.findMany({
         where: {
           hostUserId: user.id,
@@ -291,10 +314,25 @@ export async function GET() {
           createdAt: { lt: followUpStaleBefore },
         },
       }),
-      ]);
-      }),
+            ]);
+            dashLog("ok rls_inner_open_house_batch_queries");
+            return batch;
+          });
+          dashLog(`ok ${slice}`);
+          return out;
+        } catch (sliceErr) {
+          console.error(DASH_TAG, "slice_failed", {
+            slice,
+            message: errMessage(sliceErr),
+          });
+          throw sliceErr;
+        }
+      })(),
     ]);
+    dashLog(`ok ${stage}`);
 
+    stage = "normalize_showing_rows";
+    dashLog(`start ${stage}`);
     const {
       connections,
       feedbackRequestsPendingCount,
@@ -320,7 +358,10 @@ export async function GET() {
           property: showingPropertyPlaceholder(firstShowingTomorrowRow.propertyId),
         }
       : null;
+    dashLog(`ok ${stage}`);
 
+    stage = "destructure_parallel_results";
+    dashLog(`start ${stage}`);
     const [
       todaysOpenHousesRaw,
       upcomingOpenHousesRaw,
@@ -338,7 +379,10 @@ export async function GET() {
       visitorsLast7dCount,
       followUpsOverdueCount,
     ] = parallelResults;
+    dashLog(`ok ${stage}`);
 
+    stage = "attach_open_house_placeholders";
+    dashLog(`start ${stage}`);
     const attachOpenHouseProperty = <T extends { propertyId: string }>(rows: T[]) =>
       rows.map((oh) => ({
         ...oh,
@@ -365,7 +409,10 @@ export async function GET() {
         property: showingPropertyPlaceholder(d.openHouse.propertyId),
       },
     }));
+    dashLog(`ok ${stage}`);
 
+    stage = "compose_schedule_and_calendar";
+    dashLog(`start ${stage}`);
     const showingEndAt = (s: { scheduledAt: Date }) =>
       new Date(s.scheduledAt.getTime() + 60 * 60 * 1000);
     const todaysSchedule = [
@@ -479,8 +526,11 @@ export async function GET() {
         };
       }),
     ];
+    dashLog(`ok ${stage}`);
 
-    return NextResponse.json({
+    stage = "serialize_json_response";
+    dashLog(`start ${stage}`);
+    const body = {
       data: {
         todaysShowings: todaysOpenHouses,
         todaysOpenHouses,
@@ -551,11 +601,17 @@ export async function GET() {
         },
         connections: { hasCalendar, hasGmail, hasBranding },
       },
-    });
+    };
+    dashLog(`ok ${stage}`);
+    return NextResponse.json(body);
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = errMessage(e);
     const stack = e instanceof Error ? e.stack : undefined;
-    console.error("[showing-hq/dashboard] request failed", { message: msg, stack });
+    console.error(DASH_TAG, "request_failed", {
+      stage,
+      message: msg,
+      stack,
+    });
     return apiErrorFromCaught(e);
   }
 }
