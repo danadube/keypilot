@@ -1,8 +1,13 @@
 /**
  * Browser-only ShowingHQ saved views (v1). Single key per playbook; surface field
- * discriminates. Visitors-only writers in this slice; load tolerates future surfaces.
+ * discriminates. Per-surface add helpers; load tolerates corrupt rows.
  */
 
+import {
+  normalizeShowingsSourceParam,
+  type NormalizedShowingsListView,
+  showingsListViewFingerprint,
+} from "./showings-view-query";
 import {
   normalizeVisitorsOpenHouseId,
   normalizeVisitorsSortParam,
@@ -50,10 +55,19 @@ function normalizedVisitorsFields(
     openHouseId: normalizeVisitorsOpenHouseId(
       typeof openHouseId === "string" ? openHouseId : null
     ),
-    sort: normalizeVisitorsSortParam(
-      typeof sort === "string" ? sort : null
-    ),
+    sort: normalizeVisitorsSortParam(typeof sort === "string" ? sort : null),
   };
+}
+
+function normalizedShowingsListFields(
+  source: unknown,
+  feedbackOnly: unknown
+): NormalizedShowingsListView {
+  const src = normalizeShowingsSourceParam(
+    typeof source === "string" ? source : null
+  );
+  const fb = feedbackOnly === true;
+  return { source: src, feedbackOnly: fb };
 }
 
 function visitorsFingerprintFromRecord(
@@ -65,6 +79,14 @@ function visitorsFingerprintFromRecord(
     rec.sort
   );
   return visitorsViewFingerprint({ openHouseId, sort });
+}
+
+function showingsFingerprintFromRecord(
+  rec: ShowingHqSavedViewRecord
+): string | null {
+  if (rec.surface !== "SHOWINGS") return null;
+  const view = normalizedShowingsListFields(rec.source, rec.feedbackOnly);
+  return showingsListViewFingerprint(view);
 }
 
 function normalizeRecord(raw: unknown): ShowingHqSavedViewRecord | null {
@@ -90,11 +112,25 @@ function normalizeRecord(raw: unknown): ShowingHqSavedViewRecord | null {
     };
   }
 
-  // Forward-compatible pass-through for future SHOWINGS / OPEN_HOUSES rows
+  if (raw.surface === "SHOWINGS") {
+    const { source, feedbackOnly } = normalizedShowingsListFields(
+      raw.source,
+      raw.feedbackOnly
+    );
+    return {
+      id,
+      name: nameSlice,
+      surface: "SHOWINGS",
+      source,
+      feedbackOnly: feedbackOnly ? true : null,
+    };
+  }
+
+  // OPEN_HOUSES — forward-compatible (optional P1); loose shape
   return {
     id,
     name: nameSlice,
-    surface: raw.surface,
+    surface: "OPEN_HOUSES",
     source:
       raw.source === null || raw.source === undefined
         ? null
@@ -147,6 +183,15 @@ export function persistSavedViews(views: ShowingHqSavedViewRecord[]): void {
   }
 }
 
+function newRecordId(explicit?: string): string {
+  return (
+    explicit?.trim() ||
+    (typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`)
+  );
+}
+
 /** Add a VISITORS saved view; filters normalized; q never stored. */
 export function addSavedVisitorsView(
   rec: Omit<ShowingHqSavedViewRecord, "id" | "surface"> & {
@@ -184,13 +229,52 @@ export function addSavedVisitorsView(
     return { ok: false, reason: "duplicate" };
   }
 
-  const id =
-    rec.id?.trim() ||
-    (typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`);
+  const next: ShowingHqSavedViewRecord = {
+    ...nextPartial,
+    id: newRecordId(rec.id),
+  };
+  persistSavedViews([...list, next]);
+  return { ok: true, record: next };
+}
 
-  const next: ShowingHqSavedViewRecord = { ...nextPartial, id };
+/** Add SHOWINGS saved view — source / feedbackOnly only; never openShowing. */
+export function addSavedShowingsView(
+  rec: Omit<ShowingHqSavedViewRecord, "id" | "surface"> & {
+    id?: string;
+    surface?: ShowingHqSavedViewSurface;
+  }
+): AddShowingHqSavedViewResult {
+  const name = rec.name.trim().slice(0, MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH);
+  if (!name) return { ok: false, reason: "empty_name" };
+
+  const view = normalizedShowingsListFields(rec.source, rec.feedbackOnly);
+  const nextPartial: ShowingHqSavedViewRecord = {
+    id: "",
+    name,
+    surface: "SHOWINGS",
+    source: view.source,
+    feedbackOnly: view.feedbackOnly ? true : null,
+  };
+  const fpNew = showingsListViewFingerprint(view);
+
+  const list = loadSavedViews();
+  if (list.length >= MAX_SHOWINGHQ_SAVED_VIEWS) {
+    return { ok: false, reason: "limit" };
+  }
+
+  if (
+    list.some((row) => {
+      if (row.surface !== "SHOWINGS") return false;
+      return showingsFingerprintFromRecord(row) === fpNew;
+    })
+  ) {
+    return { ok: false, reason: "duplicate" };
+  }
+
+  const next: ShowingHqSavedViewRecord = {
+    ...nextPartial,
+    id: newRecordId(rec.id),
+  };
   persistSavedViews([...list, next]);
   return { ok: true, record: next };
 }

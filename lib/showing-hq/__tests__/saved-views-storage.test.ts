@@ -4,6 +4,7 @@
 
 import {
   SHOWINGHQ_SAVED_VIEWS_STORAGE_KEY,
+  addSavedShowingsView,
   addSavedVisitorsView,
   loadSavedViews,
   persistSavedViews,
@@ -53,6 +54,40 @@ describe("saved-views-storage", () => {
       window.localStorage.setItem(SHOWINGHQ_SAVED_VIEWS_STORAGE_KEY, "{");
       expect(loadSavedViews()).toEqual([]);
     });
+    it("normalizes SHOWINGS rows (invalid source dropped)", () => {
+      window.localStorage.setItem(
+        SHOWINGHQ_SAVED_VIEWS_STORAGE_KEY,
+        JSON.stringify([
+          {
+            id: "s1",
+            name: "Supra",
+            surface: "SHOWINGS",
+            source: " supra_scrape ",
+            feedbackOnly: true,
+          },
+          {
+            id: "s2",
+            name: "Bad source",
+            surface: "SHOWINGS",
+            source: "nope",
+            feedbackOnly: null,
+          },
+        ])
+      );
+      const rows = loadSavedViews();
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toMatchObject({
+        surface: "SHOWINGS",
+        source: "SUPRA_SCRAPE",
+        feedbackOnly: true,
+      });
+      expect(rows[1]).toMatchObject({
+        surface: "SHOWINGS",
+        source: null,
+        feedbackOnly: null,
+      });
+    });
+
     it("drops bad items and normalizes VISITORS rows", () => {
       window.localStorage.setItem(
         SHOWINGHQ_SAVED_VIEWS_STORAGE_KEY,
@@ -77,6 +112,38 @@ describe("saved-views-storage", () => {
         openHouseId: "oh1",
         sort: "name-asc",
       });
+    });
+  });
+
+  describe("addSavedShowingsView", () => {
+    it("rejects duplicate fingerprint (source + feedbackOnly)", () => {
+      addSavedShowingsView({
+        name: "A",
+        source: "MANUAL",
+        feedbackOnly: true,
+      });
+      const dup = addSavedShowingsView({
+        name: "B",
+        source: "MANUAL",
+        feedbackOnly: true,
+      });
+      expect(dup.ok).toBe(false);
+      if (!dup.ok) expect(dup.reason).toBe("duplicate");
+    });
+    it("allows same source with different feedback flag", () => {
+      const a = addSavedShowingsView({
+        name: "A",
+        source: "MANUAL",
+        feedbackOnly: false,
+      });
+      const b = addSavedShowingsView({
+        name: "B",
+        source: "MANUAL",
+        feedbackOnly: true,
+      });
+      expect(a.ok).toBe(true);
+      expect(b.ok).toBe(true);
+      expect(loadSavedViews()).toHaveLength(2);
     });
   });
 

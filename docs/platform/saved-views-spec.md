@@ -131,6 +131,7 @@ Each module that adopts Saved Views MUST define a **module view grammar**: a con
 |--------|---------|-----------|----------------------|------------------|
 | ClientKeep | Contacts | `/contacts` | `lib/client-keep/contact-segment-query.ts` | `kp_clientkeep_saved_segments_v1` |
 | ShowingHQ | Visitors | `/showing-hq/visitors` | `lib/showing-hq/visitors-view-query.ts` | `kp_showinghq_saved_views_v1` |
+| ShowingHQ | Private showings | `/showing-hq/showings` | `lib/showing-hq/showings-view-query.ts` | `kp_showinghq_saved_views_v1` |
 | *TBD* | *TBD* | *TBD* | *TBD* | *TBD* |
 
 ---

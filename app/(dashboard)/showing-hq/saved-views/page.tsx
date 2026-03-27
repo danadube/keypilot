@@ -8,6 +8,10 @@ import { cn } from "@/lib/utils";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { ExternalLink, Link2, Pencil, Trash2 } from "lucide-react";
 import {
+  normalizeShowingsSourceParam,
+  showingsListViewToHref,
+} from "@/lib/showing-hq/showings-view-query";
+import {
   normalizeVisitorsSortParam,
   visitorsViewToHref,
 } from "@/lib/showing-hq/visitors-view-query";
@@ -20,21 +24,53 @@ import {
   renameSavedView,
 } from "@/lib/showing-hq/saved-views-storage";
 
-function visitorsRecordHref(rec: ShowingHqSavedViewRecord): string {
-  if (rec.surface !== "VISITORS") return "/showing-hq/visitors";
-  return visitorsViewToHref({
-    openHouseId: rec.openHouseId ?? null,
-    sort: normalizeVisitorsSortParam(rec.sort ?? null),
-  });
+function savedRecordHref(rec: ShowingHqSavedViewRecord): string {
+  if (rec.surface === "VISITORS") {
+    return visitorsViewToHref({
+      openHouseId: rec.openHouseId ?? null,
+      sort: normalizeVisitorsSortParam(rec.sort ?? null),
+    });
+  }
+  if (rec.surface === "SHOWINGS") {
+    const src = normalizeShowingsSourceParam(
+      typeof rec.source === "string" ? rec.source : null
+    );
+    return showingsListViewToHref({
+      source: src,
+      feedbackOnly: rec.feedbackOnly === true,
+    });
+  }
+  return "/showing-hq/visitors";
 }
 
-function visitorsSummary(rec: ShowingHqSavedViewRecord): string {
-  if (rec.surface !== "VISITORS") return rec.surface;
-  const parts: string[] = [];
-  if (rec.openHouseId) parts.push("Open house filter");
-  else parts.push("All open houses");
-  parts.push(`Sort: ${normalizeVisitorsSortParam(rec.sort ?? null)}`);
-  return parts.join(" · ");
+function savedRecordSummary(rec: ShowingHqSavedViewRecord): string {
+  if (rec.surface === "VISITORS") {
+    const parts: string[] = [];
+    if (rec.openHouseId) parts.push("Open house filter");
+    else parts.push("All open houses");
+    parts.push(`Sort: ${normalizeVisitorsSortParam(rec.sort ?? null)}`);
+    return parts.join(" · ");
+  }
+  if (rec.surface === "SHOWINGS") {
+    const src = normalizeShowingsSourceParam(
+      typeof rec.source === "string" ? rec.source : null
+    );
+    const parts: string[] = [];
+    parts.push(src ? `Source: ${src}` : "All sources");
+    parts.push(
+      rec.feedbackOnly === true
+        ? "Feedback requested only"
+        : "All feedback states"
+    );
+    return parts.join(" · ");
+  }
+  return rec.surface;
+}
+
+function savedRecordSurfaceLabel(rec: ShowingHqSavedViewRecord): string {
+  if (rec.surface === "VISITORS") return "Visitors";
+  if (rec.surface === "SHOWINGS") return "Showings";
+  return rec.surface;
 }
 
 /** Second-chance copy when Clipboard API is denied (e.g. some Safari / HTTP). */
@@ -83,7 +119,9 @@ export default function ShowingHqSavedViewsPage() {
     };
   }, [refreshSaved]);
 
-  const visitorRows = saved.filter((r) => r.surface === "VISITORS");
+  const hubRows = saved.filter(
+    (r) => r.surface === "VISITORS" || r.surface === "SHOWINGS"
+  );
 
   function startRename(row: ShowingHqSavedViewRecord) {
     setRenameHint(null);
@@ -122,7 +160,7 @@ export default function ShowingHqSavedViewsPage() {
 
   async function copyLink(row: ShowingHqSavedViewRecord) {
     setCopyHint(null);
-    const path = visitorsRecordHref(row);
+    const path = savedRecordHref(row);
     const full =
       typeof window !== "undefined"
         ? `${window.location.origin}${path}`
@@ -158,18 +196,26 @@ export default function ShowingHqSavedViewsPage() {
       backHref="/showing-hq"
     >
       <div className="flex flex-col gap-4">
-        <DashboardContextStrip message="Saved views are named shortcuts to Visitors (and more surfaces later) using the same URL filters as the live list. Stored on this browser only." />
+        <DashboardContextStrip message="Saved views mirror URL filters on Visitors and All Showings. Search text is client-only until promoted to the query string. Stored on this browser only." />
 
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold text-kp-on-surface">
             Saved views
           </h1>
           <p className="max-w-2xl text-sm text-kp-on-surface-variant">
-            Open-house visitor list filters you saved from{" "}
+            Shortcuts from{" "}
             <Link href="/showing-hq/visitors" className="text-kp-teal hover:underline">
               Visitors
-            </Link>
-            . Search text is never included until it lives in the URL.
+            </Link>{" "}
+            (<code className="rounded bg-kp-surface-high px-1 text-[11px]">openHouseId</code>
+            , <code className="rounded bg-kp-surface-high px-1 text-[11px]">sort</code>
+            ) and{" "}
+            <Link href="/showing-hq/showings" className="text-kp-teal hover:underline">
+              All Showings
+            </Link>{" "}
+            (<code className="rounded bg-kp-surface-high px-1 text-[11px]">source</code>
+            , <code className="rounded bg-kp-surface-high px-1 text-[11px]">feedbackOnly</code>
+            ). Showing deep links (<code className="rounded bg-kp-surface-high px-1 text-[11px]">openShowing</code>) are not saved.
           </p>
         </div>
 
@@ -179,15 +225,7 @@ export default function ShowingHqSavedViewsPage() {
               Your saved views
             </p>
             <p className="text-xs text-kp-on-surface-variant">
-              Browser-only — not synced. Copy shares a normal KeyPilot link (
-              <code className="rounded bg-kp-surface-high px-1 text-[10px]">
-                ?openHouseId=
-              </code>
-              ,{" "}
-              <code className="rounded bg-kp-surface-high px-1 text-[10px]">
-                ?sort=
-              </code>
-              ).
+              Browser-only — not synced. Links use the same query params as each list view.
             </p>
           </div>
           {copyHint && (
@@ -195,19 +233,23 @@ export default function ShowingHqSavedViewsPage() {
               {copyHint}
             </p>
           )}
-          {visitorRows.length === 0 ? (
+          {hubRows.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-kp-on-surface-variant">
               No saved views yet. On{" "}
               <Link href="/showing-hq/visitors" className="text-kp-teal hover:underline">
                 Visitors
+              </Link>{" "}
+              or{" "}
+              <Link href="/showing-hq/showings" className="text-kp-teal hover:underline">
+                All Showings
               </Link>
-              , pick an open house or change sort, then use{" "}
+              , set filters that appear in the address bar, then use{" "}
               <span className="font-medium text-kp-on-surface">Save view</span>.
             </div>
           ) : (
             <ul className="divide-y divide-kp-outline">
-              {visitorRows.map((row) => {
-                const href = visitorsRecordHref(row);
+              {hubRows.map((row) => {
+                const href = savedRecordHref(row);
                 const isEditing = editingId === row.id;
                 return (
                   <li
@@ -242,7 +284,7 @@ export default function ShowingHqSavedViewsPage() {
                         </p>
                       )}
                       <p className="text-xs text-kp-on-surface-variant">
-                        Visitors · {visitorsSummary(row)}
+                        {savedRecordSurfaceLabel(row)} · {savedRecordSummary(row)}
                       </p>
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -312,12 +354,22 @@ export default function ShowingHqSavedViewsPage() {
               })}
             </ul>
           )}
-          {visitorRows.some((r) => r.openHouseId) && (
-            <p className="border-t border-kp-outline px-4 py-2.5 text-[11px] text-kp-on-surface-variant">
-              If an open house is deleted, this list may show no rows — use{" "}
-              <span className="font-medium text-kp-on-surface">Clear filters</span>{" "}
-              on Visitors or remove the shortcut here.
-            </p>
+          {(hubRows.some((r) => r.surface === "VISITORS" && r.openHouseId) ||
+            hubRows.some((r) => r.surface === "SHOWINGS")) && (
+            <div className="space-y-1 border-t border-kp-outline px-4 py-2.5 text-[11px] text-kp-on-surface-variant">
+              {hubRows.some((r) => r.surface === "VISITORS" && r.openHouseId) && (
+                <p>
+                  Visitor shortcuts with an open house may show an empty list if that event was removed — use{" "}
+                  <span className="font-medium text-kp-on-surface">Clear filters</span>{" "}
+                  on Visitors or delete the shortcut.
+                </p>
+              )}
+              {hubRows.some((r) => r.surface === "SHOWINGS") && (
+                <p>
+                  Showings shortcuts only restore list filters (not which row is open).
+                </p>
+              )}
+            </div>
           )}
         </div>
       </div>

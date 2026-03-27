@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
+  BookmarkPlus,
   Calendar,
   Search,
   X,
@@ -12,13 +13,34 @@ import {
   Plus,
   AlertCircle,
   Loader2,
+  Layers,
   Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MetricCard } from "@/components/ui/metric-card";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { BrandModal } from "@/components/ui/BrandModal";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 import { ShowingBuyerAgentFeedbackDraftPanel } from "@/components/showing-hq/ShowingBuyerAgentFeedbackDraftPanel";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  type ShowingsSource,
+  buildShowingsListApiUrl,
+  hasShowingsSaveableFiltersInSearchParams,
+  parseShowingsListViewFromSearchParams,
+  showingsListViewToHref,
+  type NormalizedShowingsListView,
+} from "@/lib/showing-hq/showings-view-query";
+import {
+  MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH,
+  addSavedShowingsView,
+} from "@/lib/showing-hq/saved-views-storage";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -41,27 +63,43 @@ type Showing = {
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
-function useShowings() {
+function useShowingsList(view: NormalizedShowingsListView) {
   const [showings, setShowings] = useState<Showing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  function load() {
+  const load = useCallback(() => {
     setError(null);
     setLoading(true);
-    fetch("/api/v1/showing-hq/showings")
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) setError(json.error.message);
-        else setShowings(json.data ?? []);
+    const url = buildShowingsListApiUrl(view);
+    fetch(url)
+      .then(async (res) => {
+        const json = (await res.json().catch(() => ({}))) as {
+          error?: { message?: string };
+          data?: Showing[];
+        };
+        if (!res.ok) {
+          setError(
+            json.error?.message ??
+              (res.status === 401 || res.status === 403
+                ? "You may need to sign in again."
+                : "Failed to load showings")
+          );
+          return;
+        }
+        if (json.error) {
+          setError(json.error.message ?? "Failed to load showings");
+          return;
+        }
+        setShowings(json.data ?? []);
       })
       .catch(() => setError("Failed to load showings"))
       .finally(() => setLoading(false));
-  }
+  }, [view]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   return { showings, loading, error, reload: load };
 }
@@ -136,7 +174,7 @@ function EmptyState({
           <>
             <p className="text-sm font-medium text-kp-on-surface">No matching showings</p>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-              Try a different search term.
+              Adjust URL filters, try a different search, or reset.
             </p>
           </>
         ) : (
@@ -150,10 +188,11 @@ function EmptyState({
       </div>
       {isFiltered ? (
         <button
+          type="button"
           onClick={onReset}
           className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
         >
-          Clear search
+          Clear filters and search
         </button>
       ) : (
         <Link
@@ -449,26 +488,59 @@ function ShowingsTable({ showings, onEdit }: { showings: Showing[]; onEdit: (s: 
 /**
  * ShowingsListView — dark premium list for private showings.
  *
- * API: GET /api/v1/showing-hq/showings (full list, no server-side filter)
- * Client-side search layered on top.
+ * API: GET /api/v1/showing-hq/showings — query matches URL via `showings-view-query`.
+ * Client-side search is not saved; `openShowing` is a one-shot deep link (not in Saved views).
  *
- * Route: app/(dashboard)/showing-hq/showings/page.tsx
- *
- * `initialOpenShowingId` — set via `?openShowing=` (e.g. after Supra apply) to open Edit for that row.
+ * Route: app/(dashboard)/showing-hq/showings/page.tsx (wrap in Suspense for useSearchParams).
  */
-export function ShowingsListView({
-  initialOpenShowingId,
-}: {
-  initialOpenShowingId?: string;
-} = {}) {
+export function ShowingsListView() {
   const router = useRouter();
-  const { showings, loading, error, reload } = useShowings();
+  const searchParams = useSearchParams();
+  /** List fetch + href state only — excludes `openShowing` so deep links do not refetch. */
+  const listFetchKey = useMemo(
+    () =>
+      JSON.stringify({
+        s: searchParams.get("source") ?? "",
+        f: searchParams.get("feedbackOnly") === "true",
+      }),
+    [searchParams]
+  );
+  const listView = useMemo((): NormalizedShowingsListView => {
+    const { s, f } = JSON.parse(listFetchKey) as { s: string; f: boolean };
+    const sp = new URLSearchParams();
+    if (s) sp.set("source", s);
+    if (f) sp.set("feedbackOnly", "true");
+    return parseShowingsListViewFromSearchParams(sp);
+  }, [listFetchKey]);
+
+  const openShowingFromUrl = useMemo(() => {
+    const v = searchParams.get("openShowing")?.trim();
+    return v || null;
+  }, [searchParams]);
+
+  const { showings, loading, error, reload } = useShowingsList(listView);
   const [search, setSearch] = useState("");
   const [editingShowing, setEditingShowing] = useState<Showing | null>(null);
   const lastHandledOpenShowingRef = useRef<string | null>(null);
 
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  function replaceListView(next: NormalizedShowingsListView) {
+    router.replace(showingsListViewToHref(next), { scroll: false });
+  }
+
+  function clearListFiltersAndSearch() {
+    setSearch("");
+    replaceListView({ source: null, feedbackOnly: false });
+  }
+
+  const canSaveView = hasShowingsSaveableFiltersInSearchParams(searchParams);
+  const hasListFilters = canSaveView;
+
   useEffect(() => {
-    const oid = initialOpenShowingId?.trim() ?? null;
+    const oid = openShowingFromUrl;
     if (!oid) {
       lastHandledOpenShowingRef.current = null;
       return;
@@ -479,7 +551,7 @@ export function ShowingsListView({
     if (match) {
       lastHandledOpenShowingRef.current = oid;
       setEditingShowing(match);
-      router.replace("/showing-hq/showings", { scroll: false });
+      router.replace(showingsListViewToHref(listView), { scroll: false });
       requestAnimationFrame(() => {
         document.getElementById(`showing-row-${oid}`)?.scrollIntoView({
           block: "nearest",
@@ -488,10 +560,9 @@ export function ShowingsListView({
       });
       return;
     }
-    // List loaded but id not in current page (e.g. beyond take(100)) — clear query so URL is not stuck.
     lastHandledOpenShowingRef.current = oid;
-    router.replace("/showing-hq/showings", { scroll: false });
-  }, [initialOpenShowingId, loading, showings, router]);
+    router.replace(showingsListViewToHref(listView), { scroll: false });
+  }, [openShowingFromUrl, loading, showings, router, listView]);
 
   const visibleShowings = useMemo(() => {
     if (!search.trim()) return showings;
@@ -507,8 +578,47 @@ export function ShowingsListView({
     [showings]
   );
 
-  const isFiltered = search.trim().length > 0;
+  const isFiltered =
+    search.trim().length > 0 || hasListFilters;
   const showContent = !loading && !error;
+
+  const sourceSelectValue = listView.source ?? "__all__";
+
+  function openSaveModal() {
+    setSaveError(null);
+    setSaveName("");
+    setSaveModalOpen(true);
+  }
+
+  function handleConfirmSave() {
+    const name = saveName.trim();
+    if (!name) {
+      setSaveError("Enter a name");
+      return;
+    }
+    const result = addSavedShowingsView({
+      name,
+      source: listView.source,
+      feedbackOnly: listView.feedbackOnly,
+    });
+    if (!result.ok) {
+      if (result.reason === "duplicate") {
+        setSaveError(
+          "A shortcut with the same source and feedback filter already exists. Open ShowingHQ → Saved views (/showing-hq/saved-views), or change filters here first."
+        );
+      } else if (result.reason === "limit") {
+        setSaveError(
+          "You can save up to 50 views. Remove one on Saved views and try again."
+        );
+      } else {
+        setSaveError("Enter a name");
+      }
+      return;
+    }
+    setSaveModalOpen(false);
+    setSaveName("");
+    setSaveError(null);
+  }
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
@@ -578,27 +688,101 @@ export function ShowingsListView({
           <ClipboardCheck className="h-3.5 w-3.5" />
           Feedback Requests
         </Link>
+        <Link
+          href="/showing-hq/saved-views"
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-lg border border-kp-outline px-3 py-1.5",
+            "text-xs font-medium text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high hover:text-kp-on-surface"
+          )}
+        >
+          <Layers className="h-3.5 w-3.5" />
+          Saved views
+        </Link>
       </div>
 
       {/* ── Table panel ─────────────────────────────────────────────────── */}
       <div className="mx-6 mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
-        {/* Panel header */}
-        <div className="flex items-start justify-between gap-4 border-b border-kp-outline px-5 py-4">
-          <div>
-            <p className="text-sm font-semibold text-kp-on-surface">All showings</p>
-            <p className="text-xs text-kp-on-surface-variant">Private one-on-one appointments</p>
+        {/* Panel header + list filters (URL-backed) */}
+        <div className="space-y-3 border-b border-kp-outline px-5 py-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-kp-on-surface">All showings</p>
+              <p className="text-xs text-kp-on-surface-variant">Private one-on-one appointments</p>
+            </div>
+            {showContent && showings.length > 0 && (
+              <span className="shrink-0 text-xs tabular-nums text-kp-on-surface-variant">
+                {visibleShowings.length}
+                {visibleShowings.length !== showings.length && ` / ${showings.length}`}{" "}
+                {showings.length === 1 ? "showing" : "showings"}
+              </span>
+            )}
           </div>
-          {showContent && showings.length > 0 && (
-            <span className="shrink-0 text-xs tabular-nums text-kp-on-surface-variant">
-              {visibleShowings.length}
-              {visibleShowings.length !== showings.length && ` / ${showings.length}`}{" "}
-              {showings.length === 1 ? "showing" : "showings"}
-            </span>
+          {showContent && (
+            <div className="flex flex-wrap items-center gap-2">
+              {canSaveView && (
+                <button
+                  type="button"
+                  onClick={openSaveModal}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-xs font-medium text-kp-on-surface transition-colors hover:border-kp-teal/40 hover:bg-kp-teal/5"
+                >
+                  <BookmarkPlus className="h-3.5 w-3.5 text-kp-teal" aria-hidden />
+                  Save view
+                </button>
+              )}
+              <Select
+                value={sourceSelectValue}
+                onValueChange={(v) =>
+                  replaceListView({
+                    source:
+                      v === "__all__" ? null : (v as ShowingsSource),
+                    feedbackOnly: listView.feedbackOnly,
+                  })
+                }
+              >
+                <SelectTrigger className="h-9 w-[160px] border-kp-outline bg-kp-surface-high text-kp-on-surface">
+                  <SelectValue placeholder="Source" />
+                </SelectTrigger>
+                <SelectContent className="border-kp-outline bg-kp-surface text-kp-on-surface">
+                  <SelectItem value="__all__">All sources</SelectItem>
+                  <SelectItem value="MANUAL">Manual</SelectItem>
+                  <SelectItem value="SUPRA_SCRAPE">Supra</SelectItem>
+                </SelectContent>
+              </Select>
+              <button
+                type="button"
+                aria-pressed={listView.feedbackOnly}
+                onClick={() =>
+                  replaceListView({
+                    source: listView.source,
+                    feedbackOnly: !listView.feedbackOnly,
+                  })
+                }
+                className={cn(
+                  "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                  listView.feedbackOnly
+                    ? "border-kp-teal/60 bg-kp-teal/10 text-kp-teal"
+                    : "border-kp-outline text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+                )}
+              >
+                Feedback requested only
+              </button>
+              {hasListFilters && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    replaceListView({ source: null, feedbackOnly: false })
+                  }
+                  className="text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
           )}
         </div>
 
-        {/* Search bar */}
-        {showContent && showings.length > 0 && (
+        {/* Search bar — client-only; not saved in shortcuts */}
+        {showContent && (
           <div className="border-b border-kp-outline-variant px-5 py-3">
             <SearchInput value={search} onChange={setSearch} />
           </div>
@@ -610,7 +794,7 @@ export function ShowingsListView({
         ) : error ? (
           <ErrorState message={error} onRetry={reload} />
         ) : visibleShowings.length === 0 ? (
-          <EmptyState isFiltered={isFiltered} onReset={() => setSearch("")} />
+          <EmptyState isFiltered={isFiltered} onReset={clearListFiltersAndSearch} />
         ) : (
           <ShowingsTable showings={visibleShowings} onEdit={setEditingShowing} />
         )}
@@ -623,6 +807,65 @@ export function ShowingsListView({
           onSaved={() => { reload(); setEditingShowing(null); }}
         />
       )}
+
+      <BrandModal
+        open={saveModalOpen}
+        onOpenChange={(open) => {
+          setSaveModalOpen(open);
+          if (!open) {
+            setSaveError(null);
+            setSaveName("");
+          }
+        }}
+        title="Save view"
+        description={
+          "Saves source and feedback filters from the address bar only (search is never included). " +
+          "openShowing deep links are not saved. Stored on this browser only."
+        }
+        size="sm"
+        footer={
+          <div className="flex w-full justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setSaveModalOpen(false)}
+              className="rounded-lg border border-kp-outline px-3 py-2 text-xs font-medium text-kp-on-surface transition-colors hover:bg-kp-surface-high"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmSave}
+              className="rounded-lg bg-kp-teal px-3 py-2 text-xs font-medium text-white transition-colors hover:opacity-90"
+            >
+              Save
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-kp-on-surface-variant">
+            Name
+          </label>
+          <input
+            type="text"
+            value={saveName}
+            onChange={(e) => {
+              setSaveName(e.target.value);
+              setSaveError(null);
+            }}
+            placeholder="e.g. Supra showings — feedback due"
+            maxLength={MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH}
+            className={cn(
+              "w-full rounded-lg border border-kp-outline bg-kp-bg px-3 py-2 text-sm text-kp-on-surface",
+              "placeholder:text-kp-on-surface-variant focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+            )}
+            autoFocus
+          />
+          {saveError && (
+            <p className="text-xs text-red-400">{saveError}</p>
+          )}
+        </div>
+      </BrandModal>
     </div>
   );
 }
