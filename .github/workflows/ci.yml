@@ -59,8 +59,9 @@ jobs:
   isolation-tests:
     name: RLS isolation tests (preview DB)
     runs-on: ubuntu-latest
-    # secrets context is not available in `if` for fork PRs — this safely skips
-    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
+    # secrets context is not available in `if` for fork PRs — this safely skips.
+    # Skip entirely when DATABASE_URL is not configured (optional integration job).
+    if: ${{ (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && secrets.DATABASE_URL != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -87,7 +88,10 @@ jobs:
           raw_direct="${DIRECT_URL_RAW:-}"
 
           uses_6543() {
-            case "$1" in *:6543/*|*:6543\?*) return 0 ;; *) return 1 ;; esac
+            case "$1" in
+              *:6543/* | *:6543\?* | *:6543) return 0 ;;
+              *) return 1 ;;
+            esac
           }
           err_6543() {
             echo "::error::$1"
