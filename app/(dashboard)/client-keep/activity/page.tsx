@@ -15,7 +15,8 @@ type FeedItem = {
   title: string;
   description?: string;
   contactId?: string;
-  createdAt: string;
+  /** ISO timestamp from API; corresponds to source row `updatedAt` (feed recency). */
+  eventAt: string;
 };
 
 const formatWhen = (iso: string) =>
@@ -118,7 +119,7 @@ export default function ClientKeepRecentActivityPage() {
                           {row.description}
                         </p>
                       )}
-                      <p className="text-xs text-kp-on-surface-variant">{formatWhen(row.createdAt)}</p>
+                      <p className="text-xs text-kp-on-surface-variant">{formatWhen(row.eventAt)}</p>
                     </div>
                     {row.contactId && (
                       <Button

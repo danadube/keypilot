@@ -1,5 +1,8 @@
 /**
  * ClientKeep — unified read-only feed of follow-ups (drafts + reminders) and user CRM activities.
+ *
+ * Each item includes `eventAt` (ISO string): sourced from the row’s `updatedAt` so the feed
+ * reflects recency (edits, status changes). Sorted descending by `eventAt`.
  */
 
 import { NextResponse } from "next/server";
@@ -14,7 +17,8 @@ export const dynamic = "force-dynamic";
 const FETCH_CAP = 40;
 const RESULT_CAP = 50;
 
-function feedRecencyTime(row: { createdAt: Date; updatedAt: Date }): Date {
+/** Feed ordering / display time: last update on the underlying record. */
+function feedEventTime(row: { updatedAt: Date }): Date {
   return row.updatedAt;
 }
 
@@ -96,7 +100,7 @@ export async function GET() {
       title: string;
       description?: string;
       contactId?: string;
-      createdAt: string;
+      eventAt: string;
     }[] = [];
 
     for (const d of drafts) {
@@ -106,7 +110,7 @@ export async function GET() {
         title: d.subject,
         description: `${formatFollowUpStatus(d.status)} · ${truncate(d.body, 200)}`,
         contactId: d.contactId,
-        createdAt: feedRecencyTime(d).toISOString(),
+        eventAt: feedEventTime(d).toISOString(),
       });
     }
 
@@ -120,7 +124,7 @@ export async function GET() {
         title: truncate(firstLine, 120),
         description: `Reminder · ${r.status.toLowerCase()}`,
         contactId: r.contactId,
-        createdAt: feedRecencyTime(r).toISOString(),
+        eventAt: feedEventTime(r).toISOString(),
       });
     }
 
@@ -134,13 +138,13 @@ export async function GET() {
         description:
           secondary.length > 200 ? truncate(secondary, 200) : secondary,
         contactId: a.contactId ?? undefined,
-        createdAt: feedRecencyTime(a).toISOString(),
+        eventAt: feedEventTime(a).toISOString(),
       });
     }
 
     items.sort(
       (x, y) =>
-        new Date(y.createdAt).getTime() - new Date(x.createdAt).getTime()
+        new Date(y.eventAt).getTime() - new Date(x.eventAt).getTime()
     );
 
     return NextResponse.json({
