@@ -35,6 +35,7 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/client-keep/follow-ups")) return "Follow-ups";
   if (pathname.startsWith("/client-keep/communications")) return "Communications";
   if (pathname.startsWith("/client-keep/tags")) return "Tags";
+  if (pathname.startsWith("/client-keep/segments")) return "Segments";
   if (pathname.startsWith("/client-keep")) return "ClientKeep";
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname === "/") return "Overview";
