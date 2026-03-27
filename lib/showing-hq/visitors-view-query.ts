@@ -1,8 +1,9 @@
 /**
  * Canonical ShowingHQ visitors list grammar for /showing-hq/visitors and
  * GET /api/v1/showing-hq/visitors. URL and fetch share this module (R5).
- * Search q is optional on the API only — never part of saved view / href.
  */
+
+import { parseQFromSearchParams } from "./list-search-q";
 
 export const VISITORS_BASE_PATH = "/showing-hq/visitors";
 
@@ -41,7 +42,10 @@ export function normalizeVisitorsOpenHouseId(
 export type NormalizedVisitorsView = {
   openHouseId: string | null;
   sort: VisitorsSort;
+  q: string | null;
 };
+
+export { parseQFromSearchParams };
 
 export function parseVisitorsViewFromSearchParams(
   sp: URLSearchParams
@@ -49,33 +53,30 @@ export function parseVisitorsViewFromSearchParams(
   return {
     openHouseId: normalizeVisitorsOpenHouseId(sp.get("openHouseId")),
     sort: normalizeVisitorsSortParam(sp.get("sort")),
+    q: parseQFromSearchParams(sp),
   };
 }
 
-/** Write saveable params only; omit defaults (bare path = all houses, date-desc). */
+/** Write canonical params; omit defaults and empty q. */
 export function applyVisitorsViewToSearchParams(
   view: NormalizedVisitorsView,
   params: URLSearchParams
 ): void {
   if (view.openHouseId) params.set("openHouseId", view.openHouseId);
   if (view.sort !== DEFAULT_VISITORS_SORT) params.set("sort", view.sort);
+  if (view.q) params.set("q", view.q);
 }
 
 export function visitorsViewToHref(view: NormalizedVisitorsView): string {
   const params = new URLSearchParams();
   applyVisitorsViewToSearchParams(view, params);
-  const q = params.toString();
-  return q ? `${VISITORS_BASE_PATH}?${q}` : VISITORS_BASE_PATH;
+  const qs = params.toString();
+  return qs ? `${VISITORS_BASE_PATH}?${qs}` : VISITORS_BASE_PATH;
 }
 
-/** Mirrors href serialization + optional q (not saved, not in canonical view). */
-export function buildVisitorsListApiUrl(
-  view: NormalizedVisitorsView,
-  options?: { q?: string | null }
-): string {
+export function buildVisitorsListApiUrl(view: NormalizedVisitorsView): string {
   const params = new URLSearchParams();
-  const q = options?.q?.trim() ?? "";
-  if (q) params.set("q", q);
+  if (view.q) params.set("q", view.q);
   if (view.openHouseId) params.set("openHouseId", view.openHouseId);
   if (view.sort !== DEFAULT_VISITORS_SORT) params.set("sort", view.sort);
   const qs = params.toString();
@@ -84,13 +85,15 @@ export function buildVisitorsListApiUrl(
     : "/api/v1/showing-hq/visitors";
 }
 
-/** True when URL encodes at least one saveable filter (not default-only). */
+/** True when URL encodes at least one saveable filter (not default-only, empty q). */
 export function hasVisitorsSaveableFiltersInSearchParams(
   sp: URLSearchParams
 ): boolean {
   const v = parseVisitorsViewFromSearchParams(sp);
   return (
-    v.openHouseId !== null || v.sort !== DEFAULT_VISITORS_SORT
+    v.openHouseId !== null ||
+    v.sort !== DEFAULT_VISITORS_SORT ||
+    v.q !== null
   );
 }
 
@@ -98,6 +101,7 @@ export function hasVisitorsSaveableFiltersInSearchParams(
 export function visitorsViewFingerprint(view: NormalizedVisitorsView): string {
   return JSON.stringify({
     openHouseId: view.openHouseId,
+    q: view.q,
     sort: view.sort,
     surface: "VISITORS",
   });

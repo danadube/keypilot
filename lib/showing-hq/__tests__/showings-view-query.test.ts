@@ -63,6 +63,18 @@ describe("showings-view-query", () => {
       );
       expect(parseOpenShowingFromSearchParams(sp)).toBe("abc");
     });
+    it("includes q in href and API when set", () => {
+      const v = parseShowingsListViewFromSearchParams(
+        new URLSearchParams("source=MANUAL&q=oak%20ridge")
+      );
+      expect(v.q).toBe("oak ridge");
+      expect(showingsListViewToHref(v)).toBe(
+        "/showing-hq/showings?source=MANUAL&q=oak+ridge"
+      );
+      expect(buildShowingsListApiUrl(v)).toBe(
+        "/api/v1/showing-hq/showings?q=oak+ridge&source=MANUAL"
+      );
+    });
   });
 
   describe("hasShowingsSaveableFiltersInSearchParams", () => {
@@ -76,7 +88,7 @@ describe("showings-view-query", () => {
         )
       ).toBe(false);
     });
-    it("is true for source or feedbackOnly", () => {
+    it("is true for source, feedbackOnly, or q", () => {
       expect(
         hasShowingsSaveableFiltersInSearchParams(
           new URLSearchParams("source=MANUAL")
@@ -87,6 +99,9 @@ describe("showings-view-query", () => {
           new URLSearchParams("feedbackOnly=true")
         )
       ).toBe(true);
+      expect(
+        hasShowingsSaveableFiltersInSearchParams(new URLSearchParams("q=find-me"))
+      ).toBe(true);
     });
   });
 
@@ -95,10 +110,12 @@ describe("showings-view-query", () => {
       const a = showingsListViewFingerprint({
         source: "MANUAL",
         feedbackOnly: false,
+        q: null,
       });
       const b = showingsListViewFingerprint({
         source: "MANUAL",
         feedbackOnly: false,
+        q: null,
       });
       expect(a).toBe(b);
     });
@@ -107,11 +124,28 @@ describe("showings-view-query", () => {
         showingsListViewFingerprint({
           source: "MANUAL",
           feedbackOnly: false,
+          q: null,
         })
       ).not.toEqual(
         showingsListViewFingerprint({
           source: "MANUAL",
           feedbackOnly: true,
+          q: null,
+        })
+      );
+    });
+    it("differs when q differs", () => {
+      expect(
+        showingsListViewFingerprint({
+          source: "MANUAL",
+          feedbackOnly: false,
+          q: "x",
+        })
+      ).not.toEqual(
+        showingsListViewFingerprint({
+          source: "MANUAL",
+          feedbackOnly: false,
+          q: "y",
         })
       );
     });

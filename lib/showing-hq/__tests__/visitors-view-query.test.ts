@@ -62,11 +62,30 @@ describe("visitors-view-query", () => {
         "/api/v1/showing-hq/visitors?sort=name-asc"
       );
     });
-    it("passes q only for API helper", () => {
-      const v = parseVisitorsViewFromSearchParams(new URLSearchParams());
-      expect(buildVisitorsListApiUrl(v, { q: "  jane  " })).toBe(
+    it("includes q in href and API when set", () => {
+      const v = parseVisitorsViewFromSearchParams(
+        new URLSearchParams("q=%20jane%20")
+      );
+      expect(v.q).toBe("jane");
+      expect(visitorsViewToHref(v)).toBe("/showing-hq/visitors?q=jane");
+      expect(buildVisitorsListApiUrl(v)).toBe(
         "/api/v1/showing-hq/visitors?q=jane"
       );
+    });
+    it("URL and API use same param order for list search", () => {
+      const v = parseVisitorsViewFromSearchParams(
+        new URLSearchParams(
+          "openHouseId=oh1&q=foo&sort=name-asc"
+        )
+      );
+      const api = buildVisitorsListApiUrl(v);
+      expect(api).toContain("q=foo");
+      expect(api).toContain("openHouseId=oh1");
+      expect(api).toContain("sort=name-asc");
+      const href = visitorsViewToHref(v);
+      expect(href).toContain("q=foo");
+      expect(href).toContain("openHouseId=oh1");
+      expect(href).toContain("sort=name-asc");
     });
   });
 
@@ -81,7 +100,7 @@ describe("visitors-view-query", () => {
         )
       ).toBe(false);
     });
-    it("is true when open house or non-default sort", () => {
+    it("is true when open house, non-default sort, or q", () => {
       expect(
         hasVisitorsSaveableFiltersInSearchParams(
           new URLSearchParams("openHouseId=a")
@@ -92,6 +111,9 @@ describe("visitors-view-query", () => {
           new URLSearchParams("sort=name-desc")
         )
       ).toBe(true);
+      expect(
+        hasVisitorsSaveableFiltersInSearchParams(new URLSearchParams("q=test"))
+      ).toBe(true);
     });
   });
 
@@ -100,10 +122,12 @@ describe("visitors-view-query", () => {
       const a = visitorsViewFingerprint({
         openHouseId: "x",
         sort: "date-desc",
+        q: null,
       });
       const b = visitorsViewFingerprint({
         openHouseId: "x",
         sort: "date-desc",
+        q: null,
       });
       expect(a).toBe(b);
     });
@@ -112,11 +136,28 @@ describe("visitors-view-query", () => {
         visitorsViewFingerprint({
           openHouseId: "x",
           sort: "date-desc",
+          q: null,
         })
       ).not.toEqual(
         visitorsViewFingerprint({
           openHouseId: "y",
           sort: "date-desc",
+          q: null,
+        })
+      );
+    });
+    it("differs when q differs", () => {
+      expect(
+        visitorsViewFingerprint({
+          openHouseId: "x",
+          sort: "date-desc",
+          q: "a",
+        })
+      ).not.toEqual(
+        visitorsViewFingerprint({
+          openHouseId: "x",
+          sort: "date-desc",
+          q: "b",
         })
       );
     });

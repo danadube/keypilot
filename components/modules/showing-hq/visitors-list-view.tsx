@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageLoading } from "@/components/shared/PageLoading";
@@ -42,6 +42,7 @@ import {
   MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH,
   addSavedVisitorsView,
 } from "@/lib/showing-hq/saved-views-storage";
+import { normalizeShowingHqListSearchQ } from "@/lib/showing-hq/list-search-q";
 
 type Visitor = {
   id: string;
@@ -79,26 +80,49 @@ type OpenHouse = {
 export function VisitorsListView() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const spKey = searchParams.toString();
   const view = useMemo(
     () => parseVisitorsViewFromSearchParams(searchParams),
     [searchParams]
   );
 
+  const skipNextSearchSync = useRef(false);
+  const viewQ = view.q ?? "";
+  const [qInput, setQInput] = useState(viewQ);
+
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [openHouses, setOpenHouses] = useState<OpenHouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [searchDebounce, setSearchDebounce] = useState("");
 
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (skipNextSearchSync.current) {
+      skipNextSearchSync.current = false;
+      return;
+    }
+    const cur = parseVisitorsViewFromSearchParams(searchParams);
+    setQInput(cur.q ?? "");
+  }, [spKey, searchParams]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const n = normalizeShowingHqListSearchQ(qInput);
+      const cur = parseVisitorsViewFromSearchParams(searchParams);
+      if (n === cur.q) return;
+      skipNextSearchSync.current = true;
+      router.replace(visitorsViewToHref({ ...cur, q: n }), { scroll: false });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [qInput, router, searchParams]);
+
   const loadData = useCallback(() => {
     setError(null);
     setLoading(true);
-    const url = buildVisitorsListApiUrl(view, { q: searchDebounce });
+    const url = buildVisitorsListApiUrl(view);
     fetch(url)
       .then(async (res) => {
         const json = (await res.json().catch(() => ({}))) as {
@@ -122,25 +146,27 @@ export function VisitorsListView() {
       })
       .catch(() => setError("Failed to load visitors"))
       .finally(() => setLoading(false));
-  }, [view, searchDebounce]);
+  }, [view]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
-  useEffect(() => {
-    const t = setTimeout(() => setSearchDebounce(search), 300);
-    return () => clearTimeout(t);
-  }, [search]);
+  function committedSearchView(): NormalizedVisitorsView {
+    return {
+      ...view,
+      q: normalizeShowingHqListSearchQ(qInput),
+    };
+  }
 
   function replaceView(next: NormalizedVisitorsView) {
     router.replace(visitorsViewToHref(next), { scroll: false });
   }
 
-  /** Reset URL-backed filters and client-only search so fetch matches the address bar. */
+  /** Reset URL-backed filters and search so fetch matches the address bar. */
   function clearAllFilters() {
-    setSearch("");
-    setSearchDebounce("");
+    skipNextSearchSync.current = true;
+    setQInput("");
     router.replace(VISITORS_BASE_PATH, { scroll: false });
   }
 
@@ -166,15 +192,17 @@ export function VisitorsListView() {
       setSaveError("Enter a name");
       return;
     }
+    const qSave = normalizeShowingHqListSearchQ(qInput);
     const result = addSavedVisitorsView({
       name,
       openHouseId: view.openHouseId,
       sort: view.sort,
+      q: qSave,
     });
     if (!result.ok) {
       if (result.reason === "duplicate") {
         setSaveError(
-          "A shortcut with the same open house and sort already exists. Open ShowingHQ → Saved views (/showing-hq/saved-views) to rename or remove it, or change filters here first."
+          "A shortcut with the same filters and search already exists. Open ShowingHQ → Saved views (/showing-hq/saved-views) to rename or remove it, or change filters here first."
         );
       } else if (result.reason === "limit") {
         setSaveError(
@@ -238,8 +266,8 @@ export function VisitorsListView() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-kp-on-surface-variant" />
               <Input
                 placeholder="Search name, email, phone..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={qInput}
+                onChange={(e) => setQInput(e.target.value)}
                 className="h-9 border-kp-outline bg-kp-surface-high pl-9 text-kp-on-surface placeholder:text-kp-on-surface-variant focus:ring-kp-teal"
               />
             </div>
@@ -247,8 +275,8 @@ export function VisitorsListView() {
               value={selectOpenHouseValue}
               onValueChange={(v) =>
                 replaceView({
+                  ...committedSearchView(),
                   openHouseId: v === "all" ? null : v,
-                  sort: view.sort,
                 })
               }
             >
@@ -273,7 +301,7 @@ export function VisitorsListView() {
               value={view.sort}
               onValueChange={(v) =>
                 replaceView({
-                  openHouseId: view.openHouseId,
+                  ...committedSearchView(),
                   sort: normalizeVisitorsSortParam(v),
                 })
               }
@@ -330,14 +358,14 @@ export function VisitorsListView() {
                   </Button>
                 </>
               ) : view.openHouseId ||
-                searchDebounce.trim() ||
+                view.q != null ||
                 view.sort !== DEFAULT_VISITORS_SORT ? (
                 <>
                   <p className="text-sm font-medium text-kp-on-surface">
                     No visitors match
                   </p>
                   <p className="mt-1 max-w-sm text-xs text-kp-on-surface-variant">
-                    Try another open house, sort, or search. Search is not saved in shortcuts.
+                    Try another open house, sort, or search. These filters can be saved as a shortcut.
                   </p>
                   <Button
                     type="button"
@@ -506,7 +534,7 @@ export function VisitorsListView() {
         }}
         title="Save view"
         description={
-          "Saves open-house and sort filters from the address bar only (search is never included). " +
+          "Saves open house, sort, and search from the address bar. " +
           "Stored on this browser only — not synced across devices or browsers."
         }
         size="sm"

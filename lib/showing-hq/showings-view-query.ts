@@ -4,6 +4,8 @@
  * part of saved views or fingerprints (implementation plan).
  */
 
+import { parseQFromSearchParams } from "./list-search-q";
+
 export const SHOWINGS_BASE_PATH = "/showing-hq/showings";
 
 export const SHOWINGS_SOURCE_VALUES = ["MANUAL", "SUPRA_SCRAPE"] as const;
@@ -31,7 +33,10 @@ export function normalizeShowingsFeedbackOnlyFromSearchParams(
 export type NormalizedShowingsListView = {
   source: ShowingsSource | null;
   feedbackOnly: boolean;
+  q: string | null;
 };
+
+export { parseQFromSearchParams };
 
 export function parseShowingsListViewFromSearchParams(
   sp: URLSearchParams
@@ -39,6 +44,7 @@ export function parseShowingsListViewFromSearchParams(
   return {
     source: normalizeShowingsSourceParam(sp.get("source")),
     feedbackOnly: normalizeShowingsFeedbackOnlyFromSearchParams(sp),
+    q: parseQFromSearchParams(sp),
   };
 }
 
@@ -56,20 +62,22 @@ export function applyShowingsListViewToSearchParams(
 ): void {
   if (view.source) target.set("source", view.source);
   if (view.feedbackOnly) target.set("feedbackOnly", "true");
+  if (view.q) target.set("q", view.q);
 }
 
-/** List filters only — never includes `openShowing`. */
+/** List + search filters — never includes `openShowing`. */
 export function showingsListViewToHref(view: NormalizedShowingsListView): string {
   const params = new URLSearchParams();
   applyShowingsListViewToSearchParams(view, params);
-  const q = params.toString();
-  return q ? `${SHOWINGS_BASE_PATH}?${q}` : SHOWINGS_BASE_PATH;
+  const qs = params.toString();
+  return qs ? `${SHOWINGS_BASE_PATH}?${qs}` : SHOWINGS_BASE_PATH;
 }
 
 export function buildShowingsListApiUrl(
   view: NormalizedShowingsListView
 ): string {
   const params = new URLSearchParams();
+  if (view.q) params.set("q", view.q);
   if (view.source) params.set("source", view.source);
   if (view.feedbackOnly) params.set("feedbackOnly", "true");
   const qs = params.toString();
@@ -79,22 +87,25 @@ export function buildShowingsListApiUrl(
 }
 
 /**
- * True when URL encodes a saveable list filter (source or feedback-only).
+ * True when URL encodes a saveable list filter (source, feedback-only, or q).
  * `openShowing` alone does not enable Save (transient deep link; excluded from storage).
  */
 export function hasShowingsSaveableFiltersInSearchParams(
   sp: URLSearchParams
 ): boolean {
   const v = parseShowingsListViewFromSearchParams(sp);
-  return v.source !== null || v.feedbackOnly === true;
+  return (
+    v.source !== null || v.feedbackOnly === true || v.q !== null
+  );
 }
 
-/** Dedupe / storage fingerprint — list filters only (no openShowing). */
+/** Dedupe / storage fingerprint — list + q only (no openShowing). */
 export function showingsListViewFingerprint(
   view: NormalizedShowingsListView
 ): string {
   return JSON.stringify({
     feedbackOnly: view.feedbackOnly,
+    q: view.q,
     source: view.source,
     surface: "SHOWINGS",
   });

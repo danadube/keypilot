@@ -11,6 +11,7 @@ import {
   normalizeShowingsSourceParam,
   showingsListViewToHref,
 } from "@/lib/showing-hq/showings-view-query";
+import { normalizeShowingHqListSearchQ } from "@/lib/showing-hq/list-search-q";
 import {
   normalizeVisitorsSortParam,
   visitorsViewToHref,
@@ -29,6 +30,9 @@ function savedRecordHref(rec: ShowingHqSavedViewRecord): string {
     return visitorsViewToHref({
       openHouseId: rec.openHouseId ?? null,
       sort: normalizeVisitorsSortParam(rec.sort ?? null),
+      q: normalizeShowingHqListSearchQ(
+        typeof rec.q === "string" ? rec.q : null
+      ),
     });
   }
   if (rec.surface === "SHOWINGS") {
@@ -38,6 +42,9 @@ function savedRecordHref(rec: ShowingHqSavedViewRecord): string {
     return showingsListViewToHref({
       source: src,
       feedbackOnly: rec.feedbackOnly === true,
+      q: normalizeShowingHqListSearchQ(
+        typeof rec.q === "string" ? rec.q : null
+      ),
     });
   }
   return "/showing-hq/visitors";
@@ -49,6 +56,10 @@ function savedRecordSummary(rec: ShowingHqSavedViewRecord): string {
     if (rec.openHouseId) parts.push("Open house filter");
     else parts.push("All open houses");
     parts.push(`Sort: ${normalizeVisitorsSortParam(rec.sort ?? null)}`);
+    const qn = normalizeShowingHqListSearchQ(
+      typeof rec.q === "string" ? rec.q : null
+    );
+    if (qn) parts.push(`Search: ${qn}`);
     return parts.join(" · ");
   }
   if (rec.surface === "SHOWINGS") {
@@ -62,6 +73,10 @@ function savedRecordSummary(rec: ShowingHqSavedViewRecord): string {
         ? "Feedback requested only"
         : "All feedback states"
     );
+    const qn = normalizeShowingHqListSearchQ(
+      typeof rec.q === "string" ? rec.q : null
+    );
+    if (qn) parts.push(`Search: ${qn}`);
     return parts.join(" · ");
   }
   return rec.surface;
@@ -205,7 +220,7 @@ export default function ShowingHqSavedViewsPage() {
       backHref="/showing-hq"
     >
       <div className="flex flex-col gap-4">
-        <DashboardContextStrip message="Saved views mirror URL filters on Visitors and All Showings. Search text is client-only until promoted to the query string. Stored on this browser only." />
+        <DashboardContextStrip message="Saved views mirror URL filters on Visitors and All Showings, including search (q). Stored on this browser only." />
 
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold text-kp-on-surface">
@@ -218,12 +233,14 @@ export default function ShowingHqSavedViewsPage() {
             </Link>{" "}
             (<code className="rounded bg-kp-surface-high px-1 text-[11px]">openHouseId</code>
             , <code className="rounded bg-kp-surface-high px-1 text-[11px]">sort</code>
+            , <code className="rounded bg-kp-surface-high px-1 text-[11px]">q</code>
             ) and{" "}
             <Link href="/showing-hq/showings" className="text-kp-teal hover:underline">
               All Showings
             </Link>{" "}
             (<code className="rounded bg-kp-surface-high px-1 text-[11px]">source</code>
             , <code className="rounded bg-kp-surface-high px-1 text-[11px]">feedbackOnly</code>
+            , <code className="rounded bg-kp-surface-high px-1 text-[11px]">q</code>
             ). Showing deep links (<code className="rounded bg-kp-surface-high px-1 text-[11px]">openShowing</code>) are not saved.
           </p>
         </div>

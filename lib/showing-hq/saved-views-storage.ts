@@ -3,6 +3,7 @@
  * discriminates. Per-surface add helpers; load tolerates corrupt rows.
  */
 
+import { normalizeShowingHqListSearchQ } from "./list-search-q";
 import {
   normalizeShowingsSourceParam,
   type NormalizedShowingsListView,
@@ -33,6 +34,8 @@ export type ShowingHqSavedViewRecord = {
   openHouseId?: string | null;
   sort?: string | null;
   status?: string | null;
+  /** Canonical list search (Visitors + Showings v1). */
+  q?: string | null;
 };
 
 export type AddShowingHqSavedViewResult =
@@ -49,43 +52,60 @@ function isSurface(s: unknown): s is ShowingHqSavedViewSurface {
 
 function normalizedVisitorsFields(
   openHouseId: unknown,
-  sort: unknown
-): { openHouseId: string | null; sort: VisitorsSort } {
+  sort: unknown,
+  q: unknown
+): {
+  openHouseId: string | null;
+  sort: VisitorsSort;
+  q: string | null;
+} {
   return {
     openHouseId: normalizeVisitorsOpenHouseId(
       typeof openHouseId === "string" ? openHouseId : null
     ),
     sort: normalizeVisitorsSortParam(typeof sort === "string" ? sort : null),
+    q: normalizeShowingHqListSearchQ(
+      typeof q === "string" ? q : null
+    ),
   };
 }
 
 function normalizedShowingsListFields(
   source: unknown,
-  feedbackOnly: unknown
+  feedbackOnly: unknown,
+  q: unknown
 ): NormalizedShowingsListView {
   const src = normalizeShowingsSourceParam(
     typeof source === "string" ? source : null
   );
   const fb = feedbackOnly === true;
-  return { source: src, feedbackOnly: fb };
+  const qn = normalizeShowingHqListSearchQ(
+    typeof q === "string" ? q : null
+  );
+  return { source: src, feedbackOnly: fb, q: qn };
 }
 
 function visitorsFingerprintFromRecord(
   rec: ShowingHqSavedViewRecord
 ): string | null {
   if (rec.surface !== "VISITORS") return null;
-  const { openHouseId, sort } = normalizedVisitorsFields(
+  const { openHouseId, sort, q } = normalizedVisitorsFields(
     rec.openHouseId,
-    rec.sort
+    rec.sort,
+    rec.q
   );
-  return visitorsViewFingerprint({ openHouseId, sort });
+  return visitorsViewFingerprint({ openHouseId, sort, q });
 }
 
 function showingsFingerprintFromRecord(
   rec: ShowingHqSavedViewRecord
 ): string | null {
   if (rec.surface !== "SHOWINGS") return null;
-  const view = normalizedShowingsListFields(rec.source, rec.feedbackOnly);
+  const view = normalizedShowingsListFields(
+    rec.source,
+    rec.feedbackOnly,
+    rec.q
+  );
   return showingsListViewFingerprint(view);
 }
 
@@ -99,9 +119,10 @@ function normalizeRecord(raw: unknown): ShowingHqSavedViewRecord | null {
   const nameSlice = name.slice(0, MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH);
 
   if (raw.surface === "VISITORS") {
-    const { openHouseId, sort } = normalizedVisitorsFields(
+    const { openHouseId, sort, q } = normalizedVisitorsFields(
       raw.openHouseId,
-      raw.sort
+      raw.sort,
+      raw.q
     );
     return {
       id,
@@ -109,20 +130,23 @@ function normalizeRecord(raw: unknown): ShowingHqSavedViewRecord | null {
       surface: "VISITORS",
       openHouseId,
       sort,
+      q,
     };
   }
 
   if (raw.surface === "SHOWINGS") {
-    const { source, feedbackOnly } = normalizedShowingsListFields(
+    const v = normalizedShowingsListFields(
       raw.source,
-      raw.feedbackOnly
+      raw.feedbackOnly,
+      raw.q
     );
     return {
       id,
       name: nameSlice,
       surface: "SHOWINGS",
-      source,
-      feedbackOnly: feedbackOnly ? true : null,
+      source: v.source,
+      feedbackOnly: v.feedbackOnly ? true : null,
+      q: v.q,
     };
   }
 
@@ -149,6 +173,10 @@ function normalizeRecord(raw: unknown): ShowingHqSavedViewRecord | null {
     sort: typeof raw.sort === "string" ? raw.sort.trim() || null : null,
     status:
       typeof raw.status === "string" ? raw.status.trim() || null : null,
+    q:
+      typeof raw.q === "string"
+        ? normalizeShowingHqListSearchQ(raw.q)
+        : null,
   };
 }
 
@@ -192,7 +220,7 @@ function newRecordId(explicit?: string): string {
   );
 }
 
-/** Add a VISITORS saved view; filters normalized; q never stored. */
+/** Add a VISITORS saved view; filters normalized; includes canonical `q`. */
 export function addSavedVisitorsView(
   rec: Omit<ShowingHqSavedViewRecord, "id" | "surface"> & {
     id?: string;
@@ -202,9 +230,10 @@ export function addSavedVisitorsView(
   const name = rec.name.trim().slice(0, MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH);
   if (!name) return { ok: false, reason: "empty_name" };
 
-  const { openHouseId, sort } = normalizedVisitorsFields(
+  const { openHouseId, sort, q } = normalizedVisitorsFields(
     rec.openHouseId,
-    rec.sort
+    rec.sort,
+    rec.q
   );
   const nextPartial: ShowingHqSavedViewRecord = {
     id: "",
@@ -212,8 +241,9 @@ export function addSavedVisitorsView(
     surface: "VISITORS",
     openHouseId,
     sort,
+    q,
   };
-  const fpNew = visitorsViewFingerprint({ openHouseId, sort });
+  const fpNew = visitorsViewFingerprint({ openHouseId, sort, q });
 
   const list = loadSavedViews();
   if (list.length >= MAX_SHOWINGHQ_SAVED_VIEWS) {
@@ -237,7 +267,7 @@ export function addSavedVisitorsView(
   return { ok: true, record: next };
 }
 
-/** Add SHOWINGS saved view — source / feedbackOnly only; never openShowing. */
+/** Add SHOWINGS saved view — source, feedbackOnly, and canonical `q`. */
 export function addSavedShowingsView(
   rec: Omit<ShowingHqSavedViewRecord, "id" | "surface"> & {
     id?: string;
@@ -247,13 +277,18 @@ export function addSavedShowingsView(
   const name = rec.name.trim().slice(0, MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH);
   if (!name) return { ok: false, reason: "empty_name" };
 
-  const view = normalizedShowingsListFields(rec.source, rec.feedbackOnly);
+  const view = normalizedShowingsListFields(
+    rec.source,
+    rec.feedbackOnly,
+    rec.q
+  );
   const nextPartial: ShowingHqSavedViewRecord = {
     id: "",
     name,
     surface: "SHOWINGS",
     source: view.source,
     feedbackOnly: view.feedbackOnly ? true : null,
+    q: view.q,
   };
   const fpNew = showingsListViewFingerprint(view);
 

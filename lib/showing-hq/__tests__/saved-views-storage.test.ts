@@ -111,7 +111,34 @@ describe("saved-views-storage", () => {
         surface: "VISITORS",
         openHouseId: "oh1",
         sort: "name-asc",
+        q: null,
       });
+    });
+
+    it("normalizes q on VISITORS and SHOWINGS rows", () => {
+      window.localStorage.setItem(
+        SHOWINGHQ_SAVED_VIEWS_STORAGE_KEY,
+        JSON.stringify([
+          {
+            id: "v1",
+            name: "V",
+            surface: "VISITORS",
+            openHouseId: null,
+            sort: "date-desc",
+            q: "  a \t b  ",
+          },
+          {
+            id: "s1",
+            name: "S",
+            surface: "SHOWINGS",
+            source: "MANUAL",
+            q: "  x  ",
+          },
+        ])
+      );
+      const rows = loadSavedViews();
+      expect(rows[0]).toMatchObject({ q: "a b" });
+      expect(rows[1]).toMatchObject({ q: "x" });
     });
   });
 
@@ -145,6 +172,38 @@ describe("saved-views-storage", () => {
       expect(b.ok).toBe(true);
       expect(loadSavedViews()).toHaveLength(2);
     });
+    it("allows same list filters with different q", () => {
+      addSavedShowingsView({
+        name: "A",
+        source: "MANUAL",
+        feedbackOnly: false,
+        q: "one",
+      });
+      const b = addSavedShowingsView({
+        name: "B",
+        source: "MANUAL",
+        feedbackOnly: false,
+        q: "two",
+      });
+      expect(b.ok).toBe(true);
+      expect(loadSavedViews()).toHaveLength(2);
+    });
+    it("rejects duplicate when q matches after normalization", () => {
+      addSavedShowingsView({
+        name: "A",
+        source: "MANUAL",
+        feedbackOnly: false,
+        q: "  hi  ",
+      });
+      const dup = addSavedShowingsView({
+        name: "B",
+        source: "MANUAL",
+        feedbackOnly: false,
+        q: "hi",
+      });
+      expect(dup.ok).toBe(false);
+      if (!dup.ok) expect(dup.reason).toBe("duplicate");
+    });
   });
 
   describe("addSavedVisitorsView", () => {
@@ -170,6 +229,22 @@ describe("saved-views-storage", () => {
       });
       expect(r.ok).toBe(false);
       if (!r.ok) expect(r.reason).toBe("empty_name");
+    });
+    it("allows same open house and sort with different q", () => {
+      addSavedVisitorsView({
+        name: "A",
+        openHouseId: "x",
+        sort: "date-desc",
+        q: null,
+      });
+      const b = addSavedVisitorsView({
+        name: "B",
+        openHouseId: "x",
+        sort: "date-desc",
+        q: "filter",
+      });
+      expect(b.ok).toBe(true);
+      expect(loadSavedViews()).toHaveLength(2);
     });
   });
 

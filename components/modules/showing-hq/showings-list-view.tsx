@@ -34,6 +34,7 @@ import {
   buildShowingsListApiUrl,
   hasShowingsSaveableFiltersInSearchParams,
   normalizeShowingsSourceParam,
+  parseOpenShowingFromSearchParams,
   parseShowingsListViewFromSearchParams,
   showingsListViewToHref,
   type NormalizedShowingsListView,
@@ -42,6 +43,7 @@ import {
   MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH,
   addSavedShowingsView,
 } from "@/lib/showing-hq/saved-views-storage";
+import { normalizeShowingHqListSearchQ } from "@/lib/showing-hq/list-search-q";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -122,15 +124,16 @@ function formatTime(d: string) {
   });
 }
 
-function matchesSearch(s: Showing, q: string): boolean {
-  const lq = q.toLowerCase();
-  return (
-    s.property.address1.toLowerCase().includes(lq) ||
-    s.property.city.toLowerCase().includes(lq) ||
-    (s.buyerAgentName?.toLowerCase().includes(lq) ?? false) ||
-    (s.buyerAgentEmail?.toLowerCase().includes(lq) ?? false) ||
-    (s.buyerName?.toLowerCase().includes(lq) ?? false)
-  );
+/** Keep one-shot `openShowing` in the URL while list filters / `q` change. */
+function showingsHrefPreservingOpenShowing(
+  list: NormalizedShowingsListView,
+  sp: URLSearchParams
+): string {
+  const base = showingsListViewToHref(list);
+  const os = parseOpenShowingFromSearchParams(sp);
+  if (!os) return base;
+  const join = base.includes("?") ? "&" : "?";
+  return `${base}${join}openShowing=${encodeURIComponent(os)}`;
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -490,7 +493,7 @@ function ShowingsTable({ showings, onEdit }: { showings: Showing[]; onEdit: (s: 
  * ShowingsListView — dark premium list for private showings.
  *
  * API: GET /api/v1/showing-hq/showings — query matches URL via `showings-view-query`.
- * Client-side search is not saved; `openShowing` is a one-shot deep link (not in Saved views).
+ * List search uses `q` in the URL (saved with filters). `openShowing` is a one-shot deep link (not in Saved views).
  *
  * Route: app/(dashboard)/showing-hq/showings/page.tsx (wrap in Suspense for useSearchParams).
  */
@@ -503,14 +506,20 @@ export function ShowingsListView() {
       JSON.stringify({
         s: searchParams.get("source") ?? "",
         f: searchParams.get("feedbackOnly") === "true",
+        q: searchParams.get("q") ?? "",
       }),
     [searchParams]
   );
   const listView = useMemo((): NormalizedShowingsListView => {
-    const { s, f } = JSON.parse(listFetchKey) as { s: string; f: boolean };
+    const { s, f, q } = JSON.parse(listFetchKey) as {
+      s: string;
+      f: boolean;
+      q: string;
+    };
     const sp = new URLSearchParams();
     if (s) sp.set("source", s);
     if (f) sp.set("feedbackOnly", "true");
+    if (q) sp.set("q", q);
     return parseShowingsListViewFromSearchParams(sp);
   }, [listFetchKey]);
 
@@ -520,7 +529,9 @@ export function ShowingsListView() {
   }, [searchParams]);
 
   const { showings, loading, error, reload } = useShowingsList(listView);
-  const [search, setSearch] = useState("");
+  const skipNextSearchSync = useRef(false);
+  const [qInput, setQInput] = useState(() => listView.q ?? "");
+  const spKey = searchParams.toString();
   const [editingShowing, setEditingShowing] = useState<Showing | null>(null);
   const lastHandledOpenShowingRef = useRef<string | null>(null);
 
@@ -528,13 +539,50 @@ export function ShowingsListView() {
   const [saveName, setSaveName] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  function replaceListView(next: NormalizedShowingsListView) {
-    router.replace(showingsListViewToHref(next), { scroll: false });
+  const replaceListView = useCallback(
+    (next: NormalizedShowingsListView) => {
+      router.replace(showingsHrefPreservingOpenShowing(next, searchParams), {
+        scroll: false,
+      });
+    },
+    [router, searchParams]
+  );
+
+  useEffect(() => {
+    if (skipNextSearchSync.current) {
+      skipNextSearchSync.current = false;
+      return;
+    }
+    const cur = parseShowingsListViewFromSearchParams(
+      new URLSearchParams(searchParams.toString())
+    );
+    setQInput(cur.q ?? "");
+  }, [spKey, searchParams]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const n = normalizeShowingHqListSearchQ(qInput);
+      const cur = parseShowingsListViewFromSearchParams(
+        new URLSearchParams(searchParams.toString())
+      );
+      if (n === cur.q) return;
+      skipNextSearchSync.current = true;
+      replaceListView({ ...cur, q: n });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [qInput, replaceListView, searchParams]);
+
+  function committedSearchListView(): NormalizedShowingsListView {
+    return {
+      ...listView,
+      q: normalizeShowingHqListSearchQ(qInput),
+    };
   }
 
   function clearListFiltersAndSearch() {
-    setSearch("");
-    replaceListView({ source: null, feedbackOnly: false });
+    skipNextSearchSync.current = true;
+    setQInput("");
+    replaceListView({ source: null, feedbackOnly: false, q: null });
   }
 
   const canSaveView = hasShowingsSaveableFiltersInSearchParams(searchParams);
@@ -548,9 +596,9 @@ export function ShowingsListView() {
       raw.trim() !== "" &&
       normalizeShowingsSourceParam(raw) === null
     ) {
-      router.replace(showingsListViewToHref(listView), { scroll: false });
+      replaceListView(listView);
     }
-  }, [searchParams, listView, router]);
+  }, [searchParams, listView, replaceListView]);
 
   useEffect(() => {
     const oid = openShowingFromUrl;
@@ -577,11 +625,6 @@ export function ShowingsListView() {
     router.replace(showingsListViewToHref(listView), { scroll: false });
   }, [openShowingFromUrl, loading, showings, router, listView]);
 
-  const visibleShowings = useMemo(() => {
-    if (!search.trim()) return showings;
-    return showings.filter((s) => matchesSearch(s, search));
-  }, [showings, search]);
-
   const feedbackCount = useMemo(
     () => showings.filter((s) => s.feedbackRequired).length,
     [showings]
@@ -591,8 +634,7 @@ export function ShowingsListView() {
     [showings]
   );
 
-  const isFiltered =
-    search.trim().length > 0 || hasListFilters;
+  const isFiltered = listView.q != null || hasListFilters;
   const showContent = !loading && !error;
 
   const sourceSelectValue = listView.source ?? "__all__";
@@ -609,15 +651,17 @@ export function ShowingsListView() {
       setSaveError("Enter a name");
       return;
     }
+    const qSave = normalizeShowingHqListSearchQ(qInput);
     const result = addSavedShowingsView({
       name,
       source: listView.source,
       feedbackOnly: listView.feedbackOnly,
+      q: qSave,
     });
     if (!result.ok) {
       if (result.reason === "duplicate") {
         setSaveError(
-          "A shortcut with the same source and feedback filter already exists. Open ShowingHQ → Saved views (/showing-hq/saved-views), or change filters here first."
+          "A shortcut with the same filters and search already exists. Open ShowingHQ → Saved views (/showing-hq/saved-views), or change filters here first."
         );
       } else if (result.reason === "limit") {
         setSaveError(
@@ -730,9 +774,7 @@ export function ShowingsListView() {
             </div>
             {showContent && showings.length > 0 && (
               <span className="shrink-0 text-xs tabular-nums text-kp-on-surface-variant">
-                {visibleShowings.length}
-                {visibleShowings.length !== showings.length && ` / ${showings.length}`}{" "}
-                {showings.length === 1 ? "showing" : "showings"}
+                {showings.length} {showings.length === 1 ? "showing" : "showings"}
               </span>
             )}
           </div>
@@ -752,9 +794,9 @@ export function ShowingsListView() {
                 value={sourceSelectValue}
                 onValueChange={(v) =>
                   replaceListView({
+                    ...committedSearchListView(),
                     source:
                       v === "__all__" ? null : (v as ShowingsSource),
-                    feedbackOnly: listView.feedbackOnly,
                   })
                 }
               >
@@ -772,7 +814,7 @@ export function ShowingsListView() {
                 aria-pressed={listView.feedbackOnly}
                 onClick={() =>
                   replaceListView({
-                    source: listView.source,
+                    ...committedSearchListView(),
                     feedbackOnly: !listView.feedbackOnly,
                   })
                 }
@@ -788,9 +830,7 @@ export function ShowingsListView() {
               {hasListFilters && (
                 <button
                   type="button"
-                  onClick={() =>
-                    replaceListView({ source: null, feedbackOnly: false })
-                  }
+                  onClick={clearListFiltersAndSearch}
                   className="text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
                 >
                   Clear filters
@@ -800,10 +840,10 @@ export function ShowingsListView() {
           )}
         </div>
 
-        {/* Search bar — client-only; not saved in shortcuts */}
+        {/* Search — URL-backed `q`, saved with list filters */}
         {showContent && (
           <div className="border-b border-kp-outline-variant px-5 py-3">
-            <SearchInput value={search} onChange={setSearch} />
+            <SearchInput value={qInput} onChange={setQInput} />
           </div>
         )}
 
@@ -812,10 +852,10 @@ export function ShowingsListView() {
           <LoadingState />
         ) : error ? (
           <ErrorState message={error} onRetry={reload} />
-        ) : visibleShowings.length === 0 ? (
+        ) : showings.length === 0 ? (
           <EmptyState isFiltered={isFiltered} onReset={clearListFiltersAndSearch} />
         ) : (
-          <ShowingsTable showings={visibleShowings} onEdit={setEditingShowing} />
+          <ShowingsTable showings={showings} onEdit={setEditingShowing} />
         )}
       </div>
 
@@ -838,7 +878,7 @@ export function ShowingsListView() {
         }}
         title="Save view"
         description={
-          "Saves source and feedback filters from the address bar only (search is never included). " +
+          "Saves source, feedback filter, and search from the address bar. " +
           "openShowing deep links are not saved. Stored on this browser only."
         }
         size="sm"

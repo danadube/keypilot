@@ -3,11 +3,13 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
 import { CreateShowingSchema } from "@/lib/validations/showing";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import { generateId } from "@/lib/id";
+import { normalizeShowingHqListSearchQ } from "@/lib/showing-hq/list-search-q";
 
 export const dynamic = "force-dynamic";
 
@@ -17,13 +19,32 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const source = searchParams.get("source")?.trim(); // MANUAL | SUPRA_SCRAPE
     const feedbackOnly = searchParams.get("feedbackOnly") === "true";
+    const qRaw = searchParams.get("q");
+    const q = normalizeShowingHqListSearchQ(qRaw);
 
-    const where = {
+    const where: Prisma.ShowingWhereInput = {
       hostUserId: user.id,
       deletedAt: null,
       ...(source ? { source: source as "MANUAL" | "SUPRA_SCRAPE" } : {}),
       ...(feedbackOnly ? { feedbackRequired: true } : {}),
     };
+
+    if (q) {
+      const searchTerms = q.split(/\s+/).filter(Boolean);
+      if (searchTerms.length > 0) {
+        where.AND = searchTerms.map((term) => ({
+          OR: [
+            { property: { address1: { contains: term, mode: "insensitive" } } },
+            { property: { city: { contains: term, mode: "insensitive" } } },
+            { property: { state: { contains: term, mode: "insensitive" } } },
+            { buyerAgentName: { contains: term, mode: "insensitive" } },
+            { buyerAgentEmail: { contains: term, mode: "insensitive" } },
+            { buyerName: { contains: term, mode: "insensitive" } },
+            { notes: { contains: term, mode: "insensitive" } },
+          ],
+        }));
+      }
+    }
 
     const showings = await prismaAdmin.showing.findMany({
       where,
