@@ -46,31 +46,51 @@ export async function GET() {
     const followUpStaleBefore = new Date();
     followUpStaleBefore.setDate(followUpStaleBefore.getDate() - 5);
 
-    // connections + feedback_requests are RLS-protected for keypilot_app; read them inside
-    // withRLSContext (matches /api/v1/settings/connections). prismaAdmin alone can 500 when
-    // the pool role does not BYPASSRLS.
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[showing-hq/dashboard] parallel: rls slice + prismaAdmin batch");
+    }
+
+    // connections, feedback_requests, and user_profiles are RLS-protected for keypilot_app.
+    // Read them inside withRLSContext (same pattern as /api/v1/settings/connections).
     const [rlsDashboardSlice, parallelResults] = await Promise.all([
       withRLSContext(user.id, async (tx) => {
-        const [connections, feedbackRequestsPendingCount, pendingFeedbackRequests] =
-          await Promise.all([
-            tx.connection.findMany({
-              where: { userId: user.id },
-              select: { service: true, enabledForCalendar: true },
-            }),
-            tx.feedbackRequest.count({
-              where: { hostUserId: user.id, status: "PENDING" },
-            }),
-            tx.feedbackRequest.findMany({
-              where: { hostUserId: user.id, status: "PENDING" },
-              include: { property: { select: { address1: true } } },
-              orderBy: { requestedAt: "desc" },
-              take: 20,
-            }),
-          ]);
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[showing-hq/dashboard] rls: connections, feedback_requests, userProfile");
+        }
+        const [
+          connections,
+          feedbackRequestsPendingCount,
+          pendingFeedbackRequests,
+          userProfile,
+        ] = await Promise.all([
+          tx.connection.findMany({
+            where: { userId: user.id },
+            select: { service: true, enabledForCalendar: true },
+          }),
+          tx.feedbackRequest.count({
+            where: { hostUserId: user.id, status: "PENDING" },
+          }),
+          tx.feedbackRequest.findMany({
+            where: { hostUserId: user.id, status: "PENDING" },
+            include: { property: { select: { address1: true } } },
+            orderBy: { requestedAt: "desc" },
+            take: 20,
+          }),
+          tx.userProfile.findUnique({
+            where: { userId: user.id },
+            select: {
+              displayName: true,
+              brokerageName: true,
+              headshotUrl: true,
+              logoUrl: true,
+            },
+          }),
+        ]);
         return {
           connections,
           feedbackRequestsPendingCount,
           pendingFeedbackRequests,
+          userProfile,
         };
       }),
       Promise.all([
@@ -189,10 +209,6 @@ export async function GET() {
           where: { id: { in: contactIds }, deletedAt: null },
         });
       })(),
-      prismaAdmin.userProfile.findUnique({
-        where: { userId: user.id },
-        select: { displayName: true, brokerageName: true, headshotUrl: true, logoUrl: true },
-      }),
       prismaAdmin.showing.count({
         where: {
           hostUserId: user.id,
@@ -254,8 +270,12 @@ export async function GET() {
       ]),
     ]);
 
-    const { connections, feedbackRequestsPendingCount, pendingFeedbackRequests } =
-      rlsDashboardSlice;
+    const {
+      connections,
+      feedbackRequestsPendingCount,
+      pendingFeedbackRequests,
+      userProfile,
+    } = rlsDashboardSlice;
 
     const [
       todaysOpenHouses,
@@ -269,7 +289,6 @@ export async function GET() {
       openHousesCount,
       followUpTasksCount,
       contactsFromVisitorsCount,
-      userProfile,
       privateShowingsTodayCount,
       recentReportsOpenHouses,
       upcomingOpenHousesFromTodayCount,
@@ -294,7 +313,7 @@ export async function GET() {
       ...todaysPrivateShowings.map((s) => ({
         type: "showing" as const,
         id: s.id,
-        title: s.property.address1,
+        title: s.property?.address1 ?? "Showing",
         at: s.scheduledAt,
         endAt: showingEndAt(s),
         property: s.property,
@@ -308,6 +327,9 @@ export async function GET() {
     const firstOpenHouseTomorrow = upcomingOpenHouses.find(
       (oh) => oh.startAt >= tomorrowStart && oh.startAt < tomorrowEnd
     );
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[showing-hq/dashboard] tomorrow first showing (prismaAdmin)");
+    }
     const firstShowingTomorrow = await prismaAdmin.showing.findFirst({
       where: {
         hostUserId: user.id,
@@ -332,7 +354,7 @@ export async function GET() {
             ? {
                 type: "showing" as const,
                 id: firstShowingTomorrow.id,
-                title: firstShowingTomorrow.property.address1,
+                title: firstShowingTomorrow.property?.address1 ?? "Showing",
                 at: firstShowingTomorrow.scheduledAt,
                 endAt: showingEndAt(firstShowingTomorrow),
                 property: firstShowingTomorrow.property,
@@ -429,7 +451,7 @@ export async function GET() {
         followUpTasks: followUpDrafts,
         pendingFeedbackRequests: pendingFeedbackRequests.map((fr) => ({
           id: fr.id,
-          property: { address1: fr.property.address1 },
+          property: { address1: fr.property?.address1 ?? "" },
           requestedAt: fr.requestedAt.toISOString(),
         })),
         recentReports: recentReportsOpenHouses.map((oh) => ({
@@ -479,6 +501,9 @@ export async function GET() {
       },
     });
   } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const stack = e instanceof Error ? e.stack : undefined;
+    console.error("[showing-hq/dashboard] request failed", { message: msg, stack });
     return apiErrorFromCaught(e);
   }
 }
