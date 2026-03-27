@@ -4,6 +4,7 @@
 
 import {
   SHOWINGHQ_SAVED_VIEWS_STORAGE_KEY,
+  addSavedOpenHousesView,
   addSavedShowingsView,
   addSavedVisitorsView,
   loadSavedViews,
@@ -115,6 +116,40 @@ describe("saved-views-storage", () => {
       });
     });
 
+    it("normalizes OPEN_HOUSES rows (drops invalid status)", () => {
+      window.localStorage.setItem(
+        SHOWINGHQ_SAVED_VIEWS_STORAGE_KEY,
+        JSON.stringify([
+          {
+            id: "o1",
+            name: "Live",
+            surface: "OPEN_HOUSES",
+            status: "ACTIVE",
+            q: null,
+          },
+          {
+            id: "o2",
+            name: "Bad",
+            surface: "OPEN_HOUSES",
+            status: "nope",
+            q: "x",
+          },
+        ])
+      );
+      const rows = loadSavedViews();
+      expect(rows).toHaveLength(2);
+      expect(rows[0]).toMatchObject({
+        surface: "OPEN_HOUSES",
+        status: "ACTIVE",
+        q: null,
+      });
+      expect(rows[1]).toMatchObject({
+        surface: "OPEN_HOUSES",
+        status: null,
+        q: "x",
+      });
+    });
+
     it("normalizes q on VISITORS and SHOWINGS rows", () => {
       window.localStorage.setItem(
         SHOWINGHQ_SAVED_VIEWS_STORAGE_KEY,
@@ -203,6 +238,37 @@ describe("saved-views-storage", () => {
       });
       expect(dup.ok).toBe(false);
       if (!dup.ok) expect(dup.reason).toBe("duplicate");
+    });
+  });
+
+  describe("addSavedOpenHousesView", () => {
+    it("rejects duplicate fingerprint", () => {
+      addSavedOpenHousesView({
+        name: "A",
+        status: "SCHEDULED",
+        q: null,
+      });
+      const dup = addSavedOpenHousesView({
+        name: "B",
+        status: "SCHEDULED",
+        q: null,
+      });
+      expect(dup.ok).toBe(false);
+      if (!dup.ok) expect(dup.reason).toBe("duplicate");
+    });
+    it("allows same status with different q", () => {
+      addSavedOpenHousesView({
+        name: "A",
+        status: "ACTIVE",
+        q: "one",
+      });
+      const b = addSavedOpenHousesView({
+        name: "B",
+        status: "ACTIVE",
+        q: "two",
+      });
+      expect(b.ok).toBe(true);
+      expect(loadSavedViews()).toHaveLength(2);
     });
   });
 

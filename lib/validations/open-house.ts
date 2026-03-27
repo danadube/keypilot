@@ -1,5 +1,21 @@
 import { z } from "zod";
 
+/** Full enum for list GET `status=` (includes DRAFT). */
+export const OPEN_HOUSE_LIST_STATUSES_FOR_GET = [
+  "DRAFT",
+  "SCHEDULED",
+  "ACTIVE",
+  "COMPLETED",
+  "CANCELLED",
+] as const;
+
+export const OpenHousesListGetQuerySchema = z.object({
+  status: z.enum(OPEN_HOUSE_LIST_STATUSES_FOR_GET).optional(),
+  q: z.string().max(400).optional(),
+});
+
+export type OpenHousesListGetQuery = z.infer<typeof OpenHousesListGetQuerySchema>;
+
 export const CreateOpenHouseSchema = z
   .object({
     propertyId: z.string().uuid(),

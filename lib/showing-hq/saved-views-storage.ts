@@ -10,6 +10,11 @@ import {
   showingsListViewFingerprint,
 } from "./showings-view-query";
 import {
+  normalizeOpenHouseListStatusParam,
+  openHousesListViewFingerprint,
+  type NormalizedOpenHousesListView,
+} from "./open-houses-view-query";
+import {
   normalizeVisitorsOpenHouseId,
   normalizeVisitorsSortParam,
   type VisitorsSort,
@@ -109,6 +114,26 @@ function showingsFingerprintFromRecord(
   return showingsListViewFingerprint(view);
 }
 
+function normalizedOpenHousesListFields(
+  status: unknown,
+  q: unknown
+): NormalizedOpenHousesListView {
+  return {
+    status: normalizeOpenHouseListStatusParam(
+      typeof status === "string" ? status : null
+    ),
+    q: normalizeShowingHqListSearchQ(typeof q === "string" ? q : null),
+  };
+}
+
+function openHousesFingerprintFromRecord(
+  rec: ShowingHqSavedViewRecord
+): string | null {
+  if (rec.surface !== "OPEN_HOUSES") return null;
+  const v = normalizedOpenHousesListFields(rec.status, rec.q);
+  return openHousesListViewFingerprint(v);
+}
+
 function normalizeRecord(raw: unknown): ShowingHqSavedViewRecord | null {
   if (!isRecord(raw)) return null;
   const id = typeof raw.id === "string" ? raw.id.trim() : "";
@@ -150,34 +175,18 @@ function normalizeRecord(raw: unknown): ShowingHqSavedViewRecord | null {
     };
   }
 
-  // OPEN_HOUSES — forward-compatible (optional P1); loose shape
-  return {
-    id,
-    name: nameSlice,
-    surface: "OPEN_HOUSES",
-    source:
-      raw.source === null || raw.source === undefined
-        ? null
-        : typeof raw.source === "string"
-          ? raw.source.trim() || null
-          : null,
-    feedbackOnly: raw.feedbackOnly === true ? true : null,
-    openShowing:
-      typeof raw.openShowing === "string"
-        ? raw.openShowing.trim() || null
-        : null,
-    openHouseId:
-      typeof raw.openHouseId === "string"
-        ? raw.openHouseId.trim() || null
-        : null,
-    sort: typeof raw.sort === "string" ? raw.sort.trim() || null : null,
-    status:
-      typeof raw.status === "string" ? raw.status.trim() || null : null,
-    q:
-      typeof raw.q === "string"
-        ? normalizeShowingHqListSearchQ(raw.q)
-        : null,
-  };
+  if (raw.surface === "OPEN_HOUSES") {
+    const v = normalizedOpenHousesListFields(raw.status, raw.q);
+    return {
+      id,
+      name: nameSlice,
+      surface: "OPEN_HOUSES",
+      status: v.status,
+      q: v.q,
+    };
+  }
+
+  return null;
 }
 
 export function loadSavedViews(): ShowingHqSavedViewRecord[] {
@@ -301,6 +310,48 @@ export function addSavedShowingsView(
     list.some((row) => {
       if (row.surface !== "SHOWINGS") return false;
       return showingsFingerprintFromRecord(row) === fpNew;
+    })
+  ) {
+    return { ok: false, reason: "duplicate" };
+  }
+
+  const next: ShowingHqSavedViewRecord = {
+    ...nextPartial,
+    id: newRecordId(rec.id),
+  };
+  persistSavedViews([...list, next]);
+  return { ok: true, record: next };
+}
+
+/** Add OPEN_HOUSES saved view — `status` (URL slice) and canonical `q`. */
+export function addSavedOpenHousesView(
+  rec: Omit<ShowingHqSavedViewRecord, "id" | "surface"> & {
+    id?: string;
+    surface?: ShowingHqSavedViewSurface;
+  }
+): AddShowingHqSavedViewResult {
+  const name = rec.name.trim().slice(0, MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH);
+  if (!name) return { ok: false, reason: "empty_name" };
+
+  const view = normalizedOpenHousesListFields(rec.status, rec.q);
+  const nextPartial: ShowingHqSavedViewRecord = {
+    id: "",
+    name,
+    surface: "OPEN_HOUSES",
+    status: view.status,
+    q: view.q,
+  };
+  const fpNew = openHousesListViewFingerprint(view);
+
+  const list = loadSavedViews();
+  if (list.length >= MAX_SHOWINGHQ_SAVED_VIEWS) {
+    return { ok: false, reason: "limit" };
+  }
+
+  if (
+    list.some((row) => {
+      if (row.surface !== "OPEN_HOUSES") return false;
+      return openHousesFingerprintFromRecord(row) === fpNew;
     })
   ) {
     return { ok: false, reason: "duplicate" };

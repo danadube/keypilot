@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Plus,
   QrCode,
@@ -12,12 +19,33 @@ import {
   AlertCircle,
   Loader2,
   ArrowRight,
+  Search,
+  X,
+  BookmarkPlus,
+  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MetricCard } from "@/components/ui/metric-card";
 import { SectionTabs } from "@/components/ui/section-tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { BrandModal } from "@/components/ui/BrandModal";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
+import {
+  MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH,
+  addSavedOpenHousesView,
+} from "@/lib/showing-hq/saved-views-storage";
+import { normalizeShowingHqListSearchQ } from "@/lib/showing-hq/list-search-q";
+import {
+  buildOpenHousesListFetchApiUrl,
+  hasOpenHousesSaveableFiltersInSearchParams,
+  normalizeOpenHouseListStatusParam,
+  openHousesListStatusFromTab,
+  openHousesListViewToHref,
+  parseOpenHousesListViewFromSearchParams,
+  tabFromOpenHousesListStatus,
+  type NormalizedOpenHousesListView,
+  type OpenHousesListTabValue,
+} from "@/lib/showing-hq/open-houses-view-query";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 // Mirrors the shape returned by GET /api/v1/open-houses (with full property include)
@@ -42,17 +70,18 @@ type OpenHouse = {
 };
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
-// Identical fetch pattern to OpenHousesList — same endpoint, same shape.
+// GET /api/v1/open-houses?q=… (all statuses); URL `status` applied client-side.
 
-function useOpenHouses() {
+function useOpenHousesList(view: Pick<NormalizedOpenHousesListView, "q">) {
   const [openHouses, setOpenHouses] = useState<OpenHouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  function load() {
+  const load = useCallback(() => {
     setError(null);
     setLoading(true);
-    fetch("/api/v1/open-houses")
+    const url = buildOpenHousesListFetchApiUrl({ status: null, q: view.q });
+    fetch(url)
       .then((res) => res.json())
       .then((json) => {
         if (json.error) setError(json.error.message);
@@ -60,11 +89,11 @@ function useOpenHouses() {
       })
       .catch(() => setError("Failed to load open houses"))
       .finally(() => setLoading(false));
-  }
+  }, [view.q]);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   return { openHouses, loading, error, reload: load };
 }
@@ -139,25 +168,87 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
-function EmptyState() {
+function EmptyState({
+  isFiltered,
+  onReset,
+}: {
+  isFiltered: boolean;
+  onReset: () => void;
+}) {
   return (
     <div className="flex min-h-[280px] flex-col items-center justify-center gap-4 px-4 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-kp-surface-high">
         <Calendar className="h-5 w-5 text-kp-on-surface-variant" />
       </div>
       <div>
-        <p className="text-sm font-medium text-kp-on-surface">No open houses yet</p>
-        <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-          Create an event to get your QR sign-in link and start collecting visitors.
-        </p>
+        {isFiltered ? (
+          <>
+            <p className="text-sm font-medium text-kp-on-surface">No matching events</p>
+            <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+              Try another search or clear filters.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm font-medium text-kp-on-surface">No open houses yet</p>
+            <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+              Create an event to get your QR sign-in link and start collecting visitors.
+            </p>
+          </>
+        )}
       </div>
-      <Link
-        href="/open-houses/new"
-        className="inline-flex items-center gap-1.5 rounded-lg bg-kp-gold px-4 py-2 text-sm font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright"
-      >
-        <Plus className="h-4 w-4" />
-        New open house
-      </Link>
+      {isFiltered ? (
+        <button
+          type="button"
+          onClick={onReset}
+          className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
+        >
+          Clear filters and search
+        </button>
+      ) : (
+        <Link
+          href="/open-houses/new"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-kp-gold px-4 py-2 text-sm font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright"
+        >
+          <Plus className="h-4 w-4" />
+          New open house
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function SearchInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="relative">
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-kp-on-surface-variant" />
+      <input
+        type="text"
+        placeholder="Search by title or address…"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={cn(
+          "h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high pl-8 pr-8",
+          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+          "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+        )}
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-kp-on-surface-variant hover:text-kp-on-surface"
+          aria-label="Clear search"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
     </div>
   );
 }
@@ -353,24 +444,108 @@ function OpenHousesTable({ rows }: { rows: OpenHouse[] }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-type TabValue = "all" | "live" | "upcoming" | "completed";
-
 /**
- * OpenHousesListView — dark premium visual layer for the Open Houses module.
+ * OpenHousesListView — list for /open-houses.
  *
- * Same fetch pattern as OpenHousesList (GET /api/v1/open-houses).
- * Adds: client-side tab filtering, next-up/live banner, StatusBadge, MetricCard.
- *
- * Revert: swap this back to <OpenHousesList /> in app/(dashboard)/open-houses/page.tsx.
- * The original component is untouched at components/open-houses/OpenHousesList.tsx.
+ * URL: `status` (OpenHouseStatus) and `q` list search; fetch uses `q` only, then
+ * `status` is applied client-side for tab counts. Saved views: ShowingHQ hub.
  */
 export function OpenHousesListView() {
-  const { openHouses, loading, error, reload } = useOpenHouses();
-  const [activeTab, setActiveTab] = useState<TabValue>("all");
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-  // ── Derived metrics (same logic as OpenHousesList) ──────────────────────
+  const listFetchKey = useMemo(
+    () => JSON.stringify({ q: searchParams.get("q") ?? "" }),
+    [searchParams]
+  );
+  const fetchSlice = useMemo((): Pick<NormalizedOpenHousesListView, "q"> => {
+    const { q } = JSON.parse(listFetchKey) as { q: string };
+    const sp = new URLSearchParams();
+    if (q) sp.set("q", q);
+    return { q: parseOpenHousesListViewFromSearchParams(sp).q };
+  }, [listFetchKey]);
+
+  const listView = useMemo((): NormalizedOpenHousesListView => {
+    return parseOpenHousesListViewFromSearchParams(
+      new URLSearchParams(searchParams.toString())
+    );
+  }, [searchParams]);
+
+  const activeTab = tabFromOpenHousesListStatus(listView.status);
+
+  const { openHouses, loading, error, reload } = useOpenHousesList(fetchSlice);
+  const skipNextSearchSync = useRef(false);
+  const [qInput, setQInput] = useState(() => listView.q ?? "");
+  const spKey = searchParams.toString();
+
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const replaceListView = useCallback(
+    (next: NormalizedOpenHousesListView) => {
+      router.replace(openHousesListViewToHref(next), { scroll: false });
+    },
+    [router]
+  );
+
+  useEffect(() => {
+    if (skipNextSearchSync.current) {
+      skipNextSearchSync.current = false;
+      return;
+    }
+    const cur = parseOpenHousesListViewFromSearchParams(
+      new URLSearchParams(searchParams.toString())
+    );
+    setQInput(cur.q ?? "");
+  }, [spKey, searchParams]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const n = normalizeShowingHqListSearchQ(qInput);
+      const cur = parseOpenHousesListViewFromSearchParams(
+        new URLSearchParams(searchParams.toString())
+      );
+      if (n === cur.q) return;
+      skipNextSearchSync.current = true;
+      replaceListView({ ...cur, q: n });
+    }, 300);
+    return () => clearTimeout(t);
+  }, [qInput, replaceListView, searchParams]);
+
+  function committedSearchListView(): NormalizedOpenHousesListView {
+    return {
+      ...listView,
+      q: normalizeShowingHqListSearchQ(qInput),
+    };
+  }
+
+  function clearListFiltersAndSearch() {
+    skipNextSearchSync.current = true;
+    setQInput("");
+    replaceListView({ status: null, q: null });
+  }
+
+  /** Drop unknown `status=` so the URL matches normalization. */
+  useEffect(() => {
+    const raw = searchParams.get("status");
+    if (
+      raw != null &&
+      raw.trim() !== "" &&
+      normalizeOpenHouseListStatusParam(raw) === null
+    ) {
+      replaceListView({ q: listView.q, status: null });
+    }
+  }, [searchParams, listView.q, replaceListView]);
+
+  const canSaveView = hasOpenHousesSaveableFiltersInSearchParams(searchParams);
+  const hasListFilters = canSaveView;
+
   const activeOrUpcoming = useMemo(
-    () => openHouses.filter((oh) => oh.status === "ACTIVE" || oh.status === "SCHEDULED"),
+    () =>
+      openHouses.filter(
+        (oh) => oh.status === "ACTIVE" || oh.status === "SCHEDULED"
+      ),
     [openHouses]
   );
   const liveEvents = useMemo(
@@ -392,47 +567,104 @@ export function OpenHousesListView() {
   const now = new Date();
   const nextUp = useMemo(
     () =>
-      // Live events first, then soonest upcoming
       liveEvents[0] ??
       [...upcomingEvents]
         .filter((oh) => new Date(oh.startAt) >= now)
-        .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime())[0],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        .sort(
+          (a, b) =>
+            new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+        )[0],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `now` is intentionally snapshot per render
     [liveEvents, upcomingEvents]
   );
 
-  // ── Tab-filtered rows ───────────────────────────────────────────────────
   const filteredRows = useMemo(() => {
-    switch (activeTab) {
-      case "live":      return liveEvents;
-      case "upcoming":  return upcomingEvents;
-      case "completed": return completedEvents;
-      default:          return openHouses;
-    }
-  }, [activeTab, openHouses, liveEvents, upcomingEvents, completedEvents]);
+    if (!listView.status) return openHouses;
+    return openHouses.filter((oh) => oh.status === listView.status);
+  }, [openHouses, listView.status]);
 
-  // ── Tab definitions ────────────────────────────────────────────────────
   const tabs = useMemo(
     () => [
-      { label: "All",       value: "all",       count: openHouses.length },
-      { label: "Live",      value: "live",       count: liveEvents.length },
-      { label: "Upcoming",  value: "upcoming",   count: upcomingEvents.length },
-      { label: "Completed", value: "completed",  count: completedEvents.length },
+      { label: "All", value: "all" as const, count: openHouses.length },
+      { label: "Live", value: "live" as const, count: liveEvents.length },
+      {
+        label: "Upcoming",
+        value: "upcoming" as const,
+        count: upcomingEvents.length,
+      },
+      {
+        label: "Completed",
+        value: "completed" as const,
+        count: completedEvents.length,
+      },
     ],
     [openHouses, liveEvents, upcomingEvents, completedEvents]
   );
 
   const hasData = !loading && !error && openHouses.length > 0;
+  const showContent = !loading && !error;
+  const isFiltered = hasListFilters;
+
+  function openSaveModal() {
+    setSaveError(null);
+    setSaveName("");
+    setSaveModalOpen(true);
+  }
+
+  function handleConfirmSave() {
+    const name = saveName.trim();
+    if (!name) {
+      setSaveError("Enter a name");
+      return;
+    }
+    const qSave = normalizeShowingHqListSearchQ(qInput);
+    const result = addSavedOpenHousesView({
+      name,
+      status: listView.status,
+      q: qSave,
+    });
+    if (!result.ok) {
+      if (result.reason === "duplicate") {
+        setSaveError(
+          "A shortcut with the same filters and search already exists. Open ShowingHQ → Saved views, or change filters first."
+        );
+      } else if (result.reason === "limit") {
+        setSaveError(
+          "You can save up to 50 views. Remove one on Saved views and try again."
+        );
+      } else {
+        setSaveError("Enter a name");
+      }
+      return;
+    }
+    setSaveModalOpen(false);
+    setSaveName("");
+    setSaveError(null);
+  }
+
+  function setTabFromUi(nextTab: OpenHousesListTabValue) {
+    const status = openHousesListStatusFromTab(nextTab);
+    replaceListView({
+      ...committedSearchListView(),
+      status,
+    });
+  }
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
-      {/* ── Intro (shell owns title) + actions ─────────────────────────── */}
       <div className="flex flex-col gap-3 px-6 pb-3 pt-3 sm:flex-row sm:items-end sm:justify-between sm:px-8">
         <DashboardContextStrip
           className="min-w-0 flex-1 sm:max-w-2xl"
           message="Create and manage public events — QR sign-in, visitors, and follow-ups per event."
         />
         <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Link
+            href="/showing-hq/saved-views"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-kp-outline px-2.5 py-1.5 text-xs font-medium text-kp-on-surface-variant transition-colors hover:border-kp-outline/60 hover:text-kp-on-surface"
+          >
+            <Layers className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Saved views</span>
+          </Link>
           <Link
             href="/open-houses/sign-in"
             className="inline-flex items-center gap-1.5 rounded-lg border border-kp-outline px-2.5 py-1.5 text-xs font-medium text-kp-on-surface-variant transition-colors hover:border-kp-outline/60 hover:text-kp-on-surface"
@@ -450,12 +682,16 @@ export function OpenHousesListView() {
         </div>
       </div>
 
-      {/* ── Metric cards ────────────────────────────────────────────────── */}
       <div className="grid gap-3 px-6 pb-4 sm:grid-cols-3 sm:px-8">
         <MetricCard
           label="Total events"
           value={loading ? "—" : openHouses.length}
           accent="gold"
+          sub={
+            !loading && openHouses.length > 0 && hasListFilters
+              ? "Matches address bar filters"
+              : undefined
+          }
         />
         <MetricCard
           label="Active / upcoming"
@@ -475,59 +711,148 @@ export function OpenHousesListView() {
         />
       </div>
 
-      {/* ── Next-up / live banner (shown when data is loaded) ───────────── */}
       {hasData && nextUp && <NextUpBanner event={nextUp} />}
 
-      {/* ── Table panel ─────────────────────────────────────────────────── */}
       <div
         className={cn(
           "mx-6 mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8",
           hasData && nextUp ? "mt-3" : "mt-0"
         )}
       >
-        {/* Panel header */}
-        <div className="flex items-center justify-between gap-4 border-b border-kp-outline px-5 py-4">
-          <div>
-            <p className="text-sm font-semibold text-kp-on-surface">All events</p>
-            <p className="text-xs text-kp-on-surface-variant">
-              Upcoming and past open houses. Open an event to manage visitors,
-              follow-ups, and the QR sign-in link.
-            </p>
+        <div className="space-y-3 border-b border-kp-outline px-5 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-kp-on-surface">All events</p>
+              <p className="text-xs text-kp-on-surface-variant">
+                Upcoming and past open houses. Open an event to manage visitors,
+                follow-ups, and the QR sign-in link.
+              </p>
+            </div>
+            {hasData && (
+              <span className="text-xs tabular-nums text-kp-on-surface-variant">
+                {filteredRows.length}{" "}
+                {filteredRows.length === 1 ? "event" : "events"}
+                {listView.status ? " · filtered" : ""}
+              </span>
+            )}
           </div>
-          {hasData && (
-            <span className="text-xs tabular-nums text-kp-on-surface-variant">
-              {openHouses.length} {openHouses.length === 1 ? "event" : "events"}
-            </span>
+          {showContent && (
+            <div className="flex flex-wrap items-center gap-2">
+              {canSaveView && (
+                <button
+                  type="button"
+                  onClick={openSaveModal}
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-xs font-medium text-kp-on-surface transition-colors hover:border-kp-teal/40 hover:bg-kp-teal/5"
+                >
+                  <BookmarkPlus className="h-3.5 w-3.5 text-kp-teal" aria-hidden />
+                  Save view
+                </button>
+              )}
+              {hasListFilters && (
+                <button
+                  type="button"
+                  onClick={clearListFiltersAndSearch}
+                  className="text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
           )}
         </div>
 
-        {/* Section tabs — only when there's data to filter */}
         {hasData && (
           <div className="px-5">
             <SectionTabs
               tabs={tabs}
               active={activeTab}
-              onChange={(v) => setActiveTab(v as TabValue)}
+              onChange={(v) => setTabFromUi(v as OpenHousesListTabValue)}
             />
           </div>
         )}
 
-        {/* Content */}
+        {showContent && (hasData || isFiltered) && (
+          <div className="border-b border-kp-outline-variant px-5 py-3">
+            <SearchInput value={qInput} onChange={setQInput} />
+          </div>
+        )}
+
         {loading ? (
           <LoadingState />
         ) : error ? (
           <ErrorState message={error} onRetry={reload} />
         ) : openHouses.length === 0 ? (
-          <EmptyState />
+          <EmptyState isFiltered={isFiltered} onReset={clearListFiltersAndSearch} />
         ) : filteredRows.length === 0 ? (
           <FilteredEmptyState
-            tab={tabs.find((t) => t.value === activeTab)?.label ?? activeTab}
-            onReset={() => setActiveTab("all")}
+            tab={
+              tabs.find((t) => t.value === activeTab)?.label ?? String(activeTab)
+            }
+            onReset={() => {
+              replaceListView({
+                ...committedSearchListView(),
+                status: null,
+              });
+            }}
           />
         ) : (
           <OpenHousesTable rows={filteredRows} />
         )}
       </div>
+
+      <BrandModal
+        open={saveModalOpen}
+        onOpenChange={(open) => {
+          setSaveModalOpen(open);
+          if (!open) {
+            setSaveError(null);
+            setSaveName("");
+          }
+        }}
+        title="Save view"
+        description="Saves status tab and search from the address bar. Stored on this browser only."
+        size="sm"
+        footer={
+          <div className="flex w-full justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setSaveModalOpen(false)}
+              className="rounded-lg border border-kp-outline px-3 py-2 text-xs font-medium text-kp-on-surface transition-colors hover:bg-kp-surface-high"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmSave}
+              className="rounded-lg bg-kp-teal px-3 py-2 text-xs font-medium text-white transition-colors hover:opacity-90"
+            >
+              Save
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-kp-on-surface-variant">
+            Name
+          </label>
+          <input
+            type="text"
+            value={saveName}
+            onChange={(e) => {
+              setSaveName(e.target.value);
+              setSaveError(null);
+            }}
+            placeholder="e.g. Live events — downtown"
+            maxLength={MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH}
+            className={cn(
+              "w-full rounded-lg border border-kp-outline bg-kp-bg px-3 py-2 text-sm text-kp-on-surface",
+              "placeholder:text-kp-on-surface-variant focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+            )}
+            autoFocus
+          />
+          {saveError && <p className="text-xs text-red-400">{saveError}</p>}
+        </div>
+      </BrandModal>
     </div>
   );
 }

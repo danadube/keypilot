@@ -1,27 +1,78 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
-import { CreateOpenHouseSchema } from "@/lib/validations/open-house";
+import {
+  CreateOpenHouseSchema,
+  OpenHousesListGetQuerySchema,
+} from "@/lib/validations/open-house";
 import { generateQrSlug } from "@/lib/slugify";
 import { ActivityType } from "@prisma/client";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { trackUsageEvent } from "@/lib/track-usage";
+import { normalizeShowingHqListSearchQ } from "@/lib/showing-hq/list-search-q";
 
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get("status");
+    const parsed = OpenHousesListGetQuerySchema.safeParse({
+      status: searchParams.get("status") || undefined,
+      q: searchParams.get("q") || undefined,
+    });
+    const status =
+      parsed.success && parsed.data.status ? parsed.data.status : undefined;
+    const q = normalizeShowingHqListSearchQ(
+      parsed.success ? parsed.data.q ?? null : searchParams.get("q")
+    );
+
+    const access: Prisma.OpenHouseWhereInput = {
+      OR: [
+        { hostUserId: user.id },
+        { listingAgentId: user.id },
+        { hostAgentId: user.id },
+      ],
+      deletedAt: null,
+      ...(status ? { status } : {}),
+    };
+
+    let where: Prisma.OpenHouseWhereInput = access;
+
+    if (q) {
+      const searchTerms = q.split(/\s+/).filter(Boolean);
+      if (searchTerms.length > 0) {
+        where = {
+          AND: [
+            access,
+            ...searchTerms.map(
+              (term): Prisma.OpenHouseWhereInput => ({
+                OR: [
+                  { title: { contains: term, mode: "insensitive" } },
+                  { notes: { contains: term, mode: "insensitive" } },
+                  { agentName: { contains: term, mode: "insensitive" } },
+                  { agentEmail: { contains: term, mode: "insensitive" } },
+                  {
+                    property: {
+                      address1: { contains: term, mode: "insensitive" },
+                    },
+                  },
+                  {
+                    property: { city: { contains: term, mode: "insensitive" } },
+                  },
+                  {
+                    property: { state: { contains: term, mode: "insensitive" } },
+                  },
+                  { property: { zip: { contains: term, mode: "insensitive" } } },
+                ],
+              })
+            ),
+          ],
+        };
+      }
+    }
+
     const openHouses = await prismaAdmin.openHouse.findMany({
-      where: {
-        OR: [
-          { hostUserId: user.id },
-          { listingAgentId: user.id },
-          { hostAgentId: user.id },
-        ],
-        deletedAt: null,
-        ...(status ? { status: status as "DRAFT" | "SCHEDULED" | "ACTIVE" | "COMPLETED" | "CANCELLED" } : {}),
-      },
+      where,
       include: {
         property: true,
         listingAgent: { select: { id: true, name: true, email: true } },

@@ -1,5 +1,6 @@
 /**
- * Optional list search query param `q` for ShowingHQ URL grammar (Visitors + Showings).
+ * Optional list search query param `q` for ShowingHQ URL grammar (Visitors, Showings,
+ * Open Houses list).
  * Trim, collapse whitespace, length cap; safe for URLSearchParams (no manual encode needed).
  */
 

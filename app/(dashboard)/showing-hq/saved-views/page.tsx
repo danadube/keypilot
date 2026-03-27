@@ -11,6 +11,10 @@ import {
   normalizeShowingsSourceParam,
   showingsListViewToHref,
 } from "@/lib/showing-hq/showings-view-query";
+import {
+  normalizeOpenHouseListStatusParam,
+  openHousesListViewToHref,
+} from "@/lib/showing-hq/open-houses-view-query";
 import { normalizeShowingHqListSearchQ } from "@/lib/showing-hq/list-search-q";
 import {
   normalizeVisitorsSortParam,
@@ -42,6 +46,16 @@ function savedRecordHref(rec: ShowingHqSavedViewRecord): string {
     return showingsListViewToHref({
       source: src,
       feedbackOnly: rec.feedbackOnly === true,
+      q: normalizeShowingHqListSearchQ(
+        typeof rec.q === "string" ? rec.q : null
+      ),
+    });
+  }
+  if (rec.surface === "OPEN_HOUSES") {
+    return openHousesListViewToHref({
+      status: normalizeOpenHouseListStatusParam(
+        typeof rec.status === "string" ? rec.status : null
+      ),
       q: normalizeShowingHqListSearchQ(
         typeof rec.q === "string" ? rec.q : null
       ),
@@ -79,12 +93,25 @@ function savedRecordSummary(rec: ShowingHqSavedViewRecord): string {
     if (qn) parts.push(`Search: ${qn}`);
     return parts.join(" · ");
   }
+  if (rec.surface === "OPEN_HOUSES") {
+    const st = normalizeOpenHouseListStatusParam(
+      typeof rec.status === "string" ? rec.status : null
+    );
+    const parts: string[] = [];
+    parts.push(st ? `Status: ${st}` : "All statuses");
+    const qn = normalizeShowingHqListSearchQ(
+      typeof rec.q === "string" ? rec.q : null
+    );
+    if (qn) parts.push(`Search: ${qn}`);
+    return parts.join(" · ");
+  }
   return rec.surface;
 }
 
 function savedRecordSurfaceLabel(rec: ShowingHqSavedViewRecord): string {
   if (rec.surface === "VISITORS") return "Visitors";
   if (rec.surface === "SHOWINGS") return "Showings";
+  if (rec.surface === "OPEN_HOUSES") return "Open houses";
   return rec.surface;
 }
 
@@ -136,10 +163,13 @@ export default function ShowingHqSavedViewsPage() {
 
   const hubRows = useMemo(() => {
     const rows = saved.filter(
-      (r) => r.surface === "VISITORS" || r.surface === "SHOWINGS"
+      (r) =>
+        r.surface === "VISITORS" ||
+        r.surface === "SHOWINGS" ||
+        r.surface === "OPEN_HOUSES"
     );
     const surfaceOrder = (s: ShowingHqSavedViewRecord["surface"]) =>
-      s === "SHOWINGS" ? 0 : s === "VISITORS" ? 1 : 2;
+      s === "SHOWINGS" ? 0 : s === "OPEN_HOUSES" ? 1 : s === "VISITORS" ? 2 : 3;
     return [...rows].sort((a, b) => {
       const o = surfaceOrder(a.surface) - surfaceOrder(b.surface);
       if (o !== 0) return o;
@@ -220,7 +250,7 @@ export default function ShowingHqSavedViewsPage() {
       backHref="/showing-hq"
     >
       <div className="flex flex-col gap-4">
-        <DashboardContextStrip message="Saved views mirror URL filters on Visitors and All Showings, including search (q). Stored on this browser only." />
+        <DashboardContextStrip message="Saved views mirror URL filters on Visitors, All Showings, and Open Houses (status + search). Stored on this browser only." />
 
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold text-kp-on-surface">
@@ -234,14 +264,20 @@ export default function ShowingHqSavedViewsPage() {
             (<code className="rounded bg-kp-surface-high px-1 text-[11px]">openHouseId</code>
             , <code className="rounded bg-kp-surface-high px-1 text-[11px]">sort</code>
             , <code className="rounded bg-kp-surface-high px-1 text-[11px]">q</code>
-            ) and{" "}
+            ),{" "}
             <Link href="/showing-hq/showings" className="text-kp-teal hover:underline">
               All Showings
             </Link>{" "}
             (<code className="rounded bg-kp-surface-high px-1 text-[11px]">source</code>
             , <code className="rounded bg-kp-surface-high px-1 text-[11px]">feedbackOnly</code>
             , <code className="rounded bg-kp-surface-high px-1 text-[11px]">q</code>
-            ). Showing deep links (<code className="rounded bg-kp-surface-high px-1 text-[11px]">openShowing</code>) are not saved.
+            ), and{" "}
+            <Link href="/open-houses" className="text-kp-teal hover:underline">
+              Open Houses
+            </Link>{" "}
+            (<code className="rounded bg-kp-surface-high px-1 text-[11px]">status</code>
+            , <code className="rounded bg-kp-surface-high px-1 text-[11px]">q</code>
+            ). Private showing deep links (<code className="rounded bg-kp-surface-high px-1 text-[11px]">openShowing</code>) are not saved.
           </p>
         </div>
 
@@ -264,10 +300,14 @@ export default function ShowingHqSavedViewsPage() {
               No saved views yet. On{" "}
               <Link href="/showing-hq/visitors" className="text-kp-teal hover:underline">
                 Visitors
-              </Link>{" "}
-              or{" "}
+              </Link>
+              ,{" "}
               <Link href="/showing-hq/showings" className="text-kp-teal hover:underline">
                 All Showings
+              </Link>
+              , or{" "}
+              <Link href="/open-houses" className="text-kp-teal hover:underline">
+                Open Houses
               </Link>
               , set filters that appear in the address bar, then use{" "}
               <span className="font-medium text-kp-on-surface">Save view</span>.
@@ -381,7 +421,8 @@ export default function ShowingHqSavedViewsPage() {
             </ul>
           )}
           {(hubRows.some((r) => r.surface === "VISITORS" && r.openHouseId) ||
-            hubRows.some((r) => r.surface === "SHOWINGS")) && (
+            hubRows.some((r) => r.surface === "SHOWINGS") ||
+            hubRows.some((r) => r.surface === "OPEN_HOUSES")) && (
             <div className="space-y-1 border-t border-kp-outline px-4 py-2.5 text-[11px] text-kp-on-surface-variant">
               {hubRows.some((r) => r.surface === "VISITORS" && r.openHouseId) && (
                 <p>
@@ -393,6 +434,11 @@ export default function ShowingHqSavedViewsPage() {
               {hubRows.some((r) => r.surface === "SHOWINGS") && (
                 <p>
                   Showings shortcuts only restore list filters (not which row is open).
+                </p>
+              )}
+              {hubRows.some((r) => r.surface === "OPEN_HOUSES") && (
+                <p>
+                  Open houses shortcuts restore <span className="font-medium text-kp-on-surface">status</span> and list search (<span className="font-medium text-kp-on-surface">q</span>); tab badges still reflect your current data.
                 </p>
               )}
             </div>
