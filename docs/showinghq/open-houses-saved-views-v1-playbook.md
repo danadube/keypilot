@@ -30,6 +30,12 @@ Agents use **Open Houses** (`/open-houses`) for public events. Saved views let t
 - **URL / query grammar:** `lib/showing-hq/open-houses-view-query.ts` — `status` (optional `OpenHouseStatus`), `q` (optional list search).
 - **List fetch:** `buildOpenHousesListFetchApiUrl` passes **`q` only**; **`status`** is client-side after load for tab badge consistency.
 
+**Query grammar vs list fetch**
+
+- **`status`** is **URL-backed** (tabs, bookmarks, saved views) but **not** sent on the open-houses **list** request; **`q`** is the **only** server-side filter for that fetch.
+- **`status`** is applied **client-side** to the returned rows. Tab and metric **counts** are derived from the **`q`-filtered** dataset (still containing every status present in that result).
+- **Why:** Sending **`status`** to the API would drop rows in other statuses and break **tab counts** (Live / Upcoming / Completed / All). This is a deliberate **exception to strict URL ↔ API parity** for **`status`**; **`q`** remains fully API-aligned. Direct **`GET /api/v1/open-houses?status=…`** remains valid for other callers.
+
 **Backend**
 
 - **API:** `GET /api/v1/open-houses` — `OpenHousesListGetQuerySchema` (`status`, `q`); search mirrors ShowingHQ showings multi-term `AND` pattern on title, notes, agent fields, property address fields.
@@ -72,6 +78,7 @@ Agents use **Open Houses** (`/open-houses`) for public events. Saved views let t
 **Core behavior**
 
 - [ ] Save view with **status only**, **q only**, and **both**; Open restores table + URL.
+- [ ] **Counts** (tabs/metrics) reflect the **`q`-filtered** dataset from the API; the **table** reflects the **`status`-filtered** subset of that dataset.
 - [ ] Duplicate save blocked; 50-view limit behavior matches other surfaces.
 
 **Edge cases**
