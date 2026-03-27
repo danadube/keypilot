@@ -90,6 +90,9 @@ export default function ClientKeepOverviewPage() {
             <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "text-xs")} asChild>
               <Link href="/client-keep/follow-ups">Follow-ups</Link>
             </Button>
+            <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "text-xs")} asChild>
+              <Link href="/client-keep/activity">Recent activity</Link>
+            </Button>
           </div>
         </CardContent>
       </Card>
