@@ -6,7 +6,6 @@
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
-import { prismaAdmin } from "@/lib/db";
 import { withRLSContext } from "@/lib/db-context";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
@@ -51,11 +50,11 @@ export async function GET() {
     tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
 
     if (process.env.NODE_ENV !== "production") {
-      console.log("[showing-hq/dashboard] parallel: rls slice + prismaAdmin batch");
+      console.log("[showing-hq/dashboard] parallel: two RLS transactions (slice + OH/visitor batch)");
     }
 
-    // connections, feedback_requests, user_profiles, and showings are RLS-protected for keypilot_app.
-    // Read them inside withRLSContext (same pattern as /api/v1/settings/connections).
+    // All of the below touch keypilot_app RLS: connections, feedback_requests, user_profiles,
+    // showings, open_houses (+ nested properties), visitors, drafts, contacts.
     const [rlsDashboardSlice, parallelResults] = await Promise.all([
       withRLSContext(user.id, async (tx) => {
         if (process.env.NODE_ENV !== "production") {
@@ -141,8 +140,14 @@ export async function GET() {
           firstShowingTomorrow,
         };
       }),
-      Promise.all([
-      prismaAdmin.openHouse.findMany({
+      withRLSContext(user.id, async (tx) => {
+        if (process.env.NODE_ENV !== "production") {
+          console.log(
+            "[showing-hq/dashboard] rls: open_houses, visitors, follow_up_drafts, contacts"
+          );
+        }
+        return Promise.all([
+      tx.openHouse.findMany({
         where: {
           hostUserId: user.id,
           deletedAt: null,
@@ -155,7 +160,7 @@ export async function GET() {
         },
         orderBy: { startAt: "asc" },
       }),
-      prismaAdmin.openHouse.findMany({
+      tx.openHouse.findMany({
         where: {
           hostUserId: user.id,
           deletedAt: null,
@@ -169,7 +174,7 @@ export async function GET() {
         orderBy: { startAt: "asc" },
         take: 10,
       }),
-      prismaAdmin.openHouse.findMany({
+      tx.openHouse.findMany({
         where: {
           hostUserId: user.id,
           deletedAt: null,
@@ -179,7 +184,7 @@ export async function GET() {
         include: { property: true },
         orderBy: { startAt: "asc" },
       }),
-      prismaAdmin.openHouseVisitor.findMany({
+      tx.openHouseVisitor.findMany({
         where: {
           openHouse: {
             hostUserId: user.id,
@@ -193,7 +198,7 @@ export async function GET() {
         orderBy: { submittedAt: "desc" },
         take: 20,
       }),
-      prismaAdmin.followUpDraft.findMany({
+      tx.followUpDraft.findMany({
         where: {
           openHouse: { hostUserId: user.id, deletedAt: null },
           deletedAt: null,
@@ -206,15 +211,15 @@ export async function GET() {
         orderBy: { updatedAt: "desc" },
         take: 10,
       }),
-      prismaAdmin.openHouseVisitor.count({
+      tx.openHouseVisitor.count({
         where: {
           openHouse: { hostUserId: user.id, deletedAt: null },
         },
       }),
-      prismaAdmin.openHouse.count({
+      tx.openHouse.count({
         where: { hostUserId: user.id, deletedAt: null },
       }),
-      prismaAdmin.followUpDraft.count({
+      tx.followUpDraft.count({
         where: {
           openHouse: { hostUserId: user.id, deletedAt: null },
           deletedAt: null,
@@ -222,24 +227,24 @@ export async function GET() {
         },
       }),
       (async (): Promise<number> => {
-        const ohIds = await prismaAdmin.openHouse.findMany({
+        const ohIds = await tx.openHouse.findMany({
           where: { hostUserId: user.id, deletedAt: null },
           select: { id: true },
         });
         const ids = ohIds.map((o) => o.id);
         if (ids.length === 0) return 0;
-        const visitorContactIds = await prismaAdmin.openHouseVisitor.findMany({
+        const visitorContactIds = await tx.openHouseVisitor.findMany({
           where: { openHouseId: { in: ids } },
           select: { contactId: true },
           distinct: ["contactId"],
         });
         const contactIds = visitorContactIds.map((v) => v.contactId);
         if (contactIds.length === 0) return 0;
-        return prismaAdmin.contact.count({
+        return tx.contact.count({
           where: { id: { in: contactIds }, deletedAt: null },
         });
       })(),
-      prismaAdmin.openHouse.findMany({
+      tx.openHouse.findMany({
         where: {
           hostUserId: user.id,
           deletedAt: null,
@@ -252,7 +257,7 @@ export async function GET() {
           _count: { select: { visitors: true } },
         },
       }),
-      prismaAdmin.openHouse.count({
+      tx.openHouse.count({
         where: {
           hostUserId: user.id,
           deletedAt: null,
@@ -260,7 +265,7 @@ export async function GET() {
           startAt: { gte: todayStart },
         },
       }),
-      prismaAdmin.openHouse.findFirst({
+      tx.openHouse.findFirst({
         where: {
           hostUserId: user.id,
           deletedAt: null,
@@ -270,19 +275,19 @@ export async function GET() {
         orderBy: { startAt: "asc" },
         select: { startAt: true },
       }),
-      prismaAdmin.openHouseVisitor.count({
+      tx.openHouseVisitor.count({
         where: {
           submittedAt: { gte: thirtyDaysAgo },
           openHouse: { hostUserId: user.id, deletedAt: null },
         },
       }),
-      prismaAdmin.openHouseVisitor.count({
+      tx.openHouseVisitor.count({
         where: {
           submittedAt: { gte: sevenDaysAgo },
           openHouse: { hostUserId: user.id, deletedAt: null },
         },
       }),
-      prismaAdmin.followUpDraft.count({
+      tx.followUpDraft.count({
         where: {
           openHouse: { hostUserId: user.id, deletedAt: null },
           deletedAt: null,
@@ -290,7 +295,8 @@ export async function GET() {
           createdAt: { lt: followUpStaleBefore },
         },
       }),
-      ]),
+      ]);
+      }),
     ]);
 
     const {
