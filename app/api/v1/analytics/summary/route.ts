@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/v1/analytics/summary
  * Returns aggregate usage stats for ShowingHQ beta. Internal use.

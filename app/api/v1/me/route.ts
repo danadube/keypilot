@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import type { ModuleAccessMap } from "@/lib/module-access";
 
