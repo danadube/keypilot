@@ -12,9 +12,12 @@ import { AlertCircle, ExternalLink, History, Loader2 } from "lucide-react";
 type FeedItem = {
   id: string;
   type: "follow_up" | "activity";
+  subkind: "draft" | "reminder" | "user_activity";
+  href: string;
   title: string;
   description?: string;
   contactId?: string;
+  propertyId?: string;
   /** ISO timestamp from API; corresponds to source row `updatedAt` (feed recency). */
   eventAt: string;
 };
@@ -99,44 +102,59 @@ export default function ClientKeepRecentActivityPage() {
             </div>
           ) : (
             <ul className="divide-y divide-kp-outline">
-              {items.map((row) => (
-                <li key={row.id} className="px-4 py-3.5">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1 space-y-1">
-                      <span
+              {items.map((row) => {
+                const showSecondaryContact =
+                  Boolean(row.contactId) && row.subkind === "draft";
+                return (
+                  <li key={row.id} className="px-4 py-3.5">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <Link
+                        href={row.href}
                         className={cn(
-                          "inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                          row.type === "follow_up"
-                            ? "bg-kp-teal/15 text-kp-teal"
-                            : "bg-kp-surface-high text-kp-on-surface-variant"
+                          "min-w-0 flex-1 space-y-1 rounded-md outline-none ring-offset-kp-surface",
+                          "transition-colors hover:bg-kp-surface-high/60 focus-visible:ring-2 focus-visible:ring-kp-teal"
                         )}
                       >
-                        {row.type === "follow_up" ? "Follow-up" : "Activity"}
-                      </span>
-                      <p className="font-medium text-kp-on-surface">{row.title}</p>
-                      {row.description && (
-                        <p className="text-sm text-kp-on-surface-variant line-clamp-2">
-                          {row.description}
+                        <span
+                          className={cn(
+                            "inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                            row.type === "follow_up"
+                              ? "bg-kp-teal/15 text-kp-teal"
+                              : "bg-kp-surface-high text-kp-on-surface-variant"
+                          )}
+                        >
+                          {row.type === "follow_up" ? "Follow-up" : "Activity"}
+                        </span>
+                        <p className="font-medium text-kp-on-surface">{row.title}</p>
+                        {row.description && (
+                          <p className="text-sm text-kp-on-surface-variant line-clamp-2">
+                            {row.description}
+                          </p>
+                        )}
+                        <p className="flex items-center gap-1 text-xs text-kp-on-surface-variant">
+                          {formatWhen(row.eventAt)}
+                          <ExternalLink className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
                         </p>
+                      </Link>
+                      {showSecondaryContact && row.contactId && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={cn(kpBtnSecondary, "h-8 shrink-0 gap-1 text-xs")}
+                          asChild
+                        >
+                          <Link
+                            href={`/contacts/${encodeURIComponent(row.contactId)}`}
+                          >
+                            Contact
+                            <ExternalLink className="h-3 w-3 opacity-70" />
+                          </Link>
+                        </Button>
                       )}
-                      <p className="text-xs text-kp-on-surface-variant">{formatWhen(row.eventAt)}</p>
                     </div>
-                    {row.contactId && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={cn(kpBtnSecondary, "h-8 shrink-0 gap-1 text-xs")}
-                        asChild
-                      >
-                        <Link href={`/contacts/${encodeURIComponent(row.contactId)}`}>
-                          Contact
-                          <ExternalLink className="h-3 w-3 opacity-70" />
-                        </Link>
-                      </Button>
-                    )}
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
