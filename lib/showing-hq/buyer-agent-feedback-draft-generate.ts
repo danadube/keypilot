@@ -3,7 +3,7 @@
  * Single source of truth for subject/body text.
  */
 
-/** After greeting; combined with thank-you in one paragraph. */
+/** Standalone line after greeting (blank lines before / after in body). */
 export const BUYER_AGENT_FEEDBACK_ASSISTANT_LINE = "I'm Janice Glaab's assistant.";
 
 export type GenerateShowingBuyerAgentFeedbackDraftInput = {
@@ -78,7 +78,9 @@ export function generateShowingBuyerAgentFeedbackDraft(
   const lines = [
     greeting,
     "",
-    `${BUYER_AGENT_FEEDBACK_ASSISTANT_LINE} Thank you for showing ${addr} on ${dateStr} at ${timeStr}.`,
+    BUYER_AGENT_FEEDBACK_ASSISTANT_LINE,
+    "",
+    `Thank you for showing ${addr} on ${dateStr} at ${timeStr}.`,
     "",
     "When you have a moment, I would appreciate your buyer's feedback, including:",
     "- overall interest level",

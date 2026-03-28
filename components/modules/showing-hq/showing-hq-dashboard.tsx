@@ -28,7 +28,6 @@ import {
   UpcomingSection,
   type PrivateShowingAttentionRow,
 } from "@/components/showing-hq/showing-hq-dashboard-action-sections";
-import { getOpenHouseScheduleReadinessLabel } from "@/lib/showing-hq/showing-attention";
 
 // ── Types (mirrored exactly from API response) ────────────────────────────────
 
@@ -386,8 +385,6 @@ export function ShowingHQDashboardView() {
     feedbackRequestsPending: 0,
   };
 
-  const recentReportsAll = Array.isArray(data.recentReports) ? data.recentReports : [];
-
   const todaysShowings = Array.isArray(data.todaysShowings) ? data.todaysShowings : [];
   const upcoming = Array.isArray(data.upcomingOpenHouses) ? data.upcomingOpenHouses : [];
   const privateShowingsAttention = Array.isArray(data.privateShowingsAttention)
@@ -466,41 +463,6 @@ export function ShowingHQDashboardView() {
     readinessLabel: (s as { readinessLabel?: string }).readinessLabel,
   }));
 
-  const prepNeededOpenHouse =
-    todaysShowings.find((oh) => {
-      if (oh.status === "ACTIVE" || oh.status === "COMPLETED" || oh.status === "CANCELLED")
-        return false;
-      return (
-        getOpenHouseScheduleReadinessLabel(
-          {
-            startAt: new Date(oh.startAt),
-            endAt: new Date(oh.endAt),
-            status: oh.status,
-            agentName: oh.agentName,
-            agentEmail: oh.agentEmail,
-            flyerUrl: oh.flyerUrl,
-            flyerOverrideUrl: oh.flyerOverrideUrl,
-          },
-          now
-        ) === "Needs prep"
-      );
-    }) ?? null;
-
-  const SHOWING_SOON_MS = 2 * 60 * 60 * 1000;
-  const showingSoonItem: ScheduleItem | null = (() => {
-    const sorted = [...scheduleItems].sort(
-      (a, b) => new Date(a.at).getTime() - new Date(b.at).getTime()
-    );
-    for (const s of sorted) {
-      const t = new Date(s.at).getTime();
-      if (t <= now.getTime()) continue;
-      if (t > now.getTime() + SHOWING_SOON_MS) return null;
-      if (s.type === "open_house" && activeOpenHouse && s.id === activeOpenHouse.id) continue;
-      return s;
-    }
-    return null;
-  })();
-
   const pendingFeedbackRequests = Array.isArray(data.pendingFeedbackRequests)
     ? data.pendingFeedbackRequests
     : [];
@@ -511,7 +473,6 @@ export function ShowingHQDashboardView() {
     lastReceivedAt: null,
     queueActionCount: 0,
   };
-  const recentReports = recentReportsAll;
 
   // Build sorted activity feed
   const activityItemsRaw: ActivityItem[] = [
@@ -669,18 +630,6 @@ export function ShowingHQDashboardView() {
           signInUrl={signInUrl}
           linkCopied={linkCopied}
           onCopySignIn={handleCopyLink}
-          prepNeededOpenHouse={prepNeededOpenHouse}
-          showingSoonItem={showingSoonItem}
-          formatTime={formatTime}
-          followUpDraftCount={followUpTasks.length}
-          firstFollowUpDraftId={followUpTasks[0]?.id ?? null}
-          feedbackPendingCount={
-            stats.feedbackRequestsPending ?? pendingFeedbackRequests.length
-          }
-          buyerAgentEmailDraftCount={buyerAgentEmailDraftReviews.length}
-          firstBuyerAgentDraftShowingId={buyerAgentEmailDraftReviews[0]?.id ?? null}
-          reportsReadyCount={recentReports.length}
-          firstReportId={recentReports[0]?.id ?? null}
         />
       </div>
 

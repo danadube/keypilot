@@ -46,10 +46,10 @@ describe("getShowingAttentionState", () => {
     expect(s?.action).toBe("review");
   });
 
-  it("returns Today for same-day showing", () => {
+  it("returns Today for same-day showing when start is more than 2h away", () => {
     const s = getShowingAttentionState(
       {
-        scheduledAt: at(14, 0),
+        scheduledAt: at(15, 0),
         buyerAgentName: "Pat",
         buyerAgentEmail: "p@x.com",
         feedbackRequestStatus: "RECEIVED",
@@ -60,7 +60,21 @@ describe("getShowingAttentionState", () => {
     expect(s?.action).toBe("open");
   });
 
-  it("returns Needs prep for future showing missing agent email", () => {
+  it("returns Showing soon for same-day start within 2 hours", () => {
+    const s = getShowingAttentionState(
+      {
+        scheduledAt: at(14, 0),
+        buyerAgentName: "Pat",
+        buyerAgentEmail: "p@x.com",
+        feedbackRequestStatus: "RECEIVED",
+      },
+      now
+    );
+    expect(s?.label).toBe("Showing soon");
+    expect(s?.priority).toBe("high");
+  });
+
+  it("returns Prep required for future showing missing agent email", () => {
     const s = getShowingAttentionState(
       {
         scheduledAt: at(14, 2),
@@ -70,7 +84,7 @@ describe("getShowingAttentionState", () => {
       },
       now
     );
-    expect(s?.label).toBe("Needs prep");
+    expect(s?.label).toBe("Prep required");
   });
 
   it("returns null for future prepped showing", () => {
@@ -104,7 +118,7 @@ describe("getShowingAttentionState", () => {
 describe("getOpenHouseAttentionState", () => {
   const now = new Date(2026, 5, 15, 12, 0, 0, 0);
 
-  it("returns Today with high priority when ACTIVE", () => {
+  it("returns null for ACTIVE (handled by Today’s queue, not Needs attention)", () => {
     const s = getOpenHouseAttentionState(
       {
         startAt: new Date(2026, 5, 15, 13, 0),
@@ -115,11 +129,10 @@ describe("getOpenHouseAttentionState", () => {
       },
       now
     );
-    expect(s?.label).toBe("Today");
-    expect(s?.priority).toBe("high");
+    expect(s).toBeNull();
   });
 
-  it("returns Needs prep for DRAFT", () => {
+  it("returns Prep required for DRAFT", () => {
     const s = getOpenHouseAttentionState(
       {
         startAt: new Date(2026, 5, 20, 13, 0),
@@ -128,7 +141,7 @@ describe("getOpenHouseAttentionState", () => {
       },
       now
     );
-    expect(s?.label).toBe("Needs prep");
+    expect(s?.label).toBe("Prep required");
   });
 });
 

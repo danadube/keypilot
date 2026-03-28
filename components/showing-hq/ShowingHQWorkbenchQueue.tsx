@@ -2,24 +2,10 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import {
-  Radio,
-  Copy,
-  CheckSquare,
-  MessageSquare,
-  Mail,
-  FileText,
-  Clock,
-  ClipboardList,
-  ChevronRight,
-} from "lucide-react";
+import { Radio, Copy, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  kpBtnPrimary,
-  kpBtnSecondary,
-} from "@/components/ui/kp-dashboard-button-tiers";
-import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
+import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 
 export type WorkbenchOpenHouse = {
   id: string;
@@ -39,18 +25,6 @@ type ShowingHQWorkbenchQueueProps = {
   signInUrl: string | null;
   linkCopied: boolean;
   onCopySignIn: (url: string) => () => void;
-  /** Today’s open house that still needs prep (flyer/agent). */
-  prepNeededOpenHouse: WorkbenchOpenHouse | null;
-  /** Next calendar item today starting within the soon window. */
-  showingSoonItem: ScheduleItem | null;
-  formatTime: (iso: string) => string;
-  followUpDraftCount: number;
-  firstFollowUpDraftId: string | null;
-  feedbackPendingCount: number;
-  buyerAgentEmailDraftCount?: number;
-  firstBuyerAgentDraftShowingId?: string | null;
-  reportsReadyCount: number;
-  firstReportId: string | null;
 };
 
 function Row({
@@ -61,19 +35,13 @@ function Row({
   actions,
 }: {
   icon: typeof Radio;
-  tone: "live" | "warn" | "neutral" | "schedule";
+  tone: "live" | "neutral";
   title: string;
   meta?: string;
   actions: ReactNode;
 }) {
   const border =
-    tone === "live"
-      ? "border-l-emerald-500"
-      : tone === "warn"
-        ? "border-l-amber-500"
-        : tone === "schedule"
-          ? "border-l-sky-500"
-          : "border-l-kp-outline";
+    tone === "live" ? "border-l-emerald-500" : "border-l-kp-outline";
   return (
     <div
       className={`flex flex-wrap items-start justify-between gap-2 border-b border-kp-outline py-2.5 pl-3 last:border-b-0 ${border} border-l-[3px]`}
@@ -96,29 +64,11 @@ export function ShowingHQWorkbenchQueue({
   signInUrl,
   linkCopied,
   onCopySignIn,
-  prepNeededOpenHouse,
-  showingSoonItem,
-  formatTime,
-  followUpDraftCount,
-  firstFollowUpDraftId,
-  feedbackPendingCount,
-  buyerAgentEmailDraftCount = 0,
-  firstBuyerAgentDraftShowingId = null,
-  reportsReadyCount,
-  firstReportId,
 }: ShowingHQWorkbenchQueueProps) {
   const ohForSignIn = activeOpenHouse ?? scheduledTodayOpenHouse;
   const addr = ohForSignIn?.property?.address1 ?? "";
 
-  const hasImmediateRow =
-    !!activeOpenHouse ||
-    !!(signInUrl && ohForSignIn) ||
-    !!prepNeededOpenHouse ||
-    !!showingSoonItem ||
-    followUpDraftCount > 0 ||
-    buyerAgentEmailDraftCount > 0 ||
-    feedbackPendingCount > 0 ||
-    reportsReadyCount > 0;
+  const hasRealtimeRow = !!activeOpenHouse || !!(signInUrl && ohForSignIn);
 
   return (
     <div
@@ -130,7 +80,7 @@ export function ShowingHQWorkbenchQueue({
           Today&apos;s queue
         </h2>
         <p className="mt-0.5 text-[11px] font-medium text-kp-on-surface-variant">
-          Immediate actions only — calendar and prep live above
+          Live sign-in only — planning and follow-ups are in Needs attention
         </p>
       </div>
       <div className="min-h-0 flex-1 overflow-auto px-1">
@@ -190,122 +140,10 @@ export function ShowingHQWorkbenchQueue({
           />
         ) : null}
 
-        {prepNeededOpenHouse &&
-        !(activeOpenHouse && activeOpenHouse.id === prepNeededOpenHouse.id) ? (
-          <Row
-            icon={ClipboardList}
-            tone="warn"
-            title="Prep needed"
-            meta={prepNeededOpenHouse.property.address1 ?? prepNeededOpenHouse.title}
-            actions={
-              <Button variant="outline" size="sm" className={queueBtn} asChild>
-                <Link href={`/showing-hq/open-houses/${prepNeededOpenHouse.id}`}>Open house</Link>
-              </Button>
-            }
-          />
-        ) : null}
-
-        {showingSoonItem ? (
-          <Row
-            icon={Clock}
-            tone="schedule"
-            title="Showing soon"
-            meta={`${formatTime(showingSoonItem.at)} · ${showingSoonItem.property?.address1 ?? showingSoonItem.title}`}
-            actions={
-              <Button variant="outline" size="sm" className={queueBtn} asChild>
-                <Link
-                  href={
-                    showingSoonItem.type === "open_house"
-                      ? `/showing-hq/open-houses/${showingSoonItem.id}`
-                      : `/showing-hq/showings?openShowing=${encodeURIComponent(showingSoonItem.id)}`
-                  }
-                >
-                  Open
-                </Link>
-              </Button>
-            }
-          />
-        ) : null}
-
-        {followUpDraftCount > 0 ? (
-          <Row
-            icon={CheckSquare}
-            tone="warn"
-            title={`Review ${followUpDraftCount} follow-up draft${followUpDraftCount === 1 ? "" : "s"}`}
-            meta="Visitors waiting on your message"
-            actions={
-              <Button variant="outline" size="sm" className={queueBtn} asChild>
-                <Link
-                  href={
-                    firstFollowUpDraftId
-                      ? `/showing-hq/follow-ups/draft/${firstFollowUpDraftId}`
-                      : "/showing-hq/follow-ups"
-                  }
-                >
-                  Review <ChevronRight className="h-3.5 w-3.5" />
-                </Link>
-              </Button>
-            }
-          />
-        ) : null}
-
-        {buyerAgentEmailDraftCount > 0 ? (
-          <Row
-            icon={Mail}
-            tone="warn"
-            title={`${buyerAgentEmailDraftCount} feedback email draft${buyerAgentEmailDraftCount === 1 ? "" : "s"} ready`}
-            meta="Past showings — review and send from your mail app"
-            actions={
-              <Button variant="outline" size="sm" className={queueBtn} asChild>
-                <Link
-                  href={
-                    firstBuyerAgentDraftShowingId
-                      ? `/showing-hq/showings?openShowing=${encodeURIComponent(firstBuyerAgentDraftShowingId)}`
-                      : "/showing-hq/showings?buyerAgentDraftReview=true"
-                  }
-                >
-                  Review <ChevronRight className="h-3.5 w-3.5" />
-                </Link>
-              </Button>
-            }
-          />
-        ) : null}
-
-        {feedbackPendingCount > 0 ? (
-          <Row
-            icon={MessageSquare}
-            tone="warn"
-            title={`${feedbackPendingCount} feedback request${feedbackPendingCount === 1 ? "" : "s"} pending`}
-            meta="Seller feedback links to send"
-            actions={
-              <Button variant="outline" size="sm" className={queueBtn} asChild>
-                <Link href="/showing-hq/feedback-requests">Queue</Link>
-              </Button>
-            }
-          />
-        ) : null}
-
-        {reportsReadyCount > 0 ? (
-          <Row
-            icon={FileText}
-            tone="neutral"
-            title={`${reportsReadyCount} seller report${reportsReadyCount === 1 ? "" : "s"} ready`}
-            actions={
-              <Button variant="outline" size="sm" className={queueBtn} asChild>
-                <Link
-                  href={firstReportId ? `/open-houses/${firstReportId}/report` : "/open-houses"}
-                >
-                  View
-                </Link>
-              </Button>
-            }
-          />
-        ) : null}
-
-        {!hasImmediateRow ? (
+        {!hasRealtimeRow ? (
           <div className="px-3 py-8 text-center">
             <p className="text-xs text-kp-on-surface-variant">
-              Nothing needs action right now. Use Needs attention, Upcoming, and Schedule for what&apos;s next.
+              No active open house right now. When a showing goes live, copy the sign-in link and host tools appear here.
             </p>
             <div className="mt-3 flex justify-center gap-2">
               <Button variant="outline" size="sm" className={queueBtn} asChild>

@@ -34,6 +34,10 @@ describe("generateShowingBuyerAgentFeedbackDraft", () => {
     });
 
     expect(subject).toBe("Feedback request — 123 Main St, Austin, TX 78701");
+    expect(body).toMatch(/^Hi Jane Buyeragent,\s*\n\n/);
+    expect(body).toMatch(
+      /I'm Janice Glaab's assistant\.\s*\n\nThank you for showing/
+    );
     expect(body).toContain("Hi Jane Buyeragent,");
     expect(body).toContain("I'm Janice Glaab's assistant.");
     expect(body).toContain("123 Main St, Austin, TX 78701");

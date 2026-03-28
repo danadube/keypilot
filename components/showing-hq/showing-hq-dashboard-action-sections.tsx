@@ -9,6 +9,7 @@ import {
   attentionPriorityOrder,
   getOpenHouseAttentionState,
   getShowingAttentionState,
+  needsAttentionSortRank,
   type ShowingAttentionState,
 } from "@/lib/showing-hq/showing-attention";
 
@@ -167,6 +168,9 @@ export function buildNeedsAttentionItems(
   }
 
   items.sort((a, b) => {
+    const ra = needsAttentionSortRank(a.attention);
+    const rb = needsAttentionSortRank(b.attention);
+    if (ra !== rb) return ra - rb;
     const pa = attentionPriorityOrder(a.attention.priority);
     const pb = attentionPriorityOrder(b.attention.priority);
     if (pa !== pb) return pa - pb;
@@ -187,49 +191,60 @@ export function NeedsAttentionSection({
 }) {
   return (
     <section className="flex min-h-[400px] flex-col rounded-xl border border-kp-outline bg-kp-surface-high/40 p-4 lg:min-h-[460px]" aria-labelledby="needs-attention-heading">
-      <div className="mb-3 flex items-center gap-2">
-        <AlertCircle className="h-4 w-4 text-amber-400" aria-hidden />
-        <h2 id="needs-attention-heading" className="text-sm font-semibold text-kp-on-surface">
-          Needs attention
-        </h2>
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 text-amber-400" aria-hidden />
+          <h2 id="needs-attention-heading" className="text-sm font-semibold text-kp-on-surface">
+            Needs attention
+          </h2>
+        </div>
+        <p className="text-[10px] font-medium text-kp-on-surface-variant">Most urgent first</p>
       </div>
       {items.length === 0 ? (
         <p className="text-xs text-kp-on-surface-variant">You&apos;re all caught up — nothing urgent right now.</p>
       ) : (
         <ul className="space-y-2">
-          {items.map((row) => (
-            <li
-              key={row.key}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-kp-outline bg-kp-surface px-3 py-2.5"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium text-kp-on-surface">{row.address}</p>
-                <p className="text-[11px] text-kp-on-surface-variant">
-                  {formatDate(row.at)} · {formatTime(row.at)}
-                </p>
-                <span
-                  className={cn(
-                    "mt-1 inline-flex w-fit rounded-md border text-[10px] font-medium leading-none",
-                    row.attention.priority === "high"
-                      ? "border-amber-500/35 bg-amber-500/10 px-2 py-1 text-amber-400"
-                      : "border-kp-outline/70 bg-kp-bg/25 px-2 py-1 text-kp-on-surface-variant"
-                  )}
-                >
-                  {row.attention.label}
-                </span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(kpBtnPrimary, "h-8 shrink-0 border-transparent px-3 text-xs font-medium")}
-                asChild
+          {items.map((row, index) => {
+            const rank = needsAttentionSortRank(row.attention);
+            const isTop = index === 0;
+            const isUrgent = rank <= 1;
+            return (
+              <li
+                key={row.key}
+                className={cn(
+                  "flex flex-wrap items-center justify-between gap-3 rounded-lg border border-kp-outline bg-kp-surface px-3 py-2.5",
+                  isTop && "border-amber-500/40 bg-kp-surface-high/80 shadow-sm shadow-amber-900/10"
+                )}
               >
-                <Link href={actionHref({ kind: row.kind, id: row.id, action: row.attention.action })}>
-                  {actionLabel(row.attention.action)}
-                </Link>
-              </Button>
-            </li>
-          ))}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium text-kp-on-surface">{row.address}</p>
+                  <p className="text-[11px] text-kp-on-surface-variant">
+                    {formatDate(row.at)} · {formatTime(row.at)}
+                  </p>
+                  <span
+                    className={cn(
+                      "mt-1 inline-flex w-fit rounded-md border text-[10px] font-medium leading-none",
+                      isUrgent
+                        ? "border-amber-500/35 bg-amber-500/10 px-2 py-1 text-amber-400"
+                        : "border-kp-outline/70 bg-kp-bg/25 px-2 py-1 text-kp-on-surface-variant"
+                    )}
+                  >
+                    {row.attention.label}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(kpBtnPrimary, "h-8 shrink-0 border-transparent px-3 text-xs font-medium")}
+                  asChild
+                >
+                  <Link href={actionHref({ kind: row.kind, id: row.id, action: row.attention.action })}>
+                    {actionLabel(row.attention.action)}
+                  </Link>
+                </Button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>

@@ -11,6 +11,9 @@ export type ShowingAttentionState = {
   action: AttentionAction;
 };
 
+/** Buyer-agent / form follow-ups starting within this window sort as “Showing soon”. */
+export const SHOWING_SOON_MS = 2 * 60 * 60 * 1000;
+
 function startOfLocalDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
@@ -19,6 +22,33 @@ function addDays(base: Date, days: number): Date {
   const out = new Date(base);
   out.setDate(out.getDate() + days);
   return out;
+}
+
+function isStartWithinShowingSoon(startAt: Date, now: Date): boolean {
+  const t = startAt.getTime();
+  const n = now.getTime();
+  return t > n && t <= n + SHOWING_SOON_MS;
+}
+
+/**
+ * Finer ordering for “Needs attention” (lower = earlier in list).
+ * 0 Feedback needed → 1 Showing soon → 2 Follow-up → 3 Today → 4 Prep required
+ */
+export function needsAttentionSortRank(state: ShowingAttentionState): number {
+  switch (state.label) {
+    case "Feedback needed":
+      return 0;
+    case "Showing soon":
+      return 1;
+    case "Follow-up required":
+      return 2;
+    case "Today":
+      return 3;
+    case "Prep required":
+      return 4;
+    default:
+      return 9;
+  }
 }
 
 export type ShowingAttentionInput = {
@@ -38,9 +68,9 @@ export type ShowingAttentionInput = {
  * Priority queue rules for private showings:
  * - Feedback not fully sent → "Feedback needed"
  * - Past + still owed outreach → "Follow-up required"
- * - Today → "Today"
- * - Future + missing agent contact → "Needs prep"
- * - Otherwise not surfaced in "Needs attention"
+ * - Today, start within 2h → "Showing soon"
+ * - Else today → "Today"
+ * - Future + missing agent contact → "Prep required"
  */
 export function getShowingAttentionState(
   input: ShowingAttentionInput,
@@ -87,11 +117,14 @@ export function getShowingAttentionState(
   }
 
   if (isToday) {
+    if (isStartWithinShowingSoon(at, now)) {
+      return { label: "Showing soon", priority: "high", action: "open" };
+    }
     return { label: "Today", priority: "medium", action: "open" };
   }
 
   if (isFuture && !hasAgentContact) {
-    return { label: "Needs prep", priority: "medium", action: "open" };
+    return { label: "Prep required", priority: "low", action: "open" };
   }
 
   return null;
@@ -107,11 +140,14 @@ export type OpenHouseAttentionInput = {
   flyerOverrideUrl?: string | null;
 };
 
+/**
+ * Open houses on the calendar ONLY (ACTIVE = real-time execution → Today’s Queue, not here).
+ */
 export function getOpenHouseAttentionState(
   oh: OpenHouseAttentionInput,
   now: Date = new Date()
 ): ShowingAttentionState | null {
-  if (oh.status === "CANCELLED" || oh.status === "COMPLETED") return null;
+  if (oh.status === "CANCELLED" || oh.status === "COMPLETED" || oh.status === "ACTIVE") return null;
 
   const startToday = startOfLocalDay(now);
   const endToday = addDays(startToday, 1);
@@ -123,35 +159,34 @@ export function getOpenHouseAttentionState(
     oh.status === "DRAFT" ||
     (oh.status === "SCHEDULED" && at.getTime() > now.getTime() && (!hasFlyer || !hasAgent));
 
-  if (oh.status === "ACTIVE") {
-    return { label: "Today", priority: "high", action: "open" };
-  }
-
   if (at >= startToday && at < endToday) {
     if (needsPrep) {
-      return { label: "Needs prep", priority: "high", action: "open" };
+      return { label: "Prep required", priority: "low", action: "open" };
+    }
+    if (isStartWithinShowingSoon(at, now)) {
+      return { label: "Showing soon", priority: "high", action: "open" };
     }
     return { label: "Today", priority: "medium", action: "open" };
   }
 
   if (at >= endToday && needsPrep) {
-    return { label: "Needs prep", priority: "medium", action: "open" };
+    return { label: "Prep required", priority: "low", action: "open" };
   }
 
   return null;
 }
 
-/** Labels for open-house rows (replaces visitor count in schedule snippets). */
+/** Labels for open-house schedule rows (dashboard API / workbench). */
 export function getOpenHouseScheduleReadinessLabel(
   oh: OpenHouseAttentionInput,
   now: Date = new Date()
-): "Scheduled" | "Needs prep" | "Ready" {
+): "Scheduled" | "Prep required" | "Ready" {
   if (oh.status === "ACTIVE") return "Ready";
-  if (oh.status === "DRAFT") return "Needs prep";
+  if (oh.status === "DRAFT") return "Prep required";
 
   const hasFlyer = Boolean(oh.flyerUrl?.trim() || oh.flyerOverrideUrl?.trim());
   const hasAgent = Boolean(oh.agentName?.trim() || oh.agentEmail?.trim());
-  if (oh.status === "SCHEDULED" && (!hasFlyer || !hasAgent)) return "Needs prep";
+  if (oh.status === "SCHEDULED" && (!hasFlyer || !hasAgent)) return "Prep required";
 
   const end = oh.endAt.getTime();
   if (oh.status === "SCHEDULED" && oh.startAt.getTime() <= now.getTime() && end >= now.getTime()) {
