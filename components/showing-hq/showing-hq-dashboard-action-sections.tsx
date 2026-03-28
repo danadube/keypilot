@@ -415,25 +415,27 @@ export function TodayCommandHero({
   return (
     <header
       className={cn(
-        "rounded-xl border border-kp-outline px-5 py-6 sm:px-7 sm:py-7",
-        "bg-gradient-to-b from-kp-surface-high/70 via-kp-surface to-kp-surface",
-        "shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+        "relative mb-12 rounded-2xl border border-kp-outline/90 sm:mb-14",
+        "bg-gradient-to-b from-kp-surface-high from-0% via-kp-surface-high/45 via-40% to-kp-surface to-100%",
+        "px-6 py-8 shadow-[0_10px_40px_-12px_rgba(15,23,42,0.18),0_4px_12px_-4px_rgba(15,23,42,0.08)]",
+        "ring-1 ring-inset ring-kp-on-surface/[0.04]",
+        "sm:px-8 sm:py-10"
       )}
       aria-labelledby="today-command-heading"
     >
       <h2
         id="today-command-heading"
-        className="text-2xl font-semibold tracking-tight text-kp-on-surface sm:text-[1.65rem] sm:leading-tight"
+        className="text-2xl font-semibold tracking-tight text-kp-on-surface sm:text-[1.75rem] sm:leading-[1.15]"
       >
         Today
       </h2>
-      <p className="mt-1 text-sm font-normal text-kp-on-surface-variant sm:text-[0.9375rem]">
+      <p className="mt-2 text-sm font-normal leading-snug text-kp-on-surface-variant sm:text-[0.9375rem]">
         {calendarDateLabel}
       </p>
-      <p className="mt-4 text-sm font-medium leading-snug text-kp-on-surface sm:text-[0.9375rem]">
+      <p className="mt-5 text-[0.9375rem] font-semibold leading-snug text-kp-on-surface sm:text-base">
         {primaryHeroMessage(urgentCount)}
       </p>
-      <p className="mt-2 text-xs leading-relaxed text-kp-on-surface-variant sm:text-[0.8125rem]">
+      <p className="mt-2.5 max-w-prose text-xs leading-relaxed text-kp-on-surface-variant sm:text-[0.8125rem]">
         {scheduleSummary}
       </p>
     </header>
@@ -443,33 +445,40 @@ export function TodayCommandHero({
 /** Primary action list for the current calendar day. */
 export function TodayActionListSection({
   items,
-  formatDate,
   formatTime,
   urgentCount,
 }: {
   items: AttentionListItem[];
-  formatDate: (iso: string) => string;
   formatTime: (iso: string) => string;
   urgentCount: number;
 }) {
   return (
     <section
-      className="rounded-xl border border-kp-outline bg-kp-surface px-4 py-5 shadow-sm sm:px-6 sm:py-6"
+      className={cn(
+        "rounded-xl border border-kp-outline/85 bg-kp-surface px-5 py-5",
+        "shadow-[0_2px_12px_-4px_rgba(15,23,42,0.1),0_1px_4px_-2px_rgba(15,23,42,0.06)]",
+        "sm:px-6 sm:py-5"
+      )}
       aria-labelledby="today-actions-heading"
     >
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-2 border-b border-kp-outline/80 pb-3">
-        <h3 id="today-actions-heading" className="text-sm font-semibold text-kp-on-surface">
-          Actions for today
-        </h3>
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-kp-outline/70 pb-3">
+        <div>
+          <h3 id="today-actions-heading" className="text-base font-semibold tracking-tight text-kp-on-surface">
+            Actions for today
+          </h3>
+          <p className="mt-0.5 text-[11px] font-medium text-kp-on-surface-variant">
+            What needs you right now
+          </p>
+        </div>
         {urgentCount > 0 ? (
-          <span className="text-[11px] font-medium tabular-nums text-kp-on-surface-variant">
+          <span className="text-[11px] font-semibold tabular-nums text-kp-on-surface-variant">
             {urgentCount === 1 ? "1 needs you" : `${urgentCount} need you`}
           </span>
         ) : null}
       </div>
-      <ul className="space-y-2.5">
+      <ul className="space-y-2">
         {items.length === 0 ? (
-          <li className="py-8 text-center text-sm text-kp-on-surface-variant">
+          <li className="py-7 text-center text-sm text-kp-on-surface-variant">
             Nothing scheduled needs a tap from you right now.
           </li>
         ) : (
@@ -478,19 +487,33 @@ export function TodayActionListSection({
             return (
               <li
                 key={row.key}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-kp-outline bg-kp-surface-high/50 px-3.5 py-3.5 sm:px-4"
+                className={cn(
+                  "flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-lg border border-kp-outline/80 bg-kp-surface-high/55",
+                  "px-3 py-2.5 sm:px-3.5"
+                )}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-kp-on-surface">{row.address}</p>
-                  <p className="text-xs text-kp-on-surface-variant">
-                    {formatTime(row.at)} · {formatDate(row.at)}
+                  <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[13px] leading-snug text-kp-on-surface sm:text-sm">
+                    <span className="shrink-0 tabular-nums text-xs font-medium text-kp-on-surface-variant">
+                      {formatTime(row.at)}
+                    </span>
+                    <span className="text-kp-outline/70" aria-hidden>
+                      —
+                    </span>
+                    <span className="min-w-0 truncate font-semibold">{row.address}</span>
+                    <span className="text-kp-outline/70" aria-hidden>
+                      —
+                    </span>
+                    <span className="shrink-0 text-xs font-medium text-kp-on-surface-variant">{status}</span>
                   </p>
-                  <p className="mt-1 text-xs font-medium text-kp-on-surface-variant">{status}</p>
                 </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  className={cn(kpBtnPrimary, "h-9 shrink-0 border-transparent px-4 text-xs font-medium")}
+                  className={cn(
+                    kpBtnPrimary,
+                    "h-8 shrink-0 border-transparent px-3.5 text-[11px] font-semibold sm:h-8"
+                  )}
                   asChild
                 >
                   <Link
@@ -539,21 +562,27 @@ export function RecentOperatingSection({
   if (items.length === 0) return null;
 
   return (
-    <section className="px-0.5" aria-labelledby="recent-operating-heading">
-      <h2 id="recent-operating-heading" className="text-xs font-medium uppercase tracking-wide text-kp-on-surface-variant">
+    <section
+      className="border-t border-kp-outline/50 pt-7 sm:pt-8"
+      aria-labelledby="recent-operating-heading"
+    >
+      <h2
+        id="recent-operating-heading"
+        className="text-[11px] font-semibold uppercase tracking-[0.12em] text-kp-on-surface-variant"
+      >
         Recent
       </h2>
-      <ul className="mt-2 space-y-1.5">
+      <ul className="mt-3 space-y-1">
         {items.map((row, i) => (
           <li key={`${row.kind}-${row.at}-${i}`} className="text-[11px] leading-snug">
             <Link
               href={row.href}
-              className="group block rounded-md py-0.5 text-kp-on-surface transition-colors hover:text-kp-teal"
+              className="group -mx-1 block rounded-md px-1 py-1 text-kp-on-surface transition-colors hover:bg-kp-surface-high/40 hover:text-kp-teal"
             >
-              <span className="text-kp-on-surface-variant group-hover:text-kp-teal/90">
+              <span className="tabular-nums text-kp-on-surface-variant group-hover:text-kp-teal/90">
                 {formatShortDate(row.at)} {formatTime(row.at)}
               </span>
-              <span className="mx-1.5 text-kp-outline">·</span>
+              <span className="mx-1.5 text-kp-outline/48">·</span>
               <span className="font-medium">{recentOperatingLabel(row.kind)}</span>
               <span className="text-kp-on-surface-variant"> — {row.address}</span>
             </Link>
@@ -577,29 +606,35 @@ export function UpcomingSection({
   formatTime: (iso: string) => string;
 }) {
   return (
-    <section className="rounded-xl border border-kp-outline/80 bg-kp-surface-high/20 px-4 py-4 sm:px-5" aria-labelledby="upcoming-heading">
-      <div className="mb-3 flex items-center gap-2">
-        <CalendarClock className="h-4 w-4 text-kp-on-surface-variant" aria-hidden />
-        <h2 id="upcoming-heading" className="text-sm font-medium text-kp-on-surface">
+    <section
+      className={cn(
+        "rounded-lg border border-kp-outline/55 bg-kp-surface-high/10 px-4 py-4",
+        "sm:px-5 sm:py-4"
+      )}
+      aria-labelledby="upcoming-heading"
+    >
+      <div className="mb-2.5 flex items-center gap-2">
+        <CalendarClock className="h-3.5 w-3.5 text-kp-on-surface-variant opacity-80" aria-hidden />
+        <h2 id="upcoming-heading" className="text-xs font-semibold text-kp-on-surface sm:text-[13px]">
           Upcoming schedule
         </h2>
       </div>
       {rows.length === 0 ? (
-        <p className="text-xs text-kp-on-surface-variant">Nothing later on the calendar.</p>
+        <p className="text-[11px] text-kp-on-surface-variant">Nothing later on the calendar.</p>
       ) : (
-        <ul className="divide-y divide-kp-outline/60">
+        <ul className="divide-y divide-kp-outline/45">
           {rows.map((row) => (
-            <li key={`${row.kind}-${row.id}`} className="py-2.5 first:pt-0 last:pb-0">
+            <li key={`${row.kind}-${row.id}`} className="py-2 first:pt-0 last:pb-0">
               <Link
                 href={
                   row.kind === "open_house"
                     ? `/showing-hq/open-houses/${row.id}`
                     : `/showing-hq/showings?openShowing=${encodeURIComponent(row.id)}`
                 }
-                className="block rounded-md py-1 text-left transition-colors hover:bg-kp-surface-high/50"
+                className="block rounded-md py-0.5 text-left transition-colors hover:bg-kp-surface-high/35"
               >
-                <p className="truncate text-xs font-medium text-kp-on-surface">{row.address}</p>
-                <p className="text-[11px] text-kp-on-surface-variant">
+                <p className="truncate text-[11px] font-medium text-kp-on-surface sm:text-xs">{row.address}</p>
+                <p className="mt-0.5 text-[10px] text-kp-on-surface-variant sm:text-[11px]">
                   {formatDate(row.at)} · {formatTime(row.at)}
                 </p>
               </Link>

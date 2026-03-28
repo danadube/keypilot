@@ -257,7 +257,7 @@ export function ShowingHQDashboardView() {
   );
 
   return (
-    <div className="flex min-h-0 flex-col gap-10 bg-transparent sm:gap-12">
+    <div className="flex min-h-0 flex-col bg-transparent">
       <TodayCommandHero
         calendarDateLabel={calendarDateLabel}
         showingsTodayCount={showingsTodayCount}
@@ -266,27 +266,28 @@ export function ShowingHQDashboardView() {
         urgentCount={urgentCount}
       />
 
-      <TodayActionListSection
-        items={todayActionItems}
-        formatDate={formatDate}
-        formatTime={formatTime}
-        urgentCount={urgentCount}
-      />
-
-      <RecentOperatingSection
-        items={recentFeed}
-        formatTime={formatTime}
-        formatShortDate={formatShortDate}
-      />
-
-      <UpcomingSection rows={upcomingRows} formatDate={formatDate} formatTime={formatTime} />
-
-      {showGettingStarted && !gettingStartedDismissed && (
-        <GettingStartedCard
-          steps={gettingStartedSteps}
-          onDismiss={handleDismissGettingStarted}
+      <div className="flex flex-col gap-8 sm:gap-9">
+        <TodayActionListSection
+          items={todayActionItems}
+          formatTime={formatTime}
+          urgentCount={urgentCount}
         />
-      )}
+
+        <RecentOperatingSection
+          items={recentFeed}
+          formatTime={formatTime}
+          formatShortDate={formatShortDate}
+        />
+
+        <UpcomingSection rows={upcomingRows} formatDate={formatDate} formatTime={formatTime} />
+
+        {showGettingStarted && !gettingStartedDismissed && (
+          <GettingStartedCard
+            steps={gettingStartedSteps}
+            onDismiss={handleDismissGettingStarted}
+          />
+        )}
+      </div>
     </div>
   );
 }
