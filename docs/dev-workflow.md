@@ -102,6 +102,11 @@ npx prisma migrate deploy
 
 Migrations are additive only for this feature (new table and `importRunStartedAt` column); no destructive steps and no data backfill required.
 
+**Merge / deploy — operational caveats**
+
+1. **Run migrations with deploy** — Run `npx prisma migrate deploy` against production **before** the new app version goes live, or in the same deploy step, so the schema matches the code.
+2. **Import lock is a soft guard** — Overlap prevention uses `importRunStartedAt` with a stale timeout, not strict database mutual exclusion. In rare races two runs may overlap; queue ingest remains idempotent via `(hostUserId, externalMessageId)`.
+
 ---
 
 ## Validation Scripts
