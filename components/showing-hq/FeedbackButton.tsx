@@ -92,14 +92,14 @@ export function FeedbackButton({
         {children ?? (
           <>
             <MessageSquare className="mr-2 h-4 w-4" />
-            Send feedback
+            Request feedback
           </>
         )}
       </Button>
       <BrandModal
         open={open}
         onOpenChange={handleOpenChange}
-        title="Send feedback"
+        title="Request feedback"
         description="Help us improve ShowingHQ. Your feedback goes directly to our team."
         size="sm"
         footer={

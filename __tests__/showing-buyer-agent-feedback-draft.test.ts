@@ -35,6 +35,7 @@ describe("generateShowingBuyerAgentFeedbackDraft", () => {
 
     expect(subject).toBe("Feedback request — 123 Main St, Austin, TX 78701");
     expect(body).toContain("Hi Jane Buyeragent,");
+    expect(body).toContain("I'm Janice Glaab's assistant.");
     expect(body).toContain("123 Main St, Austin, TX 78701");
     expect(body).toContain("Thursday, March 20, 2025");
     expect(body).toContain("3:30 PM");
@@ -55,6 +56,7 @@ describe("generateShowingBuyerAgentFeedbackDraft", () => {
       buyerAgentName: null,
     });
     expect(body).toMatch(/^Hi there,\s*\n/);
+    expect(body).toContain("I'm Janice Glaab's assistant.");
     expect(body).not.toMatch(/Your listing partner/i);
   });
 

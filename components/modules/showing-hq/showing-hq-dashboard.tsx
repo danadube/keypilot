@@ -28,6 +28,7 @@ import {
   UpcomingSection,
   type PrivateShowingAttentionRow,
 } from "@/components/showing-hq/showing-hq-dashboard-action-sections";
+import { getOpenHouseScheduleReadinessLabel } from "@/lib/showing-hq/showing-attention";
 
 // ── Types (mirrored exactly from API response) ────────────────────────────────
 
@@ -416,12 +417,6 @@ export function ShowingHQDashboardView() {
       month: "short",
       day: "numeric",
     });
-  const formatDateShort = (d: string) =>
-    new Date(d).toLocaleDateString("en-US", {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
   const formatTime = (d: string) =>
     new Date(d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   const formatTimeContextual = (d: string) => {
@@ -471,17 +466,40 @@ export function ShowingHQDashboardView() {
     readinessLabel: (s as { readinessLabel?: string }).readinessLabel,
   }));
 
-  const tomorrowItem: ScheduleItem | null =
-    data.tomorrowFirstEvent != null
-      ? {
-          type: data.tomorrowFirstEvent.type,
-          id: data.tomorrowFirstEvent.id,
-          title: data.tomorrowFirstEvent.title,
-          at: data.tomorrowFirstEvent.at,
-          endAt: data.tomorrowFirstEvent.endAt,
-          property: data.tomorrowFirstEvent.property,
-        }
-      : null;
+  const prepNeededOpenHouse =
+    todaysShowings.find((oh) => {
+      if (oh.status === "ACTIVE" || oh.status === "COMPLETED" || oh.status === "CANCELLED")
+        return false;
+      return (
+        getOpenHouseScheduleReadinessLabel(
+          {
+            startAt: new Date(oh.startAt),
+            endAt: new Date(oh.endAt),
+            status: oh.status,
+            agentName: oh.agentName,
+            agentEmail: oh.agentEmail,
+            flyerUrl: oh.flyerUrl,
+            flyerOverrideUrl: oh.flyerOverrideUrl,
+          },
+          now
+        ) === "Needs prep"
+      );
+    }) ?? null;
+
+  const SHOWING_SOON_MS = 2 * 60 * 60 * 1000;
+  const showingSoonItem: ScheduleItem | null = (() => {
+    const sorted = [...scheduleItems].sort(
+      (a, b) => new Date(a.at).getTime() - new Date(b.at).getTime()
+    );
+    for (const s of sorted) {
+      const t = new Date(s.at).getTime();
+      if (t <= now.getTime()) continue;
+      if (t > now.getTime() + SHOWING_SOON_MS) return null;
+      if (s.type === "open_house" && activeOpenHouse && s.id === activeOpenHouse.id) continue;
+      return s;
+    }
+    return null;
+  })();
 
   const pendingFeedbackRequests = Array.isArray(data.pendingFeedbackRequests)
     ? data.pendingFeedbackRequests
@@ -586,7 +604,7 @@ export function ShowingHQDashboardView() {
     <div className="flex min-h-0 flex-col gap-4 bg-transparent">
       <DashboardContextStrip label="Today" message={dashboardContextMessage} />
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
         <NeedsAttentionSection
           items={needsAttentionItems}
           formatDate={formatDate}
@@ -603,13 +621,12 @@ export function ShowingHQDashboardView() {
         }
       />
 
-      {/* ── Schedule + Queue ─────────────────────────────────────────────── */}
+      {/* ── Schedule + Queue (matched 2-column grid) ───────────────────── */}
       <div
-        className="grid min-h-0 items-stretch gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,360px)]"
+        className="grid min-h-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2"
         role="region"
         aria-label="Schedule and queue"
       >
-        {/* Calendar panel — interior calendar component deferred */}
         <div className="flex min-h-[400px] flex-col overflow-hidden rounded-xl border border-kp-outline bg-kp-surface-high lg:min-h-[460px]">
           <div className="flex flex-wrap items-end justify-between gap-2 border-b border-kp-outline bg-kp-surface-higher px-4 py-2.5">
             <div>
@@ -646,13 +663,15 @@ export function ShowingHQDashboardView() {
           </div>
         </div>
 
-        {/* Queue — existing component, deferred migration */}
         <ShowingHQWorkbenchQueue
           activeOpenHouse={activeOpenHouse}
           scheduledTodayOpenHouse={scheduledTodayForSignIn}
           signInUrl={signInUrl}
           linkCopied={linkCopied}
           onCopySignIn={handleCopyLink}
+          prepNeededOpenHouse={prepNeededOpenHouse}
+          showingSoonItem={showingSoonItem}
+          formatTime={formatTime}
           followUpDraftCount={followUpTasks.length}
           firstFollowUpDraftId={followUpTasks[0]?.id ?? null}
           feedbackPendingCount={
@@ -662,10 +681,6 @@ export function ShowingHQDashboardView() {
           firstBuyerAgentDraftShowingId={buyerAgentEmailDraftReviews[0]?.id ?? null}
           reportsReadyCount={recentReports.length}
           firstReportId={recentReports[0]?.id ?? null}
-          scheduleItems={scheduleItems}
-          tomorrowItem={tomorrowItem}
-          formatTime={formatTime}
-          formatDateShort={formatDateShort}
         />
       </div>
 

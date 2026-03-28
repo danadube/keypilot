@@ -384,7 +384,7 @@ export function ModuleSidebar() {
           href={FEEDBACK_MAILTO}
           className="mt-2 inline-block text-[11px] text-slate-500 underline-offset-2 hover:text-slate-300 hover:underline"
         >
-          Send feedback
+          Request feedback
         </a>
       </footer>
     </aside>

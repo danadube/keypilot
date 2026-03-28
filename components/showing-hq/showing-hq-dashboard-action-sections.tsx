@@ -91,7 +91,7 @@ function actionHref(args: {
 }
 
 function actionLabel(action: ShowingAttentionState["action"]): string {
-  if (action === "send_feedback") return "Send feedback";
+  if (action === "send_feedback") return "Request feedback";
   if (action === "review") return "Review";
   return "Open";
 }
@@ -186,7 +186,7 @@ export function NeedsAttentionSection({
   formatTime: (iso: string) => string;
 }) {
   return (
-    <section className="rounded-xl border border-kp-outline bg-kp-surface-high/40 p-4" aria-labelledby="needs-attention-heading">
+    <section className="flex min-h-[400px] flex-col rounded-xl border border-kp-outline bg-kp-surface-high/40 p-4 lg:min-h-[460px]" aria-labelledby="needs-attention-heading">
       <div className="mb-3 flex items-center gap-2">
         <AlertCircle className="h-4 w-4 text-amber-400" aria-hidden />
         <h2 id="needs-attention-heading" className="text-sm font-semibold text-kp-on-surface">
@@ -209,10 +209,10 @@ export function NeedsAttentionSection({
                 </p>
                 <span
                   className={cn(
-                    "mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                    "mt-1 inline-flex w-fit rounded-md border text-[10px] font-medium leading-none",
                     row.attention.priority === "high"
-                      ? "bg-amber-500/15 text-amber-400"
-                      : "bg-kp-surface-high text-kp-on-surface-variant"
+                      ? "border-amber-500/35 bg-amber-500/10 px-2 py-1 text-amber-400"
+                      : "border-kp-outline/70 bg-kp-bg/25 px-2 py-1 text-kp-on-surface-variant"
                   )}
                 >
                   {row.attention.label}
@@ -221,7 +221,7 @@ export function NeedsAttentionSection({
               <Button
                 variant="outline"
                 size="sm"
-                className={cn(kpBtnPrimary, "h-8 shrink-0 border-transparent text-xs")}
+                className={cn(kpBtnPrimary, "h-8 shrink-0 border-transparent px-3 text-xs font-medium")}
                 asChild
               >
                 <Link href={actionHref({ kind: row.kind, id: row.id, action: row.attention.action })}>
@@ -302,7 +302,7 @@ export function UpcomingSection({
   formatTime: (iso: string) => string;
 }) {
   return (
-    <section className="rounded-xl border border-kp-outline bg-kp-surface p-4" aria-labelledby="upcoming-heading">
+    <section className="flex min-h-[400px] flex-col rounded-xl border border-kp-outline bg-kp-surface p-4 lg:min-h-[460px]" aria-labelledby="upcoming-heading">
       <div className="mb-3 flex items-center gap-2">
         <CalendarClock className="h-4 w-4 text-kp-teal" aria-hidden />
         <h2 id="upcoming-heading" className="text-sm font-semibold text-kp-on-surface">
@@ -323,11 +323,11 @@ export function UpcomingSection({
                 <p className="text-[11px] text-kp-on-surface-variant">
                   {formatDate(row.at)} · {formatTime(row.at)}
                 </p>
-                <span className="mt-1 inline-block rounded bg-kp-surface-high px-1.5 py-0.5 text-[10px] font-medium text-kp-on-surface-variant">
+                <span className="mt-1 inline-flex w-fit rounded-md border border-kp-outline/70 bg-kp-bg/25 px-2 py-1 text-[10px] font-medium text-kp-on-surface-variant">
                   Scheduled
                 </span>
               </div>
-              <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-8 text-xs")} asChild>
+              <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-8 px-3 text-xs font-medium")} asChild>
                 <Link
                   href={
                     row.kind === "open_house"
@@ -406,7 +406,7 @@ export function FollowUpRequiredSection({
                 {g.pendingDrafts === 1 ? "" : "s"} pending
               </p>
             </div>
-            <Button variant="outline" size="sm" className={cn(kpBtnPrimary, "h-8 border-transparent text-xs")} asChild>
+            <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-8 px-3 text-xs font-medium")} asChild>
               <Link href="/showing-hq/follow-ups">Review drafts</Link>
             </Button>
           </li>
@@ -423,8 +423,10 @@ export function FollowUpRequiredSection({
               </p>
               <p className="text-[11px] text-kp-on-surface-variant">Buyer-agent feedback email not sent</p>
             </div>
-            <Button variant="outline" size="sm" className={cn(kpBtnPrimary, "h-8 border-transparent text-xs")} asChild>
-              <Link href={`/showing-hq/showings?openShowing=${encodeURIComponent(row.id)}`}>Send request</Link>
+            <Button variant="outline" size="sm" className={cn(kpBtnPrimary, "h-8 border-transparent px-3 text-xs font-medium")} asChild>
+              <Link href={`/showing-hq/showings?openShowing=${encodeURIComponent(row.id)}`}>
+                Request feedback
+              </Link>
             </Button>
           </li>
         ))}
@@ -436,7 +438,7 @@ export function FollowUpRequiredSection({
                 {pendingFormFeedbackCount} pending in queue
               </p>
             </div>
-            <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-8 text-xs")} asChild>
+            <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-8 px-3 text-xs font-medium")} asChild>
               <Link href="/showing-hq/feedback-requests">Open queue</Link>
             </Button>
           </li>

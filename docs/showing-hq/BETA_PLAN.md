@@ -62,7 +62,7 @@ Internal document defining the external beta program for ShowingHQ.
 
 Beta users can submit feedback via:
 
-- **In-product** — "Send feedback" in the sidebar (when in ShowingHQ)
+- **In-product** — "Request feedback" in the sidebar (when in ShowingHQ)
 - **Types:** Bug report, Feature request, General feedback
 
 ---

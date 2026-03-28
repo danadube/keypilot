@@ -1,6 +1,9 @@
 /**
  * Persist buyer-agent feedback drafts after Supra apply.
  * Text generation lives in `buyer-agent-feedback-draft-generate.ts` (client-safe).
+ *
+ * Email body format (no signature): greeting → assistant line + thank-you sentence → bullet list.
+ * Assistant intro: re-exported as `BUYER_AGENT_FEEDBACK_ASSISTANT_LINE` from the generator module.
  */
 
 import { prismaAdmin } from "@/lib/db";
@@ -11,7 +14,10 @@ import {
 
 export type { GenerateShowingBuyerAgentFeedbackDraftInput } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 
-export { generateShowingBuyerAgentFeedbackDraft } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
+export {
+  BUYER_AGENT_FEEDBACK_ASSISTANT_LINE,
+  generateShowingBuyerAgentFeedbackDraft,
+} from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 
 export async function persistShowingBuyerAgentFeedbackDraftAfterSupraApply(args: {
   showingId: string;
