@@ -289,12 +289,17 @@ export function ShowingHQDashboardView() {
         </div>
 
         <aside className="flex min-w-0 flex-col gap-0">
-          <UpcomingSection rows={upcomingRows} formatDate={formatDate} formatTime={formatTime} />
+          <UpcomingSection
+            rows={upcomingRows}
+            formatDate={formatDate}
+            formatTime={formatTime}
+            className="order-2 lg:order-1"
+          />
           <RecentOperatingSection
             items={recentFeed}
             formatTime={formatTime}
             formatShortDate={formatShortDate}
-            className="mt-6 border-t border-kp-outline/40 pt-6 lg:mt-7 lg:pt-7"
+            className="order-1 border-b border-kp-outline/40 pb-6 lg:order-2 lg:mt-6 lg:border-b-0 lg:border-t lg:border-t-kp-outline/40 lg:pb-0 lg:pt-7"
           />
         </aside>
       </div>
