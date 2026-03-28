@@ -39,7 +39,13 @@ describe("generateShowingBuyerAgentFeedbackDraft", () => {
     expect(body).toContain("Thursday, March 20, 2025");
     expect(body).toContain("3:30 PM");
     expect(body).toContain("overall interest level");
-    expect(body).not.toMatch(/Best regards|regards,|Your listing partner/i);
+    expect(body).toContain("pricing or value impressions");
+    expect(body).toContain("on Thursday, March 20, 2025 at 3:30 PM");
+    expect(body).not.toMatch(/\([^)]*\d{4}[^)]*\)/);
+    expect(body).not.toMatch(
+      /Best regards|Kind regards|Yours truly|Sincerely,|Your listing partner/i
+    );
+    expect(body).toMatch(/follow-up$/);
   });
 
   it("uses generic greeting when buyer agent name is missing", () => {

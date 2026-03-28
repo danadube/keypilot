@@ -35,15 +35,20 @@ export function generateShowingBuyerAgentFeedbackDraft(
 
   const subject = `Feedback request — ${addr}`;
 
-  const body = `${greeting}
+  // No sign-off: the user's mail client adds their signature.
+  const lines = [
+    greeting,
+    "",
+    `Thank you for showing ${addr} on ${dateStr} at ${timeStr}.`,
+    "",
+    "When you have a moment, I would appreciate your buyer's feedback, including:",
+    "- overall interest level",
+    "- any concerns or objections",
+    "- pricing or value impressions",
+    "- whether they may have interest in a second showing or follow-up",
+  ];
 
-Thank you for showing ${addr} on ${dateStr} at ${timeStr}.
-
-When you have a moment, I would appreciate your buyer's feedback, including:
-- overall interest level
-- any concerns or objections
-- price/value impressions
-- whether they may have interest in a second showing or follow-up`;
+  const body = lines.join("\n").trimEnd();
 
   return { subject, body };
 }
