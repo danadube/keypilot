@@ -16,9 +16,14 @@ export const SHOWING_HQ_TAB_ITEMS = [
 
 export type ShowingHqTabId = (typeof SHOWING_HQ_TAB_ITEMS)[number]["id"];
 
-/** Which workspace tab should appear active for this pathname (real routes only). */
+/** Which workspace tab should appear active for this pathname. */
 export function getActiveShowingHqTabId(pathname: string): ShowingHqTabId | null {
-  if (pathname === "/showing-hq" || pathname.startsWith("/showing-hq/showings")) {
+  if (
+    pathname === "/showing-hq" ||
+    pathname.startsWith("/showing-hq/showings") ||
+    pathname.startsWith("/showing-hq/supra-inbox") ||
+    pathname.startsWith("/showing-hq/saved-views")
+  ) {
     return "showings";
   }
   if (
@@ -28,8 +33,18 @@ export function getActiveShowingHqTabId(pathname: string): ShowingHqTabId | null
     return "open-houses";
   }
   if (pathname.startsWith("/showing-hq/visitors")) return "visitors";
-  if (pathname.startsWith("/showing-hq/feedback-requests")) return "feedback";
-  if (pathname.startsWith("/showing-hq/activity")) return "activity";
+  if (
+    pathname.startsWith("/showing-hq/feedback-requests") ||
+    pathname.startsWith("/showing-hq/follow-ups")
+  ) {
+    return "feedback";
+  }
+  if (
+    pathname.startsWith("/showing-hq/activity") ||
+    pathname.startsWith("/showing-hq/templates")
+  ) {
+    return "activity";
+  }
   return null;
 }
 
