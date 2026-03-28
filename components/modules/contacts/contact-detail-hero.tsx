@@ -194,7 +194,10 @@ export function ContactDetailHero({
             </div>
 
             {hasCrmAccess ? (
-              <details className="group rounded-lg border border-kp-outline/60 bg-kp-surface/50 [&_summary::-webkit-details-marker]:hidden">
+              <details
+                id="schedule-follow-up"
+                className="group scroll-mt-24 rounded-lg border border-kp-outline/60 bg-kp-surface/50 [&_summary::-webkit-details-marker]:hidden"
+              >
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-2.5 py-2 text-xs font-medium text-kp-on-surface outline-none">
                   <span className="inline-flex items-center gap-1.5">
                     <Plus className="h-3.5 w-3.5 text-kp-teal" />
