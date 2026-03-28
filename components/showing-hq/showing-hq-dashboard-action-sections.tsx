@@ -392,7 +392,7 @@ function primaryHeroMessage(urgentCount: number): string {
   return `You have ${urgentCount} items that need attention`;
 }
 
-/** Command hero: date, status headline, schedule summary — elevated, no list. */
+/** Command hero: workspace header strip — not a card; full-width band + accent. */
 export function TodayCommandHero({
   calendarDateLabel,
   showingsTodayCount,
@@ -415,70 +415,79 @@ export function TodayCommandHero({
   return (
     <header
       className={cn(
-        "relative mb-12 rounded-2xl border border-kp-outline/90 sm:mb-14",
-        "bg-gradient-to-b from-kp-surface-high from-0% via-kp-surface-high/45 via-40% to-kp-surface to-100%",
-        "px-6 py-8 shadow-[0_10px_40px_-12px_rgba(15,23,42,0.18),0_4px_12px_-4px_rgba(15,23,42,0.08)]",
-        "ring-1 ring-inset ring-kp-on-surface/[0.04]",
-        "sm:px-8 sm:py-10"
+        "relative -mx-4 mb-8 flex w-[calc(100%+2rem)] max-w-none border-b border-kp-outline/60 sm:mb-10 md:-mx-6 md:mb-12 md:w-[calc(100%+3rem)]",
+        "bg-gradient-to-r from-kp-surface-high via-kp-surface-high/65 to-kp-bg"
       )}
       aria-labelledby="today-command-heading"
     >
-      <h2
-        id="today-command-heading"
-        className="text-2xl font-semibold tracking-tight text-kp-on-surface sm:text-[1.75rem] sm:leading-[1.15]"
-      >
-        Today
-      </h2>
-      <p className="mt-2 text-sm font-normal leading-snug text-kp-on-surface-variant sm:text-[0.9375rem]">
-        {calendarDateLabel}
-      </p>
-      <p className="mt-5 text-[0.9375rem] font-semibold leading-snug text-kp-on-surface sm:text-base">
-        {primaryHeroMessage(urgentCount)}
-      </p>
-      <p className="mt-2.5 max-w-prose text-xs leading-relaxed text-kp-on-surface-variant sm:text-[0.8125rem]">
-        {scheduleSummary}
-      </p>
+      <div
+        className="w-1 shrink-0 bg-gradient-to-b from-kp-teal/90 via-kp-teal/55 to-kp-teal/25"
+        aria-hidden
+      />
+      <div className="min-w-0 flex-1 px-5 py-7 sm:px-7 sm:py-9 md:px-10 md:py-10">
+        <h2
+          id="today-command-heading"
+          className="text-[1.65rem] tracking-tight text-kp-on-surface sm:text-[1.85rem] md:text-[2rem] md:leading-[1.12]"
+        >
+          <span className="font-semibold">Today</span>
+        </h2>
+        <p className="mt-2 max-w-3xl text-sm font-normal leading-relaxed text-kp-on-surface-variant md:text-[0.9375rem]">
+          {calendarDateLabel}
+        </p>
+        <p className="mt-5 max-w-3xl text-[0.9375rem] font-semibold leading-snug text-kp-on-surface md:text-base">
+          {primaryHeroMessage(urgentCount)}
+        </p>
+        <p className="mt-2.5 max-w-3xl text-xs leading-relaxed text-kp-on-surface-variant md:text-[0.8125rem]">
+          {scheduleSummary}
+        </p>
+      </div>
     </header>
   );
 }
 
-/** Primary action list for the current calendar day. */
+/** Primary action list for the current calendar day — dominant work surface. */
 export function TodayActionListSection({
   items,
   formatTime,
   urgentCount,
+  className,
 }: {
   items: AttentionListItem[];
   formatTime: (iso: string) => string;
   urgentCount: number;
+  className?: string;
 }) {
   return (
     <section
       className={cn(
-        "rounded-xl border border-kp-outline/85 bg-kp-surface px-5 py-5",
-        "shadow-[0_2px_12px_-4px_rgba(15,23,42,0.1),0_1px_4px_-2px_rgba(15,23,42,0.06)]",
-        "sm:px-6 sm:py-5"
+        "rounded-xl border border-kp-outline/90 bg-kp-surface px-4 py-5",
+        "shadow-[0_4px_20px_-6px_rgba(15,23,42,0.14),0_2px_8px_-4px_rgba(15,23,42,0.08)]",
+        "ring-1 ring-kp-on-surface/[0.03] sm:px-5 sm:py-5 md:px-6",
+        className
       )}
       aria-labelledby="today-actions-heading"
     >
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-kp-outline/70 pb-3">
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b-2 border-kp-outline/55 pb-3.5">
         <div>
-          <h3 id="today-actions-heading" className="text-base font-semibold tracking-tight text-kp-on-surface">
+          <h3
+            id="today-actions-heading"
+            className="text-lg font-semibold tracking-tight text-kp-on-surface md:text-xl"
+          >
             Actions for today
           </h3>
-          <p className="mt-0.5 text-[11px] font-medium text-kp-on-surface-variant">
-            What needs you right now
+          <p className="mt-1 text-[11px] font-medium leading-snug text-kp-on-surface-variant md:text-xs">
+            Primary queue for this calendar day
           </p>
         </div>
         {urgentCount > 0 ? (
-          <span className="text-[11px] font-semibold tabular-nums text-kp-on-surface-variant">
+          <span className="rounded-md border border-kp-outline/50 bg-kp-surface-high/50 px-2 py-0.5 text-[11px] font-semibold tabular-nums text-kp-on-surface md:text-xs">
             {urgentCount === 1 ? "1 needs you" : `${urgentCount} need you`}
           </span>
         ) : null}
       </div>
       <ul className="space-y-2">
         {items.length === 0 ? (
-          <li className="py-7 text-center text-sm text-kp-on-surface-variant">
+          <li className="py-8 text-center text-sm text-kp-on-surface-variant">
             Nothing scheduled needs a tap from you right now.
           </li>
         ) : (
@@ -488,23 +497,23 @@ export function TodayActionListSection({
               <li
                 key={row.key}
                 className={cn(
-                  "flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-lg border border-kp-outline/80 bg-kp-surface-high/55",
-                  "px-3 py-2.5 sm:px-3.5"
+                  "flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-lg border border-kp-outline bg-kp-surface-high/70",
+                  "px-3 py-2.5 sm:px-3.5 sm:py-3"
                 )}
               >
                 <div className="min-w-0 flex-1">
                   <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[13px] leading-snug text-kp-on-surface sm:text-sm">
-                    <span className="shrink-0 tabular-nums text-xs font-medium text-kp-on-surface-variant">
+                    <span className="shrink-0 tabular-nums text-xs font-semibold text-kp-on-surface-variant">
                       {formatTime(row.at)}
                     </span>
-                    <span className="text-kp-outline/70" aria-hidden>
+                    <span className="text-kp-outline/65" aria-hidden>
                       —
                     </span>
-                    <span className="min-w-0 truncate font-semibold">{row.address}</span>
-                    <span className="text-kp-outline/70" aria-hidden>
+                    <span className="min-w-0 truncate font-semibold text-kp-on-surface">{row.address}</span>
+                    <span className="text-kp-outline/65" aria-hidden>
                       —
                     </span>
-                    <span className="shrink-0 text-xs font-medium text-kp-on-surface-variant">{status}</span>
+                    <span className="text-xs font-semibold text-kp-on-surface-variant">{status}</span>
                   </p>
                 </div>
                 <Button
@@ -549,42 +558,47 @@ function recentOperatingLabel(kind: RecentOperatingFeedItem["kind"]): string {
   }
 }
 
-/** Lightweight recap — not a full activity timeline. */
+/** Lightest recap — informational, minimal chrome (sidebar / below fold). */
 export function RecentOperatingSection({
   items,
   formatTime,
   formatShortDate,
+  className,
 }: {
   items: RecentOperatingFeedItem[];
   formatTime: (iso: string) => string;
   formatShortDate: (iso: string) => string;
+  className?: string;
 }) {
   if (items.length === 0) return null;
 
   return (
     <section
-      className="border-t border-kp-outline/50 pt-7 sm:pt-8"
+      className={cn("min-w-0", className)}
       aria-labelledby="recent-operating-heading"
     >
       <h2
         id="recent-operating-heading"
-        className="text-[11px] font-semibold uppercase tracking-[0.12em] text-kp-on-surface-variant"
+        className="text-[10px] font-semibold uppercase tracking-[0.14em] text-kp-on-surface-variant/90"
       >
         Recent
       </h2>
-      <ul className="mt-3 space-y-1">
+      <p className="mt-1 text-[10px] leading-snug text-kp-on-surface-variant/80">
+        For your awareness — not your queue
+      </p>
+      <ul className="mt-3 space-y-0.5">
         {items.map((row, i) => (
           <li key={`${row.kind}-${row.at}-${i}`} className="text-[11px] leading-snug">
             <Link
               href={row.href}
-              className="group -mx-1 block rounded-md px-1 py-1 text-kp-on-surface transition-colors hover:bg-kp-surface-high/40 hover:text-kp-teal"
+              className="group block rounded px-0 py-1.5 text-kp-on-surface transition-colors hover:bg-kp-surface-high/30"
             >
-              <span className="tabular-nums text-kp-on-surface-variant group-hover:text-kp-teal/90">
+              <span className="tabular-nums text-kp-on-surface-variant/85">
                 {formatShortDate(row.at)} {formatTime(row.at)}
               </span>
-              <span className="mx-1.5 text-kp-outline/48">·</span>
-              <span className="font-medium">{recentOperatingLabel(row.kind)}</span>
-              <span className="text-kp-on-surface-variant"> — {row.address}</span>
+              <span className="mx-1 text-kp-outline/40">·</span>
+              <span className="font-medium text-kp-on-surface-variant">{recentOperatingLabel(row.kind)}</span>
+              <span className="text-kp-on-surface-variant/75"> — {row.address}</span>
             </Link>
           </li>
         ))}
@@ -594,47 +608,49 @@ export function RecentOperatingSection({
 }
 
 /**
- * Upcoming = later calendar days (not today). Passive reference only.
+ * Upcoming = later calendar days — secondary surface, flatter than Actions.
  */
 export function UpcomingSection({
   rows,
   formatDate,
   formatTime,
+  className,
 }: {
   rows: UpcomingRow[];
   formatDate: (iso: string) => string;
   formatTime: (iso: string) => string;
+  className?: string;
 }) {
   return (
     <section
       className={cn(
-        "rounded-lg border border-kp-outline/55 bg-kp-surface-high/10 px-4 py-4",
-        "sm:px-5 sm:py-4"
+        "min-w-0 rounded-lg border border-kp-outline/45 bg-kp-surface/80 px-3.5 py-3.5 sm:px-4 sm:py-4",
+        className
       )}
       aria-labelledby="upcoming-heading"
     >
-      <div className="mb-2.5 flex items-center gap-2">
-        <CalendarClock className="h-3.5 w-3.5 text-kp-on-surface-variant opacity-80" aria-hidden />
-        <h2 id="upcoming-heading" className="text-xs font-semibold text-kp-on-surface sm:text-[13px]">
+      <div className="mb-2 flex items-center gap-2">
+        <CalendarClock className="h-3.5 w-3.5 shrink-0 text-kp-on-surface-variant/75" aria-hidden />
+        <h2 id="upcoming-heading" className="text-xs font-semibold text-kp-on-surface">
           Upcoming schedule
         </h2>
       </div>
       {rows.length === 0 ? (
-        <p className="text-[11px] text-kp-on-surface-variant">Nothing later on the calendar.</p>
+        <p className="text-[11px] text-kp-on-surface-variant/90">Nothing later on the calendar.</p>
       ) : (
-        <ul className="divide-y divide-kp-outline/45">
+        <ul className="divide-y divide-kp-outline/35">
           {rows.map((row) => (
-            <li key={`${row.kind}-${row.id}`} className="py-2 first:pt-0 last:pb-0">
+            <li key={`${row.kind}-${row.id}`} className="py-1.5 first:pt-0 last:pb-0">
               <Link
                 href={
                   row.kind === "open_house"
                     ? `/showing-hq/open-houses/${row.id}`
                     : `/showing-hq/showings?openShowing=${encodeURIComponent(row.id)}`
                 }
-                className="block rounded-md py-0.5 text-left transition-colors hover:bg-kp-surface-high/35"
+                className="block rounded py-0.5 text-left transition-colors hover:bg-kp-surface-high/25"
               >
-                <p className="truncate text-[11px] font-medium text-kp-on-surface sm:text-xs">{row.address}</p>
-                <p className="mt-0.5 text-[10px] text-kp-on-surface-variant sm:text-[11px]">
+                <p className="truncate text-[11px] font-medium text-kp-on-surface">{row.address}</p>
+                <p className="mt-0.5 text-[10px] text-kp-on-surface-variant/90">
                   {formatDate(row.at)} · {formatTime(row.at)}
                 </p>
               </Link>

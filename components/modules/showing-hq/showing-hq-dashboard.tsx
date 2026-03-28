@@ -20,6 +20,7 @@ import {
   type PrivateShowingAttentionRow,
   type RecentOperatingFeedItem,
 } from "@/components/showing-hq/showing-hq-dashboard-action-sections";
+import { cn } from "@/lib/utils";
 
 // ── Types (mirrored from API) ───────────────────────────────────────────────
 
@@ -266,27 +267,36 @@ export function ShowingHQDashboardView() {
         urgentCount={urgentCount}
       />
 
-      <div className="flex flex-col gap-8 sm:gap-9">
-        <TodayActionListSection
-          items={todayActionItems}
-          formatTime={formatTime}
-          urgentCount={urgentCount}
-        />
-
-        <RecentOperatingSection
-          items={recentFeed}
-          formatTime={formatTime}
-          formatShortDate={formatShortDate}
-        />
-
-        <UpcomingSection rows={upcomingRows} formatDate={formatDate} formatTime={formatTime} />
-
-        {showGettingStarted && !gettingStartedDismissed && (
-          <GettingStartedCard
-            steps={gettingStartedSteps}
-            onDismiss={handleDismissGettingStarted}
-          />
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-8",
+          "lg:grid-cols-[minmax(0,1.45fr)_minmax(260px,1fr)] lg:items-start lg:gap-x-8 lg:gap-y-0",
+          "xl:gap-x-10"
         )}
+      >
+        <div className="flex min-w-0 flex-col gap-6 lg:gap-7">
+          <TodayActionListSection
+            items={todayActionItems}
+            formatTime={formatTime}
+            urgentCount={urgentCount}
+          />
+          {showGettingStarted && !gettingStartedDismissed ? (
+            <GettingStartedCard
+              steps={gettingStartedSteps}
+              onDismiss={handleDismissGettingStarted}
+            />
+          ) : null}
+        </div>
+
+        <aside className="flex min-w-0 flex-col gap-0">
+          <UpcomingSection rows={upcomingRows} formatDate={formatDate} formatTime={formatTime} />
+          <RecentOperatingSection
+            items={recentFeed}
+            formatTime={formatTime}
+            formatShortDate={formatShortDate}
+            className="mt-6 border-t border-kp-outline/40 pt-6 lg:mt-7 lg:pt-7"
+          />
+        </aside>
       </div>
     </div>
   );
