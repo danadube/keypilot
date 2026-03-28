@@ -15,6 +15,8 @@ export type ScheduleItem = {
   endAt?: string;
   property: { address1: string; city: string; state?: string };
   status?: string;
+  /** Open houses: Scheduled / Needs prep / Ready (dashboard-derived) */
+  readinessLabel?: string;
   /** When set, rendered as "Tomorrow" row */
   isTomorrow?: boolean;
 };

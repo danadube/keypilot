@@ -9,6 +9,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
 import { withRLSContext } from "@/lib/db-context";
 import { apiErrorFromCaught } from "@/lib/api-response";
+import { getOpenHouseScheduleReadinessLabel } from "@/lib/showing-hq/showing-attention";
 
 export const dynamic = "force-dynamic";
 
@@ -376,35 +377,67 @@ export async function GET() {
         ],
       },
     };
-    const [buyerAgentEmailDraftReviews, lastSupraIngest, supraQueueActionCount] =
-      await Promise.all([
-        prismaAdmin.showing.findMany({
-          where: reviewDraftWhere,
-          orderBy: { scheduledAt: "desc" },
-          take: 10,
-          select: {
-            id: true,
-            scheduledAt: true,
-            buyerAgentName: true,
-            source: true,
-            feedbackRequestStatus: true,
-            property: { select: { address1: true, city: true } },
+    const privateShowingStart = new Date(todayStart);
+    privateShowingStart.setDate(privateShowingStart.getDate() - 30);
+    const privateShowingEnd = new Date(weekEnd);
+    privateShowingEnd.setDate(privateShowingEnd.getDate() + 28);
+
+    const [
+      buyerAgentEmailDraftReviews,
+      lastSupraIngest,
+      supraQueueActionCount,
+      privateShowingsAttentionRows,
+    ] = await Promise.all([
+      prismaAdmin.showing.findMany({
+        where: reviewDraftWhere,
+        orderBy: { scheduledAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          scheduledAt: true,
+          buyerAgentName: true,
+          source: true,
+          feedbackRequestStatus: true,
+          property: { select: { address1: true, city: true } },
+        },
+      }),
+      prismaAdmin.supraQueueItem.findFirst({
+        where: { hostUserId: user.id },
+        orderBy: { receivedAt: "desc" },
+        select: { receivedAt: true },
+      }),
+      prismaAdmin.supraQueueItem.count({
+        where: {
+          hostUserId: user.id,
+          queueState: {
+            in: ["INGESTED", "PARSED", "NEEDS_REVIEW", "READY_TO_APPLY"],
           },
-        }),
-        prismaAdmin.supraQueueItem.findFirst({
-          where: { hostUserId: user.id },
-          orderBy: { receivedAt: "desc" },
-          select: { receivedAt: true },
-        }),
-        prismaAdmin.supraQueueItem.count({
-          where: {
-            hostUserId: user.id,
-            queueState: {
-              in: ["INGESTED", "PARSED", "NEEDS_REVIEW", "READY_TO_APPLY"],
-            },
+        },
+      }),
+      prismaAdmin.showing.findMany({
+        where: {
+          hostUserId: user.id,
+          deletedAt: null,
+          scheduledAt: { gte: privateShowingStart, lte: privateShowingEnd },
+        },
+        select: {
+          id: true,
+          scheduledAt: true,
+          buyerAgentName: true,
+          buyerAgentEmail: true,
+          buyerName: true,
+          feedbackRequestStatus: true,
+          feedbackRequired: true,
+          feedbackDraftGeneratedAt: true,
+          property: { select: { address1: true, city: true, state: true, zip: true } },
+          feedbackRequests: {
+            where: { status: "PENDING" },
+            select: { id: true },
           },
-        }),
-      ]);
+        },
+        orderBy: { scheduledAt: "asc" },
+      }),
+    ]);
     dashLog(`ok ${stage}`);
 
     stage = "destructure_parallel_results";
@@ -430,32 +463,68 @@ export async function GET() {
 
     stage = "attach_open_house_placeholders";
     dashLog(`start ${stage}`);
-    const attachOpenHouseProperty = <T extends { propertyId: string }>(rows: T[]) =>
-      rows.map((oh) => ({
+
+    const openHouseEnrichIds = Array.from(
+      new Set([
+        ...todaysOpenHousesRaw.map((o) => o.id),
+        ...upcomingOpenHousesRaw.map((o) => o.id),
+        ...openHousesInMonthRaw.map((o) => o.id),
+        ...recentReportsOpenHousesRaw.map((o) => o.id),
+        ...followUpDraftsRaw.map((d) => d.openHouseId),
+      ])
+    );
+    const openHouseEnrichment =
+      openHouseEnrichIds.length === 0
+        ? []
+        : await prismaAdmin.openHouse.findMany({
+            where: { id: { in: openHouseEnrichIds } },
+            select: {
+              id: true,
+              agentName: true,
+              agentEmail: true,
+              flyerUrl: true,
+              flyerOverrideUrl: true,
+              property: { select: { address1: true, city: true, state: true } },
+              _count: { select: { visitors: true } },
+            },
+          });
+    const openHouseEnrichMap = new Map(openHouseEnrichment.map((o) => [o.id, o]));
+
+    const mergeOpenHouseRow = <T extends { id: string; propertyId: string }>(oh: T) => {
+      const e = openHouseEnrichMap.get(oh.id);
+      return {
         ...oh,
-        property: showingPropertyPlaceholder(oh.propertyId),
-      }));
+        property: e?.property ?? showingPropertyPlaceholder(oh.propertyId),
+      };
+    };
 
-    const todaysOpenHouses = attachOpenHouseProperty(todaysOpenHousesRaw);
-    const upcomingOpenHouses = attachOpenHouseProperty(upcomingOpenHousesRaw);
-    const openHousesInMonth = attachOpenHouseProperty(openHousesInMonthRaw);
-    const recentReportsOpenHouses = attachOpenHouseProperty(recentReportsOpenHousesRaw);
+    const todaysOpenHouses = todaysOpenHousesRaw.map(mergeOpenHouseRow);
+    const upcomingOpenHouses = upcomingOpenHousesRaw.map(mergeOpenHouseRow);
+    const openHousesInMonth = openHousesInMonthRaw.map(mergeOpenHouseRow);
+    const recentReportsOpenHouses = recentReportsOpenHousesRaw.map(mergeOpenHouseRow);
 
-    const recentVisitorsData = recentVisitorsDataRaw.map((v) => ({
-      ...v,
-      openHouse: {
-        ...v.openHouse,
-        property: showingPropertyPlaceholder(v.openHouse.propertyId),
-      },
-    }));
+    const recentVisitorsData = recentVisitorsDataRaw.map((v) => {
+      const e = openHouseEnrichMap.get(v.openHouse.id);
+      return {
+        ...v,
+        openHouse: {
+          ...v.openHouse,
+          property: e?.property ?? showingPropertyPlaceholder(v.openHouse.propertyId),
+        },
+      };
+    });
 
-    const followUpDrafts = followUpDraftsRaw.map((d) => ({
-      ...d,
-      openHouse: {
-        ...d.openHouse,
-        property: showingPropertyPlaceholder(d.openHouse.propertyId),
-      },
-    }));
+    const followUpDrafts = followUpDraftsRaw.map((d) => {
+      const e = openHouseEnrichMap.get(d.openHouseId);
+      return {
+        ...d,
+        openHouse: {
+          ...d.openHouse,
+          property: e?.property ?? showingPropertyPlaceholder(d.openHouse.propertyId),
+          visitorCount: e?._count?.visitors ?? 0,
+        },
+      };
+    });
     dashLog(`ok ${stage}`);
 
     stage = "compose_schedule_and_calendar";
@@ -463,15 +532,35 @@ export async function GET() {
     const showingEndAt = (s: { scheduledAt: Date }) =>
       new Date(s.scheduledAt.getTime() + 60 * 60 * 1000);
     const todaysSchedule = [
-      ...todaysOpenHouses.map((oh) => ({
-        type: "open_house" as const,
-        id: oh.id,
-        title: oh.title,
-        at: oh.startAt,
-        endAt: oh.endAt,
-        property: oh.property,
-        _count: (oh as { _count?: { visitors: number } })._count,
-      })),
+      ...todaysOpenHouses.map((oh) => {
+        const r = oh as {
+          agentName?: string | null;
+          agentEmail?: string | null;
+          flyerUrl?: string | null;
+          flyerOverrideUrl?: string | null;
+        };
+        return {
+          type: "open_house" as const,
+          id: oh.id,
+          title: oh.title,
+          at: oh.startAt,
+          endAt: oh.endAt,
+          property: oh.property,
+          readinessLabel: getOpenHouseScheduleReadinessLabel(
+            {
+              startAt: oh.startAt,
+              endAt: oh.endAt,
+              status: oh.status,
+              agentName: r.agentName,
+              agentEmail: r.agentEmail,
+              flyerUrl: r.flyerUrl,
+              flyerOverrideUrl: r.flyerOverrideUrl,
+            },
+            new Date()
+          ),
+          _count: (oh as { _count?: { visitors: number } })._count,
+        };
+      }),
       ...todaysPrivateShowings.map((s) => ({
         type: "showing" as const,
         id: s.id,
@@ -610,6 +699,18 @@ export async function GET() {
           property: s.property,
           source: s.source,
           feedbackRequestStatus: s.feedbackRequestStatus,
+        })),
+        privateShowingsAttention: privateShowingsAttentionRows.map((s) => ({
+          id: s.id,
+          scheduledAt: s.scheduledAt.toISOString(),
+          buyerAgentName: s.buyerAgentName,
+          buyerAgentEmail: s.buyerAgentEmail,
+          buyerName: s.buyerName,
+          feedbackRequestStatus: s.feedbackRequestStatus,
+          feedbackRequired: s.feedbackRequired,
+          feedbackDraftGeneratedAt: s.feedbackDraftGeneratedAt?.toISOString() ?? null,
+          property: s.property,
+          pendingFeedbackFormCount: s.feedbackRequests.length,
         })),
         supraInboxSummary: {
           lastReceivedAt: lastSupraIngest?.receivedAt.toISOString() ?? null,

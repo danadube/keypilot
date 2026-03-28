@@ -28,7 +28,7 @@ export type WorkbenchOpenHouse = {
   startAt: string;
   status: string;
   qrSlug?: string;
-  property: { address1: string; city: string; state: string };
+  property: { address1: string | null; city: string; state: string };
 };
 
 type ShowingHQWorkbenchQueueProps = {
@@ -127,7 +127,7 @@ export function ShowingHQWorkbenchQueue({
             icon={Radio}
             tone="live"
             title="Active sign-in"
-            meta={activeOpenHouse.property.address1}
+            meta={activeOpenHouse.property.address1 ?? undefined}
             actions={
               <>
                 {signInUrl ? (
@@ -277,6 +277,12 @@ export function ShowingHQWorkbenchQueue({
                     <span className="opacity-50"> · </span>
                     {s.type === "open_house" ? "OH" : "Showing"}{" "}
                     <span className="text-kp-on-surface-variant">{s.property?.address1 ?? s.title}</span>
+                    {s.type === "open_house" && s.readinessLabel ? (
+                      <span className="text-kp-on-surface-variant/80">
+                        {" "}
+                        · {s.readinessLabel}
+                      </span>
+                    ) : null}
                   </span>
                   <Link
                     href={

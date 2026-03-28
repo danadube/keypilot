@@ -2,18 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  Users,
-  Calendar,
-  ChevronRight,
-  CalendarDays,
-  CheckSquare,
-  FileText,
-  MessageSquare,
-  Mail,
-  Loader2,
-  AlertCircle,
-} from "lucide-react";
+import { Users, ChevronRight, CheckSquare, MessageSquare, Mail, Loader2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   GettingStartedCard,
@@ -30,6 +19,15 @@ import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
 import { ShowingHQWorkbenchQueue } from "@/components/showing-hq/ShowingHQWorkbenchQueue";
 import { SupraGmailImportStrip } from "@/components/showing-hq/SupraGmailImportStrip";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
+import {
+  buildNeedsAttentionItems,
+  buildUpcomingRows,
+  FollowUpRequiredSection,
+  groupFollowUpsByOpenHouse,
+  NeedsAttentionSection,
+  UpcomingSection,
+  type PrivateShowingAttentionRow,
+} from "@/components/showing-hq/showing-hq-dashboard-action-sections";
 
 // ── Types (mirrored exactly from API response) ────────────────────────────────
 
@@ -38,19 +36,29 @@ type DashboardData = {
     id: string;
     title: string;
     startAt: string;
+    endAt: string;
     status: string;
     qrSlug?: string;
-    property: { address1: string; city: string; state: string };
+    property: { address1: string | null; city: string; state: string };
     _count: { visitors: number };
+    agentName?: string | null;
+    agentEmail?: string | null;
+    flyerUrl?: string | null;
+    flyerOverrideUrl?: string | null;
   }[];
   upcomingOpenHouses: {
     id: string;
     title: string;
     startAt: string;
+    endAt: string;
     status: string;
     qrSlug?: string;
-    property: { address1: string; city: string; state: string };
+    property: { address1: string | null; city: string; state: string };
     _count: { visitors: number };
+    agentName?: string | null;
+    agentEmail?: string | null;
+    flyerUrl?: string | null;
+    flyerOverrideUrl?: string | null;
   }[];
   recentVisitors: {
     id: string;
@@ -72,6 +80,7 @@ type DashboardData = {
   }[];
   followUpTasks: {
     id: string;
+    openHouseId: string;
     subject: string;
     status: string;
     updatedAt?: string;
@@ -81,6 +90,7 @@ type DashboardData = {
       id: string;
       title: string;
       property?: { address1: string; city?: string; state?: string };
+      visitorCount?: number;
     };
   }[];
   pendingFeedbackRequests?: {
@@ -123,6 +133,7 @@ type DashboardData = {
     feedbackRequestsPending?: number;
     buyerAgentEmailDraftsPending?: number;
   };
+  privateShowingsAttention?: PrivateShowingAttentionRow[];
   connections?: { hasCalendar: boolean; hasGmail: boolean; hasBranding: boolean };
   calendarEvents?: CalendarEvent[];
   todaysSchedule?: {
@@ -158,54 +169,6 @@ type ActivityItem = {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const GETTING_STARTED_DISMISSED_KEY = "showinghq-getting-started-dismissed";
-
-// ── KPI card ──────────────────────────────────────────────────────────────────
-
-function KpiCard({
-  label,
-  value,
-  context,
-  href,
-  accent = "default",
-}: {
-  label: string;
-  value: number | string;
-  context: string;
-  href: string;
-  accent?: "teal" | "gold" | "default";
-}) {
-  const valueColor =
-    accent === "teal"
-      ? "text-kp-teal"
-      : accent === "gold"
-        ? "text-kp-gold"
-        : "text-kp-on-surface";
-
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "group flex min-h-[96px] flex-col justify-between rounded-xl border border-kp-outline shadow-sm",
-        "bg-kp-surface-high px-4 py-3 transition-colors hover:border-kp-teal/40 hover:bg-kp-surface-higher"
-      )}
-    >
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-        {label}
-      </span>
-      <span
-        className={cn(
-          "text-2xl font-bold tabular-nums leading-none tracking-tight",
-          valueColor
-        )}
-      >
-        {value}
-      </span>
-      <span className="line-clamp-2 text-[11px] leading-snug text-kp-on-surface-variant">
-        {context}
-      </span>
-    </Link>
-  );
-}
 
 // ── Loading / error ───────────────────────────────────────────────────────────
 
@@ -333,228 +296,6 @@ function ActivityPanel({
   );
 }
 
-// ── Open houses panel ─────────────────────────────────────────────────────────
-
-type OHRow = {
-  id: string;
-  status: string;
-  startAt: string;
-  property: { address1: string };
-  _count: { visitors: number };
-  isToday: boolean;
-};
-
-function OpenHousesPanel({
-  todaysShowings,
-  upcoming,
-  formatTime,
-  formatDate,
-}: {
-  todaysShowings: DashboardData["todaysShowings"];
-  upcoming: DashboardData["upcomingOpenHouses"];
-  formatTime: (iso: string) => string;
-  formatDate: (iso: string) => string;
-}) {
-  const rows: OHRow[] = [
-    ...todaysShowings.map((oh) => ({ ...oh, isToday: true })),
-    ...upcoming.slice(0, 3).map((oh) => ({ ...oh, isToday: false })),
-  ];
-
-  return (
-    <div className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
-      <PanelHeader
-        icon={Calendar}
-        title="Open houses"
-        action={
-          <Link href="/open-houses" className="text-xs text-kp-teal hover:underline">
-            All
-          </Link>
-        }
-      />
-      <div className="divide-y divide-kp-outline-variant">
-        {rows.length === 0 ? (
-          <div className="px-4 py-5 text-center">
-            <p className="text-xs text-kp-on-surface-variant">None scheduled</p>
-            <Link
-              href="/open-houses/new"
-              className="mt-2 inline-block text-xs font-medium text-kp-teal hover:underline"
-            >
-              Create open house
-            </Link>
-          </div>
-        ) : (
-          rows.map((oh) => (
-            <div
-              key={oh.id}
-              className="flex items-center justify-between gap-2 px-4 py-2.5"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-kp-on-surface">
-                  {oh.isToday
-                    ? `Today ${formatTime(oh.startAt)}`
-                    : `${formatDate(oh.startAt)} ${formatTime(oh.startAt)}`}
-                </p>
-                <p className="truncate text-[10px] text-kp-on-surface-variant">
-                  {oh.property.address1}
-                  {oh.isToday && ` · ${oh._count.visitors} in`}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                {oh.isToday && (
-                  <span
-                    className={cn(
-                      "rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
-                      oh.status === "ACTIVE"
-                        ? "bg-emerald-500/15 text-emerald-400"
-                        : "bg-kp-surface-high text-kp-on-surface-variant"
-                    )}
-                  >
-                    {oh.status}
-                  </span>
-                )}
-                <Link
-                  href={`/showing-hq/open-houses/${oh.id}`}
-                  className={cn(
-                    "rounded-md border border-kp-outline px-2 py-1",
-                    "text-[10px] font-medium text-kp-on-surface transition-colors hover:bg-kp-surface-high"
-                  )}
-                >
-                  View
-                </Link>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Reports & feedback panel ──────────────────────────────────────────────────
-
-function ReportsFeedbackPanel({
-  recentReports,
-  pendingFeedbackRequests,
-  buyerAgentEmailDraftReviews,
-}: {
-  recentReports: NonNullable<DashboardData["recentReports"]>;
-  pendingFeedbackRequests: NonNullable<DashboardData["pendingFeedbackRequests"]>;
-  buyerAgentEmailDraftReviews: NonNullable<DashboardData["buyerAgentEmailDraftReviews"]>;
-}) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
-      <PanelHeader icon={FileText} title="Reports & feedback" />
-      <div className="space-y-3 px-4 py-3">
-        {/* Reports */}
-        <div>
-          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-            Reports
-          </p>
-          {recentReports.length === 0 ? (
-            <p className="text-[11px] text-kp-on-surface-variant">None yet.</p>
-          ) : (
-            <ul className="space-y-1.5">
-              {recentReports.slice(0, 2).map((r) => (
-                <li key={r.id} className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 truncate text-xs text-kp-on-surface">
-                    {r.property.address1}
-                  </span>
-                  <Link
-                    href={`/open-houses/${r.id}/report`}
-                    className={cn(
-                      "shrink-0 rounded-md border border-kp-outline px-2 py-1",
-                      "text-[10px] font-medium text-kp-on-surface transition-colors hover:bg-kp-surface-high"
-                    )}
-                  >
-                    Report
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Buyer-agent email drafts (Supra / mailto path) */}
-        <div>
-          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-            Feedback emails
-          </p>
-          {buyerAgentEmailDraftReviews.length === 0 ? (
-            <p className="text-[11px] text-kp-on-surface-variant">None ready to send.</p>
-          ) : (
-            <ul className="space-y-1.5">
-              {buyerAgentEmailDraftReviews.slice(0, 3).map((row) => (
-                <li key={row.id} className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 truncate text-xs text-kp-on-surface">
-                    {row.property.address1 ?? "Showing"}
-                    {row.buyerAgentName ? ` · ${row.buyerAgentName}` : ""}
-                  </span>
-                  <Link
-                    href={`/showing-hq/showings?openShowing=${encodeURIComponent(row.id)}`}
-                    className={cn(
-                      "shrink-0 rounded-md border border-kp-outline px-2 py-1",
-                      "text-[10px] font-medium text-kp-on-surface transition-colors hover:bg-kp-surface-high"
-                    )}
-                  >
-                    Review
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-          <Link
-            href="/showing-hq/showings?buyerAgentDraftReview=true"
-            className="mt-2 inline-flex text-[10px] font-medium text-kp-teal hover:underline"
-          >
-            All drafts →
-          </Link>
-        </div>
-
-        {/* Feedback (web form links) */}
-        <div>
-          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-            Form feedback
-          </p>
-          {pendingFeedbackRequests.length === 0 ? (
-            <p className="text-[11px] text-kp-on-surface-variant">None pending.</p>
-          ) : (
-            <ul className="space-y-1.5">
-              {pendingFeedbackRequests.slice(0, 2).map((fr) => (
-                <li key={fr.id} className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 truncate text-xs text-kp-on-surface">
-                    {fr.property.address1}
-                  </span>
-                  <Link
-                    href="/showing-hq/feedback-requests"
-                    className={cn(
-                      "shrink-0 rounded-md border border-kp-outline px-2 py-1",
-                      "text-[10px] font-medium text-kp-on-surface transition-colors hover:bg-kp-surface-high"
-                    )}
-                  >
-                    Open
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {/* Queue CTA */}
-        <Link
-          href="/showing-hq/feedback-requests"
-          className={cn(
-            "flex items-center justify-center gap-1.5 rounded-lg border border-kp-outline py-1.5",
-            "text-xs text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high hover:text-kp-on-surface"
-          )}
-        >
-          <CalendarDays className="h-3 w-3" />
-          Queue
-        </Link>
-      </div>
-    </div>
-  );
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 
 /**
@@ -645,17 +386,12 @@ export function ShowingHQDashboardView() {
   };
 
   const recentReportsAll = Array.isArray(data.recentReports) ? data.recentReports : [];
-  const kpi = data.workbenchKpis;
-  const kpiUpcoming = kpi?.upcomingOpenHouses ?? { count: 0, nextLabel: null };
-  const kpiVisitors = kpi?.visitors ?? { count30d: 0, thisWeekCount: 0 };
-  const kpiFollowUps = kpi?.followUps ?? {
-    pending: stats.followUpTasks ?? 0,
-    overdue: 0,
-  };
-  const kpiReports = kpi?.reports ?? { ready: recentReportsAll.length };
 
   const todaysShowings = Array.isArray(data.todaysShowings) ? data.todaysShowings : [];
   const upcoming = Array.isArray(data.upcomingOpenHouses) ? data.upcomingOpenHouses : [];
+  const privateShowingsAttention = Array.isArray(data.privateShowingsAttention)
+    ? data.privateShowingsAttention
+    : [];
   const recentVisitors = Array.isArray(data.recentVisitors) ? data.recentVisitors : [];
   const followUpTasks = Array.isArray(data.followUpTasks) ? data.followUpTasks : [];
   const connections = data.connections ?? {
@@ -732,6 +468,7 @@ export function ShowingHQDashboardView() {
     at: s.at,
     endAt: s.endAt,
     property: s.property,
+    readinessLabel: (s as { readinessLabel?: string }).readinessLabel,
   }));
 
   const tomorrowItem: ScheduleItem | null =
@@ -827,12 +564,21 @@ export function ShowingHQDashboardView() {
       ? `${scheduleCount} event${scheduleCount === 1 ? "" : "s"} on today's schedule.`
       : "Nothing on today's schedule yet.";
   const followSentence =
-    kpiFollowUps.overdue > 0
-      ? `${kpiFollowUps.overdue} follow-up${kpiFollowUps.overdue === 1 ? "" : "s"} overdue.`
-      : kpiFollowUps.pending > 0
-        ? `${kpiFollowUps.pending} follow-up${kpiFollowUps.pending === 1 ? "" : "s"} pending review.`
-        : "No follow-ups pending — you're caught up.";
-  const dashboardContextMessage = `${scheduleSentence} ${followSentence}`;
+    followUpTasks.length > 0
+      ? `${followUpTasks.length} open-house follow-up draft${followUpTasks.length === 1 ? "" : "s"} pending.`
+      : "No open-house follow-up drafts pending.";
+  const attentionNow = new Date();
+  const needsAttentionItems = buildNeedsAttentionItems(
+    privateShowingsAttention,
+    [...todaysShowings, ...upcoming.slice(0, 6)],
+    attentionNow
+  );
+  const upcomingRows = buildUpcomingRows(privateShowingsAttention, upcoming, attentionNow, 5);
+  const followUpGroups = groupFollowUpsByOpenHouse(followUpTasks);
+  const dashboardContextMessage =
+    needsAttentionItems.length > 0
+      ? `${needsAttentionItems.length} need attention. ${scheduleSentence}`
+      : `${scheduleSentence} ${followSentence}`;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -840,65 +586,21 @@ export function ShowingHQDashboardView() {
     <div className="flex min-h-0 flex-col gap-4 bg-transparent">
       <DashboardContextStrip label="Today" message={dashboardContextMessage} />
 
-      {/* ── KPI strip (title lives in shell header) ─────────────────────── */}
-      <section
-        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
-        aria-label="Operational metrics"
-      >
-        <KpiCard
-          label="Upcoming open houses"
-          value={kpiUpcoming.count}
-          context={
-            kpiUpcoming.nextLabel ??
-            (kpiUpcoming.count === 0 ? "None on the calendar" : "See schedule →")
-          }
-          href="/open-houses"
-          accent="teal"
+      <div className="grid gap-4 lg:grid-cols-2">
+        <NeedsAttentionSection
+          items={needsAttentionItems}
+          formatDate={formatDate}
+          formatTime={formatTime}
         />
-        <KpiCard
-          label="Visitors (30d)"
-          value={kpiVisitors.count30d}
-          context={
-            kpiVisitors.thisWeekCount > 0
-              ? `+${kpiVisitors.thisWeekCount} in last 7 days`
-              : "No sign-ins in the last 7 days"
-          }
-          href="/showing-hq/visitors"
-          accent="gold"
-        />
-        <KpiCard
-          label="Follow-ups"
-          value={kpiFollowUps.pending}
-          context={
-            kpiFollowUps.overdue > 0
-              ? `${kpiFollowUps.overdue} overdue (5d+)`
-              : kpiFollowUps.pending > 0
-                ? "All within 5 days"
-                : "Nothing pending"
-          }
-          href="/showing-hq/follow-ups"
-          accent={kpiFollowUps.overdue > 0 ? "gold" : "default"}
-        />
-        <KpiCard
-          label="Reports ready"
-          value={kpiReports.ready}
-          context={
-            kpiReports.ready > 0 ? "Send to sellers" : "Complete an open house first"
-          }
-          href={
-            recentReports[0]
-              ? `/open-houses/${recentReports[0].id}/report`
-              : "/open-houses"
-          }
-          accent="teal"
-        />
-      </section>
+        <UpcomingSection rows={upcomingRows} formatDate={formatDate} formatTime={formatTime} />
+      </div>
 
-      <SupraGmailImportStrip
-        hasGmail={connections.hasGmail}
-        lastReceivedAt={supraInboxSummary.lastReceivedAt}
-        queueActionCount={supraInboxSummary.queueActionCount}
-        onImported={() => refetchDashboard()}
+      <FollowUpRequiredSection
+        groups={followUpGroups}
+        buyerAgentDrafts={buyerAgentEmailDraftReviews}
+        pendingFormFeedbackCount={
+          stats.feedbackRequestsPending ?? pendingFeedbackRequests.length
+        }
       />
 
       {/* ── Schedule + Queue ─────────────────────────────────────────────── */}
@@ -967,6 +669,13 @@ export function ShowingHQDashboardView() {
         />
       </div>
 
+      <SupraGmailImportStrip
+        hasGmail={connections.hasGmail}
+        lastReceivedAt={supraInboxSummary.lastReceivedAt}
+        queueActionCount={supraInboxSummary.queueActionCount}
+        onImported={() => refetchDashboard()}
+      />
+
       {/* ── Modals ───────────────────────────────────────────────────────── */}
       <QuickCreateEventModal
         open={quickCreateOpen}
@@ -1007,24 +716,7 @@ export function ShowingHQDashboardView() {
         />
       )}
 
-      {/* ── Secondary panels ─────────────────────────────────────────────── */}
-      <div className="grid gap-4 xl:grid-cols-3">
-        <ActivityPanel
-          items={activityItems}
-          formatTimeContextual={formatTimeContextual}
-        />
-        <OpenHousesPanel
-          todaysShowings={todaysShowings}
-          upcoming={upcoming}
-          formatTime={formatTime}
-          formatDate={formatDate}
-        />
-        <ReportsFeedbackPanel
-          recentReports={recentReports}
-          pendingFeedbackRequests={pendingFeedbackRequests}
-          buyerAgentEmailDraftReviews={buyerAgentEmailDraftReviews}
-        />
-      </div>
+      <ActivityPanel items={activityItems} formatTimeContextual={formatTimeContextual} />
     </div>
   );
 }
