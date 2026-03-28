@@ -11,9 +11,32 @@ import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 const menuItemClass =
   "block w-full px-3 py-2 text-left text-xs text-kp-on-surface transition-colors hover:bg-kp-surface-high";
 
+type BrandingProfile = {
+  headshotUrl?: string | null;
+  logoUrl?: string | null;
+};
+
+function trimUrl(s: string | null | undefined): string {
+  const t = s?.trim();
+  return t && t.length > 0 ? t : "";
+}
+
+function buildAvatarCandidates(profile: BrandingProfile | null, clerkImageUrl: string | null): string[] {
+  const head = trimUrl(profile?.headshotUrl);
+  const logo = trimUrl(profile?.logoUrl);
+  const clerk = trimUrl(clerkImageUrl);
+  const out: string[] = [];
+  if (head) out.push(head);
+  if (logo) out.push(logo);
+  if (clerk) out.push(clerk);
+  return out;
+}
+
 export function ShowingHQWorkbenchHeaderActions() {
   const [newOpen, setNewOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
+  const [brandingProfile, setBrandingProfile] = useState<BrandingProfile | null>(null);
+  const [avatarFailIndex, setAvatarFailIndex] = useState(0);
   const newRef = useRef<HTMLDivElement>(null);
   const accountRef = useRef<HTMLDivElement>(null);
   const { user, isLoaded } = useUser();
@@ -27,6 +50,38 @@ export function ShowingHQWorkbenchHeaderActions() {
     if (newOpen || accountOpen) document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [newOpen, accountOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/v1/me/profile")
+      .then((res) => res.json())
+      .then((json: { data?: BrandingProfile | null }) => {
+        if (!cancelled && json?.data !== undefined) {
+          setBrandingProfile(json.data);
+        }
+      })
+      .catch(() => {
+        /* keep Clerk-only fallback */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const avatarCandidates = buildAvatarCandidates(
+    brandingProfile,
+    user?.imageUrl ?? null
+  );
+
+  const avatarSourceKey =
+    `${trimUrl(brandingProfile?.headshotUrl)}|${trimUrl(brandingProfile?.logoUrl)}|${trimUrl(user?.imageUrl ?? null)}`;
+
+  useEffect(() => {
+    setAvatarFailIndex(0);
+  }, [avatarSourceKey]);
+
+  const activeAvatarSrc =
+    avatarFailIndex < avatarCandidates.length ? avatarCandidates[avatarFailIndex] : null;
 
   const displayName =
     user?.fullName?.trim() ||
@@ -90,17 +145,18 @@ export function ShowingHQWorkbenchHeaderActions() {
           aria-haspopup="menu"
           className="flex max-w-[200px] items-center gap-2 rounded-md border border-transparent px-1 py-0.5 transition-colors hover:bg-kp-surface-high"
         >
-          {isLoaded && user?.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- Clerk CDN; avoid next/image remotePatterns churn
+          {isLoaded && activeAvatarSrc ? (
+            // eslint-disable-next-line @next/next/no-img-element -- Clerk / Supabase public URLs; avoid next/image remotePatterns churn
             <img
-              src={user.imageUrl}
+              src={activeAvatarSrc}
               alt=""
               width={28}
               height={28}
               className="h-7 w-7 shrink-0 rounded-full object-cover"
+              onError={() => setAvatarFailIndex((i) => i + 1)}
             />
           ) : (
-            <span className="h-7 w-7 shrink-0 rounded-full bg-kp-surface-high" />
+            <span className="h-7 w-7 shrink-0 rounded-full bg-kp-surface-high" aria-hidden />
           )}
           <span className="hidden min-w-0 truncate text-left text-[11px] font-medium text-kp-on-surface sm:inline">
             {isLoaded ? displayName : "…"}

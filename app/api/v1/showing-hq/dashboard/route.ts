@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from "next/server";
-import type { Prisma } from "@prisma/client";
+import { ActivityType, type Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
 import { withRLSContext } from "@/lib/db-context";
@@ -668,6 +668,152 @@ export async function GET() {
     ];
     dashLog(`ok ${stage}`);
 
+    stage = "recent_feed_and_week_counts";
+    dashLog(`start ${stage}`);
+    const upcomingWeekEnd = new Date(todayStart);
+    upcomingWeekEnd.setDate(upcomingWeekEnd.getDate() + 7);
+    const recentFeedSince = new Date(todayStart);
+    recentFeedSince.setDate(recentFeedSince.getDate() - 21);
+    const showingCompletedBefore = new Date();
+    showingCompletedBefore.setHours(showingCompletedBefore.getHours() - 1);
+
+    const [
+      upcomingThisWeekOpenHouseCount,
+      upcomingThisWeekShowingCount,
+      recentOhCreatedActs,
+      recentFeedbackSentShowings,
+      recentPastShowings,
+    ] = await Promise.all([
+      prismaAdmin.openHouse.count({
+        where: {
+          hostUserId: user.id,
+          deletedAt: null,
+          status: { in: ["SCHEDULED", "ACTIVE"] },
+          startAt: { gte: tomorrowStart, lt: upcomingWeekEnd },
+        },
+      }),
+      prismaAdmin.showing.count({
+        where: {
+          hostUserId: user.id,
+          deletedAt: null,
+          scheduledAt: { gte: tomorrowStart, lt: upcomingWeekEnd },
+        },
+      }),
+      prismaAdmin.activity.findMany({
+        where: {
+          activityType: ActivityType.OPEN_HOUSE_CREATED,
+          openHouse: { hostUserId: user.id, deletedAt: null },
+          occurredAt: { gte: recentFeedSince },
+        },
+        orderBy: { occurredAt: "desc" },
+        take: 8,
+        select: {
+          occurredAt: true,
+          openHouse: {
+            select: {
+              id: true,
+              property: { select: { address1: true } },
+            },
+          },
+        },
+      }),
+      prismaAdmin.showing.findMany({
+        where: {
+          hostUserId: user.id,
+          deletedAt: null,
+          feedbackRequestStatus: { in: ["SENT", "RECEIVED"] },
+          updatedAt: { gte: recentFeedSince },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 8,
+        select: {
+          id: true,
+          updatedAt: true,
+          property: { select: { address1: true, city: true } },
+        },
+      }),
+      prismaAdmin.showing.findMany({
+        where: {
+          hostUserId: user.id,
+          deletedAt: null,
+          scheduledAt: { gte: recentFeedSince, lte: showingCompletedBefore },
+        },
+        orderBy: { scheduledAt: "desc" },
+        take: 8,
+        select: {
+          id: true,
+          scheduledAt: true,
+          property: { select: { address1: true, city: true } },
+        },
+      }),
+    ]);
+
+    const propLine = (p: { address1?: string | null; city?: string | null }) => {
+      const a = p.address1?.trim();
+      if (a) return a;
+      const c = p.city?.trim();
+      return c || "Property";
+    };
+
+    type RecentOpKind = "feedback_request_sent" | "showing_completed" | "open_house_created";
+    const recentFeedCandidates: {
+      kind: RecentOpKind;
+      at: Date;
+      address: string;
+      href: string;
+    }[] = [];
+
+    for (const act of recentOhCreatedActs) {
+      const oh = act.openHouse;
+      if (!oh) continue;
+      recentFeedCandidates.push({
+        kind: "open_house_created",
+        at: act.occurredAt,
+        address: propLine(oh.property ?? {}),
+        href: `/showing-hq/open-houses/${oh.id}`,
+      });
+    }
+    for (const s of recentFeedbackSentShowings) {
+      recentFeedCandidates.push({
+        kind: "feedback_request_sent",
+        at: s.updatedAt,
+        address: propLine(s.property),
+        href: `/showing-hq/showings?openShowing=${encodeURIComponent(s.id)}`,
+      });
+    }
+    for (const s of recentPastShowings) {
+      recentFeedCandidates.push({
+        kind: "showing_completed",
+        at: s.scheduledAt,
+        address: propLine(s.property),
+        href: `/showing-hq/showings?openShowing=${encodeURIComponent(s.id)}`,
+      });
+    }
+
+    recentFeedCandidates.sort((a, b) => b.at.getTime() - a.at.getTime());
+    const seenShowingInFeed = new Set<string>();
+    const dedupedRecent: typeof recentFeedCandidates = [];
+    for (const r of recentFeedCandidates) {
+      const openShowingMatch = /openShowing=([^&]+)/.exec(r.href);
+      if (openShowingMatch) {
+        const sid = openShowingMatch[1];
+        if (seenShowingInFeed.has(sid)) continue;
+        seenShowingInFeed.add(sid);
+      }
+      dedupedRecent.push(r);
+      if (dedupedRecent.length >= 5) break;
+    }
+    const recentOperatingFeed = dedupedRecent.map((r) => ({
+      kind: r.kind,
+      at: r.at.toISOString(),
+      address: r.address,
+      href: r.href,
+    }));
+
+    const upcomingThisWeekCount =
+      upcomingThisWeekOpenHouseCount + upcomingThisWeekShowingCount;
+    dashLog(`ok ${stage}`);
+
     stage = "serialize_json_response";
     dashLog(`start ${stage}`);
     const body = {
@@ -772,7 +918,9 @@ export async function GET() {
           privateShowingsToday: privateShowingsTodayCount,
           feedbackRequestsPending: feedbackRequestsPendingCount,
           buyerAgentEmailDraftsPending: buyerAgentEmailDraftReviews.length,
+          upcomingThisWeekCount,
         },
+        recentOperatingFeed,
         connections: { hasCalendar, hasGmail, hasBranding },
       },
     };

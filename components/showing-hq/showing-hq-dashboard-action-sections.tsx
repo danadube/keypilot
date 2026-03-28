@@ -333,18 +333,46 @@ export function buildUpcomingRows(
   return deduped.slice(0, take);
 }
 
+function needsFeedbackPhrase(n: number): string {
+  if (n === 0) return "0 need feedback";
+  if (n === 1) return "1 needs feedback";
+  return `${n} need feedback`;
+}
+
+function needsPrepPhrase(n: number): string {
+  if (n === 0) return "0 need prep";
+  if (n === 1) return "1 needs prep";
+  return `${n} need prep`;
+}
+
+/** Single-line density summary under the Today heading (no cards). */
+export function buildTodayContextSummary(args: {
+  showingsTodayCount: number;
+  openHousesTodayCount: number;
+  needingFeedbackCount: number;
+  needingPrepCount: number;
+  upcomingThisWeekCount: number;
+}): string {
+  const s = args.showingsTodayCount;
+  const oh = args.openHousesTodayCount;
+  const parts = [
+    `${s} showing${s === 1 ? "" : "s"}`,
+    needsFeedbackPhrase(args.needingFeedbackCount),
+    needsPrepPhrase(args.needingPrepCount),
+    `${oh} open house${oh === 1 ? "" : "es"} today`,
+    `${args.upcomingThisWeekCount} upcoming this week`,
+  ];
+  return parts.join(" • ");
+}
+
 /** Primary “daily operating” block — today’s counts + actionable rows. */
 export function TodayOperatingSection({
-  showingsTodayCount,
-  needingFeedbackCount,
-  needingPrepCount,
+  contextSummary,
   items,
   formatDate,
   formatTime,
 }: {
-  showingsTodayCount: number;
-  needingFeedbackCount: number;
-  needingPrepCount: number;
+  contextSummary: string;
   items: AttentionListItem[];
   formatDate: (iso: string) => string;
   formatTime: (iso: string) => string;
@@ -361,22 +389,11 @@ export function TodayOperatingSection({
         Today
       </h2>
 
-      <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-b border-kp-outline pb-4 text-sm text-kp-on-surface">
-        <span>
-          <span className="font-semibold tabular-nums">{showingsTodayCount}</span>
-          <span className="text-kp-on-surface-variant"> showings today</span>
-        </span>
-        <span>
-          <span className="font-semibold tabular-nums">{needingFeedbackCount}</span>
-          <span className="text-kp-on-surface-variant"> needing feedback</span>
-        </span>
-        <span>
-          <span className="font-semibold tabular-nums">{needingPrepCount}</span>
-          <span className="text-kp-on-surface-variant"> needing prep</span>
-        </span>
-      </div>
+      <p className="mt-1.5 text-[11px] leading-relaxed text-kp-on-surface-variant">
+        {contextSummary}
+      </p>
 
-      <ul className="mt-4 space-y-2">
+      <ul className="mt-4 space-y-2 border-t border-kp-outline/70 pt-4">
         {items.length === 0 ? (
           <li className="py-6 text-center text-sm text-kp-on-surface-variant">
             Nothing needs you right now today.
@@ -412,6 +429,62 @@ export function TodayOperatingSection({
             );
           })
         )}
+      </ul>
+    </section>
+  );
+}
+
+export type RecentOperatingFeedItem = {
+  kind: "feedback_request_sent" | "showing_completed" | "open_house_created";
+  at: string;
+  address: string;
+  href: string;
+};
+
+function recentOperatingLabel(kind: RecentOperatingFeedItem["kind"]): string {
+  switch (kind) {
+    case "feedback_request_sent":
+      return "Feedback request sent";
+    case "showing_completed":
+      return "Showing completed";
+    case "open_house_created":
+      return "Open house created";
+  }
+}
+
+/** Lightweight recap — not a full activity timeline. */
+export function RecentOperatingSection({
+  items,
+  formatTime,
+  formatShortDate,
+}: {
+  items: RecentOperatingFeedItem[];
+  formatTime: (iso: string) => string;
+  formatShortDate: (iso: string) => string;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <section className="px-0.5" aria-labelledby="recent-operating-heading">
+      <h2 id="recent-operating-heading" className="text-xs font-medium uppercase tracking-wide text-kp-on-surface-variant">
+        Recent
+      </h2>
+      <ul className="mt-2 space-y-1.5">
+        {items.map((row, i) => (
+          <li key={`${row.kind}-${row.at}-${i}`} className="text-[11px] leading-snug">
+            <Link
+              href={row.href}
+              className="group block rounded-md py-0.5 text-kp-on-surface transition-colors hover:text-kp-teal"
+            >
+              <span className="text-kp-on-surface-variant group-hover:text-kp-teal/90">
+                {formatShortDate(row.at)} {formatTime(row.at)}
+              </span>
+              <span className="mx-1.5 text-kp-outline">·</span>
+              <span className="font-medium">{recentOperatingLabel(row.kind)}</span>
+              <span className="text-kp-on-surface-variant"> — {row.address}</span>
+            </Link>
+          </li>
+        ))}
       </ul>
     </section>
   );

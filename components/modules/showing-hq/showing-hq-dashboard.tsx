@@ -9,12 +9,15 @@ import {
 import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
 import {
   buildNeedsAttentionItems,
+  buildTodayContextSummary,
   buildUpcomingRows,
   filterAttentionItemsForToday,
   mapAttentionToOperatingStatus,
+  RecentOperatingSection,
   TodayOperatingSection,
   UpcomingSection,
   type PrivateShowingAttentionRow,
+  type RecentOperatingFeedItem,
 } from "@/components/showing-hq/showing-hq-dashboard-action-sections";
 
 // ── Types (mirrored from API) ───────────────────────────────────────────────
@@ -72,7 +75,9 @@ type DashboardData = {
     privateShowingsToday?: number;
     feedbackRequestsPending?: number;
     buyerAgentEmailDraftsPending?: number;
+    upcomingThisWeekCount?: number;
   };
+  recentOperatingFeed?: RecentOperatingFeedItem[];
   privateShowingsAttention?: PrivateShowingAttentionRow[];
   connections?: { hasCalendar: boolean; hasGmail: boolean; hasBranding: boolean };
   todaysSchedule?: {
@@ -166,6 +171,7 @@ export function ShowingHQDashboardView() {
     followUpTasks: 0,
     privateShowingsToday: 0,
     feedbackRequestsPending: 0,
+    upcomingThisWeekCount: 0,
   };
 
   const todaysShowings = Array.isArray(data.todaysShowings) ? data.todaysShowings : [];
@@ -193,6 +199,12 @@ export function ShowingHQDashboardView() {
   }));
 
   const showingsTodayCount = scheduleItems.filter((s) => s.type === "showing").length;
+  const openHousesTodayCount = scheduleItems.filter((s) => s.type === "open_house").length;
+  const upcomingThisWeekCount = stats.upcomingThisWeekCount ?? 0;
+
+  const recentFeed: RecentOperatingFeedItem[] = Array.isArray(data.recentOperatingFeed)
+    ? data.recentOperatingFeed
+    : [];
 
   const showGettingStarted = stats.totalShowings < 2 && stats.totalVisitors === 0;
   const gettingStartedSteps = buildGettingStartedSteps({
@@ -212,6 +224,8 @@ export function ShowingHQDashboardView() {
     });
   const formatTime = (d: string) =>
     new Date(d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const formatShortDate = (d: string) =>
+    new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   const attentionNow = new Date();
   const needsAttentionItems = buildNeedsAttentionItems(
@@ -229,6 +243,14 @@ export function ShowingHQDashboardView() {
     if (s === "Needs prep") needingPrepCount += 1;
   }
 
+  const contextSummary = buildTodayContextSummary({
+    showingsTodayCount,
+    openHousesTodayCount,
+    needingFeedbackCount,
+    needingPrepCount,
+    upcomingThisWeekCount,
+  });
+
   const upcomingRows = buildUpcomingRows(
     privateShowingsAttention,
     upcoming,
@@ -239,12 +261,16 @@ export function ShowingHQDashboardView() {
   return (
     <div className="flex min-h-0 flex-col gap-6 bg-transparent">
       <TodayOperatingSection
-        showingsTodayCount={showingsTodayCount}
-        needingFeedbackCount={needingFeedbackCount}
-        needingPrepCount={needingPrepCount}
+        contextSummary={contextSummary}
         items={todayActionItems}
         formatDate={formatDate}
         formatTime={formatTime}
+      />
+
+      <RecentOperatingSection
+        items={recentFeed}
+        formatTime={formatTime}
+        formatShortDate={formatShortDate}
       />
 
       <UpcomingSection rows={upcomingRows} formatDate={formatDate} formatTime={formatTime} />
