@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import type { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
+import { prismaAdmin } from "@/lib/db";
 import { withRLSContext } from "@/lib/db-context";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
@@ -360,6 +361,52 @@ export async function GET() {
       : null;
     dashLog(`ok ${stage}`);
 
+    stage = "buyer_agent_drafts_supra_summary";
+    dashLog(`start ${stage}`);
+    const reviewDraftWhere = {
+      hostUserId: user.id,
+      deletedAt: null,
+      buyerAgentEmail: { not: null },
+      feedbackDraftGeneratedAt: { not: null },
+      scheduledAt: { lte: new Date() },
+      NOT: {
+        OR: [
+          { feedbackRequestStatus: "SENT" },
+          { feedbackRequestStatus: "RECEIVED" },
+        ],
+      },
+    };
+    const [buyerAgentEmailDraftReviews, lastSupraIngest, supraQueueActionCount] =
+      await Promise.all([
+        prismaAdmin.showing.findMany({
+          where: reviewDraftWhere,
+          orderBy: { scheduledAt: "desc" },
+          take: 10,
+          select: {
+            id: true,
+            scheduledAt: true,
+            buyerAgentName: true,
+            source: true,
+            feedbackRequestStatus: true,
+            property: { select: { address1: true, city: true } },
+          },
+        }),
+        prismaAdmin.supraQueueItem.findFirst({
+          where: { hostUserId: user.id },
+          orderBy: { receivedAt: "desc" },
+          select: { receivedAt: true },
+        }),
+        prismaAdmin.supraQueueItem.count({
+          where: {
+            hostUserId: user.id,
+            queueState: {
+              in: ["INGESTED", "PARSED", "NEEDS_REVIEW", "READY_TO_APPLY"],
+            },
+          },
+        }),
+      ]);
+    dashLog(`ok ${stage}`);
+
     stage = "destructure_parallel_results";
     dashLog(`start ${stage}`);
     const [
@@ -556,6 +603,18 @@ export async function GET() {
           property: { address1: "" },
           requestedAt: fr.requestedAt.toISOString(),
         })),
+        buyerAgentEmailDraftReviews: buyerAgentEmailDraftReviews.map((s) => ({
+          id: s.id,
+          scheduledAt: s.scheduledAt.toISOString(),
+          buyerAgentName: s.buyerAgentName,
+          property: s.property,
+          source: s.source,
+          feedbackRequestStatus: s.feedbackRequestStatus,
+        })),
+        supraInboxSummary: {
+          lastReceivedAt: lastSupraIngest?.receivedAt.toISOString() ?? null,
+          queueActionCount: supraQueueActionCount,
+        },
         recentReports: recentReportsOpenHouses.map((oh) => ({
           id: oh.id,
           title: oh.title,
@@ -598,6 +657,7 @@ export async function GET() {
           followUpTasks: followUpTasksCount,
           privateShowingsToday: privateShowingsTodayCount,
           feedbackRequestsPending: feedbackRequestsPendingCount,
+          buyerAgentEmailDraftsPending: buyerAgentEmailDraftReviews.length,
         },
         connections: { hasCalendar, hasGmail, hasBranding },
       },

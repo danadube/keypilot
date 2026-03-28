@@ -9,6 +9,11 @@ import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-butto
 /** Browsers and mail clients vary; very long mailto URLs may be truncated or ignored. */
 export const BUYER_AGENT_FEEDBACK_MAILTO_MAX_LENGTH = 1950;
 
+/**
+ * Build a mailto: URL using percent-encoding (%20 for spaces).
+ * `URLSearchParams` uses `+` for spaces (x-www-form-urlencoded), which some mail
+ * clients (e.g. Spark) surface literally in the composed subject/body.
+ */
 export function buildBuyerAgentFeedbackMailtoHref(
   recipient: string,
   subject: string,
@@ -16,10 +21,9 @@ export function buildBuyerAgentFeedbackMailtoHref(
 ): string | null {
   const to = recipient.trim();
   if (!to || !subject.trim() || !body.trim()) return null;
-  const params = new URLSearchParams();
-  params.set("subject", subject);
-  params.set("body", body);
-  return `mailto:${encodeURIComponent(to)}?${params.toString()}`;
+  const qSub = encodeURIComponent(subject);
+  const qBody = encodeURIComponent(body);
+  return `mailto:${encodeURIComponent(to)}?subject=${qSub}&body=${qBody}`;
 }
 
 export type ShowingBuyerAgentFeedbackDraftProps = {
@@ -28,6 +32,9 @@ export type ShowingBuyerAgentFeedbackDraftProps = {
   generatedAt: string | null | undefined;
   /** Required to enable “Create email” (mailto). */
   buyerAgentEmail?: string | null | undefined;
+  /** When present, shows “Mark sent” to clear DRAFT_READY from dashboards. */
+  showingId?: string | null | undefined;
+  onMarkedSent?: () => void;
   className?: string;
   /** Calendar BrandModal uses theme vars; showings list uses kp tokens */
   variant?: "kp" | "brand";
@@ -41,10 +48,13 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
   body,
   generatedAt,
   buyerAgentEmail,
+  showingId,
+  onMarkedSent,
   className,
   variant = "kp",
 }: ShowingBuyerAgentFeedbackDraftProps) {
   const [copied, setCopied] = useState<null | "subject" | "body" | "both">(null);
+  const [markingSent, setMarkingSent] = useState(false);
 
   const sub = subject?.trim() ?? "";
   const bod = body?.trim() ?? "";
@@ -60,6 +70,25 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
       setCopied(kind);
       setTimeout(() => setCopied(null), 2000);
     });
+  };
+
+  const markSent = () => {
+    const id = showingId?.trim();
+    if (!id) return;
+    setMarkingSent(true);
+    fetch(`/api/v1/showing-hq/showings/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ feedbackRequestStatus: "SENT" }),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Failed to update");
+        onMarkedSent?.();
+      })
+      .catch(() => {
+        /* non-fatal */
+      })
+      .finally(() => setMarkingSent(false));
   };
 
   const genLabel =
@@ -186,6 +215,19 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
           <span className="ml-1.5">{copied === "both" ? "Copied" : "Copy subject + body"}</span>
         </Button>
       </div>
+      {showingId?.trim() && (
+        <p className={cn("mt-2 text-xs", mutedCls)}>
+          <button
+            type="button"
+            disabled={markingSent}
+            onClick={markSent}
+            className="font-medium text-kp-teal underline-offset-2 hover:underline disabled:opacity-50"
+          >
+            {markingSent ? "Updating…" : "Mark feedback email as sent"}
+          </button>
+          <span className="text-kp-on-surface-variant"> — hides this from review queues.</span>
+        </p>
+      )}
     </div>
   );
 }

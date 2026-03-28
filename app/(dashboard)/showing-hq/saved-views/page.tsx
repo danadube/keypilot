@@ -46,6 +46,7 @@ function savedRecordHref(rec: ShowingHqSavedViewRecord): string {
     return showingsListViewToHref({
       source: src,
       feedbackOnly: rec.feedbackOnly === true,
+      buyerAgentDraftReview: rec.buyerAgentDraftReview === true,
       q: normalizeShowingHqListSearchQ(
         typeof rec.q === "string" ? rec.q : null
       ),
@@ -87,6 +88,9 @@ function savedRecordSummary(rec: ShowingHqSavedViewRecord): string {
         ? "Feedback requested only"
         : "All feedback states"
     );
+    if (rec.buyerAgentDraftReview === true) {
+      parts.push("Buyer email drafts to review");
+    }
     const qn = normalizeShowingHqListSearchQ(
       typeof rec.q === "string" ? rec.q : null
     );

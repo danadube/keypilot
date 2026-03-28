@@ -9,6 +9,7 @@ import {
   Search,
   X,
   Inbox,
+  Mail,
   ClipboardCheck,
   Plus,
   AlertCircle,
@@ -368,6 +369,11 @@ function EditShowingModal({
             body={showing.feedbackDraftBody}
             generatedAt={showing.feedbackDraftGeneratedAt}
             buyerAgentEmail={showing.buyerAgentEmail}
+            showingId={showing.id}
+            onMarkedSent={() => {
+              onSaved();
+              onClose();
+            }}
           />
         </div>
         <div className="flex justify-end gap-2 border-t border-kp-outline p-5">
@@ -396,7 +402,16 @@ const TH =
   "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
 const TD = "px-4 py-3.5 text-sm";
 
-function ShowingsTable({ showings, onEdit }: { showings: Showing[]; onEdit: (s: Showing) => void }) {
+function ShowingsTable({
+  showings,
+  onEdit,
+}: {
+  showings: Showing[];
+  onEdit: (s: Showing) => void;
+}) {
+  const canReviewFeedbackEmail = (s: Showing) =>
+    !!(s.feedbackDraftGeneratedAt && s.buyerAgentEmail?.trim());
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
@@ -451,13 +466,12 @@ function ShowingsTable({ showings, onEdit }: { showings: Showing[]; onEdit: (s: 
               {/* Feedback */}
               <td className={cn(TD, "hidden sm:table-cell")}>
                 {s.feedbackRequired ? (
-                  <StatusBadge variant="pending">Requested</StatusBadge>
-                ) : s.feedbackDraftGeneratedAt ? (
-                  <span
-                    className="text-xs text-kp-teal"
-                    title="Buyer-agent email draft — open edit to copy"
-                  >
-                    Draft ready
+                  <StatusBadge variant="pending">Form link</StatusBadge>
+                ) : canReviewFeedbackEmail(s) ? (
+                  <span title="Buyer-agent email — use Review">
+                    <StatusBadge variant="pending">
+                      {s.feedbackRequestStatus === "DRAFT_READY" ? "Email draft" : "Draft ready"}
+                    </StatusBadge>
                   </span>
                 ) : (
                   <span className="text-kp-on-surface-variant">—</span>
@@ -471,13 +485,27 @@ function ShowingsTable({ showings, onEdit }: { showings: Showing[]; onEdit: (s: 
 
               {/* Actions */}
               <td className={TD}>
-                <button
-                  onClick={() => onEdit(s)}
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-kp-on-surface-variant transition-colors hover:bg-kp-surface-higher hover:text-kp-on-surface"
-                  aria-label="Edit showing"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
+                <div className="flex items-center justify-end gap-0.5">
+                  {canReviewFeedbackEmail(s) && (
+                    <button
+                      type="button"
+                      onClick={() => onEdit(s)}
+                      className="flex h-7 items-center gap-1 rounded-md px-1.5 text-[10px] font-semibold text-kp-teal transition-colors hover:bg-kp-surface-higher"
+                      title="Review buyer-agent feedback email draft"
+                    >
+                      <Mail className="h-3.5 w-3.5" />
+                      <span className="hidden min-[420px]:inline">Review</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onEdit(s)}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-kp-on-surface-variant transition-colors hover:bg-kp-surface-higher hover:text-kp-on-surface"
+                    aria-label="Edit showing"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
@@ -506,19 +534,22 @@ export function ShowingsListView() {
       JSON.stringify({
         s: searchParams.get("source") ?? "",
         f: searchParams.get("feedbackOnly") === "true",
+        b: searchParams.get("buyerAgentDraftReview") === "true",
         q: searchParams.get("q") ?? "",
       }),
     [searchParams]
   );
   const listView = useMemo((): NormalizedShowingsListView => {
-    const { s, f, q } = JSON.parse(listFetchKey) as {
+    const { s, f, b, q } = JSON.parse(listFetchKey) as {
       s: string;
       f: boolean;
+      b: boolean;
       q: string;
     };
     const sp = new URLSearchParams();
     if (s) sp.set("source", s);
     if (f) sp.set("feedbackOnly", "true");
+    if (b) sp.set("buyerAgentDraftReview", "true");
     if (q) sp.set("q", q);
     return parseShowingsListViewFromSearchParams(sp);
   }, [listFetchKey]);
@@ -582,7 +613,12 @@ export function ShowingsListView() {
   function clearListFiltersAndSearch() {
     skipNextSearchSync.current = true;
     setQInput("");
-    replaceListView({ source: null, feedbackOnly: false, q: null });
+    replaceListView({
+      source: null,
+      feedbackOnly: false,
+      buyerAgentDraftReview: false,
+      q: null,
+    });
   }
 
   const canSaveView = hasShowingsSaveableFiltersInSearchParams(searchParams);

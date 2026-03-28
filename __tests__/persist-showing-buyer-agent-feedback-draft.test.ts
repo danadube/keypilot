@@ -30,6 +30,7 @@ describe("persistShowingBuyerAgentFeedbackDraftAfterSupraApply", () => {
       buyerAgentEmail: "buyer@agent.com",
       buyerAgentName: "Pat Partner",
       scheduledAt: new Date("2025-04-01T16:00:00.000Z"),
+      feedbackRequired: false,
     });
     mockShowingUpdate.mockResolvedValue({});
 
@@ -37,7 +38,6 @@ describe("persistShowingBuyerAgentFeedbackDraftAfterSupraApply", () => {
       showingId: "sh-1",
       propertyId: "p-1",
       hostUserId: "u-1",
-      hostDisplayName: "Host Name",
     });
     expect(out).toEqual({ saved: true });
 
@@ -47,6 +47,7 @@ describe("persistShowingBuyerAgentFeedbackDraftAfterSupraApply", () => {
         feedbackDraftSubject: expect.stringContaining("10 Pine"),
         feedbackDraftBody: expect.stringContaining("Pat"),
         feedbackDraftGeneratedAt: expect.any(Date),
+        feedbackRequestStatus: "DRAFT_READY",
       }),
     });
   });
@@ -62,13 +63,13 @@ describe("persistShowingBuyerAgentFeedbackDraftAfterSupraApply", () => {
       buyerAgentEmail: "  ",
       buyerAgentName: null,
       scheduledAt: new Date(),
+      feedbackRequired: false,
     });
 
     const out = await persistShowingBuyerAgentFeedbackDraftAfterSupraApply({
       showingId: "sh-1",
       propertyId: "p-1",
       hostUserId: "u-1",
-      hostDisplayName: "H",
     });
     expect(out).toEqual({ saved: false });
 
@@ -81,6 +82,7 @@ describe("persistShowingBuyerAgentFeedbackDraftAfterSupraApply", () => {
       buyerAgentEmail: "x@y.com",
       buyerAgentName: null,
       scheduledAt: new Date(),
+      feedbackRequired: false,
     });
 
     await expect(
@@ -88,7 +90,6 @@ describe("persistShowingBuyerAgentFeedbackDraftAfterSupraApply", () => {
         showingId: "sh-1",
         propertyId: "p-1",
         hostUserId: "u-1",
-        hostDisplayName: "H",
       })
     ).resolves.toEqual({ saved: false });
 
@@ -106,6 +107,7 @@ describe("persistShowingBuyerAgentFeedbackDraftAfterSupraApply", () => {
       buyerAgentEmail: "x@y.com",
       buyerAgentName: null,
       scheduledAt: new Date(),
+      feedbackRequired: false,
     });
     mockShowingUpdate.mockRejectedValue(new Error("db write failed"));
 
@@ -114,7 +116,6 @@ describe("persistShowingBuyerAgentFeedbackDraftAfterSupraApply", () => {
         showingId: "sh-1",
         propertyId: "p-1",
         hostUserId: "u-1",
-        hostDisplayName: "H",
       })
     ).resolves.toEqual({ saved: false });
   });

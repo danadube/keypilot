@@ -35,6 +35,7 @@ export type ShowingHqSavedViewRecord = {
   surface: ShowingHqSavedViewSurface;
   source?: string | null;
   feedbackOnly?: boolean | null;
+  buyerAgentDraftReview?: boolean | null;
   openShowing?: string | null;
   openHouseId?: string | null;
   sort?: string | null;
@@ -78,16 +79,18 @@ function normalizedVisitorsFields(
 function normalizedShowingsListFields(
   source: unknown,
   feedbackOnly: unknown,
+  buyerAgentDraftReview: unknown,
   q: unknown
 ): NormalizedShowingsListView {
   const src = normalizeShowingsSourceParam(
     typeof source === "string" ? source : null
   );
   const fb = feedbackOnly === true;
+  const draftRev = buyerAgentDraftReview === true;
   const qn = normalizeShowingHqListSearchQ(
     typeof q === "string" ? q : null
   );
-  return { source: src, feedbackOnly: fb, q: qn };
+  return { source: src, feedbackOnly: fb, buyerAgentDraftReview: draftRev, q: qn };
 }
 
 function visitorsFingerprintFromRecord(
@@ -109,6 +112,7 @@ function showingsFingerprintFromRecord(
   const view = normalizedShowingsListFields(
     rec.source,
     rec.feedbackOnly,
+    rec.buyerAgentDraftReview,
     rec.q
   );
   return showingsListViewFingerprint(view);
@@ -163,6 +167,7 @@ function normalizeRecord(raw: unknown): ShowingHqSavedViewRecord | null {
     const v = normalizedShowingsListFields(
       raw.source,
       raw.feedbackOnly,
+      raw.buyerAgentDraftReview,
       raw.q
     );
     return {
@@ -171,6 +176,7 @@ function normalizeRecord(raw: unknown): ShowingHqSavedViewRecord | null {
       surface: "SHOWINGS",
       source: v.source,
       feedbackOnly: v.feedbackOnly ? true : null,
+      buyerAgentDraftReview: v.buyerAgentDraftReview ? true : null,
       q: v.q,
     };
   }
@@ -289,6 +295,7 @@ export function addSavedShowingsView(
   const view = normalizedShowingsListFields(
     rec.source,
     rec.feedbackOnly,
+    rec.buyerAgentDraftReview,
     rec.q
   );
   const nextPartial: ShowingHqSavedViewRecord = {
@@ -297,6 +304,7 @@ export function addSavedShowingsView(
     surface: "SHOWINGS",
     source: view.source,
     feedbackOnly: view.feedbackOnly ? true : null,
+    buyerAgentDraftReview: view.buyerAgentDraftReview ? true : null,
     q: view.q,
   };
   const fpNew = showingsListViewFingerprint(view);

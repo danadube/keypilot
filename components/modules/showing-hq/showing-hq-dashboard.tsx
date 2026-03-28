@@ -10,6 +10,7 @@ import {
   CheckSquare,
   FileText,
   MessageSquare,
+  Mail,
   Loader2,
   AlertCircle,
 } from "lucide-react";
@@ -27,6 +28,7 @@ import { QuickCreateEventModal } from "@/components/showing-hq/QuickCreateEventM
 import { EditEventModal } from "@/components/showing-hq/EditEventModal";
 import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
 import { ShowingHQWorkbenchQueue } from "@/components/showing-hq/ShowingHQWorkbenchQueue";
+import { SupraGmailImportStrip } from "@/components/showing-hq/SupraGmailImportStrip";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 
 // ── Types (mirrored exactly from API response) ────────────────────────────────
@@ -86,6 +88,18 @@ type DashboardData = {
     property: { address1: string };
     requestedAt?: string;
   }[];
+  buyerAgentEmailDraftReviews?: {
+    id: string;
+    scheduledAt: string;
+    buyerAgentName: string | null;
+    property: { address1: string | null; city: string | null };
+    source: string;
+    feedbackRequestStatus: string | null;
+  }[];
+  supraInboxSummary?: {
+    lastReceivedAt: string | null;
+    queueActionCount: number;
+  };
   recentReports?: {
     id: string;
     title: string;
@@ -107,6 +121,7 @@ type DashboardData = {
     followUpTasks?: number;
     privateShowingsToday?: number;
     feedbackRequestsPending?: number;
+    buyerAgentEmailDraftsPending?: number;
   };
   connections?: { hasCalendar: boolean; hasGmail: boolean; hasBranding: boolean };
   calendarEvents?: CalendarEvent[];
@@ -131,7 +146,7 @@ type DashboardData = {
 // ── Activity item type ────────────────────────────────────────────────────────
 
 type ActivityItem = {
-  type: "visitor" | "followup" | "feedback";
+  type: "visitor" | "followup" | "feedback" | "buyer_email_draft";
   id: string;
   label: string;
   address: string;
@@ -255,7 +270,13 @@ function ActivityPanel({
   formatTimeContextual: (iso: string) => string;
 }) {
   const iconFor = (type: ActivityItem["type"]) =>
-    type === "visitor" ? Users : type === "followup" ? CheckSquare : MessageSquare;
+    type === "visitor"
+      ? Users
+      : type === "followup"
+        ? CheckSquare
+        : type === "buyer_email_draft"
+          ? Mail
+          : MessageSquare;
 
   return (
     <div className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
@@ -414,9 +435,11 @@ function OpenHousesPanel({
 function ReportsFeedbackPanel({
   recentReports,
   pendingFeedbackRequests,
+  buyerAgentEmailDraftReviews,
 }: {
   recentReports: NonNullable<DashboardData["recentReports"]>;
   pendingFeedbackRequests: NonNullable<DashboardData["pendingFeedbackRequests"]>;
+  buyerAgentEmailDraftReviews: NonNullable<DashboardData["buyerAgentEmailDraftReviews"]>;
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
@@ -451,10 +474,46 @@ function ReportsFeedbackPanel({
           )}
         </div>
 
-        {/* Feedback */}
+        {/* Buyer-agent email drafts (Supra / mailto path) */}
         <div>
           <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-            Feedback
+            Feedback emails
+          </p>
+          {buyerAgentEmailDraftReviews.length === 0 ? (
+            <p className="text-[11px] text-kp-on-surface-variant">None ready to send.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {buyerAgentEmailDraftReviews.slice(0, 3).map((row) => (
+                <li key={row.id} className="flex items-center justify-between gap-2">
+                  <span className="min-w-0 truncate text-xs text-kp-on-surface">
+                    {row.property.address1 ?? "Showing"}
+                    {row.buyerAgentName ? ` · ${row.buyerAgentName}` : ""}
+                  </span>
+                  <Link
+                    href={`/showing-hq/showings?openShowing=${encodeURIComponent(row.id)}`}
+                    className={cn(
+                      "shrink-0 rounded-md border border-kp-outline px-2 py-1",
+                      "text-[10px] font-medium text-kp-on-surface transition-colors hover:bg-kp-surface-high"
+                    )}
+                  >
+                    Review
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link
+            href="/showing-hq/showings?buyerAgentDraftReview=true"
+            className="mt-2 inline-flex text-[10px] font-medium text-kp-teal hover:underline"
+          >
+            All drafts →
+          </Link>
+        </div>
+
+        {/* Feedback (web form links) */}
+        <div>
+          <p className="mb-1.5 text-[9px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+            Form feedback
           </p>
           {pendingFeedbackRequests.length === 0 ? (
             <p className="text-[11px] text-kp-on-surface-variant">None pending.</p>
@@ -690,6 +749,13 @@ export function ShowingHQDashboardView() {
   const pendingFeedbackRequests = Array.isArray(data.pendingFeedbackRequests)
     ? data.pendingFeedbackRequests
     : [];
+  const buyerAgentEmailDraftReviews = Array.isArray(data.buyerAgentEmailDraftReviews)
+    ? data.buyerAgentEmailDraftReviews
+    : [];
+  const supraInboxSummary = data.supraInboxSummary ?? {
+    lastReceivedAt: null,
+    queueActionCount: 0,
+  };
   const recentReports = recentReportsAll;
 
   // Build sorted activity feed
@@ -735,6 +801,15 @@ export function ShowingHQDashboardView() {
       timestamp: fr.requestedAt ?? null,
       actionLabel: "Queue",
       actionHref: "/showing-hq/feedback-requests",
+    })),
+    ...buyerAgentEmailDraftReviews.slice(0, 6).map((row) => ({
+      type: "buyer_email_draft" as const,
+      id: `bad-${row.id}`,
+      label: "Feedback email draft",
+      address: `${row.property?.address1 ?? "Showing"}${row.buyerAgentName ? ` · ${row.buyerAgentName}` : ""}`,
+      timestamp: row.scheduledAt ?? null,
+      actionLabel: "Review",
+      actionHref: `/showing-hq/showings?openShowing=${encodeURIComponent(row.id)}`,
     })),
   ];
   const activityItems = [...activityItemsRaw].sort((a, b) => {
@@ -819,6 +894,13 @@ export function ShowingHQDashboardView() {
         />
       </section>
 
+      <SupraGmailImportStrip
+        hasGmail={connections.hasGmail}
+        lastReceivedAt={supraInboxSummary.lastReceivedAt}
+        queueActionCount={supraInboxSummary.queueActionCount}
+        onImported={() => refetchDashboard()}
+      />
+
       {/* ── Schedule + Queue ─────────────────────────────────────────────── */}
       <div
         className="grid min-h-0 items-stretch gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,360px)]"
@@ -874,6 +956,8 @@ export function ShowingHQDashboardView() {
           feedbackPendingCount={
             stats.feedbackRequestsPending ?? pendingFeedbackRequests.length
           }
+          buyerAgentEmailDraftCount={buyerAgentEmailDraftReviews.length}
+          firstBuyerAgentDraftShowingId={buyerAgentEmailDraftReviews[0]?.id ?? null}
           reportsReadyCount={recentReports.length}
           firstReportId={recentReports[0]?.id ?? null}
           scheduleItems={scheduleItems}
@@ -938,6 +1022,7 @@ export function ShowingHQDashboardView() {
         <ReportsFeedbackPanel
           recentReports={recentReports}
           pendingFeedbackRequests={pendingFeedbackRequests}
+          buyerAgentEmailDraftReviews={buyerAgentEmailDraftReviews}
         />
       </div>
     </div>

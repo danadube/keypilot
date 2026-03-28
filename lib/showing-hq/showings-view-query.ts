@@ -30,9 +30,17 @@ export function normalizeShowingsFeedbackOnlyFromSearchParams(
   return sp.get("feedbackOnly") === "true";
 }
 
+/** Buyer-agent email drafts needing review (past showings, draft saved, not marked sent). */
+export function normalizeShowingsBuyerAgentDraftReviewFromSearchParams(
+  sp: URLSearchParams
+): boolean {
+  return sp.get("buyerAgentDraftReview") === "true";
+}
+
 export type NormalizedShowingsListView = {
   source: ShowingsSource | null;
   feedbackOnly: boolean;
+  buyerAgentDraftReview: boolean;
   q: string | null;
 };
 
@@ -44,6 +52,7 @@ export function parseShowingsListViewFromSearchParams(
   return {
     source: normalizeShowingsSourceParam(sp.get("source")),
     feedbackOnly: normalizeShowingsFeedbackOnlyFromSearchParams(sp),
+    buyerAgentDraftReview: normalizeShowingsBuyerAgentDraftReviewFromSearchParams(sp),
     q: parseQFromSearchParams(sp),
   };
 }
@@ -62,6 +71,7 @@ export function applyShowingsListViewToSearchParams(
 ): void {
   if (view.source) target.set("source", view.source);
   if (view.feedbackOnly) target.set("feedbackOnly", "true");
+  if (view.buyerAgentDraftReview) target.set("buyerAgentDraftReview", "true");
   if (view.q) target.set("q", view.q);
 }
 
@@ -79,6 +89,7 @@ export function buildShowingsListApiUrl(
   const params = new URLSearchParams();
   if (view.source) params.set("source", view.source);
   if (view.feedbackOnly) params.set("feedbackOnly", "true");
+  if (view.buyerAgentDraftReview) params.set("buyerAgentDraftReview", "true");
   if (view.q) params.set("q", view.q);
   const qs = params.toString();
   return qs
@@ -95,7 +106,10 @@ export function hasShowingsSaveableFiltersInSearchParams(
 ): boolean {
   const v = parseShowingsListViewFromSearchParams(sp);
   return (
-    v.source !== null || v.feedbackOnly === true || v.q !== null
+    v.source !== null ||
+    v.feedbackOnly === true ||
+    v.buyerAgentDraftReview === true ||
+    v.q !== null
   );
 }
 
@@ -105,6 +119,7 @@ export function showingsListViewFingerprint(
 ): string {
   return JSON.stringify({
     feedbackOnly: view.feedbackOnly,
+    buyerAgentDraftReview: view.buyerAgentDraftReview,
     q: view.q,
     source: view.source,
     surface: "SHOWINGS",

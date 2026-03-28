@@ -7,6 +7,7 @@ import {
   Copy,
   CheckSquare,
   MessageSquare,
+  Mail,
   FileText,
   Calendar,
   ChevronRight,
@@ -39,6 +40,8 @@ type ShowingHQWorkbenchQueueProps = {
   followUpDraftCount: number;
   firstFollowUpDraftId: string | null;
   feedbackPendingCount: number;
+  buyerAgentEmailDraftCount?: number;
+  firstBuyerAgentDraftShowingId?: string | null;
   reportsReadyCount: number;
   firstReportId: string | null;
   scheduleItems: ScheduleItem[];
@@ -93,6 +96,8 @@ export function ShowingHQWorkbenchQueue({
   followUpDraftCount,
   firstFollowUpDraftId,
   feedbackPendingCount,
+  buyerAgentEmailDraftCount = 0,
+  firstBuyerAgentDraftShowingId = null,
   reportsReadyCount,
   firstReportId,
   scheduleItems,
@@ -205,6 +210,28 @@ export function ShowingHQWorkbenchQueue({
           />
         ) : null}
 
+        {buyerAgentEmailDraftCount > 0 ? (
+          <Row
+            icon={Mail}
+            tone="warn"
+            title={`${buyerAgentEmailDraftCount} feedback email draft${buyerAgentEmailDraftCount === 1 ? "" : "s"} ready`}
+            meta="Past showings — review and send from your mail app"
+            actions={
+              <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 px-2 text-[11px]")} asChild>
+                <Link
+                  href={
+                    firstBuyerAgentDraftShowingId
+                      ? `/showing-hq/showings?openShowing=${encodeURIComponent(firstBuyerAgentDraftShowingId)}`
+                      : "/showing-hq/showings?buyerAgentDraftReview=true"
+                  }
+                >
+                  Review <ChevronRight className="ml-0.5 h-3 w-3" />
+                </Link>
+              </Button>
+            }
+          />
+        ) : null}
+
         {feedbackPendingCount > 0 ? (
           <Row
             icon={MessageSquare}
@@ -292,6 +319,7 @@ export function ShowingHQWorkbenchQueue({
         {!activeOpenHouse &&
         !signInUrl &&
         followUpDraftCount === 0 &&
+        buyerAgentEmailDraftCount === 0 &&
         feedbackPendingCount === 0 &&
         reportsReadyCount === 0 &&
         scheduleItems.length === 0 &&

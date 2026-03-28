@@ -11,7 +11,7 @@ describe("buildBuyerAgentFeedbackMailtoHref", () => {
       "Line 1\nLine 2"
     );
     expect(href).toBe(
-      "mailto:agent%40example.com?subject=Hello+%26+welcome&body=Line+1%0ALine+2"
+      "mailto:agent%40example.com?subject=Hello%20%26%20welcome&body=Line%201%0ALine%202"
     );
   });
 

@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
     const searchParams = req.nextUrl.searchParams;
     const source = searchParams.get("source")?.trim(); // MANUAL | SUPRA_SCRAPE
     const feedbackOnly = searchParams.get("feedbackOnly") === "true";
+    const buyerAgentDraftReview = searchParams.get("buyerAgentDraftReview") === "true";
     const qRaw = searchParams.get("q");
     const q = normalizeShowingHqListSearchQ(qRaw);
 
@@ -27,6 +28,19 @@ export async function GET(req: NextRequest) {
       deletedAt: null,
       ...(source ? { source: source as "MANUAL" | "SUPRA_SCRAPE" } : {}),
       ...(feedbackOnly ? { feedbackRequired: true } : {}),
+      ...(buyerAgentDraftReview
+        ? {
+            buyerAgentEmail: { not: null },
+            feedbackDraftGeneratedAt: { not: null },
+            scheduledAt: { lte: new Date() },
+            NOT: {
+              OR: [
+                { feedbackRequestStatus: "SENT" },
+                { feedbackRequestStatus: "RECEIVED" },
+              ],
+            },
+          }
+        : {}),
     };
 
     if (q) {

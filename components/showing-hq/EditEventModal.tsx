@@ -362,6 +362,11 @@ export function EditEventModal({
               body={buyerAgentFeedbackDraft.body}
               generatedAt={buyerAgentFeedbackDraft.generatedAt}
               buyerAgentEmail={buyerAgentFeedbackDraft.buyerAgentEmail}
+              showingId={eventId}
+              onMarkedSent={() => {
+                onSaved();
+                onOpenChange(false);
+              }}
             />
           )}
 

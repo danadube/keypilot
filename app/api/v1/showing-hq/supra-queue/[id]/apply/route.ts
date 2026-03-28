@@ -326,7 +326,6 @@ export async function POST(
         showingId: result.showingId,
         propertyId: result.propertyId,
         hostUserId: user.id,
-        hostDisplayName: user.name,
       });
       buyerAgentFeedbackDraftReady = draftResult.saved;
     } catch (draftErr) {

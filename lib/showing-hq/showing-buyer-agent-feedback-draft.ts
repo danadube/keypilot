@@ -1,6 +1,7 @@
 /**
  * Plain-text email draft for asking a buyer's agent for post-showing feedback.
  * Used after Supra queue apply; no AI, no outbound send in v1.
+ * Body intentionally has no signature — the user sends from a client that adds one.
  */
 
 import { prismaAdmin } from "@/lib/db";
@@ -9,14 +10,14 @@ export type GenerateShowingBuyerAgentFeedbackDraftInput = {
   propertyAddressLine: string;
   scheduledAt: Date;
   buyerAgentName: string | null;
-  hostDisplayName: string;
 };
 
-function formatScheduledLabel(d: Date): string {
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "full",
-    timeStyle: "short",
-  }).format(d);
+function formatShowingDate(d: Date): string {
+  return new Intl.DateTimeFormat(undefined, { dateStyle: "full" }).format(d);
+}
+
+function formatShowingTime(d: Date): string {
+  return new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(d);
 }
 
 /**
@@ -26,20 +27,23 @@ function formatScheduledLabel(d: Date): string {
 export function generateShowingBuyerAgentFeedbackDraft(
   input: GenerateShowingBuyerAgentFeedbackDraftInput
 ): { subject: string; body: string } {
-  const host = input.hostDisplayName.trim() || "Your listing partner";
-  const when = formatScheduledLabel(input.scheduledAt);
   const addr = input.propertyAddressLine.trim();
   const name = input.buyerAgentName?.trim();
-  const greeting = name ? `Hi ${name.split(/\s+/)[0]},` : "Hi there,";
+  const greeting = name ? `Hi ${name},` : "Hi there,";
+  const dateStr = formatShowingDate(input.scheduledAt);
+  const timeStr = formatShowingTime(input.scheduledAt);
 
-  const subject = `Showing feedback — ${addr}`;
+  const subject = `Feedback request — ${addr}`;
 
   const body = `${greeting}
 
-Thank you for showing ${addr} (${when}). When you have a moment, I would appreciate brief feedback on your buyer's impressions (interest level, any concerns, and follow-up timing if appropriate).
+Thank you for showing ${addr} on ${dateStr} at ${timeStr}.
 
-Best regards,
-${host}`;
+When you have a moment, I would appreciate your buyer's feedback, including:
+- overall interest level
+- any concerns or objections
+- price/value impressions
+- whether they may have interest in a second showing or follow-up`;
 
   return { subject, body };
 }
@@ -53,7 +57,6 @@ export async function persistShowingBuyerAgentFeedbackDraftAfterSupraApply(args:
   showingId: string;
   propertyId: string;
   hostUserId: string;
-  hostDisplayName: string;
 }): Promise<{ saved: boolean }> {
   try {
     const [property, showing] = await Promise.all([
@@ -71,6 +74,7 @@ export async function persistShowingBuyerAgentFeedbackDraftAfterSupraApply(args:
           buyerAgentEmail: true,
           buyerAgentName: true,
           scheduledAt: true,
+          feedbackRequired: true,
         },
       }),
     ]);
@@ -87,7 +91,6 @@ export async function persistShowingBuyerAgentFeedbackDraftAfterSupraApply(args:
       propertyAddressLine,
       scheduledAt: showing.scheduledAt,
       buyerAgentName: showing.buyerAgentName,
-      hostDisplayName: args.hostDisplayName,
     });
 
     await prismaAdmin.showing.update({
@@ -96,6 +99,7 @@ export async function persistShowingBuyerAgentFeedbackDraftAfterSupraApply(args:
         feedbackDraftSubject: subject,
         feedbackDraftBody: body,
         feedbackDraftGeneratedAt: new Date(),
+        ...(!showing.feedbackRequired ? { feedbackRequestStatus: "DRAFT_READY" } : {}),
       },
     });
     return { saved: true };

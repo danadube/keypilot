@@ -5,9 +5,19 @@ describe("generateShowingBuyerAgentFeedbackDraft", () => {
 
   beforeEach(() => {
     jest.spyOn(Intl, "DateTimeFormat").mockImplementation(
-      () =>
+      (_loc, opts) =>
         ({
-          format: () => "Thursday, March 20, 2025, 3:30 PM",
+          format: () => {
+            if (
+              opts &&
+              typeof opts === "object" &&
+              "timeStyle" in opts &&
+              opts.timeStyle === "short"
+            ) {
+              return "3:30 PM";
+            }
+            return "Thursday, March 20, 2025";
+          },
         }) as Intl.DateTimeFormat
     );
   });
@@ -16,19 +26,20 @@ describe("generateShowingBuyerAgentFeedbackDraft", () => {
     jest.restoreAllMocks();
   });
 
-  it("includes address in subject and names host in body", () => {
+  it("uses feedback-request subject line and showing-specific body without signature", () => {
     const { subject, body } = generateShowingBuyerAgentFeedbackDraft({
       propertyAddressLine: "123 Main St, Austin, TX 78701",
       scheduledAt: fixedDate,
       buyerAgentName: "Jane Buyeragent",
-      hostDisplayName: "Sam Host",
     });
 
-    expect(subject).toBe("Showing feedback — 123 Main St, Austin, TX 78701");
-    expect(body).toContain("Hi Jane,");
+    expect(subject).toBe("Feedback request — 123 Main St, Austin, TX 78701");
+    expect(body).toContain("Hi Jane Buyeragent,");
     expect(body).toContain("123 Main St, Austin, TX 78701");
-    expect(body).toContain("Thursday, March 20, 2025, 3:30 PM");
-    expect(body).toContain("Sam Host");
+    expect(body).toContain("Thursday, March 20, 2025");
+    expect(body).toContain("3:30 PM");
+    expect(body).toContain("overall interest level");
+    expect(body).not.toMatch(/Best regards|regards,|Your listing partner/i);
   });
 
   it("uses generic greeting when buyer agent name is missing", () => {
@@ -36,19 +47,8 @@ describe("generateShowingBuyerAgentFeedbackDraft", () => {
       propertyAddressLine: "99 Oak Rd, Dallas, TX 75001",
       scheduledAt: fixedDate,
       buyerAgentName: null,
-      hostDisplayName: "Alex Lee",
     });
     expect(body).toMatch(/^Hi there,\s*\n/);
-    expect(body).toContain("Alex Lee");
-  });
-
-  it("falls back when host display name is blank", () => {
-    const { body } = generateShowingBuyerAgentFeedbackDraft({
-      propertyAddressLine: "1 Elm, Houston, TX 77002",
-      scheduledAt: fixedDate,
-      buyerAgentName: null,
-      hostDisplayName: "   ",
-    });
-    expect(body.trimEnd().endsWith("Your listing partner")).toBe(true);
+    expect(body).not.toMatch(/Your listing partner/i);
   });
 });

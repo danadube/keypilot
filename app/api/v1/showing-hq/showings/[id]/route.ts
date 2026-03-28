@@ -61,10 +61,18 @@ export async function PATCH(
       );
     }
 
-    const updateData: { scheduledAt?: Date; propertyId?: string; notes?: string | null } = {};
+    const updateData: {
+      scheduledAt?: Date;
+      propertyId?: string;
+      notes?: string | null;
+      feedbackRequestStatus?: string;
+    } = {};
     if (parsed.data.scheduledAt !== undefined) updateData.scheduledAt = parsed.data.scheduledAt;
     if (parsed.data.propertyId !== undefined) updateData.propertyId = parsed.data.propertyId;
     if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes ?? null;
+    if (parsed.data.feedbackRequestStatus !== undefined) {
+      updateData.feedbackRequestStatus = parsed.data.feedbackRequestStatus;
+    }
 
     const showing = await prismaAdmin.showing.update({
       where: { id },

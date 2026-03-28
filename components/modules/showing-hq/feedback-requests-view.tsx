@@ -7,7 +7,7 @@ import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
-import { ClipboardCheck, Copy, Check } from "lucide-react";
+import { ClipboardCheck, Copy, Check, Mail } from "lucide-react";
 
 type FeedbackRequest = {
   id: string;
@@ -22,21 +22,42 @@ type FeedbackRequest = {
   property: { address1: string; city: string; state: string };
 };
 
+type BuyerAgentDraftShowing = {
+  id: string;
+  scheduledAt: string;
+  buyerAgentName: string | null;
+  buyerAgentEmail: string | null;
+  feedbackRequestStatus: string | null;
+  property: { address1: string; city: string; state: string };
+};
+
 export function FeedbackRequestsView() {
   const [requests, setRequests] = useState<FeedbackRequest[]>([]);
+  const [buyerAgentDraftShowings, setBuyerAgentDraftShowings] = useState<BuyerAgentDraftShowing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/v1/showing-hq/feedback-requests")
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) setError(json.error.message);
-        else setRequests(json.data ?? []);
+    let cancelled = false;
+    setLoading(true);
+    Promise.all([
+      fetch("/api/v1/showing-hq/feedback-requests").then((res) => res.json()),
+      fetch("/api/v1/showing-hq/showings?buyerAgentDraftReview=true").then((res) => res.json()),
+    ])
+      .then(([frJson, shJson]) => {
+        if (cancelled) return;
+        if (frJson.error) setError(frJson.error.message);
+        else setRequests(frJson.data ?? []);
+        if (!shJson.error && Array.isArray(shJson.data)) {
+          setBuyerAgentDraftShowings(shJson.data);
+        }
       })
-      .catch(() => setError("Failed to load"))
-      .finally(() => setLoading(false));
+      .catch(() => { if (!cancelled) setError("Failed to load"); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const copyLink = (id: string, token: string) => {
@@ -56,6 +77,72 @@ export function FeedbackRequestsView() {
 
   return (
     <div className="flex flex-col gap-6">
+      {buyerAgentDraftShowings.length > 0 && (
+        <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+          <div className="mb-3 flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-kp-teal/10">
+              <Mail className="h-4 w-4 text-kp-teal" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-kp-on-surface">Buyer-agent feedback emails</h2>
+              <p className="text-xs text-kp-on-surface-variant">
+                Drafts from Supra showings — open to copy or create mail (your app adds the signature).
+              </p>
+            </div>
+          </div>
+          <div className="-mx-1 overflow-x-auto px-1">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b-2 border-kp-outline">
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                    Property
+                  </th>
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                    Showing
+                  </th>
+                  <th className="pb-2.5 pt-0.5 text-left text-xs font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                    Agent
+                  </th>
+                  <th className="w-[1%] whitespace-nowrap pb-2.5 pt-0.5 text-right text-xs font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                    Review
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-kp-outline">
+                {buyerAgentDraftShowings.slice(0, 15).map((s) => (
+                  <tr key={s.id} className="transition-colors hover:bg-kp-surface-high">
+                    <td className="py-2.5 font-medium text-kp-on-surface">
+                      {s.property.address1}, {s.property.city}
+                    </td>
+                    <td className="whitespace-nowrap py-2.5 text-kp-on-surface-variant">
+                      {new Date(s.scheduledAt).toLocaleString(undefined, {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                      })}
+                    </td>
+                    <td className="py-2.5 text-kp-on-surface-variant">
+                      {s.buyerAgentName ?? s.buyerAgentEmail ?? "—"}
+                    </td>
+                    <td className="py-2.5 text-right">
+                      <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 text-xs")} asChild>
+                        <Link href={`/showing-hq/showings?openShowing=${encodeURIComponent(s.id)}`}>
+                          Open draft
+                        </Link>
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-3 text-xs text-kp-on-surface-variant">
+            <Link href="/showing-hq/showings?buyerAgentDraftReview=true" className="font-medium text-kp-teal hover:underline">
+              Full list in Showings
+            </Link>
+          </p>
+        </div>
+      )}
+
       {/* Summary strip */}
       {requests.length > 0 && (
         <div className="rounded-xl border border-kp-outline bg-kp-surface p-4">

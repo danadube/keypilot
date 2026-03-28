@@ -90,7 +90,6 @@ describe("POST /api/v1/showing-hq/supra-queue/[id]/apply — feedback draft hook
       showingId: "sh-new",
       propertyId: PROP_ID,
       hostUserId: "user-1",
-      hostDisplayName: "Sam Host",
     });
   });
 

@@ -53,6 +53,15 @@ describe("showings-view-query", () => {
         "/showing-hq/showings?feedbackOnly=true"
       );
     });
+    it("includes buyerAgentDraftReview=true when set", () => {
+      const v = parseShowingsListViewFromSearchParams(
+        new URLSearchParams("buyerAgentDraftReview=true")
+      );
+      expect(v.buyerAgentDraftReview).toBe(true);
+      expect(buildShowingsListApiUrl(v)).toBe(
+        "/api/v1/showing-hq/showings?buyerAgentDraftReview=true"
+      );
+    });
     it("does not put openShowing in href builder (parse separately)", () => {
       const sp = new URLSearchParams(
         "source=MANUAL&openShowing=abc&feedbackOnly=true"
@@ -88,7 +97,7 @@ describe("showings-view-query", () => {
         )
       ).toBe(false);
     });
-    it("is true for source, feedbackOnly, or q", () => {
+    it("is true for source, feedbackOnly, buyerAgentDraftReview, or q", () => {
       expect(
         hasShowingsSaveableFiltersInSearchParams(
           new URLSearchParams("source=MANUAL")
@@ -97,6 +106,11 @@ describe("showings-view-query", () => {
       expect(
         hasShowingsSaveableFiltersInSearchParams(
           new URLSearchParams("feedbackOnly=true")
+        )
+      ).toBe(true);
+      expect(
+        hasShowingsSaveableFiltersInSearchParams(
+          new URLSearchParams("buyerAgentDraftReview=true")
         )
       ).toBe(true);
       expect(
@@ -110,11 +124,13 @@ describe("showings-view-query", () => {
       const a = showingsListViewFingerprint({
         source: "MANUAL",
         feedbackOnly: false,
+        buyerAgentDraftReview: false,
         q: null,
       });
       const b = showingsListViewFingerprint({
         source: "MANUAL",
         feedbackOnly: false,
+        buyerAgentDraftReview: false,
         q: null,
       });
       expect(a).toBe(b);
@@ -124,12 +140,14 @@ describe("showings-view-query", () => {
         showingsListViewFingerprint({
           source: "MANUAL",
           feedbackOnly: false,
+          buyerAgentDraftReview: false,
           q: null,
         })
       ).not.toEqual(
         showingsListViewFingerprint({
           source: "MANUAL",
           feedbackOnly: true,
+          buyerAgentDraftReview: false,
           q: null,
         })
       );
@@ -139,12 +157,14 @@ describe("showings-view-query", () => {
         showingsListViewFingerprint({
           source: "MANUAL",
           feedbackOnly: false,
+          buyerAgentDraftReview: false,
           q: "x",
         })
       ).not.toEqual(
         showingsListViewFingerprint({
           source: "MANUAL",
           feedbackOnly: false,
+          buyerAgentDraftReview: false,
           q: "y",
         })
       );
