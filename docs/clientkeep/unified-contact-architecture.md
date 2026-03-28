@@ -24,6 +24,17 @@
 
 ---
 
+## What this prevents
+
+This architecture exists to avoid:
+
+- **Duplicate contact systems** — separate “CRMs” per integration or per list that drift and contradict each other.
+- **Multiple CRM records per person** — the same human appearing as unrelated rows, fragmenting activity and follow-up.
+- **Source-based silos** — treating Google contacts, Mojo contacts, and imports as parallel universes instead of one person with provenance.
+- **Data decay from unclear ownership** — fields overwritten or abandoned because nobody knows which system or row is authoritative.
+
+---
+
 ## Entities and relationships (conceptual)
 
 | Concept | Role |
@@ -164,6 +175,18 @@ Exact filter rollout order is phased (see below).
 3. **Consent and compliance:** Where opt-out / consent flags live for multi-source data (canonical vs per-link) — legal review may constrain sync overwrite rules.
 4. **Auto-merge thresholds:** Any automated merge requires written policy (signals + safeguards); none assumed in early phases.
 5. **ExternalRecord as first-class table:** Whether link metadata alone suffices v1 or a separate store for raw blobs — cost/ops tradeoff.
+
+---
+
+## Quick recommendation summary
+
+Operational guidance for contributors and roadmap sequencing:
+
+- **Merge this doc to `main`** and treat it as a living constraint for ClientKeep and Contacts work — not optional background reading.
+- **Use it as a constraint for all future work** — new features should not introduce parallel person records, source silos, or ambiguous ownership without an explicit ADR that updates this spec.
+- **Build UX before integrations** — establish the canonical-contact mental model, detail layout, and filters in-product before scaling providers or sync depth.
+- **Defer complex dedupe and sync** — ship foundation + source links + light matching before field-level conflict engines and aggressive automation.
+- **Avoid property-only Contacts** — do not mint CRM person rows for address-only farm mailings; resolve via PropertyVault, mailing records, or a dedicated non-Contact type (see Unresolved decisions).
 
 ---
 
