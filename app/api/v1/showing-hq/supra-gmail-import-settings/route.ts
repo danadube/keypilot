@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
-import { prismaAdmin } from "@/lib/db";
+import { withRLSContext } from "@/lib/db-context";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +13,11 @@ const PatchSchema = z.object({
 export async function GET() {
   try {
     const user = await getCurrentUser();
-    const row = await prismaAdmin.supraGmailImportSettings.findUnique({
-      where: { userId: user.id },
-    });
+    const row = await withRLSContext(user.id, (tx) =>
+      tx.supraGmailImportSettings.findUnique({
+        where: { userId: user.id },
+      })
+    );
 
     return NextResponse.json({
       data: {
@@ -45,16 +47,18 @@ export async function PATCH(req: Request) {
       return apiError("Invalid body", 400, "VALIDATION_ERROR");
     }
 
-    const row = await prismaAdmin.supraGmailImportSettings.upsert({
-      where: { userId: user.id },
-      create: {
-        userId: user.id,
-        automationEnabled: parsed.data.automationEnabled,
-      },
-      update: {
-        automationEnabled: parsed.data.automationEnabled,
-      },
-    });
+    const row = await withRLSContext(user.id, (tx) =>
+      tx.supraGmailImportSettings.upsert({
+        where: { userId: user.id },
+        create: {
+          userId: user.id,
+          automationEnabled: parsed.data.automationEnabled,
+        },
+        update: {
+          automationEnabled: parsed.data.automationEnabled,
+        },
+      })
+    );
 
     return NextResponse.json({
       data: {
