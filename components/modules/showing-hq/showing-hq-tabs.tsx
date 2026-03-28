@@ -18,7 +18,9 @@ export type ShowingHqTabId = (typeof SHOWING_HQ_TAB_ITEMS)[number]["id"];
 
 /** Which workspace tab should appear active for this pathname (real routes only). */
 export function getActiveShowingHqTabId(pathname: string): ShowingHqTabId | null {
-  if (pathname.startsWith("/showing-hq/showings")) return "showings";
+  if (pathname === "/showing-hq" || pathname.startsWith("/showing-hq/showings")) {
+    return "showings";
+  }
   if (
     pathname.startsWith("/open-houses") ||
     pathname.startsWith("/showing-hq/open-houses")
