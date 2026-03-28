@@ -1,15 +1,12 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserButton } from "@clerk/nextjs";
-import { Building2, Calendar } from "lucide-react";
 import { ProductTierProvider } from "@/components/ProductTierProvider";
 import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
-import { Button } from "@/components/ui/button";
+import { ShowingHQWorkbenchHeaderActions } from "@/components/dashboard/ShowingHQWorkbenchHeaderActions";
 import { cn } from "@/lib/utils";
-import { kpBtnSave, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
 
 function getPageTitle(pathname: string): string {
@@ -39,6 +36,7 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/client-keep/tags")) return "Tags";
   if (pathname.startsWith("/client-keep/segments")) return "Segments";
   if (pathname.startsWith("/client-keep")) return "ClientKeep";
+  if (pathname.startsWith("/settings/integrations")) return "Integrations";
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname === "/") return "Overview";
   return "KeyPilot";
@@ -86,38 +84,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
           <div className="flex shrink-0 items-center gap-1.5 border-l border-kp-outline bg-kp-surface px-2.5 md:gap-2 md:px-3.5">
             {isShowingHQWorkbench ? (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={cn(
-                    kpBtnSecondary,
-                    "h-7 shrink-0 px-2.5 text-[11px] [&_svg]:h-3 [&_svg]:w-3"
-                  )}
-                  asChild
-                >
-                  <Link href="/properties/new">
-                    <Building2 className="mr-1 h-3 w-3" />
-                    New property
-                  </Link>
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={cn(
-                    kpBtnSave,
-                    "h-7 shrink-0 border-transparent px-2.5 text-[11px] [&_svg]:h-3 [&_svg]:w-3"
-                  )}
-                  asChild
-                >
-                  <Link href="/open-houses/new">
-                    <Calendar className="mr-1 h-3 w-3" />
-                    Create open house
-                  </Link>
-                </Button>
-              </>
-            ) : null}
-            <UserButton afterSignOutUrl="/" />
+              <ShowingHQWorkbenchHeaderActions />
+            ) : (
+              <UserButton afterSignOutUrl="/" />
+            )}
           </div>
         </header>
 

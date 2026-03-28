@@ -93,7 +93,7 @@ function actionHref(args: {
 
 function actionLabel(action: ShowingAttentionState["action"]): string {
   if (action === "send_feedback") return "Request feedback";
-  if (action === "review") return "Review";
+  if (action === "review") return "Request feedback";
   return "Open";
 }
 
@@ -105,6 +105,35 @@ export type AttentionListItem = {
   at: string;
   attention: ShowingAttentionState;
 };
+
+function isSameLocalCalendarDay(iso: string, now: Date): boolean {
+  const d = new Date(iso);
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
+/** Today-only actionable rows (local calendar day). */
+export function filterAttentionItemsForToday(
+  items: AttentionListItem[],
+  now: Date
+): AttentionListItem[] {
+  return items.filter((row) => isSameLocalCalendarDay(row.at, now));
+}
+
+export function mapAttentionToOperatingStatus(
+  attention: ShowingAttentionState
+): "Needs feedback" | "Needs prep" | "Ready" {
+  if (attention.label === "Feedback needed" || attention.label === "Follow-up required") {
+    return "Needs feedback";
+  }
+  if (attention.label === "Prep required") {
+    return "Needs prep";
+  }
+  return "Ready";
+}
 
 export function buildNeedsAttentionItems(
   privateRows: PrivateShowingAttentionRow[],
@@ -304,8 +333,92 @@ export function buildUpcomingRows(
   return deduped.slice(0, take);
 }
 
+/** Primary “daily operating” block — today’s counts + actionable rows. */
+export function TodayOperatingSection({
+  showingsTodayCount,
+  needingFeedbackCount,
+  needingPrepCount,
+  items,
+  formatDate,
+  formatTime,
+}: {
+  showingsTodayCount: number;
+  needingFeedbackCount: number;
+  needingPrepCount: number;
+  items: AttentionListItem[];
+  formatDate: (iso: string) => string;
+  formatTime: (iso: string) => string;
+}) {
+  return (
+    <section
+      className="rounded-xl border border-kp-outline bg-kp-surface px-4 py-5 sm:px-5"
+      aria-labelledby="today-operating-heading"
+    >
+      <h2
+        id="today-operating-heading"
+        className="text-base font-semibold tracking-tight text-kp-on-surface"
+      >
+        Today
+      </h2>
+
+      <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-b border-kp-outline pb-4 text-sm text-kp-on-surface">
+        <span>
+          <span className="font-semibold tabular-nums">{showingsTodayCount}</span>
+          <span className="text-kp-on-surface-variant"> showings today</span>
+        </span>
+        <span>
+          <span className="font-semibold tabular-nums">{needingFeedbackCount}</span>
+          <span className="text-kp-on-surface-variant"> needing feedback</span>
+        </span>
+        <span>
+          <span className="font-semibold tabular-nums">{needingPrepCount}</span>
+          <span className="text-kp-on-surface-variant"> needing prep</span>
+        </span>
+      </div>
+
+      <ul className="mt-4 space-y-2">
+        {items.length === 0 ? (
+          <li className="py-6 text-center text-sm text-kp-on-surface-variant">
+            Nothing needs you right now today.
+          </li>
+        ) : (
+          items.map((row) => {
+            const status = mapAttentionToOperatingStatus(row.attention);
+            return (
+              <li
+                key={row.key}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-kp-outline/90 bg-kp-surface-high/40 px-3 py-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-kp-on-surface">{row.address}</p>
+                  <p className="text-xs text-kp-on-surface-variant">
+                    {formatTime(row.at)} · {formatDate(row.at)}
+                  </p>
+                  <p className="mt-1 text-xs font-medium text-kp-on-surface-variant">{status}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(kpBtnPrimary, "h-9 shrink-0 border-transparent px-4 text-xs font-medium")}
+                  asChild
+                >
+                  <Link
+                    href={actionHref({ kind: row.kind, id: row.id, action: row.attention.action })}
+                  >
+                    {actionLabel(row.attention.action)}
+                  </Link>
+                </Button>
+              </li>
+            );
+          })
+        )}
+      </ul>
+    </section>
+  );
+}
+
 /**
- * Upcoming = later calendar days (not today). Today’s items stay in Needs attention / queue.
+ * Upcoming = later calendar days (not today). Passive reference only.
  */
 export function UpcomingSection({
   rows,
@@ -317,42 +430,32 @@ export function UpcomingSection({
   formatTime: (iso: string) => string;
 }) {
   return (
-    <section className="flex min-h-[400px] flex-col rounded-xl border border-kp-outline bg-kp-surface p-4 lg:min-h-[460px]" aria-labelledby="upcoming-heading">
+    <section className="rounded-xl border border-kp-outline/80 bg-kp-surface-high/20 px-4 py-4 sm:px-5" aria-labelledby="upcoming-heading">
       <div className="mb-3 flex items-center gap-2">
-        <CalendarClock className="h-4 w-4 text-kp-teal" aria-hidden />
-        <h2 id="upcoming-heading" className="text-sm font-semibold text-kp-on-surface">
-          Upcoming
+        <CalendarClock className="h-4 w-4 text-kp-on-surface-variant" aria-hidden />
+        <h2 id="upcoming-heading" className="text-sm font-medium text-kp-on-surface">
+          Upcoming schedule
         </h2>
       </div>
       {rows.length === 0 ? (
-        <p className="text-xs text-kp-on-surface-variant">No later-week events scheduled.</p>
+        <p className="text-xs text-kp-on-surface-variant">Nothing later on the calendar.</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="divide-y divide-kp-outline/60">
           {rows.map((row) => (
-            <li
-              key={`${row.kind}-${row.id}`}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-kp-outline/80 bg-kp-surface-high/30 px-3 py-2"
-            >
-              <div className="min-w-0 flex-1">
+            <li key={`${row.kind}-${row.id}`} className="py-2.5 first:pt-0 last:pb-0">
+              <Link
+                href={
+                  row.kind === "open_house"
+                    ? `/showing-hq/open-houses/${row.id}`
+                    : `/showing-hq/showings?openShowing=${encodeURIComponent(row.id)}`
+                }
+                className="block rounded-md py-1 text-left transition-colors hover:bg-kp-surface-high/50"
+              >
                 <p className="truncate text-xs font-medium text-kp-on-surface">{row.address}</p>
                 <p className="text-[11px] text-kp-on-surface-variant">
                   {formatDate(row.at)} · {formatTime(row.at)}
                 </p>
-                <span className="mt-1 inline-flex w-fit rounded-md border border-kp-outline/70 bg-kp-bg/25 px-2 py-1 text-[10px] font-medium text-kp-on-surface-variant">
-                  Scheduled
-                </span>
-              </div>
-              <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-8 px-3 text-xs font-medium")} asChild>
-                <Link
-                  href={
-                    row.kind === "open_house"
-                      ? `/showing-hq/open-houses/${row.id}`
-                      : `/showing-hq/showings?openShowing=${encodeURIComponent(row.id)}`
-                  }
-                >
-                  Open
-                </Link>
-              </Button>
+              </Link>
             </li>
           ))}
         </ul>

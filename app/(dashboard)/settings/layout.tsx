@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/settings/account", label: "Account" },
   { href: "/settings/branding", label: "Branding" },
   { href: "/settings/connections", label: "Connections" },
+  { href: "/settings/integrations", label: "Integrations" },
   { href: "/settings/automation", label: "Automation" },
   { href: "/settings/ai", label: "AI" },
   { href: "/settings/modules", label: "Modules" },
