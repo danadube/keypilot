@@ -18,6 +18,7 @@ import { EditEventModal } from "@/components/showing-hq/EditEventModal";
 import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
 import { ShowingHQWorkbenchQueue } from "@/components/showing-hq/ShowingHQWorkbenchQueue";
 import { SupraGmailImportStrip } from "@/components/showing-hq/SupraGmailImportStrip";
+import { defaultSupraGmailImportStatus } from "@/lib/showing-hq/supra-gmail-import-status";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 import {
   buildNeedsAttentionItems,
@@ -109,6 +110,15 @@ type DashboardData = {
   supraInboxSummary?: {
     lastReceivedAt: string | null;
     queueActionCount: number;
+    gmailImport?: {
+      automationEnabled: boolean;
+      lastRunAt: string | null;
+      lastRunSuccess: boolean | null;
+      lastRunImported: number | null;
+      lastRunRefreshed: number | null;
+      lastRunScanned: number | null;
+      lastRunError: string | null;
+    };
   };
   recentReports?: {
     id: string;
@@ -469,9 +479,14 @@ export function ShowingHQDashboardView() {
   const buyerAgentEmailDraftReviews = Array.isArray(data.buyerAgentEmailDraftReviews)
     ? data.buyerAgentEmailDraftReviews
     : [];
-  const supraInboxSummary = data.supraInboxSummary ?? {
-    lastReceivedAt: null,
-    queueActionCount: 0,
+  const supraInboxRaw = data.supraInboxSummary;
+  const supraInboxSummary = {
+    lastReceivedAt: supraInboxRaw?.lastReceivedAt ?? null,
+    queueActionCount: supraInboxRaw?.queueActionCount ?? 0,
+    gmailImport: {
+      ...defaultSupraGmailImportStatus(),
+      ...supraInboxRaw?.gmailImport,
+    },
   };
 
   // Build sorted activity feed
@@ -637,6 +652,7 @@ export function ShowingHQDashboardView() {
         hasGmail={connections.hasGmail}
         lastReceivedAt={supraInboxSummary.lastReceivedAt}
         queueActionCount={supraInboxSummary.queueActionCount}
+        gmailImport={supraInboxSummary.gmailImport}
         onImported={() => refetchDashboard()}
       />
 

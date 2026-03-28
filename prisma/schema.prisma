@@ -43,9 +43,10 @@ model User {
   hostInvitesSent     OpenHouseHostInvite[]
   transactions        Transaction[]
   commissions         Commission[]
-  supraQueueItems     SupraQueueItem[]
-  supraQueueReviewed  SupraQueueItem[] @relation("SupraQueueReviewedBy")
-  userActivities      UserActivity[]
+  supraQueueItems          SupraQueueItem[]
+  supraQueueReviewed       SupraQueueItem[] @relation("SupraQueueReviewedBy")
+  supraGmailImportSettings SupraGmailImportSettings?
+  userActivities           UserActivity[]
   activityTemplates   ActivityTemplate[]
 
   @@index([clerkId])
@@ -475,6 +476,30 @@ model SupraQueueItem {
   @@index([hostUserId, queueState])
   @@index([hostUserId, receivedAt])
   @@map("supra_queue_items")
+}
+
+/** Per-user Supra Gmail import automation metadata (scheduled + manual runs). */
+model SupraGmailImportSettings {
+  id                String    @id @default(uuid())
+  userId            String    @unique
+  /** When false, scheduled cron skips this user; manual runs still work. */
+  automationEnabled Boolean   @default(true)
+  lastRunAt         DateTime?
+  lastRunSuccess    Boolean?
+  /** "manual" | "scheduled" */
+  lastRunSource     String?
+  lastRunImported   Int?
+  lastRunRefreshed  Int?
+  lastRunSkipped    Int?
+  lastRunScanned    Int?
+  lastRunAutoParsed Int?
+  lastRunError      String?   @db.VarChar(1000)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("supra_gmail_import_settings")
 }
 
 model Activity {

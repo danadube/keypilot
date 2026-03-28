@@ -86,6 +86,14 @@ Configure these in GitHub and Vercel when you have access:
 - [ ] **Vercel:** Project Settings → Environment Variables → Add all required vars (match `.env.local`)
 - [ ] **Vercel:** Confirm preview deployments are enabled (Settings → Git → Preview deployments)
 
+### Supra Gmail import cron (ShowingHQ)
+
+Production uses Vercel Cron (see root `vercel.json`) to call **GET** `/api/cron/supra-gmail-import` on a schedule (default: hourly). Vercel sends the `x-vercel-cron: 1` header, which the route accepts as authorization.
+
+For **manual or external** triggers (e.g. a third-party scheduler), set **`CRON_SECRET`** in the Vercel environment and call the same URL with header `Authorization: Bearer <CRON_SECRET>`.
+
+Deploy the **`supra_gmail_import_settings`** migration with `npx prisma migrate deploy` so per-user automation flags and last-run metadata persist.
+
 ---
 
 ## Validation Scripts

@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/supra-gmail-import",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

@@ -1,33 +1,82 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Inbox, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import {
+  formatSupraGmailImportResultSummary,
+  relTimeShort,
+  type SupraGmailImportStatus,
+} from "@/lib/showing-hq/supra-gmail-import-status";
+
+export type { SupraGmailImportStatus };
 
 type SupraGmailImportStripProps = {
   hasGmail: boolean;
   lastReceivedAt: string | null;
   queueActionCount: number;
+  gmailImport: SupraGmailImportStatus;
   onImported: () => void;
   className?: string;
 };
 
 /**
- * Supra / Gmail ingest status + manual “import now” (POST import-gmail).
- * Server-side scheduled scraping is not wired — copy explains the gap.
+ * Supra / Gmail ingest: automation status, last run, and Run now (POST import-gmail).
  */
 export function SupraGmailImportStrip({
   hasGmail,
   lastReceivedAt,
   queueActionCount,
+  gmailImport,
   onImported,
   className,
 }: SupraGmailImportStripProps) {
   const [loading, setLoading] = useState(false);
+  const [toggleLoading, setToggleLoading] = useState(false);
   const [lastMsg, setLastMsg] = useState<string | null>(null);
+  const [automationEnabled, setAutomationEnabled] = useState(gmailImport.automationEnabled);
+
+  useEffect(() => {
+    setAutomationEnabled(gmailImport.automationEnabled);
+  }, [gmailImport.automationEnabled]);
+
+  const lastRunLabel = relTimeShort(gmailImport.lastRunAt);
+  const automationSummary = automationEnabled
+    ? "Automatic import is on."
+    : "Automatic import is off. We’ll only check Gmail when you run it yourself.";
+
+  const resultSummary = useMemo(
+    () => formatSupraGmailImportResultSummary(gmailImport, hasGmail),
+    [gmailImport, hasGmail]
+  );
+
+  const setAutomation = useCallback(
+    async (enabled: boolean) => {
+      setToggleLoading(true);
+      try {
+        const res = await fetch("/api/v1/showing-hq/supra-gmail-import-settings", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ automationEnabled: enabled }),
+        });
+        const json = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+        if (!res.ok) {
+          setLastMsg(json.error?.message ?? "Couldn’t update settings");
+          return;
+        }
+        setAutomationEnabled(enabled);
+        onImported();
+      } catch {
+        setLastMsg("Couldn’t update settings");
+      } finally {
+        setToggleLoading(false);
+      }
+    },
+    [onImported]
+  );
 
   const runImport = () => {
     setLoading(true);
@@ -45,7 +94,7 @@ export function SupraGmailImportStrip({
         const d = json.data;
         if (d) {
           setLastMsg(
-            `Imported ${d.imported ?? 0}, refreshed ${d.refreshed ?? 0} (scanned ${d.scanned ?? 0})`
+            `Imported ${d.imported ?? 0} new, refreshed ${d.refreshed ?? 0} (scanned ${d.scanned ?? 0}).`
           );
         }
         onImported();
@@ -54,7 +103,7 @@ export function SupraGmailImportStrip({
       .finally(() => setLoading(false));
   };
 
-  const lastLabel = lastReceivedAt
+  const lastQueueMsgLabel = lastReceivedAt
     ? new Date(lastReceivedAt).toLocaleString(undefined, {
         dateStyle: "medium",
         timeStyle: "short",
@@ -73,11 +122,25 @@ export function SupraGmailImportStrip({
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-kp-teal/10">
             <Inbox className="h-4 w-4 text-kp-teal" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 space-y-1.5">
             <p className="text-xs font-semibold text-kp-on-surface">Supra inbox (Gmail)</p>
-            <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-variant">
-              {lastLabel ? (
-                <>Last message in queue: {lastLabel}. </>
+            <p className="text-[11px] leading-snug text-kp-on-surface-variant">{automationSummary}</p>
+            {hasGmail && lastRunLabel ? (
+              <p className="text-[11px] text-kp-on-surface-variant">
+                Last checked {lastRunLabel}
+                {gmailImport.lastRunSuccess === false ? (
+                  <span className="font-medium text-amber-600 dark:text-amber-400"> · failed</span>
+                ) : gmailImport.lastRunAt ? (
+                  <span className="text-kp-on-surface-variant"> · succeeded</span>
+                ) : null}
+              </p>
+            ) : null}
+            {resultSummary ? (
+              <p className="text-[11px] leading-snug text-kp-on-surface-variant">{resultSummary}</p>
+            ) : null}
+            <p className="text-[11px] leading-snug text-kp-on-surface-variant">
+              {lastQueueMsgLabel ? (
+                <>Latest in queue: {lastQueueMsgLabel}. </>
               ) : (
                 <>No Supra messages in your review queue yet. </>
               )}
@@ -95,12 +158,22 @@ export function SupraGmailImportStrip({
                 <>Queue is clear for actionable items.</>
               )}
             </p>
-            <p className="mt-1.5 text-[10px] leading-snug text-kp-on-surface-variant/90">
-              Automatic scheduling from the server is not enabled yet — use Import now when Gmail is
-              connected, or paste email under Supra Inbox.
-            </p>
+            {hasGmail ? (
+              <label className="flex cursor-pointer items-center gap-2 text-[11px] text-kp-on-surface-variant">
+                <input
+                  type="checkbox"
+                  className="h-3.5 w-3.5 rounded border-kp-outline bg-kp-surface-high text-kp-teal focus:ring-kp-teal/40"
+                  checked={automationEnabled}
+                  disabled={toggleLoading}
+                  onChange={(e) => void setAutomation(e.target.checked)}
+                />
+                <span>
+                  {toggleLoading ? "Saving…" : "Let ShowingHQ check Gmail automatically on a schedule"}
+                </span>
+              </label>
+            ) : null}
             {lastMsg && (
-              <p className="mt-1 text-[11px] text-kp-on-surface-variant" role="status">
+              <p className="text-[11px] text-kp-on-surface-variant" role="status">
                 {lastMsg}
               </p>
             )}
@@ -115,7 +188,7 @@ export function SupraGmailImportStrip({
             className={cn(kpBtnPrimary, "h-8 gap-1.5 text-xs")}
             title={
               hasGmail
-                ? "Pull recent Supra-related Gmail into the review queue"
+                ? "Check Gmail now for new Supra messages"
                 : "Connect Gmail under Settings → Connections"
             }
           >
@@ -124,7 +197,7 @@ export function SupraGmailImportStrip({
             ) : (
               <RefreshCw className="h-3.5 w-3.5" />
             )}
-            Import now
+            Run now
           </Button>
           <Button variant="outline" size="sm" asChild className={cn(kpBtnSecondary, "h-8 text-xs")}>
             <Link href="/showing-hq/supra-inbox">Open inbox</Link>

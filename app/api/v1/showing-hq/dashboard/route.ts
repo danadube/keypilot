@@ -386,6 +386,7 @@ export async function GET() {
       buyerAgentEmailDraftReviews,
       lastSupraIngest,
       supraQueueActionCount,
+      supraGmailImportSettings,
       privateShowingsAttentionRows,
     ] = await Promise.all([
       prismaAdmin.showing.findMany({
@@ -413,6 +414,9 @@ export async function GET() {
             in: ["INGESTED", "PARSED", "NEEDS_REVIEW", "READY_TO_APPLY"],
           },
         },
+      }),
+      prismaAdmin.supraGmailImportSettings.findUnique({
+        where: { userId: user.id },
       }),
       prismaAdmin.showing.findMany({
         where: {
@@ -715,6 +719,15 @@ export async function GET() {
         supraInboxSummary: {
           lastReceivedAt: lastSupraIngest?.receivedAt.toISOString() ?? null,
           queueActionCount: supraQueueActionCount,
+          gmailImport: {
+            automationEnabled: supraGmailImportSettings?.automationEnabled ?? true,
+            lastRunAt: supraGmailImportSettings?.lastRunAt?.toISOString() ?? null,
+            lastRunSuccess: supraGmailImportSettings?.lastRunSuccess ?? null,
+            lastRunImported: supraGmailImportSettings?.lastRunImported ?? null,
+            lastRunRefreshed: supraGmailImportSettings?.lastRunRefreshed ?? null,
+            lastRunScanned: supraGmailImportSettings?.lastRunScanned ?? null,
+            lastRunError: supraGmailImportSettings?.lastRunError ?? null,
+          },
         },
         recentReports: recentReportsOpenHouses.map((oh) => ({
           id: oh.id,

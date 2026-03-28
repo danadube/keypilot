@@ -47,9 +47,15 @@ import {
   ClipboardPaste,
   Inbox,
   ChevronDown,
-  Mail,
+  RefreshCw,
   Sparkles,
 } from "lucide-react";
+import {
+  defaultSupraGmailImportStatus,
+  formatSupraGmailImportResultSummary,
+  relTimeShort,
+  type SupraGmailImportStatus,
+} from "@/lib/showing-hq/supra-gmail-import-status";
 
 /** Local value for `<input type="datetime-local" />` */
 function dateToDatetimeLocalInputValue(d: Date): string {
@@ -459,6 +465,11 @@ export function SupraInboxView() {
   const [pasteReceivedAt, setPasteReceivedAt] = useState("");
   const [pasting, setPasting] = useState(false);
   const [gmailImporting, setGmailImporting] = useState(false);
+  const [gmailImportStatus, setGmailImportStatus] = useState<SupraGmailImportStatus | null>(null);
+  const [hasGmailConnection, setHasGmailConnection] = useState(false);
+  const [gmailAutomationLoading, setGmailAutomationLoading] = useState(true);
+  const [gmailAutomationToggleLoading, setGmailAutomationToggleLoading] = useState(false);
+  const [automationEnabledLocal, setAutomationEnabledLocal] = useState(true);
   const [pasteModalError, setPasteModalError] = useState<string | null>(null);
   /** Which intake fields were filled from a smart paste (for reviewer clarity). */
   const [pasteSplitDetected, setPasteSplitDetected] = useState<SplitPastedEmailBlobDetected | null>(null);
@@ -496,10 +507,61 @@ export function SupraInboxView() {
     setItems(raw.map(normalizeItem));
   }, []);
 
+  const loadGmailAutomation = useCallback(async () => {
+    setGmailAutomationLoading(true);
+    try {
+      const [settingsRes, connRes] = await Promise.all([
+        fetch("/api/v1/showing-hq/supra-gmail-import-settings"),
+        fetch("/api/v1/settings/connections"),
+      ]);
+      const settingsJson = (await settingsRes.json().catch(() => ({}))) as {
+        data?: {
+          automationEnabled?: boolean;
+          lastRunAt?: string | null;
+          lastRunSuccess?: boolean | null;
+          lastRunImported?: number | null;
+          lastRunRefreshed?: number | null;
+          lastRunScanned?: number | null;
+          lastRunError?: string | null;
+        };
+      };
+      const connJson = (await connRes.json().catch(() => ({}))) as {
+        data?: { connections?: Array<{ service: string }> };
+      };
+
+      if (settingsRes.ok && settingsJson.data) {
+        const d = settingsJson.data;
+        const merged: SupraGmailImportStatus = {
+          ...defaultSupraGmailImportStatus(),
+          automationEnabled: d.automationEnabled ?? true,
+          lastRunAt: d.lastRunAt ?? null,
+          lastRunSuccess: d.lastRunSuccess ?? null,
+          lastRunImported: d.lastRunImported ?? null,
+          lastRunRefreshed: d.lastRunRefreshed ?? null,
+          lastRunScanned: d.lastRunScanned ?? null,
+          lastRunError: d.lastRunError ?? null,
+        };
+        setGmailImportStatus(merged);
+        setAutomationEnabledLocal(merged.automationEnabled);
+      } else {
+        setGmailImportStatus(null);
+      }
+
+      const conns = connJson.data?.connections ?? [];
+      setHasGmailConnection(conns.some((c) => c.service === "gmail"));
+    } finally {
+      setGmailAutomationLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     setLoading(true);
     load().finally(() => setLoading(false));
   }, [load]);
+
+  useEffect(() => {
+    void loadGmailAutomation();
+  }, [loadGmailAutomation]);
 
   useEffect(() => {
     if (!successInfo) return;
@@ -653,6 +715,20 @@ export function SupraInboxView() {
     propertySuggestLoading,
   ]);
 
+  const inboxAutomationSummary = useMemo(() => {
+    if (!gmailImportStatus) return null;
+    return automationEnabledLocal
+      ? "Automatic import is on."
+      : "Automatic import is off. We’ll only check Gmail when you run it yourself.";
+  }, [gmailImportStatus, automationEnabledLocal]);
+
+  const gmailLastRunLabel = gmailImportStatus
+    ? relTimeShort(gmailImportStatus.lastRunAt)
+    : null;
+  const gmailResultSummary = gmailImportStatus
+    ? formatSupraGmailImportResultSummary(gmailImportStatus, hasGmailConnection)
+    : null;
+
   const counts = useMemo(() => {
     let ingested = 0;
     let needsReview = 0;
@@ -801,6 +877,29 @@ export function SupraInboxView() {
     return JSON.stringify(buildUpdatePayload(detail)) !== savedModalFingerprint;
   }, [detail, savedModalFingerprint]);
 
+  const patchGmailAutomationEnabled = async (enabled: boolean) => {
+    setGmailAutomationToggleLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/v1/showing-hq/supra-gmail-import-settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ automationEnabled: enabled }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+      if (!res.ok) {
+        setError(json.error?.message ?? "Couldn’t update import settings");
+        return;
+      }
+      setAutomationEnabledLocal(enabled);
+      await loadGmailAutomation();
+    } catch {
+      setError("Couldn’t update import settings");
+    } finally {
+      setGmailAutomationToggleLoading(false);
+    }
+  };
+
   const importFromGmail = async () => {
     setGmailImporting(true);
     setError(null);
@@ -821,6 +920,7 @@ export function SupraInboxView() {
         autoParsed?: number;
       };
       await load();
+      await loadGmailAutomation();
       setFilterPreset("all");
       setSuccessInfo({
         message: `Gmail: ${imported} new, ${refreshed} refreshed, ${autoParsed} auto-parsed to NEEDS_REVIEW, ${skipped} skipped (${scanned} scanned, last ~14 days, Supra senders).`,
@@ -1426,6 +1526,68 @@ export function SupraInboxView() {
         <ErrorMessage message={error} onRetry={() => load()} />
       ) : null}
 
+      {!gmailAutomationLoading && gmailImportStatus && inboxAutomationSummary ? (
+        <div className="rounded-xl border border-kp-outline/90 bg-kp-surface-high/60 px-3 py-2.5 sm:px-4">
+          <div className="flex flex-wrap items-start gap-3">
+            <div className="flex min-w-0 flex-1 gap-2">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-kp-teal/10">
+                <Inbox className="h-3.5 w-3.5 text-kp-teal" />
+              </div>
+              <div className="min-w-0 space-y-1">
+                <p className="text-xs font-semibold text-kp-on-surface">Gmail import</p>
+                <p className="text-[11px] leading-snug text-kp-on-surface-variant">
+                  {inboxAutomationSummary}
+                </p>
+                {hasGmailConnection && gmailLastRunLabel ? (
+                  <p className="text-[11px] text-kp-on-surface-variant">
+                    Last checked {gmailLastRunLabel}
+                    {gmailImportStatus.lastRunSuccess === false ? (
+                      <span className="font-medium text-amber-600 dark:text-amber-400">
+                        {" "}
+                        · last run failed
+                      </span>
+                    ) : gmailImportStatus.lastRunAt ? (
+                      <span className="text-kp-on-surface-variant"> · succeeded</span>
+                    ) : null}
+                  </p>
+                ) : null}
+                {gmailResultSummary ? (
+                  <p className="text-[11px] leading-snug text-kp-on-surface-variant">
+                    {gmailResultSummary}
+                  </p>
+                ) : null}
+                {hasGmailConnection ? (
+                  <label className="flex cursor-pointer items-center gap-2 text-[11px] text-kp-on-surface-variant">
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5 rounded border-kp-outline bg-kp-surface-high text-kp-teal focus:ring-kp-teal/40"
+                      checked={automationEnabledLocal}
+                      disabled={gmailAutomationToggleLoading}
+                      onChange={(e) => void patchGmailAutomationEnabled(e.target.checked)}
+                    />
+                    <span>
+                      {gmailAutomationToggleLoading
+                        ? "Saving…"
+                        : "Let ShowingHQ check Gmail automatically on a schedule"}
+                    </span>
+                  </label>
+                ) : (
+                  <p className="text-[11px] text-kp-on-surface-variant">
+                    <Link
+                      href="/settings/connections"
+                      className="font-medium text-kp-teal underline-offset-2 hover:underline"
+                    >
+                      Connect Gmail
+                    </Link>{" "}
+                    under Settings to enable automatic checks.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-2.5 lg:flex-row lg:flex-wrap lg:items-start lg:justify-between">
         <div className="flex flex-col gap-1.5">
           <p className={t.section}>Filter</p>
@@ -1467,12 +1629,20 @@ export function SupraInboxView() {
               variant="outline"
               size="sm"
               className={cn(supraBtnPrimary, "border-transparent")}
-              disabled={gmailImporting || pasting}
+              disabled={gmailImporting || pasting || !hasGmailConnection}
               onClick={() => void importFromGmail()}
-              title="Uses your connected Gmail (Settings → Connections). Fetches recent Supra emails."
+              title={
+                hasGmailConnection
+                  ? "Check Gmail now for new Supra messages"
+                  : "Connect Gmail under Settings → Connections"
+              }
             >
-              <Mail className="mr-1 h-3.5 w-3.5" />
-              {gmailImporting ? "Importing…" : "Import from Gmail"}
+              {gmailImporting ? (
+                <RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="mr-1 h-3.5 w-3.5" />
+              )}
+              {gmailImporting ? "Working…" : "Run now"}
             </Button>
             <Button
               type="button"
@@ -1571,7 +1741,7 @@ export function SupraInboxView() {
             <p className="mt-2 max-w-md text-sm leading-relaxed text-kp-on-surface/88">
               {items.length === 0 ? (
                 <>
-                  Use <strong>Import from Gmail</strong> (needs Gmail connected under Settings) or{" "}
+                  Use <strong>Run now</strong> (needs Gmail connected under Settings) or{" "}
                   <strong>Paste a real Supra email</strong>. You can also add <strong>Quick sample</strong> rows
                   to try the workflow.
                 </>
@@ -1596,11 +1766,15 @@ export function SupraInboxView() {
                   variant="outline"
                   size="sm"
                   className={cn(supraBtnPrimary, "border-transparent")}
-                  disabled={gmailImporting || pasting}
+                  disabled={gmailImporting || pasting || !hasGmailConnection}
                   onClick={() => void importFromGmail()}
                 >
-                  <Mail className="mr-1 h-3.5 w-3.5" />
-                  {gmailImporting ? "Importing…" : "Import from Gmail"}
+                  {gmailImporting ? (
+                    <RefreshCw className="mr-1 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-1 h-3.5 w-3.5" />
+                  )}
+                  {gmailImporting ? "Working…" : "Run now"}
                 </Button>
                 <Button
                   type="button"
