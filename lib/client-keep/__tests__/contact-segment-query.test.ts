@@ -1,6 +1,7 @@
 import {
   buildContactsApiUrl,
   hasSegmentFiltersInSearchParams,
+  parseContactsListSortFromSearchParams,
   parseFollowUpNeedsFromSearchParams,
   parseSegmentFromSearchParams,
   parseStatusTabFromSearchParams,
@@ -90,6 +91,15 @@ describe("contact-segment-query", () => {
         "/contacts?status=LEAD&followUp=needs"
       );
     });
+
+    it("includes sort=recent when sort mode is recent", () => {
+      expect(segmentToHref("__all__", null, false, "recent")).toBe(
+        "/contacts?sort=recent"
+      );
+      expect(segmentToHref("LEAD", "t1", true, "recent")).toBe(
+        "/contacts?status=LEAD&tagId=t1&followUp=needs&sort=recent"
+      );
+    });
   });
 
   describe("buildContactsApiUrl", () => {
@@ -100,6 +110,21 @@ describe("contact-segment-query", () => {
       expect(buildContactsApiUrl("__all__", null)).toBe("/api/v1/contacts");
       expect(buildContactsApiUrl("__all__", null, true)).toBe(
         "/api/v1/contacts?followUp=needs"
+      );
+      expect(buildContactsApiUrl("__all__", null, false, "recent")).toBe(
+        "/api/v1/contacts?sort=recent"
+      );
+    });
+  });
+
+  describe("parseContactsListSortFromSearchParams", () => {
+    it("defaults to followups", () => {
+      expect(parseContactsListSortFromSearchParams(sp(""))).toBe("followups");
+    });
+
+    it("reads sort=recent", () => {
+      expect(parseContactsListSortFromSearchParams(sp("sort=recent"))).toBe(
+        "recent"
       );
     });
   });

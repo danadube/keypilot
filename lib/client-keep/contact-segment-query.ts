@@ -79,16 +79,30 @@ export function parseFollowUpNeedsFromSearchParams(
   return sp.get("followUp") === "needs";
 }
 
+/**
+ * Contacts list ordering: `followups` (default) = overdue then upcoming then none;
+ * `recent` = creation time only (legacy).
+ */
+export type ContactsListSortMode = "followups" | "recent";
+
+export function parseContactsListSortFromSearchParams(
+  sp: URLSearchParams
+): ContactsListSortMode {
+  return sp.get("sort") === "recent" ? "recent" : "followups";
+}
+
 /** Path for Next.js router / Link (same as historical buildContactsPageHref). */
 export function segmentToHref(
   status: ContactSegmentStatusTab,
   tagId: string | null,
-  needsFollowUp = false
+  needsFollowUp = false,
+  sortMode: ContactsListSortMode = "followups"
 ): string {
   const params = new URLSearchParams();
   if (status !== "__all__") params.set("status", status);
   if (tagId) params.set("tagId", tagId);
   if (needsFollowUp) params.set("followUp", "needs");
+  if (sortMode === "recent") params.set("sort", "recent");
   const q = params.toString();
   return q ? `/contacts?${q}` : "/contacts";
 }
@@ -96,12 +110,14 @@ export function segmentToHref(
 export function buildContactsApiUrl(
   status: ContactSegmentStatusTab,
   tagId: string | null,
-  needsFollowUp = false
+  needsFollowUp = false,
+  sortMode: ContactsListSortMode = "followups"
 ): string {
   const params = new URLSearchParams();
   if (status !== "__all__") params.set("status", status);
   if (tagId) params.set("tagId", tagId);
   if (needsFollowUp) params.set("followUp", "needs");
+  if (sortMode === "recent") params.set("sort", "recent");
   const q = params.toString();
   return q ? `/api/v1/contacts?${q}` : "/api/v1/contacts";
 }

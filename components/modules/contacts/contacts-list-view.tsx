@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -14,23 +14,30 @@ import {
   TrendingUp,
   BookmarkPlus,
   Bell,
+  CalendarClock,
+  Check,
+  Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { MetricCard } from "@/components/ui/metric-card";
 import { SectionTabs } from "@/components/ui/section-tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { useProductTier } from "@/components/ProductTierProvider";
+import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import {
   STATUS_TAB_VALUES,
   buildContactsApiUrl,
   hasSegmentFiltersInSearchParams,
+  parseContactsListSortFromSearchParams,
   parseFollowUpNeedsFromSearchParams,
   parseSegmentFromSearchParams,
   parseTagIdFromSearchParams,
   segmentToHref,
   tabToSavedStatus,
   type ContactSegmentStatusTab,
+  type ContactsListSortMode,
 } from "@/lib/client-keep/contact-segment-query";
 import {
   MAX_SAVED_SEGMENT_NAME_LENGTH,
@@ -41,6 +48,8 @@ import {
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type ContactStatus = "LEAD" | "CONTACTED" | "NURTURING" | "READY" | "LOST";
+
+type PendingReminderRow = { id: string; dueAt: string; body: string };
 
 type Contact = {
   id: string;
@@ -55,6 +64,7 @@ type Contact = {
   contactTags?: { tag: { id: string; name: string } }[];
   createdAt: string;
   _count?: { followUpReminders: number };
+  followUpReminders?: PendingReminderRow[];
 };
 
 type StatusTabValue = ContactSegmentStatusTab;
@@ -90,7 +100,8 @@ function statusLabel(s: ContactStatus | null | undefined): string {
 function useContacts(
   statusFilter: StatusTabValue,
   tagIdFilter: string | null,
-  needsFollowUp: boolean
+  needsFollowUp: boolean,
+  sortMode: ContactsListSortMode
 ) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,11 +110,12 @@ function useContacts(
   function load(
     status: StatusTabValue,
     tagId: string | null,
-    followUp: boolean
+    followUp: boolean,
+    sort: ContactsListSortMode
   ) {
     setError(null);
     setLoading(true);
-    fetch(buildContactsApiUrl(status, tagId, followUp))
+    fetch(buildContactsApiUrl(status, tagId, followUp, sort))
       .then((res) => res.json().then((json) => ({ res, json })))
       .then(({ res, json }) => {
         if (!res.ok) {
@@ -128,14 +140,14 @@ function useContacts(
   }
 
   useEffect(() => {
-    load(statusFilter, tagIdFilter, needsFollowUp);
-  }, [statusFilter, tagIdFilter, needsFollowUp]);
+    load(statusFilter, tagIdFilter, needsFollowUp, sortMode);
+  }, [statusFilter, tagIdFilter, needsFollowUp, sortMode]);
 
   return {
     contacts,
     loading,
     error,
-    reload: () => load(statusFilter, tagIdFilter, needsFollowUp),
+    reload: () => load(statusFilter, tagIdFilter, needsFollowUp, sortMode),
   };
 }
 
@@ -152,6 +164,28 @@ function matchesSearch(c: Contact, q: string): boolean {
 
 function fullName(c: Contact) {
   return `${c.firstName} ${c.lastName}`.trim() || "—";
+}
+
+function nextPendingReminder(c: Contact): PendingReminderRow | null {
+  const list = c.followUpReminders;
+  if (!list?.length) return null;
+  return list[0];
+}
+
+type FollowUpUrgency = "none" | "overdue" | "upcoming";
+
+function followUpUrgency(c: Contact, nowMs: number): FollowUpUrgency {
+  const next = nextPendingReminder(c);
+  if (!next) return "none";
+  return new Date(next.dueAt).getTime() < nowMs ? "overdue" : "upcoming";
+}
+
+function formatShortDue(iso: string) {
+  return new Date(iso).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -301,10 +335,16 @@ const TD = "px-4 py-3.5 text-sm";
 function ContactsTable({
   contacts,
   hasCrm,
+  patchingReminderId,
+  onMarkReminderDone,
 }: {
   contacts: Contact[];
   hasCrm: boolean;
+  patchingReminderId: string | null;
+  onMarkReminderDone: (reminderId: string) => void;
 }) {
+  const nowMs = Date.now();
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
@@ -317,33 +357,63 @@ function ContactsTable({
             <th className={cn(TH, "hidden md:table-cell")}>Email</th>
             <th className={cn(TH, "hidden lg:table-cell")}>Phone</th>
             <th className={cn(TH, "hidden sm:table-cell")}>Source</th>
-            <th className={cn(TH, "w-16")} />
+            <th className={cn(TH, hasCrm ? "min-w-[9.5rem] text-right" : "w-16")}>
+              {hasCrm ? "Actions" : ""}
+            </th>
           </tr>
         </thead>
         <tbody>
-          {contacts.map((c, i) => (
+          {contacts.map((c, i) => {
+            const urg = hasCrm ? followUpUrgency(c, nowMs) : "none";
+            const nextRem = hasCrm ? nextPendingReminder(c) : null;
+            const nPending = c._count?.followUpReminders ?? 0;
+
+            return (
             <tr
               key={c.id}
               className={cn(
                 "border-b border-kp-outline-variant transition-colors hover:bg-kp-surface-high",
-                i % 2 === 1 && "bg-kp-surface/40"
+                i % 2 === 1 && "bg-kp-surface/40",
+                hasCrm &&
+                  urg === "overdue" &&
+                  "border-l-[3px] border-l-amber-500 bg-amber-500/[0.05]",
+                hasCrm &&
+                  urg === "upcoming" &&
+                  "border-l-[3px] border-l-kp-teal/55 bg-kp-teal/[0.04]"
               )}
             >
               {/* Name */}
               <td className={TD}>
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="font-medium text-kp-on-surface">{fullName(c)}</p>
-                  {hasCrm &&
-                  (c._count?.followUpReminders ?? 0) > 0 ? (
+                  {hasCrm && nPending > 0 ? (
                     <Link
                       href={`/contacts/${c.id}`}
-                      title="Has pending follow-up — open contact"
-                      className="inline-flex items-center gap-0.5 rounded-full border border-kp-teal/35 bg-kp-teal/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-kp-teal hover:bg-kp-teal/20"
+                      title={
+                        urg === "overdue"
+                          ? "Overdue follow-up — open contact"
+                          : "Upcoming follow-up — open contact"
+                      }
+                      className={cn(
+                        "inline-flex items-center gap-0.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide transition-colors",
+                        urg === "overdue" &&
+                          "border-amber-500/45 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25",
+                        urg === "upcoming" &&
+                          "border-kp-teal/40 bg-kp-teal/12 text-kp-teal hover:bg-kp-teal/20"
+                      )}
                     >
-                      <Bell className="h-3 w-3" aria-hidden />
-                      {(c._count?.followUpReminders ?? 0) > 1
-                        ? c._count?.followUpReminders
-                        : "FU"}
+                      {urg === "overdue" ? (
+                        <Clock className="h-3 w-3 shrink-0" aria-hidden />
+                      ) : (
+                        <Bell className="h-3 w-3 shrink-0" aria-hidden />
+                      )}
+                      {urg === "overdue"
+                        ? nPending > 1
+                          ? `${nPending} overdue`
+                          : "Overdue"
+                        : nPending > 1
+                          ? `${nPending} due`
+                          : formatShortDue(nextRem!.dueAt)}
                     </Link>
                   ) : null}
                 </div>
@@ -423,19 +493,68 @@ function ContactsTable({
                 <span className="text-xs text-kp-on-surface-variant">{c.source}</span>
               </td>
 
-              {/* View */}
+              {/* Actions */}
               <td className={cn(TD, "text-right")}>
-                <Link
-                  href={`/contacts/${c.id}`}
-                  className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-kp-teal transition-colors hover:bg-kp-teal/10"
-                  aria-label={`View ${fullName(c)}`}
-                >
-                  View
-                  <ExternalLink className="h-3 w-3 opacity-70" />
-                </Link>
+                {hasCrm ? (
+                  <div className="flex flex-col items-end gap-1.5 sm:flex-row sm:flex-wrap sm:justify-end">
+                    <Link
+                      href={`/contacts/${c.id}`}
+                      className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-kp-teal transition-colors hover:bg-kp-teal/10"
+                      aria-label={`Open ${fullName(c)}`}
+                    >
+                      Open
+                      <ExternalLink className="h-3 w-3 opacity-70" />
+                    </Link>
+                    {nextRem ? (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={!!patchingReminderId}
+                          className={cn(
+                            kpBtnSecondary,
+                            "h-7 gap-1 px-2 text-[11px]"
+                          )}
+                          onClick={() => onMarkReminderDone(nextRem.id)}
+                        >
+                          <Check className="h-3 w-3" aria-hidden />
+                          {patchingReminderId === nextRem.id
+                            ? "…"
+                            : "Done"}
+                        </Button>
+                        <Link
+                          href={`/contacts/${c.id}#schedule-follow-up`}
+                          className="inline-flex h-7 items-center gap-1 rounded-md border border-kp-outline bg-kp-surface-high px-2 text-[11px] font-medium text-kp-on-surface hover:bg-kp-surface"
+                        >
+                          <CalendarClock className="h-3 w-3 shrink-0" />
+                          Schedule
+                        </Link>
+                      </>
+                    ) : (
+                      <Link
+                        href={`/contacts/${c.id}#schedule-follow-up`}
+                        className="inline-flex h-7 items-center gap-1 rounded-md border border-dashed border-kp-outline/80 px-2 text-[11px] text-kp-on-surface-variant hover:border-kp-teal/40 hover:text-kp-on-surface"
+                      >
+                        <CalendarClock className="h-3 w-3" />
+                        Schedule
+                      </Link>
+                    )}
+                  </div>
+                ) : (
+                  <Link
+                    href={`/contacts/${c.id}`}
+                    className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-kp-teal transition-colors hover:bg-kp-teal/10"
+                    aria-label={`View ${fullName(c)}`}
+                  >
+                    View
+                    <ExternalLink className="h-3 w-3 opacity-70" />
+                  </Link>
+                )}
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -474,10 +593,36 @@ export function ContactsListView() {
   const [saveSegmentError, setSaveSegmentError] = useState<string | null>(null);
   const { hasCrm } = useProductTier();
   const needsFollowUp = parseFollowUpNeedsFromSearchParams(searchParams);
+  const listSort = parseContactsListSortFromSearchParams(searchParams);
+  const [patchingReminderId, setPatchingReminderId] = useState<string | null>(
+    null
+  );
   const { contacts, loading, error, reload } = useContacts(
     statusFilter,
     tagIdFilter,
-    needsFollowUp
+    needsFollowUp,
+    listSort
+  );
+
+  const onMarkReminderDone = useCallback(
+    async (reminderId: string) => {
+      setPatchingReminderId(reminderId);
+      try {
+        const res = await fetch(`/api/v1/reminders/${reminderId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "DONE" }),
+        });
+        const json = await res.json();
+        if (json.error) throw new Error(json.error.message);
+        reload();
+      } catch {
+        /* keep list unchanged */
+      } finally {
+        setPatchingReminderId(null);
+      }
+    },
+    [reload]
   );
 
   useEffect(() => {
@@ -571,7 +716,7 @@ export function ContactsListView() {
             Contacts
           </h1>
           <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-            Leads from open house sign-ins
+            Daily CRM hub — triage follow-ups, open contacts, clear the queue.
           </p>
         </div>
         {canSaveSegment && (
@@ -628,7 +773,7 @@ export function ContactsListView() {
                   onClick={() => {
                     setTagIdFilter(null);
                     router.replace(
-                      segmentToHref(statusFilter, null, needsFollowUp),
+                      segmentToHref(statusFilter, null, needsFollowUp, listSort),
                       {
                         scroll: false,
                       }
@@ -647,7 +792,12 @@ export function ContactsListView() {
                   type="button"
                   onClick={() =>
                     router.replace(
-                      segmentToHref(statusFilter, tagIdFilter, false),
+                      segmentToHref(
+                        statusFilter,
+                        tagIdFilter,
+                        false,
+                        listSort
+                      ),
                       { scroll: false }
                     )
                   }
@@ -687,7 +837,12 @@ export function ContactsListView() {
                   const next = v as StatusTabValue;
                   setStatusFilter(next);
                   router.replace(
-                    segmentToHref(next, tagIdFilter, needsFollowUp),
+                    segmentToHref(
+                      next,
+                      tagIdFilter,
+                      needsFollowUp,
+                      listSort
+                    ),
                     {
                       scroll: false,
                     }
@@ -700,7 +855,12 @@ export function ContactsListView() {
                 type="button"
                 onClick={() =>
                   router.replace(
-                    segmentToHref(statusFilter, tagIdFilter, !needsFollowUp),
+                    segmentToHref(
+                      statusFilter,
+                      tagIdFilter,
+                      !needsFollowUp,
+                      listSort
+                    ),
                     { scroll: false }
                   )
                 }
@@ -720,6 +880,58 @@ export function ContactsListView() {
               >
                 Open follow-up queue
               </Link>
+              <span
+                className="mx-1 hidden text-kp-on-surface-variant sm:inline"
+                aria-hidden
+              >
+                ·
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.replace(
+                      segmentToHref(
+                        statusFilter,
+                        tagIdFilter,
+                        needsFollowUp,
+                        "followups"
+                      ),
+                      { scroll: false }
+                    )
+                  }
+                  className={cn(
+                    "rounded-md border px-2.5 py-1.5 text-[11px] font-medium transition-colors",
+                    listSort === "followups"
+                      ? "border-kp-gold/50 bg-kp-gold/10 text-kp-gold"
+                      : "border-kp-outline bg-kp-surface-high text-kp-on-surface-variant hover:text-kp-on-surface"
+                  )}
+                >
+                  Follow-ups first
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.replace(
+                      segmentToHref(
+                        statusFilter,
+                        tagIdFilter,
+                        needsFollowUp,
+                        "recent"
+                      ),
+                      { scroll: false }
+                    )
+                  }
+                  className={cn(
+                    "rounded-md border px-2.5 py-1.5 text-[11px] font-medium transition-colors",
+                    listSort === "recent"
+                      ? "border-kp-gold/50 bg-kp-gold/10 text-kp-gold"
+                      : "border-kp-outline bg-kp-surface-high text-kp-on-surface-variant hover:text-kp-on-surface"
+                  )}
+                >
+                  Newest first
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -749,7 +961,12 @@ export function ContactsListView() {
         ) : visibleContacts.length === 0 ? (
           <EmptyState isFiltered={isFiltered} onReset={handleClearFilters} />
         ) : (
-          <ContactsTable contacts={visibleContacts} hasCrm={hasCrm} />
+          <ContactsTable
+            contacts={visibleContacts}
+            hasCrm={hasCrm}
+            patchingReminderId={hasCrm ? patchingReminderId : null}
+            onMarkReminderDone={onMarkReminderDone}
+          />
         )}
 
         {/* Footer: CRM legend for non-CRM users */}

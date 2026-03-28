@@ -264,6 +264,20 @@ export function ContactDetailView({ id }: { id: string }) {
     loadData();
   }, [loadData]);
 
+  /** Open schedule panel when linked from Contacts list (`#schedule-follow-up`). */
+  useEffect(() => {
+    if (loading || !contact || typeof window === "undefined") return;
+    if (window.location.hash !== "#schedule-follow-up") return;
+    const t = window.setTimeout(() => {
+      const el = document.getElementById("schedule-follow-up");
+      if (el instanceof HTMLDetailsElement) {
+        el.open = true;
+        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [loading, contact?.id]);
+
   const nextReminder = useMemo(() => {
     const list = contact?.followUpReminders ?? [];
     return list.length ? list[0] : null;
