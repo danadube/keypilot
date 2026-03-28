@@ -30,7 +30,19 @@ export function ContactDetailView({ id }: { id: string }) {
   const [commChannel, setCommChannel] = useState<"CALL" | "EMAIL">("CALL");
   const [commBody, setCommBody] = useState("");
   const [loggingComm, setLoggingComm] = useState(false);
+  const [patchingReminderId, setPatchingReminderId] = useState<string | null>(
+    null
+  );
   const { hasCrm: hasCrmAccess } = useProductTier();
+
+  const refreshActivities = useCallback(() => {
+    return fetch(`/api/v1/contacts/${id}/activities`)
+      .then((res) => res.json())
+      .then((json) => {
+        if (!json.error) setActivities(json.data || []);
+      })
+      .catch(() => {});
+  }, [id]);
 
   const assignToMe = useCallback(() => {
     if (!contact || !currentUserId) return;
@@ -135,17 +147,17 @@ export function ContactDetailView({ id }: { id: string }) {
       .then((res) => res.json())
       .then((json) => {
         if (json.error) throw new Error(json.error.message);
-        setContact((prev) =>
-          prev
-            ? {
-                ...prev,
-                followUpReminders: [
-                  ...(prev.followUpReminders || []),
-                  json.data,
-                ],
-              }
-            : null
-        );
+        setContact((prev) => {
+          if (!prev) return null;
+          const merged = [
+            ...(prev.followUpReminders || []),
+            json.data,
+          ].sort(
+            (a, b) =>
+              new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()
+          );
+          return { ...prev, followUpReminders: merged };
+        });
         setReminderBody("");
         setReminderDue("");
       })
@@ -155,6 +167,7 @@ export function ContactDetailView({ id }: { id: string }) {
 
   const updateReminderStatus = useCallback(
     (reminderId: string, status: "DONE" | "DISMISSED") => {
+      setPatchingReminderId(reminderId);
       fetch(`/api/v1/reminders/${reminderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -162,7 +175,7 @@ export function ContactDetailView({ id }: { id: string }) {
       })
         .then((res) => res.json())
         .then((json) => {
-          if (!json.error)
+          if (!json.error) {
             setContact((prev) =>
               prev
                 ? {
@@ -173,10 +186,13 @@ export function ContactDetailView({ id }: { id: string }) {
                   }
                 : null
             );
+            void refreshActivities();
+          }
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => setPatchingReminderId(null));
     },
-    []
+    [refreshActivities]
   );
 
   const logCommunication = useCallback(() => {
@@ -191,21 +207,12 @@ export function ContactDetailView({ id }: { id: string }) {
       .then((res) => res.json())
       .then((json) => {
         if (json.error) throw new Error(json.error.message);
-        setActivities((prev) => [
-          {
-            id: json.data.id,
-            activityType:
-              commChannel === "CALL" ? "CALL_LOGGED" : "EMAIL_LOGGED",
-            body: json.data.body,
-            occurredAt: json.data.occurredAt,
-          },
-          ...prev,
-        ]);
         setCommBody("");
+        void refreshActivities();
       })
       .catch(() => setError("Failed to log"))
       .finally(() => setLoggingComm(false));
-  }, [id, commChannel, commBody, loggingComm]);
+  }, [id, commChannel, commBody, loggingComm, refreshActivities]);
 
   const addNote = useCallback(() => {
     const body = noteBody.trim();
@@ -219,21 +226,12 @@ export function ContactDetailView({ id }: { id: string }) {
       .then((res) => res.json())
       .then((json) => {
         if (json.error) throw new Error(json.error.message);
-        const newActivity = json.data;
-        setActivities((prev) => [
-          {
-            id: newActivity.id,
-            activityType: "NOTE_ADDED",
-            body: newActivity.body,
-            occurredAt: newActivity.occurredAt,
-          },
-          ...prev,
-        ]);
         setNoteBody("");
+        void refreshActivities();
       })
       .catch(() => setError("Failed to add note"))
       .finally(() => setAddingNote(false));
-  }, [id, noteBody, addingNote]);
+  }, [id, noteBody, addingNote, refreshActivities]);
 
   const loadData = useCallback(() => {
     setError(null);
@@ -271,6 +269,12 @@ export function ContactDetailView({ id }: { id: string }) {
     return list.length ? list[0] : null;
   }, [contact?.followUpReminders]);
 
+  const markNextReminderDone = useCallback(() => {
+    const r = nextReminder;
+    if (!r) return;
+    updateReminderStatus(r.id, "DONE");
+  }, [nextReminder, updateReminderStatus]);
+
   if (loading) return <PageLoading message="Loading contact…" />;
   if (error || !contact)
     return <ErrorMessage message={error || "Not found"} onRetry={loadData} />;
@@ -280,6 +284,8 @@ export function ContactDetailView({ id }: { id: string }) {
     .join(" ");
   const reminders = contact.followUpReminders ?? [];
   const isAssignedToMe = contact.assignedToUserId === currentUserId;
+  const markingHeroReminder =
+    !!nextReminder && patchingReminderId === nextReminder.id;
 
   return (
     <div className="flex flex-col gap-6">
@@ -290,6 +296,14 @@ export function ContactDetailView({ id }: { id: string }) {
         onStatusChange={updateStatus}
         activities={activities}
         nextReminder={nextReminder}
+        onMarkNextReminderDone={markNextReminderDone}
+        markingReminder={markingHeroReminder}
+        reminderDue={reminderDue}
+        reminderBody={reminderBody}
+        onReminderDueChange={setReminderDue}
+        onReminderBodyChange={setReminderBody}
+        onAddReminder={addReminder}
+        addingReminder={addingReminder}
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_min(100%,340px)] lg:items-start">
@@ -331,6 +345,7 @@ export function ContactDetailView({ id }: { id: string }) {
               reminderDue={reminderDue}
               reminderBody={reminderBody}
               addingReminder={addingReminder}
+              patchingReminderId={patchingReminderId}
               onReminderDueChange={setReminderDue}
               onReminderBodyChange={setReminderBody}
               onAddReminder={addReminder}

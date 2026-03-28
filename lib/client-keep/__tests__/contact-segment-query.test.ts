@@ -1,6 +1,7 @@
 import {
   buildContactsApiUrl,
   hasSegmentFiltersInSearchParams,
+  parseFollowUpNeedsFromSearchParams,
   parseSegmentFromSearchParams,
   parseStatusTabFromSearchParams,
   parseTagIdFromSearchParams,
@@ -80,6 +81,15 @@ describe("contact-segment-query", () => {
         "/contacts?status=LOST&tagId=tid"
       );
     });
+
+    it("includes followUp=needs when requested", () => {
+      expect(segmentToHref("__all__", null, true)).toBe(
+        "/contacts?followUp=needs"
+      );
+      expect(segmentToHref("LEAD", null, true)).toBe(
+        "/contacts?status=LEAD&followUp=needs"
+      );
+    });
   });
 
   describe("buildContactsApiUrl", () => {
@@ -88,6 +98,18 @@ describe("contact-segment-query", () => {
         "/api/v1/contacts?status=CONTACTED&tagId=z"
       );
       expect(buildContactsApiUrl("__all__", null)).toBe("/api/v1/contacts");
+      expect(buildContactsApiUrl("__all__", null, true)).toBe(
+        "/api/v1/contacts?followUp=needs"
+      );
+    });
+  });
+
+  describe("parseFollowUpNeedsFromSearchParams", () => {
+    it("detects followUp=needs", () => {
+      expect(parseFollowUpNeedsFromSearchParams(sp("followUp=needs"))).toBe(
+        true
+      );
+      expect(parseFollowUpNeedsFromSearchParams(sp(""))).toBe(false);
     });
   });
 
@@ -128,6 +150,10 @@ describe("contact-segment-query", () => {
 
     it("is true when tagId is set", () => {
       expect(hasSegmentFiltersInSearchParams(sp("tagId=u1"))).toBe(true);
+    });
+
+    it("is true when followUp=needs", () => {
+      expect(hasSegmentFiltersInSearchParams(sp("followUp=needs"))).toBe(true);
     });
 
     it("is false when status is invalid (ignored)", () => {

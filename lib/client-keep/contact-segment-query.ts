@@ -72,25 +72,36 @@ export function parseTagIdFromSearchParams(sp: URLSearchParams): string | null {
   return normalizeSavedTagIdValue(sp.get("tagId"));
 }
 
+/** `followUp=needs` — contacts with at least one pending CRM reminder for the current user. */
+export function parseFollowUpNeedsFromSearchParams(
+  sp: URLSearchParams
+): boolean {
+  return sp.get("followUp") === "needs";
+}
+
 /** Path for Next.js router / Link (same as historical buildContactsPageHref). */
 export function segmentToHref(
   status: ContactSegmentStatusTab,
-  tagId: string | null
+  tagId: string | null,
+  needsFollowUp = false
 ): string {
   const params = new URLSearchParams();
   if (status !== "__all__") params.set("status", status);
   if (tagId) params.set("tagId", tagId);
+  if (needsFollowUp) params.set("followUp", "needs");
   const q = params.toString();
   return q ? `/contacts?${q}` : "/contacts";
 }
 
 export function buildContactsApiUrl(
   status: ContactSegmentStatusTab,
-  tagId: string | null
+  tagId: string | null,
+  needsFollowUp = false
 ): string {
   const params = new URLSearchParams();
   if (status !== "__all__") params.set("status", status);
   if (tagId) params.set("tagId", tagId);
+  if (needsFollowUp) params.set("followUp", "needs");
   const q = params.toString();
   return q ? `/api/v1/contacts?${q}` : "/api/v1/contacts";
 }
@@ -114,5 +125,9 @@ export function tabToSavedStatus(
 /** True when URL encodes at least one server-side list filter (save-worthy). */
 export function hasSegmentFiltersInSearchParams(sp: URLSearchParams): boolean {
   const { status, tagId } = parseSegmentFromSearchParams(sp);
-  return status !== "__all__" || tagId !== null;
+  return (
+    status !== "__all__" ||
+    tagId !== null ||
+    parseFollowUpNeedsFromSearchParams(sp)
+  );
 }

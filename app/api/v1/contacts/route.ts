@@ -1,43 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prismaAdmin } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { findOrCreateContact } from "@/lib/contact-dedupe";
-import { canAccessContact } from "@/lib/contacts/contact-access";
-import { hasModuleAccess, type ModuleAccessMap } from "@/lib/module-access";
-import { CreateContactSchema } from "@/lib/validations/contact";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
-
-/** IDs visible on the dashboard list: open-house visitors + contacts assigned to the user (e.g. manual create). */
-async function getDashboardVisibleContactIds(userId: string): Promise<string[]> {
-  const openHouses = await prismaAdmin.openHouse.findMany({
-    where: { hostUserId: userId, deletedAt: null },
-    select: { id: true },
-  });
-  const openHouseIds = openHouses.map((oh) => oh.id);
-
-  const visitors = await prismaAdmin.openHouseVisitor.findMany({
-    where: { openHouseId: { in: openHouseIds } },
-    select: { contactId: true },
-    distinct: ["contactId"],
-  });
-  const fromVisitors = visitors.map((v) => v.contactId);
-
-  const assignedRows = await prismaAdmin.contact.findMany({
-    where: { assignedToUserId: userId, deletedAt: null },
-    select: { id: true },
-  });
-  const assignedIds = assignedRows.map((r) => r.id);
-
-  return Array.from(new Set([...fromVisitors, ...assignedIds]));
-}
 
 export async function GET(_req: NextRequest) {
   try {
     const user = await getCurrentUser();
 
-    const contactIds = await getDashboardVisibleContactIds(user.id);
+    // Contacts scoped to those created via current user's open houses
+    const openHouses = await prismaAdmin.openHouse.findMany({
+      where: { hostUserId: user.id, deletedAt: null },
+      select: { id: true },
+    });
+    const openHouseIds = openHouses.map((oh) => oh.id);
+
+    const visitors = await prismaAdmin.openHouseVisitor.findMany({
+      where: { openHouseId: { in: openHouseIds } },
+      select: { contactId: true },
+      distinct: ["contactId"],
+    });
+    const contactIds = Array.from(new Set(visitors.map((v) => v.contactId)));
 
     const { searchParams } = new URL(_req.url);
     const status = searchParams.get("status")?.toUpperCase();
@@ -60,9 +44,14 @@ export async function GET(_req: NextRequest) {
       tagFilter = { contactTags: { some: { tagId: ownedTag.id } } };
     }
 
-    if (contactIds.length === 0) {
-      return NextResponse.json({ data: [] });
-    }
+    const needsFollowUp = searchParams.get("followUp") === "needs";
+    const followUpFilter = needsFollowUp
+      ? {
+          followUpReminders: {
+            some: { userId: user.id, status: "PENDING" as const },
+          },
+        }
+      : {};
 
     const contacts = await prismaAdmin.contact.findMany({
       where: {
@@ -70,78 +59,23 @@ export async function GET(_req: NextRequest) {
         deletedAt: null,
         ...statusFilter,
         ...tagFilter,
+        ...followUpFilter,
       },
       include: {
         assignedToUser: { select: { id: true, name: true } },
         contactTags: { include: { tag: true } },
+        _count: {
+          select: {
+            followUpReminders: {
+              where: { userId: user.id, status: "PENDING" },
+            },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
 
     return NextResponse.json({ data: contacts });
-  } catch (err) {
-    return apiErrorFromCaught(err);
-  }
-}
-
-export async function POST(req: NextRequest) {
-  try {
-    const user = await getCurrentUser();
-    const accessMap = user.moduleAccess as ModuleAccessMap | null | undefined;
-    if (!hasModuleAccess(accessMap, "client-keep")) {
-      return apiError("ClientKeep is required to add contacts", 403);
-    }
-
-    const raw = await req.json();
-    const parsed = CreateContactSchema.safeParse(raw);
-    if (!parsed.success) {
-      return apiError(
-        parsed.error.issues[0]?.message ?? "Validation error",
-        400
-      );
-    }
-
-    const { firstName, lastName, email, phone, notes } = parsed.data;
-
-    const { contact, wasCreated } = await findOrCreateContact({
-      firstName,
-      lastName,
-      email: email ?? undefined,
-      phone: phone ?? undefined,
-      notes: notes ?? undefined,
-    });
-
-    if (!wasCreated) {
-      const allowed = await canAccessContact(contact.id, user.id);
-      if (!allowed) {
-        return apiError(
-          "This email or phone is already on a contact you can't access. Use a different email or phone number.",
-          409
-        );
-      }
-      const hydrated = await prismaAdmin.contact.findFirst({
-        where: { id: contact.id, deletedAt: null },
-        include: {
-          assignedToUser: { select: { id: true, name: true } },
-          contactTags: { include: { tag: true } },
-        },
-      });
-      return NextResponse.json({ data: hydrated ?? contact });
-    }
-
-    const updated = await prismaAdmin.contact.update({
-      where: { id: contact.id },
-      data: {
-        assignedToUserId: user.id,
-        source: "Manual",
-      },
-      include: {
-        assignedToUser: { select: { id: true, name: true } },
-        contactTags: { include: { tag: true } },
-      },
-    });
-
-    return NextResponse.json({ data: updated });
   } catch (err) {
     return apiErrorFromCaught(err);
   }

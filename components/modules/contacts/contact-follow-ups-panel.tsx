@@ -18,6 +18,7 @@ type ContactFollowUpsPanelProps = {
   reminderDue: string;
   reminderBody: string;
   addingReminder: boolean;
+  patchingReminderId: string | null;
   onReminderDueChange: (v: string) => void;
   onReminderBodyChange: (v: string) => void;
   onAddReminder: () => void;
@@ -30,6 +31,7 @@ export function ContactFollowUpsPanel({
   reminderDue,
   reminderBody,
   addingReminder,
+  patchingReminderId,
   onReminderDueChange,
   onReminderBodyChange,
   onAddReminder,
@@ -67,6 +69,7 @@ export function ContactFollowUpsPanel({
                     "h-6 px-2 text-xs text-kp-teal hover:bg-kp-teal/10 hover:text-kp-teal"
                   )}
                   onClick={() => onReminderDone(r.id)}
+                  disabled={!!patchingReminderId}
                   aria-label="Mark done"
                 >
                   <Check className="h-3 w-3" />
@@ -76,6 +79,7 @@ export function ContactFollowUpsPanel({
                   variant="ghost"
                   className={cn(kpBtnTertiary, "h-6 px-2 text-xs")}
                   onClick={() => onReminderDismiss(r.id)}
+                  disabled={!!patchingReminderId}
                   aria-label="Dismiss"
                 >
                   <X className="h-3 w-3" />
