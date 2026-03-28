@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -18,8 +25,8 @@ import {
   Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MetricCard } from "@/components/ui/metric-card";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { Button } from "@/components/ui/button";
+import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 import { ShowingBuyerAgentFeedbackDraftPanel } from "@/components/showing-hq/ShowingBuyerAgentFeedbackDraftPanel";
@@ -123,6 +130,29 @@ function formatTime(d: string) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+/** User-facing source label — API values stay MANUAL / SUPRA_SCRAPE. */
+function showingSourceLabel(raw: string): string {
+  if (raw === "SUPRA_SCRAPE") return "Email";
+  if (raw === "MANUAL") return "Manual";
+  return raw;
+}
+
+function propertySubtitle(s: Showing): string {
+  const { city, state } = s.property;
+  const parts = [city, state].filter((p) => p?.trim());
+  return parts.length ? parts.join(", ") : "";
+}
+
+function hasBuyerAgentEmailDraft(s: Showing): boolean {
+  return !!(s.feedbackDraftGeneratedAt && s.buyerAgentEmail?.trim());
+}
+
+function isEmailDraftPendingSend(s: Showing): boolean {
+  if (!hasBuyerAgentEmailDraft(s)) return false;
+  const st = s.feedbackRequestStatus;
+  return st !== "SENT" && st !== "RECEIVED";
 }
 
 /** Keep one-shot `openShowing` in the URL while list filters / `q` change. */
@@ -398,9 +428,26 @@ function EditShowingModal({
 
 // ── Table ─────────────────────────────────────────────────────────────────────
 
-const TH =
-  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
-const TD = "px-4 py-3.5 text-sm";
+const TH_BASE =
+  "px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
+const TD_BASE = "px-3 py-3 text-sm align-top";
+const TH_ACTIONS = cn(
+  TH_BASE,
+  "sticky right-0 z-[2] w-[148px] min-w-[148px] bg-kp-surface-high text-right shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.45)]"
+);
+const TD_ACTIONS = cn(
+  TD_BASE,
+  "sticky right-0 z-[1] w-[148px] min-w-[148px] bg-kp-surface text-right shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.35)] group-hover:bg-kp-surface-high"
+);
+
+/** Passive status copy only — primary action lives in sticky Actions column. */
+function FeedbackStatusPill({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex max-w-full items-center rounded-full border border-kp-outline/90 bg-kp-bg/40 px-2 py-0.5 text-[10px] font-medium leading-tight text-kp-on-surface-variant">
+      {children}
+    </span>
+  );
+}
 
 function ShowingsTable({
   showings,
@@ -409,102 +456,102 @@ function ShowingsTable({
   showings: Showing[];
   onEdit: (s: Showing) => void;
 }) {
-  const canReviewFeedbackEmail = (s: Showing) =>
-    !!(s.feedbackDraftGeneratedAt && s.buyerAgentEmail?.trim());
-
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse">
+    <div className="relative overflow-x-auto">
+      <table className="w-full min-w-[640px] border-collapse text-left">
         <thead>
           <tr className="border-b border-kp-outline bg-kp-surface-high">
-            <th className={TH}>Property</th>
-            <th className={cn(TH, "hidden sm:table-cell whitespace-nowrap")}>Date & Time</th>
-            <th className={cn(TH, "hidden md:table-cell")}>Buyer Agent</th>
-            <th className={cn(TH, "hidden lg:table-cell")}>Buyer</th>
-            <th className={cn(TH, "hidden sm:table-cell")}>Feedback</th>
-            <th className={cn(TH, "hidden md:table-cell")}>Source</th>
-            <th className={cn(TH, "w-[56px]")}></th>
+            <th className={cn(TH_BASE, "whitespace-nowrap pl-4")}>Date &amp; time</th>
+            <th className={cn(TH_BASE, "min-w-0 max-w-[200px] sm:max-w-[240px]")}>Property</th>
+            <th className={cn(TH_BASE, "hidden min-w-[120px] sm:table-cell")}>Buyer agent</th>
+            <th className={cn(TH_BASE, "min-w-[140px]")}>Feedback</th>
+            <th className={cn(TH_BASE, "hidden w-[88px] md:table-cell")}>Source</th>
+            <th className={cn(TH_ACTIONS, "pr-4")}>Actions</th>
           </tr>
         </thead>
         <tbody>
-          {showings.map((s, i) => (
+          {showings.map((s) => (
             <tr
               id={`showing-row-${s.id}`}
               key={s.id}
-              className={cn(
-                "border-b border-kp-outline-variant transition-colors hover:bg-kp-surface-high",
-                i % 2 === 1 && "bg-kp-surface/40"
-              )}
+              className="group border-b border-kp-outline-variant transition-colors hover:bg-kp-surface-high"
             >
-              {/* Property */}
-              <td className={TD}>
-                <p className="font-medium text-kp-on-surface">{s.property.address1}</p>
-                {/* Collapsed date on mobile */}
-                <p className="mt-0.5 text-xs text-kp-on-surface-variant sm:hidden">
-                  {formatDate(s.scheduledAt)} · {formatTime(s.scheduledAt)}
+              <td className={cn(TD_BASE, "whitespace-nowrap pl-4 font-medium text-kp-on-surface")}>
+                <span className="block">{formatDate(s.scheduledAt)}</span>
+                <span className="text-xs font-normal text-kp-on-surface-variant">
+                  {formatTime(s.scheduledAt)}
+                </span>
+              </td>
+
+              <td className={cn(TD_BASE, "min-w-0 max-w-[200px] sm:max-w-[240px]")}>
+                <p className="truncate font-medium text-kp-on-surface" title={s.property.address1}>
+                  {s.property.address1}
                 </p>
+                {propertySubtitle(s) ? (
+                  <p className="truncate text-xs text-kp-on-surface-variant" title={propertySubtitle(s)}>
+                    {propertySubtitle(s)}
+                  </p>
+                ) : null}
               </td>
 
-              {/* Date & Time */}
-              <td className={cn(TD, "hidden whitespace-nowrap text-kp-on-surface-variant sm:table-cell")}>
-                {formatDate(s.scheduledAt)} · {formatTime(s.scheduledAt)}
-              </td>
-
-              {/* Buyer Agent */}
-              <td className={cn(TD, "hidden text-kp-on-surface-variant md:table-cell")}>
-                {s.buyerAgentName ?? "—"}
-                {s.buyerAgentEmail && (
-                  <span className="mt-0.5 block text-xs">{s.buyerAgentEmail}</span>
-                )}
-              </td>
-
-              {/* Buyer */}
-              <td className={cn(TD, "hidden text-kp-on-surface-variant lg:table-cell")}>
-                {s.buyerName ?? "—"}
-              </td>
-
-              {/* Feedback */}
-              <td className={cn(TD, "hidden sm:table-cell")}>
-                {s.feedbackRequired ? (
-                  <StatusBadge variant="pending">Form link</StatusBadge>
-                ) : canReviewFeedbackEmail(s) ? (
-                  <span title="Buyer-agent email — use Review">
-                    <StatusBadge variant="pending">
-                      {s.feedbackRequestStatus === "DRAFT_READY" ? "Email draft" : "Draft ready"}
-                    </StatusBadge>
+              <td className={cn(TD_BASE, "hidden min-w-[120px] text-kp-on-surface-variant sm:table-cell")}>
+                <span className="line-clamp-2 break-words text-sm">
+                  {s.buyerAgentName?.trim() || "—"}
+                </span>
+                {s.buyerAgentEmail ? (
+                  <span className="mt-0.5 block truncate text-xs text-kp-on-surface-variant/90" title={s.buyerAgentEmail}>
+                    {s.buyerAgentEmail}
                   </span>
+                ) : null}
+              </td>
+
+              <td className={cn(TD_BASE, "min-w-0")}>
+                {s.feedbackRequired ? (
+                  <FeedbackStatusPill>Form link pending</FeedbackStatusPill>
+                ) : hasBuyerAgentEmailDraft(s) ? (
+                  <FeedbackStatusPill>
+                    {s.feedbackRequestStatus === "SENT"
+                      ? "Feedback email sent"
+                      : "Draft ready"}
+                  </FeedbackStatusPill>
                 ) : (
-                  <span className="text-kp-on-surface-variant">—</span>
+                  <span className="text-xs text-kp-on-surface-variant">—</span>
                 )}
               </td>
 
-              {/* Source */}
-              <td className={cn(TD, "hidden md:table-cell")}>
-                <StatusBadge variant="upcoming">{s.source}</StatusBadge>
+              <td className={cn(TD_BASE, "hidden md:table-cell")}>
+                <span className="inline-flex rounded-md border border-kp-outline/80 bg-kp-surface-high px-2 py-0.5 text-[11px] font-medium text-kp-on-surface-variant">
+                  {showingSourceLabel(s.source)}
+                </span>
               </td>
 
-              {/* Actions */}
-              <td className={TD}>
-                <div className="flex items-center justify-end gap-0.5">
-                  {canReviewFeedbackEmail(s) && (
-                    <button
+              <td className={cn(TD_ACTIONS, "pr-4")}>
+                <div className="flex flex-col items-stretch gap-1.5 sm:items-end">
+                  {hasBuyerAgentEmailDraft(s) ? (
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        kpBtnSecondary,
+                        "h-8 w-full gap-1 border-kp-teal/40 px-2.5 text-[11px] font-semibold text-kp-teal sm:w-auto"
+                      )}
                       onClick={() => onEdit(s)}
-                      className="flex h-7 items-center gap-1 rounded-md px-1.5 text-[10px] font-semibold text-kp-teal transition-colors hover:bg-kp-surface-higher"
-                      title="Review buyer-agent feedback email draft"
                     >
-                      <Mail className="h-3.5 w-3.5" />
-                      <span className="hidden min-[420px]:inline">Review</span>
-                    </button>
-                  )}
-                  <button
+                      <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                      Review draft
+                    </Button>
+                  ) : null}
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-full gap-1 px-2 text-xs text-kp-on-surface-variant hover:bg-kp-surface-higher hover:text-kp-on-surface sm:w-auto"
                     onClick={() => onEdit(s)}
-                    className="flex h-7 w-7 items-center justify-center rounded-md text-kp-on-surface-variant transition-colors hover:bg-kp-surface-higher hover:text-kp-on-surface"
-                    aria-label="Edit showing"
                   >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </button>
+                    <Pencil className="h-3.5 w-3.5 shrink-0" />
+                    Edit
+                  </Button>
                 </div>
               </td>
             </tr>
@@ -675,8 +722,13 @@ export function ShowingsListView() {
     () => showings.filter((s) => s.feedbackRequired).length,
     [showings]
   );
-  const supraCount = useMemo(
-    () => showings.filter((s) => s.source === "SUPRA_SCRAPE").length,
+  const emailDraftsReadyCount = useMemo(
+    () => showings.filter((s) => isEmailDraftPendingSend(s)).length,
+    [showings]
+  );
+  const emailMarkedSentCount = useMemo(
+    () =>
+      showings.filter((s) => s.feedbackRequestStatus === "SENT" && hasBuyerAgentEmailDraft(s)).length,
     [showings]
   );
 
@@ -702,6 +754,7 @@ export function ShowingsListView() {
       name,
       source: listView.source,
       feedbackOnly: listView.feedbackOnly,
+      buyerAgentDraftReview: listView.buyerAgentDraftReview,
       q: qSave,
     });
     if (!result.ok) {
@@ -743,86 +796,65 @@ export function ShowingsListView() {
         </Link>
       </div>
 
-      {/* ── Metric cards ─────────────────────────────────────────────────── */}
-      <div className="grid gap-3 px-6 pb-4 sm:grid-cols-3 sm:px-8">
-        <MetricCard
-          label="Total showings"
-          value={loading ? "—" : showings.length}
-          accent="teal"
-          sub={
-            !loading && showings.length > 0
-              ? hasListFilters
-                ? "Matches current URL filters"
-                : "All time"
-              : undefined
-          }
-        />
-        <MetricCard
-          label="Feedback requested"
-          value={loading ? "—" : feedbackCount}
-          accent="gold"
-          sub={
-            !loading && feedbackCount > 0
-              ? `${feedbackCount} of ${showings.length}`
-              : undefined
-          }
-        />
-        <MetricCard
-          label="From Supra"
-          value={loading ? "—" : supraCount}
-          accent="default"
-          sub={!loading && supraCount > 0 ? "Auto-imported" : undefined}
-        />
-      </div>
-
-      {/* ── Secondary actions ────────────────────────────────────────────── */}
-      <div className="flex gap-2 px-6 pb-4 sm:px-8">
-        <Link
-          href="/showing-hq/supra-inbox"
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg border border-kp-outline px-3 py-1.5",
-            "text-xs font-medium text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high hover:text-kp-on-surface"
-          )}
-        >
-          <Inbox className="h-3.5 w-3.5" />
-          Supra Inbox
-        </Link>
-        <Link
-          href="/showing-hq/feedback-requests"
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg border border-kp-outline px-3 py-1.5",
-            "text-xs font-medium text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high hover:text-kp-on-surface"
-          )}
-        >
-          <ClipboardCheck className="h-3.5 w-3.5" />
-          Feedback Requests
-        </Link>
-        <Link
-          href="/showing-hq/saved-views"
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-lg border border-kp-outline px-3 py-1.5",
-            "text-xs font-medium text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high hover:text-kp-on-surface"
-          )}
-        >
-          <Layers className="h-3.5 w-3.5" />
-          Saved views
-        </Link>
+      {/* ── Action-first workflow strip (replaces dominant KPI cards) ───── */}
+      <div className="mx-6 mb-3 rounded-lg border border-kp-outline/80 bg-kp-surface-high/50 px-3 py-2.5 sm:mx-8 sm:px-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+            Review focus
+          </p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+            {!loading && (
+              <>
+                <span className="inline-flex items-center gap-1.5 text-kp-on-surface">
+                  <span className="text-kp-on-surface-variant">Drafts ready</span>
+                  <span className="tabular-nums font-semibold text-kp-gold">{emailDraftsReadyCount}</span>
+                  {emailDraftsReadyCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        replaceListView({
+                          ...committedSearchListView(),
+                          buyerAgentDraftReview: true,
+                        })
+                      }
+                      className="font-medium text-kp-teal underline-offset-2 hover:underline"
+                    >
+                      Show
+                    </button>
+                  )}
+                </span>
+                <span className="hidden h-3 w-px bg-kp-outline sm:block" aria-hidden />
+                <Link
+                  href="/showing-hq/feedback-requests"
+                  className="inline-flex items-center gap-1.5 text-kp-on-surface hover:text-kp-teal"
+                >
+                  <span className="text-kp-on-surface-variant">Form feedback</span>
+                  <span className="font-semibold tabular-nums text-kp-gold">{feedbackCount}</span>
+                </Link>
+                <span className="hidden h-3 w-px bg-kp-outline sm:block" aria-hidden />
+                <span className="inline-flex items-center gap-1.5 text-kp-on-surface">
+                  <span className="text-kp-on-surface-variant">Email sent</span>
+                  <span className="tabular-nums font-medium text-kp-on-surface-variant">
+                    {emailMarkedSentCount}
+                  </span>
+                  <span className="text-kp-on-surface-variant">(awaiting reply)</span>
+                </span>
+              </>
+            )}
+            {loading && <span className="text-kp-on-surface-variant">Loading…</span>}
+          </div>
+        </div>
       </div>
 
       {/* ── Table panel ─────────────────────────────────────────────────── */}
       <div className="mx-6 mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
         {/* Panel header + list filters (URL-backed) */}
         <div className="space-y-3 border-b border-kp-outline px-5 py-4">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-kp-on-surface">All showings</p>
-              <p className="text-xs text-kp-on-surface-variant">Private one-on-one appointments</p>
-            </div>
-            {showContent && showings.length > 0 && (
-              <span className="shrink-0 text-xs tabular-nums text-kp-on-surface-variant">
-                {showings.length} {showings.length === 1 ? "showing" : "showings"}
-              </span>
-            )}
+          <div>
+            <p className="text-sm font-semibold text-kp-on-surface">Showings</p>
+            <p className="text-xs text-kp-on-surface-variant">
+              When it ran · what needs feedback · actions on the right
+            </p>
           </div>
           {showContent && (
             <div className="flex flex-wrap items-center gap-2">
@@ -852,7 +884,7 @@ export function ShowingsListView() {
                 <SelectContent className="border-kp-outline bg-kp-surface text-kp-on-surface">
                   <SelectItem value="__all__">All sources</SelectItem>
                   <SelectItem value="MANUAL">Manual</SelectItem>
-                  <SelectItem value="SUPRA_SCRAPE">Supra</SelectItem>
+                  <SelectItem value="SUPRA_SCRAPE">Email (imported)</SelectItem>
                 </SelectContent>
               </Select>
               <button
@@ -871,7 +903,25 @@ export function ShowingsListView() {
                     : "border-kp-outline text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
                 )}
               >
-                Feedback requested only
+                Form feedback only
+              </button>
+              <button
+                type="button"
+                aria-pressed={listView.buyerAgentDraftReview}
+                onClick={() =>
+                  replaceListView({
+                    ...committedSearchListView(),
+                    buyerAgentDraftReview: !listView.buyerAgentDraftReview,
+                  })
+                }
+                className={cn(
+                  "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                  listView.buyerAgentDraftReview
+                    ? "border-kp-teal/60 bg-kp-teal/10 text-kp-teal"
+                    : "border-kp-outline text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+                )}
+              >
+                Drafts ready only
               </button>
               {hasListFilters && (
                 <button
@@ -902,6 +952,39 @@ export function ShowingsListView() {
           <EmptyState isFiltered={isFiltered} onReset={clearListFiltersAndSearch} />
         ) : (
           <ShowingsTable showings={showings} onEdit={setEditingShowing} />
+        )}
+
+        {showContent && showings.length > 0 && (
+          <div className="flex flex-col gap-3 border-t border-kp-outline-variant px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-[11px] text-kp-on-surface-variant">
+              <span className="tabular-nums font-medium text-kp-on-surface">{showings.length}</span>{" "}
+              {showings.length === 1 ? "showing" : "showings"} in this list
+              {hasListFilters ? " · filtered" : ""}
+            </p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+              <Link
+                href="/showing-hq/supra-inbox"
+                className="inline-flex items-center gap-1 text-kp-on-surface-variant hover:text-kp-teal"
+              >
+                <Inbox className="h-3 w-3" />
+                Supra inbox
+              </Link>
+              <Link
+                href="/showing-hq/feedback-requests"
+                className="inline-flex items-center gap-1 text-kp-on-surface-variant hover:text-kp-teal"
+              >
+                <ClipboardCheck className="h-3 w-3" />
+                Feedback hub
+              </Link>
+              <Link
+                href="/showing-hq/saved-views"
+                className="inline-flex items-center gap-1 text-kp-on-surface-variant hover:text-kp-teal"
+              >
+                <Layers className="h-3 w-3" />
+                Saved views
+              </Link>
+            </div>
+          </div>
         )}
       </div>
 
