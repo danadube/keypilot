@@ -307,7 +307,9 @@ function EditShowingModal({
   const [timeStr, setTimeStr] = useState(initialTime);
   const [notes, setNotes] = useState(showing.notes ?? "");
   const [saving, setSaving] = useState(false);
+  const [markingSent, setMarkingSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasEmailDraft = hasBuyerAgentEmailDraft(showing);
 
   const headerSubtitle = useMemo(() => {
     const [h, m] = timeStr.split(":").map(Number);
@@ -330,6 +332,39 @@ function EditShowingModal({
     document.body.style.overflow = "hidden";
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
   }, [onClose]);
+
+  useEffect(() => {
+    setMarkingSent(false);
+  }, [showing.id]);
+
+  async function handleMarkFeedbackComplete() {
+    if (!dateStr || !timeStr) { setError("Date and time are required."); return; }
+    const [h, m] = timeStr.split(":").map(Number);
+    const scheduledAt = new Date(dateStr);
+    scheduledAt.setHours(h, m ?? 0, 0, 0);
+
+    setMarkingSent(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/showing-hq/showings/${showing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scheduledAt: scheduledAt.toISOString(),
+          notes: notes || null,
+          feedbackRequestStatus: "SENT",
+        }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update failed");
+    } finally {
+      setMarkingSent(false);
+    }
+  }
 
   async function handleSave() {
     if (!dateStr || !timeStr) { setError("Date and time are required."); return; }
@@ -429,27 +464,56 @@ function EditShowingModal({
               generatedAt={showing.feedbackDraftGeneratedAt}
               buyerAgentEmail={showing.buyerAgentEmail}
               showingId={showing.id}
-              onMarkedSent={() => {
-                onSaved();
-                onClose();
-              }}
+              {...(hasEmailDraft
+                ? { onMarkAsSent: handleMarkFeedbackComplete, markingSent }
+                : {
+                    onMarkedSent: () => {
+                      onSaved();
+                      onClose();
+                    },
+                  })}
             />
           </div>
         </div>
         <div className="flex justify-end gap-2 border-t border-kp-outline p-5">
-          <button
-            onClick={onClose}
-            className="rounded-lg border border-kp-outline px-4 py-1.5 text-sm text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-lg bg-kp-gold px-4 py-1.5 text-sm font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright disabled:opacity-60"
-          >
-            {saving ? "Saving…" : "Save changes"}
-          </button>
+          {hasEmailDraft ? (
+            <>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={markingSent}
+                className="rounded-lg border border-kp-outline px-4 py-1.5 text-sm text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high disabled:opacity-60"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleMarkFeedbackComplete()}
+                disabled={markingSent}
+                className="rounded-lg bg-kp-gold px-4 py-1.5 text-sm font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright disabled:opacity-60"
+              >
+                {markingSent ? "Updating…" : "Mark as sent"}
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg border border-kp-outline px-4 py-1.5 text-sm text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={saving}
+                className="rounded-lg bg-kp-gold px-4 py-1.5 text-sm font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright disabled:opacity-60"
+              >
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -53,6 +53,7 @@ export function EditEventModal({
   const [notes, setNotes] = useState("");
   const [feedbackRequest, setFeedbackRequest] = useState<{ token: string; status: string } | null>(null);
   const [feedbackLinkCopied, setFeedbackLinkCopied] = useState(false);
+  const [markingFeedbackSent, setMarkingFeedbackSent] = useState(false);
   const [buyerAgentFeedbackDraft, setBuyerAgentFeedbackDraft] = useState<{
     generatedAt: string | null;
     buyerAgentEmail: string | null;
@@ -69,6 +70,7 @@ export function EditEventModal({
     setError(null);
     setSubmitting(false);
     setDeleting(false);
+    setMarkingFeedbackSent(false);
     setFeedbackRequest(null);
     setFeedbackLinkCopied(false);
     setBuyerAgentFeedbackDraft(null);
@@ -160,6 +162,7 @@ export function EditEventModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!eventId) return;
+    if (!isOpenHouse && buyerAgentFeedbackDraft) return;
     const [sh, sm] = startTimeStr.split(":").map(Number);
     const startAt = new Date(dateStr);
     startAt.setHours(sh, sm ?? 0, 0, 0);
@@ -208,6 +211,35 @@ export function EditEventModal({
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleMarkFeedbackComplete = async () => {
+    if (!eventId || !buyerAgentFeedbackDraft) return;
+    const [sh, sm] = startTimeStr.split(":").map(Number);
+    const startAt = new Date(dateStr);
+    startAt.setHours(sh, sm ?? 0, 0, 0);
+    setMarkingFeedbackSent(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/showing-hq/showings/${eventId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          propertyId: propertyId.trim(),
+          scheduledAt: startAt.toISOString(),
+          notes: notes.trim() || null,
+          feedbackRequestStatus: "SENT",
+        }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+      onSaved();
+      onOpenChange(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update");
+    } finally {
+      setMarkingFeedbackSent(false);
     }
   };
 
@@ -269,7 +301,7 @@ export function EditEventModal({
                 type="button"
                 variant="outline"
                 className={cn(kpBtnDangerSecondary)}
-                disabled={deleting || submitting}
+                disabled={deleting || submitting || markingFeedbackSent}
                 onClick={handleDelete}
               >
                 {deleting ? "Deleting…" : "Delete"}
@@ -277,23 +309,48 @@ export function EditEventModal({
             )}
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              className={kpCalendarModalField.buttonCancel}
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              form="edit-event-form"
-              variant="outline"
-              disabled={!canSave || submitting || loading}
-              className={kpCalendarModalField.buttonSave}
-            >
-              {submitting ? "Saving…" : "Save changes"}
-            </Button>
+            {!isOpenHouse && buyerAgentFeedbackDraft ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={kpCalendarModalField.buttonCancel}
+                  disabled={markingFeedbackSent}
+                  onClick={() => onOpenChange(false)}
+                >
+                  Close
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!canSave || markingFeedbackSent || loading}
+                  className={kpCalendarModalField.buttonSave}
+                  onClick={() => void handleMarkFeedbackComplete()}
+                >
+                  {markingFeedbackSent ? "Updating…" : "Mark as sent"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={kpCalendarModalField.buttonCancel}
+                  onClick={() => onOpenChange(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  form="edit-event-form"
+                  variant="outline"
+                  disabled={!canSave || submitting || loading}
+                  className={kpCalendarModalField.buttonSave}
+                >
+                  {submitting ? "Saving…" : "Save changes"}
+                </Button>
+              </>
+            )}
           </div>
         </div>
       }
@@ -423,10 +480,8 @@ export function EditEventModal({
                 generatedAt={buyerAgentFeedbackDraft.generatedAt}
                 buyerAgentEmail={buyerAgentFeedbackDraft.buyerAgentEmail}
                 showingId={eventId}
-                onMarkedSent={() => {
-                  onSaved();
-                  onOpenChange(false);
-                }}
+                onMarkAsSent={handleMarkFeedbackComplete}
+                markingSent={markingFeedbackSent}
               />
             </div>
           )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -53,7 +53,14 @@ export type ShowingBuyerAgentFeedbackDraftProps = {
   buyerAgentEmail?: string | null | undefined;
   /** When present, shows “Mark as sent” to clear DRAFT_READY from dashboards. */
   showingId?: string | null | undefined;
+  /** Called after default PATCH succeeds (omit if `onMarkAsSent` handles refresh/close). */
   onMarkedSent?: () => void;
+  /**
+   * When set, “Mark as sent” uses this instead of PATCHing only status (e.g. parent saves form + SENT).
+   * Provide `markingSent` while the promise is in flight.
+   */
+  onMarkAsSent?: () => void | Promise<void>;
+  markingSent?: boolean;
   className?: string;
   /** Calendar BrandModal uses theme vars; showings list uses kp tokens */
   variant?: "kp" | "brand";
@@ -74,12 +81,18 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
   buyerAgentEmail,
   showingId,
   onMarkedSent,
+  onMarkAsSent,
+  markingSent: markingSentProp,
   className,
   variant = "kp",
 }: ShowingBuyerAgentFeedbackDraftProps) {
   const [greetingMode, setGreetingMode] = useState<BuyerAgentFeedbackGreetingMode>("firstName");
-  const [copied, setCopied] = useState<null | "subject" | "body" | "both">(null);
-  const [markingSent, setMarkingSent] = useState(false);
+  const [copied, setCopied] = useState<null | "body">(null);
+  const [markingSentInternal, setMarkingSentInternal] = useState(false);
+  const [nudgeMarkSent, setNudgeMarkSent] = useState(false);
+
+  const parentMarksSent = onMarkAsSent != null;
+  const markingSent = parentMarksSent ? Boolean(markingSentProp) : markingSentInternal;
 
   const { subject: sub, body: bod } = useMemo(() => {
     const line = draftSource.propertyAddressLine?.trim() ?? "";
@@ -95,37 +108,50 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
     });
   }, [draftSource.propertyAddressLine, draftSource.scheduledAt, draftSource.buyerAgentName, greetingMode]);
 
+  useEffect(() => {
+    if (!nudgeMarkSent) return;
+    const t = window.setTimeout(() => setNudgeMarkSent(false), 10000);
+    return () => window.clearTimeout(t);
+  }, [nudgeMarkSent]);
+
   const to = buyerAgentEmail?.trim() ?? "";
   if (!sub.trim() || !bod.trim()) return null;
 
   const mailtoHref = to ? buildBuyerAgentFeedbackMailtoHref(to, sub, bod) : null;
   const mailtoTooLong = mailtoHref != null && mailtoHref.length > BUYER_AGENT_FEEDBACK_MAILTO_MAX_LENGTH;
 
-  const copy = (kind: "subject" | "body" | "both") => {
-    const text = kind === "subject" ? sub : kind === "body" ? bod : `${sub}\n\n${bod}`;
-    void navigator.clipboard.writeText(text).then(() => {
-      setCopied(kind);
+  const copyBody = () => {
+    void navigator.clipboard.writeText(bod).then(() => {
+      setCopied("body");
       setTimeout(() => setCopied(null), 2000);
     });
   };
 
-  const markSent = () => {
+  const handleCreateEmailClick = () => {
+    setNudgeMarkSent(true);
+  };
+
+  const markSent = async () => {
+    if (parentMarksSent) {
+      await onMarkAsSent();
+      return;
+    }
     const id = showingId?.trim();
     if (!id) return;
-    setMarkingSent(true);
-    fetch(`/api/v1/showing-hq/showings/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ feedbackRequestStatus: "SENT" }),
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error("Failed to update");
-        onMarkedSent?.();
-      })
-      .catch(() => {
-        /* non-fatal */
-      })
-      .finally(() => setMarkingSent(false));
+    setMarkingSentInternal(true);
+    try {
+      const res = await fetch(`/api/v1/showing-hq/showings/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feedbackRequestStatus: "SENT" }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      onMarkedSent?.();
+    } catch {
+      /* non-fatal */
+    } finally {
+      setMarkingSentInternal(false);
+    }
   };
 
   const genLabel =
@@ -225,7 +251,7 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
               "border-transparent h-8 gap-1.5 text-xs font-semibold"
             )}
           >
-            <a href={mailtoHref}>
+            <a href={mailtoHref} onClick={handleCreateEmailClick}>
               <Send className="h-3.5 w-3.5" />
               Create email
             </a>
@@ -253,59 +279,45 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
             "h-8 text-xs",
             variant === "brand" ? btnOutline : kpBtnSecondary
           )}
-          onClick={() => copy("subject")}
-        >
-          {copied === "subject" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-          <span className="ml-1.5">{copied === "subject" ? "Copied" : "Copy subject"}</span>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className={cn(
-            "h-8 text-xs",
-            variant === "brand" ? btnOutline : kpBtnSecondary
-          )}
-          onClick={() => copy("body")}
+          onClick={copyBody}
         >
           {copied === "body" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
           <span className="ml-1.5">{copied === "body" ? "Copied" : "Copy body"}</span>
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className={cn(
-            "h-8 text-xs",
-            variant === "brand" ? btnOutline : kpBtnSecondary
-          )}
-          onClick={() => copy("both")}
-        >
-          {copied === "both" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-          <span className="ml-1.5">{copied === "both" ? "Copied" : "Copy subject + body"}</span>
-        </Button>
 
-        {showingId?.trim() ? (
+        {showingId?.trim() || parentMarksSent ? (
           <Button
             type="button"
             variant="outline"
             size="sm"
             className={cn(
               "h-8 text-xs",
-              variant === "brand" ? btnOutline : kpBtnSecondary
+              variant === "brand" ? btnOutline : kpBtnSecondary,
+              nudgeMarkSent && "ring-2 ring-amber-500/80 ring-offset-2 ring-offset-kp-surface"
             )}
             disabled={markingSent}
-            onClick={markSent}
+            onClick={() => void markSent()}
           >
             {markingSent ? "Updating…" : "Mark as sent"}
           </Button>
         ) : null}
       </div>
-      {showingId?.trim() ? (
-        <p className={cn("mt-2 text-[11px] leading-snug", mutedCls)}>
-          Use after sending from your email app.
+      {nudgeMarkSent ? (
+        <p
+          className={cn(
+            "mt-2 text-[11px] leading-snug text-amber-600/90 dark:text-amber-400/90",
+            variant === "kp" && "text-amber-500/95"
+          )}
+        >
+          After sending from your email app, click &quot;Mark as sent&quot; to complete.
         </p>
-      ) : null}
+      ) : (
+        (showingId?.trim() || parentMarksSent) && (
+          <p className={cn("mt-2 text-[11px] leading-snug", mutedCls)}>
+          You can mark as sent anytime after the email goes out—even if you didn&apos;t use Create email.
+          </p>
+        )
+      )}
     </div>
   );
 }
