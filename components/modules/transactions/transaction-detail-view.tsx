@@ -616,8 +616,8 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
                 </div>
               ) : selectableDeals.length === 0 ? (
                 <p className="text-sm text-kp-on-surface-variant">
-                  No linkable deals on this property yet. Create a deal from ClientKeep, then link it
-                  here.
+                  No linkable CRM deals on this property yet. Create a deal record (contact + property)
+                  from the CRM deals list, then link it here.
                 </p>
               ) : (
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -666,7 +666,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
                 href="/deals"
                 className="inline-flex text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
               >
-                Go to deals list
+                Open CRM deals list
               </Link>
             </div>
           )}

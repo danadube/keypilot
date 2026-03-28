@@ -224,7 +224,8 @@ export function TransactionsListView() {
             Transactions
           </h1>
           <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-            Closings, sale details, and commission splits per property
+            Source of truth for deal execution: closings, stage changes, sale details, and commission
+            splits. Nurture contacts and CRM deal records in ClientKeep; run the transaction here.
           </p>
         </div>
         <Button

@@ -31,8 +31,11 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/property-vault")) return "PropertyVault";
   if (pathname.startsWith("/market-pilot/campaigns")) return "Campaigns";
   if (pathname.startsWith("/market-pilot")) return "MarketPilot";
+  if (pathname.startsWith("/transactions/commissions")) return "Commissions";
+  if (pathname.startsWith("/transactions/pipeline")) return "Pipeline";
+  if (pathname.startsWith("/transactions")) return "Transactions";
   if (pathname.startsWith("/contacts")) return "Contacts";
-  if (pathname.startsWith("/deals")) return "Deals";
+  if (pathname.startsWith("/deals")) return "CRM deals";
   if (pathname.startsWith("/client-keep/activity")) return "Recent activity";
   if (pathname.startsWith("/client-keep/follow-ups")) return "Follow-ups";
   if (pathname.startsWith("/client-keep/communications")) return "Communications";

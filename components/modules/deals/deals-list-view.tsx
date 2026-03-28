@@ -193,7 +193,8 @@ function EmptyState({ isFiltered, onReset }: { isFiltered: boolean; onReset: () 
           <>
             <p className="text-sm font-medium text-kp-on-surface">No deals yet</p>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-              Deals link contacts and properties to track your transaction pipeline.
+              Deals link contacts and properties for CRM-stage tracking. Use Transactions for closing
+              execution and commissions.
             </p>
           </>
         )}
@@ -400,10 +401,11 @@ export function DealsListView() {
       <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-3 sm:px-8">
         <div>
           <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
-            Deals
+            CRM deals
           </h1>
           <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-            Transaction pipeline — contacts linked to properties
+            CRM deal records (contact + property). For under-contract and closing execution, use
+            Transactions — you can link a deal to a transaction from the transaction detail page.
           </p>
         </div>
         <button
@@ -495,7 +497,8 @@ export function DealsListView() {
           <div className="flex items-center gap-2 border-t border-kp-outline-variant px-5 py-3">
             <FileSignature className="h-3.5 w-3.5 text-kp-teal" />
             <p className="text-xs text-kp-on-surface-variant">
-              Create a deal to start tracking a contact&apos;s transaction through your pipeline.
+              Create a CRM deal to attach a contact to a property; open Transactions when you are ready
+              to manage the closing and splits.
             </p>
             <TrendingUp className="ml-auto h-3.5 w-3.5 text-kp-on-surface-variant" />
           </div>

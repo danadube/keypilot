@@ -40,7 +40,7 @@ export default function ClientKeepOverviewPage() {
     <ModuleGate
       moduleId="client-keep"
       moduleName="ClientKeep"
-      valueProposition="Full CRM for contacts, leads, tags, communication logs, and follow-ups."
+      valueProposition="Contacts, tags, segments, communications, and follow-ups — relationship work stays here; closings and commissions live in Transactions."
       backHref="/showing-hq"
     >
     <div className="space-y-6">
@@ -76,14 +76,14 @@ export default function ClientKeepOverviewPage() {
         <CardHeader>
           <CardTitle>Customer relationship management</CardTitle>
           <CardDescription>
-            Manage contacts, leads, communication history, and open-house follow-ups.
+            Relationships and touchpoints — contacts, communication history, and open-house follow-ups.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Contacts and Deals stay in the platform sidebar. Segments are quick links into filtered
-            contact views; Tags lists your labels and usage counts. Use the shortcuts below for
-            segments, tags, communications, follow-ups, and recent activity.
+            ClientKeep is for people and touchpoints: segments are saved filtered contact views, tags
+            show labels and usage, and the shortcuts below open communications, follow-ups, and
+            activity. Track active closings and payouts in Transactions from the platform sidebar.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "text-xs")} asChild>

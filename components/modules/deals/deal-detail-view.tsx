@@ -291,7 +291,7 @@ export function DealDetailView({ dealId }: { dealId: string }) {
           className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-kp-on-surface-variant transition-colors hover:text-kp-on-surface"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Deals
+          CRM deals
         </Link>
 
         {/* Title row */}
