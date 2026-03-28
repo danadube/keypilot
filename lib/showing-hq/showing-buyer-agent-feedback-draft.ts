@@ -12,10 +12,14 @@ import {
   generateShowingBuyerAgentFeedbackDraft,
 } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 
-export type { GenerateShowingBuyerAgentFeedbackDraftInput } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
+export type {
+  BuyerAgentFeedbackGreetingMode,
+  GenerateShowingBuyerAgentFeedbackDraftInput,
+} from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 
 export {
   BUYER_AGENT_FEEDBACK_ASSISTANT_LINE,
+  greetingLineFromBuyerAgentName,
   generateShowingBuyerAgentFeedbackDraft,
 } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 

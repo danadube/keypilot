@@ -34,11 +34,11 @@ describe("generateShowingBuyerAgentFeedbackDraft", () => {
     });
 
     expect(subject).toBe("Feedback request — 123 Main St, Austin, TX 78701");
-    expect(body).toMatch(/^Hi Jane Buyeragent,\s*\n\n/);
+    expect(body).toMatch(/^Hi Jane,\s*\n\n/);
     expect(body).toMatch(
       /I'm Janice Glaab's assistant\.\s*\n\nThank you for showing/
     );
-    expect(body).toContain("Hi Jane Buyeragent,");
+    expect(body).toContain("Hi Jane,");
     expect(body).toContain("I'm Janice Glaab's assistant.");
     expect(body).toContain("123 Main St, Austin, TX 78701");
     expect(body).toContain("Thursday, March 20, 2025");
@@ -73,7 +73,7 @@ describe("generateShowingBuyerAgentFeedbackDraft", () => {
     expect(body).toMatch(/^Hi there,\s*\n/);
   });
 
-  it("title-cases obvious all-caps names", () => {
+  it("title-cases obvious all-caps single-word name; first-name greeting uses that token", () => {
     const { body } = generateShowingBuyerAgentFeedbackDraft({
       propertyAddressLine: "10 Pine, Springfield, IL 62701",
       scheduledAt: fixedDate,
@@ -82,21 +82,41 @@ describe("generateShowingBuyerAgentFeedbackDraft", () => {
     expect(body).toContain("Hi Buyeragent,");
   });
 
-  it("title-cases each word when entire name is shoutcase", () => {
+  it("uses first token when entire name is shoutcase", () => {
     const { body } = generateShowingBuyerAgentFeedbackDraft({
       propertyAddressLine: "10 Pine, Springfield, IL 62701",
       scheduledAt: fixedDate,
       buyerAgentName: "JANE B. SMITH",
     });
-    expect(body).toContain("Hi Jane B. Smith,");
+    expect(body).toMatch(/^Hi Jane,\s*\n\n/);
   });
 
-  it("preserves normal mixed-case names like Jane B.", () => {
+  it("uses first token for mixed-case multi-part names", () => {
     const { body } = generateShowingBuyerAgentFeedbackDraft({
       propertyAddressLine: "10 Pine, Springfield, IL 62701",
       scheduledAt: fixedDate,
       buyerAgentName: "Jane B.",
     });
-    expect(body).toContain("Hi Jane B.,");
+    expect(body).toMatch(/^Hi Jane,\s*\n\n/);
+  });
+
+  it("uses full normalized name when greetingMode is fullName", () => {
+    const { body } = generateShowingBuyerAgentFeedbackDraft({
+      propertyAddressLine: "10 Pine, Springfield, IL 62701",
+      scheduledAt: fixedDate,
+      buyerAgentName: "JANE B. SMITH",
+      greetingMode: "fullName",
+    });
+    expect(body).toMatch(/^Hi Jane B\. Smith,\s*\n\n/);
+  });
+
+  it("uses generic line when greetingMode is generic", () => {
+    const { body } = generateShowingBuyerAgentFeedbackDraft({
+      propertyAddressLine: "10 Pine, Springfield, IL 62701",
+      scheduledAt: fixedDate,
+      buyerAgentName: "Jane Doe",
+      greetingMode: "generic",
+    });
+    expect(body).toMatch(/^Hi there,\s*\n\n/);
   });
 });

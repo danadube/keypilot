@@ -281,7 +281,7 @@ function SearchInput({
   );
 }
 
-// ── Edit Showing Modal ────────────────────────────────────────────────────────
+// ── Request feedback modal (showing details + buyer-agent email draft) ────────
 
 function EditShowingModal({
   showing,
@@ -308,6 +308,21 @@ function EditShowingModal({
   const [notes, setNotes] = useState(showing.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const headerSubtitle = useMemo(() => {
+    const [h, m] = timeStr.split(":").map(Number);
+    const scheduledAt = new Date(dateStr);
+    scheduledAt.setHours(h ?? 0, m ?? 0, 0, 0);
+    const when = scheduledAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    return `${buildPropertyAddressLineForFeedbackDraft(showing.property)} · ${when}`;
+  }, [showing.property, dateStr, timeStr]);
+
+  const draftPreviewScheduledAt = useMemo(() => {
+    const [h, m] = timeStr.split(":").map(Number);
+    const d = new Date(dateStr);
+    d.setHours(h ?? 0, m ?? 0, 0, 0);
+    return d.toISOString();
+  }, [dateStr, timeStr]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -348,11 +363,11 @@ function EditShowingModal({
       aria-modal="true"
     >
       <div className="fixed inset-0 bg-black/50" onClick={onClose} aria-hidden />
-      <div className="relative z-10 w-full max-w-md rounded-xl border border-kp-outline bg-kp-surface shadow-xl">
+      <div className="relative z-10 w-full max-w-lg rounded-xl border border-kp-outline bg-kp-surface shadow-xl">
         <div className="flex items-center justify-between border-b border-kp-outline p-5">
           <div>
-            <h2 className="text-base font-semibold text-kp-on-surface">Edit Showing</h2>
-            <p className="mt-0.5 text-xs text-kp-on-surface-variant">{showing.property.address1}</p>
+            <h2 className="text-base font-semibold text-kp-on-surface">Request Feedback</h2>
+            <p className="mt-0.5 text-xs text-kp-on-surface-variant">{headerSubtitle}</p>
           </div>
           <button
             onClick={onClose}
@@ -364,51 +379,62 @@ function EditShowingModal({
         </div>
         <div className="space-y-4 p-5">
           {error && <p className="text-sm text-red-400">{error}</p>}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Date</label>
-              <input
-                type="date"
-                value={dateStr}
-                onChange={(e) => setDateStr(e.target.value)}
-                className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-              />
+
+          <div className="space-y-3 rounded-lg border border-kp-outline/80 bg-kp-surface-high/25 p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+              Showing details
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Date</label>
+                <input
+                  type="date"
+                  value={dateStr}
+                  onChange={(e) => setDateStr(e.target.value)}
+                  className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Time</label>
+                <input
+                  type="time"
+                  value={timeStr}
+                  onChange={(e) => setTimeStr(e.target.value)}
+                  className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                />
+              </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Time</label>
-              <input
-                type="time"
-                value={timeStr}
-                onChange={(e) => setTimeStr(e.target.value)}
-                className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+              <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Notes</label>
+              <textarea
+                rows={3}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
               />
             </div>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Notes</label>
-            <textarea
-              rows={3}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-            />
           </div>
 
-          <ShowingBuyerAgentFeedbackDraftPanel
-            variant="kp"
-            draftSource={{
-              propertyAddressLine: buildPropertyAddressLineForFeedbackDraft(showing.property),
-              scheduledAt: showing.scheduledAt,
-              buyerAgentName: showing.buyerAgentName,
-            }}
-            generatedAt={showing.feedbackDraftGeneratedAt}
-            buyerAgentEmail={showing.buyerAgentEmail}
-            showingId={showing.id}
-            onMarkedSent={() => {
-              onSaved();
-              onClose();
-            }}
-          />
+          <div className="space-y-2">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+              Feedback request (email)
+            </p>
+            <ShowingBuyerAgentFeedbackDraftPanel
+              variant="kp"
+              draftSource={{
+                propertyAddressLine: buildPropertyAddressLineForFeedbackDraft(showing.property),
+                scheduledAt: draftPreviewScheduledAt,
+                buyerAgentName: showing.buyerAgentName,
+              }}
+              generatedAt={showing.feedbackDraftGeneratedAt}
+              buyerAgentEmail={showing.buyerAgentEmail}
+              showingId={showing.id}
+              onMarkedSent={() => {
+                onSaved();
+                onClose();
+              }}
+            />
+          </div>
         </div>
         <div className="flex justify-end gap-2 border-t border-kp-outline p-5">
           <button
@@ -531,30 +557,26 @@ function ShowingsTable({
 
               <td className={cn(TD_ACTIONS, "pr-4")}>
                 <div className="flex flex-col items-stretch gap-1.5 sm:items-end">
-                  {hasBuyerAgentEmailDraft(s) ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        kpBtnSecondary,
-                        "h-8 w-full gap-1 border-kp-teal/40 px-2.5 text-[11px] font-semibold text-kp-teal sm:w-auto"
-                      )}
-                      onClick={() => onEdit(s)}
-                    >
-                      <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                      Review draft
-                    </Button>
-                  ) : null}
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant={hasBuyerAgentEmailDraft(s) ? "outline" : "ghost"}
                     size="sm"
-                    className="h-8 w-full gap-1 px-2 text-xs text-kp-on-surface-variant hover:bg-kp-surface-higher hover:text-kp-on-surface sm:w-auto"
+                    className={cn(
+                      hasBuyerAgentEmailDraft(s)
+                        ? cn(
+                            kpBtnSecondary,
+                            "h-8 w-full gap-1 border-kp-teal/40 px-2.5 text-[11px] font-semibold text-kp-teal sm:w-auto"
+                          )
+                        : "h-8 w-full gap-1 px-2 text-xs sm:w-auto"
+                    )}
                     onClick={() => onEdit(s)}
                   >
-                    <Pencil className="h-3.5 w-3.5 shrink-0" />
-                    Edit
+                    {hasBuyerAgentEmailDraft(s) ? (
+                      <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    ) : (
+                      <Pencil className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    )}
+                    Request feedback
                   </Button>
                 </div>
               </td>

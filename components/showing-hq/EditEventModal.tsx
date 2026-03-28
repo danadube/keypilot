@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -231,14 +231,36 @@ export function EditEventModal({
 
   const typeLabel = isOpenHouse ? "Open House" : "Showing";
   const canSave = propertyId && dateStr && startTimeStr && (isOpenHouse ? endTimeStr : true);
+  const selectedProperty = properties.find((p) => p.id === propertyId);
+
+  const feedbackPreviewScheduledAt = useMemo(() => {
+    if (!buyerAgentFeedbackDraft || !dateStr || !startTimeStr) {
+      return buyerAgentFeedbackDraft?.scheduledAt ?? "";
+    }
+    const [sh, sm] = startTimeStr.split(":").map(Number);
+    const d = new Date(dateStr);
+    d.setHours(sh ?? 0, sm ?? 0, 0, 0);
+    return d.toISOString();
+  }, [buyerAgentFeedbackDraft, dateStr, startTimeStr]);
+
+  const showingSubtitle =
+    !isOpenHouse && selectedProperty && dateStr && startTimeStr
+      ? (() => {
+          const [sh, sm] = startTimeStr.split(":").map(Number);
+          const dt = new Date(dateStr);
+          dt.setHours(sh ?? 0, sm ?? 0, 0, 0);
+          const when = dt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+          return `${selectedProperty.address1}, ${selectedProperty.city}, ${selectedProperty.state} · ${when}`;
+        })()
+      : null;
 
   return (
     <BrandModal
       open={open}
       onOpenChange={onOpenChange}
-      title="Edit event"
-      description={typeLabel}
-      size="md"
+      title={isOpenHouse ? "Edit event" : "Request Feedback"}
+      description={isOpenHouse ? typeLabel : (showingSubtitle ?? typeLabel)}
+      size={isOpenHouse ? "md" : "lg"}
       footer={
         <div className="flex w-full flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
@@ -286,116 +308,142 @@ export function EditEventModal({
             </p>
           )}
 
-          <div className="space-y-1.5">
-            <Label className={kpCalendarModalField.label}>Event type</Label>
-            <p className="text-sm font-medium text-kp-on-surface">{typeLabel}</p>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className={kpCalendarModalField.label}>Property</Label>
-            <Select value={propertyId} onValueChange={setPropertyId}>
-              <SelectTrigger className={kpCalendarModalField.selectTrigger}>
-                <SelectValue placeholder="Select property" />
-              </SelectTrigger>
-              <SelectContent className={kpCalendarModalField.selectContent}>
-                {properties.map((p) => (
-                  <SelectItem key={p.id} value={p.id} className={kpCalendarModalField.selectItem}>
-                    {p.address1}, {p.city}, {p.state}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <div
             className={cn(
-              kpCalendarModalField.scheduleChrome,
-              "kp-calendar-modal-datetime space-y-3"
+              "space-y-4 rounded-lg border border-[var(--brand-border)]/50 bg-[var(--brand-surface-alt)]/15 p-3",
+              isOpenHouse && "border-kp-outline/60 bg-kp-surface-high/20"
             )}
           >
-            <p className={kpCalendarModalField.scheduleTitle}>Date & time</p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label className={kpCalendarModalField.label}>Date</Label>
-                <Input
-                  type="date"
-                  value={dateStr}
-                  onChange={(e) => setDateStr(e.target.value)}
-                  className={kpCalendarModalField.inputNativePicker}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className={kpCalendarModalField.label}>Start time</Label>
-                <Input
-                  type="time"
-                  value={startTimeStr}
-                  onChange={(e) => setStartTimeStr(e.target.value)}
-                  className={kpCalendarModalField.inputNativePicker}
-                />
-              </div>
+            <p
+              className={cn(
+                "text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant",
+                !isOpenHouse && "text-[var(--brand-text-muted)]"
+              )}
+            >
+              {isOpenHouse ? "Event details" : "Showing details"}
+            </p>
+
+            <div className="space-y-1.5">
+              <Label className={kpCalendarModalField.label}>Event type</Label>
+              <p className="text-sm font-medium text-kp-on-surface">{typeLabel}</p>
             </div>
+
+            <div className="space-y-1.5">
+              <Label className={kpCalendarModalField.label}>Property</Label>
+              <Select value={propertyId} onValueChange={setPropertyId}>
+                <SelectTrigger className={kpCalendarModalField.selectTrigger}>
+                  <SelectValue placeholder="Select property" />
+                </SelectTrigger>
+                <SelectContent className={kpCalendarModalField.selectContent}>
+                  {properties.map((p) => (
+                    <SelectItem key={p.id} value={p.id} className={kpCalendarModalField.selectItem}>
+                      {p.address1}, {p.city}, {p.state}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div
+              className={cn(
+                kpCalendarModalField.scheduleChrome,
+                "kp-calendar-modal-datetime space-y-3"
+              )}
+            >
+              <p className={kpCalendarModalField.scheduleTitle}>Date & time</p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className={kpCalendarModalField.label}>Date</Label>
+                  <Input
+                    type="date"
+                    value={dateStr}
+                    onChange={(e) => setDateStr(e.target.value)}
+                    className={kpCalendarModalField.inputNativePicker}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className={kpCalendarModalField.label}>Start time</Label>
+                  <Input
+                    type="time"
+                    value={startTimeStr}
+                    onChange={(e) => setStartTimeStr(e.target.value)}
+                    className={kpCalendarModalField.inputNativePicker}
+                  />
+                </div>
+              </div>
+              {isOpenHouse && (
+                <div className="space-y-1.5 sm:max-w-[calc(50%-0.375rem)]">
+                  <Label className={kpCalendarModalField.label}>End time</Label>
+                  <Input
+                    type="time"
+                    value={endTimeStr}
+                    onChange={(e) => setEndTimeStr(e.target.value)}
+                    className={kpCalendarModalField.inputNativePicker}
+                  />
+                </div>
+              )}
+            </div>
+
             {isOpenHouse && (
-              <div className="space-y-1.5 sm:max-w-[calc(50%-0.375rem)]">
-                <Label className={kpCalendarModalField.label}>End time</Label>
+              <div className="space-y-1.5">
+                <Label className={kpCalendarModalField.label}>Title</Label>
                 <Input
-                  type="time"
-                  value={endTimeStr}
-                  onChange={(e) => setEndTimeStr(e.target.value)}
-                  className={kpCalendarModalField.inputNativePicker}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Open House · 123 Main St"
+                  className={kpCalendarModalField.input}
                 />
               </div>
             )}
-          </div>
 
-          {isOpenHouse && (
             <div className="space-y-1.5">
-              <Label className={kpCalendarModalField.label}>Title</Label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Open House · 123 Main St"
-                className={kpCalendarModalField.input}
+              <Label className={kpCalendarModalField.label}>Notes</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Optional notes"
+                className={cn("min-h-[60px] resize-y text-sm", kpCalendarModalField.textarea)}
+                rows={2}
               />
             </div>
-          )}
-
-          <div className="space-y-1.5">
-            <Label className={kpCalendarModalField.label}>Notes</Label>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Optional notes"
-              className={cn("min-h-[60px] resize-y text-sm", kpCalendarModalField.textarea)}
-              rows={2}
-            />
           </div>
 
           {!isOpenHouse && buyerAgentFeedbackDraft && (
-            <ShowingBuyerAgentFeedbackDraftPanel
-              variant="brand"
-              draftSource={{
-                propertyAddressLine: buyerAgentFeedbackDraft.propertyAddressLine,
-                scheduledAt: buyerAgentFeedbackDraft.scheduledAt,
-                buyerAgentName: buyerAgentFeedbackDraft.buyerAgentName,
-              }}
-              generatedAt={buyerAgentFeedbackDraft.generatedAt}
-              buyerAgentEmail={buyerAgentFeedbackDraft.buyerAgentEmail}
-              showingId={eventId}
-              onMarkedSent={() => {
-                onSaved();
-                onOpenChange(false);
-              }}
-            />
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-[var(--brand-text-muted)]">
+                Feedback request (email)
+              </p>
+              <ShowingBuyerAgentFeedbackDraftPanel
+                variant="brand"
+                draftSource={{
+                  propertyAddressLine: buyerAgentFeedbackDraft.propertyAddressLine,
+                  scheduledAt: feedbackPreviewScheduledAt,
+                  buyerAgentName: buyerAgentFeedbackDraft.buyerAgentName,
+                }}
+                generatedAt={buyerAgentFeedbackDraft.generatedAt}
+                buyerAgentEmail={buyerAgentFeedbackDraft.buyerAgentEmail}
+                showingId={eventId}
+                onMarkedSent={() => {
+                  onSaved();
+                  onOpenChange(false);
+                }}
+              />
+            </div>
           )}
 
           {!isOpenHouse && feedbackRequest && (
             <div className="rounded-lg border border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/30 p-3">
               <div className="flex items-center gap-2 text-sm font-medium text-[var(--brand-text)]">
                 <ClipboardCheck className="h-4 w-4 text-[var(--brand-primary)]" />
-                Feedback request
+                Web form feedback link
               </div>
               <p className="mt-1 text-xs text-[var(--brand-text-muted)]">
-                Status: {feedbackRequest.status === "PENDING" ? "Pending" : feedbackRequest.status === "RESPONDED" ? "Responded" : "Expired"}
+                Status:{" "}
+                {feedbackRequest.status === "PENDING"
+                  ? "Pending"
+                  : feedbackRequest.status === "RESPONDED"
+                    ? "Responded"
+                    : "Expired"}
               </p>
               {feedbackRequest.status === "PENDING" && (
                 <Button
@@ -404,7 +452,10 @@ export function EditEventModal({
                   size="sm"
                   className={cn("mt-2", kpCalendarModalField.buttonCancel)}
                   onClick={() => {
-                    const url = typeof window !== "undefined" ? `${window.location.origin}/feedback/${feedbackRequest.token}` : "";
+                    const url =
+                      typeof window !== "undefined"
+                        ? `${window.location.origin}/feedback/${feedbackRequest.token}`
+                        : "";
                     navigator.clipboard.writeText(url).then(() => {
                       setFeedbackLinkCopied(true);
                       setTimeout(() => setFeedbackLinkCopied(false), 2000);

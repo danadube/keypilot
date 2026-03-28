@@ -6,10 +6,14 @@
 /** Standalone line after greeting (blank lines before / after in body). */
 export const BUYER_AGENT_FEEDBACK_ASSISTANT_LINE = "I'm Janice Glaab's assistant.";
 
+/** How the opening line addresses the buyer’s agent (default: first name only). */
+export type BuyerAgentFeedbackGreetingMode = "firstName" | "fullName" | "generic";
+
 export type GenerateShowingBuyerAgentFeedbackDraftInput = {
   propertyAddressLine: string;
   scheduledAt: Date;
   buyerAgentName: string | null;
+  greetingMode?: BuyerAgentFeedbackGreetingMode;
 };
 
 /** Matches persist path: `address1, city, state zip`. */
@@ -59,16 +63,39 @@ function formatBuyerAgentGreetingName(raw: string | null | undefined): string | 
     .join(" ");
 }
 
-function buyerAgentGreetingLine(formattedName: string | null): string {
-  return formattedName ? `Hi ${formattedName},` : "Hi there,";
+/**
+ * Builds “Hi …,” from stored buyer-agent name.
+ * - firstName: first whitespace-delimited token after normalization (no usable token → generic)
+ * - fullName: full normalized name
+ * - generic: always “Hi there,”
+ */
+export function greetingLineFromBuyerAgentName(
+  buyerAgentName: string | null | undefined,
+  mode: BuyerAgentFeedbackGreetingMode = "firstName"
+): string {
+  if (mode === "generic") return "Hi there,";
+
+  const formattedFull = formatBuyerAgentGreetingName(buyerAgentName);
+  if (!formattedFull) return "Hi there,";
+
+  if (mode === "fullName") {
+    return `Hi ${formattedFull},`;
+  }
+
+  const firstToken = formattedFull.split(/\s+/).filter(Boolean)[0] ?? "";
+  const letters = firstToken.replace(/[^a-z]/gi, "");
+  if (!letters) return "Hi there,";
+
+  return `Hi ${firstToken},`;
 }
 
 export function generateShowingBuyerAgentFeedbackDraft(
   input: GenerateShowingBuyerAgentFeedbackDraftInput
 ): { subject: string; body: string } {
   const addr = input.propertyAddressLine.trim();
-  const greeting = buyerAgentGreetingLine(
-    formatBuyerAgentGreetingName(input.buyerAgentName)
+  const greeting = greetingLineFromBuyerAgentName(
+    input.buyerAgentName,
+    input.greetingMode ?? "firstName"
   );
   const dateStr = formatShowingDate(input.scheduledAt);
   const timeStr = formatShowingTime(input.scheduledAt);

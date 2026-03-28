@@ -2,10 +2,21 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Check, Copy, Mail, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
-import { generateShowingBuyerAgentFeedbackDraft } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
+import {
+  generateShowingBuyerAgentFeedbackDraft,
+  type BuyerAgentFeedbackGreetingMode,
+} from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 
 /** Browsers and mail clients vary; very long mailto URLs may be truncated or ignored. */
 export const BUYER_AGENT_FEEDBACK_MAILTO_MAX_LENGTH = 1950;
@@ -40,7 +51,7 @@ export type ShowingBuyerAgentFeedbackDraftProps = {
   generatedAt: string | null | undefined;
   /** Required to enable “Create email” (mailto). */
   buyerAgentEmail?: string | null | undefined;
-  /** When present, shows “Mark sent” to clear DRAFT_READY from dashboards. */
+  /** When present, shows “Mark as sent” to clear DRAFT_READY from dashboards. */
   showingId?: string | null | undefined;
   onMarkedSent?: () => void;
   className?: string;
@@ -48,8 +59,14 @@ export type ShowingBuyerAgentFeedbackDraftProps = {
   variant?: "kp" | "brand";
 };
 
+const GREETING_OPTIONS: { value: BuyerAgentFeedbackGreetingMode; label: string }[] = [
+  { value: "firstName", label: "First name" },
+  { value: "fullName", label: "Full name" },
+  { value: "generic", label: "Generic" },
+];
+
 /**
- * Buyer-agent feedback draft: copy actions + optional mailto “Create email” (opens default mail client).
+ * Buyer-agent feedback request: preview, greeting control, mailto, copy, mark sent.
  */
 export function ShowingBuyerAgentFeedbackDraftPanel({
   draftSource,
@@ -60,6 +77,7 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
   className,
   variant = "kp",
 }: ShowingBuyerAgentFeedbackDraftProps) {
+  const [greetingMode, setGreetingMode] = useState<BuyerAgentFeedbackGreetingMode>("firstName");
   const [copied, setCopied] = useState<null | "subject" | "body" | "both">(null);
   const [markingSent, setMarkingSent] = useState(false);
 
@@ -73,12 +91,9 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
       propertyAddressLine: line,
       scheduledAt: d,
       buyerAgentName: draftSource.buyerAgentName,
+      greetingMode,
     });
-  }, [
-    draftSource.propertyAddressLine,
-    draftSource.scheduledAt,
-    draftSource.buyerAgentName,
-  ]);
+  }, [draftSource.propertyAddressLine, draftSource.scheduledAt, draftSource.buyerAgentName, greetingMode]);
 
   const to = buyerAgentEmail?.trim() ?? "";
   if (!sub.trim() || !bod.trim()) return null;
@@ -138,12 +153,20 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
       ? "border-[var(--brand-border)] text-[var(--brand-text)] hover:bg-[var(--brand-surface-alt)]"
       : "";
 
+  const selectTriggerCls =
+    variant === "brand"
+      ? "h-8 border-[var(--brand-border)] bg-[var(--brand-surface-alt)]/20 text-xs text-[var(--brand-text)]"
+      : "h-8 border-kp-outline bg-kp-surface-high text-xs";
+
   return (
     <div className={cn("rounded-lg border p-3", shell, className)}>
-      <div className={cn("flex items-center gap-2 text-sm font-medium", titleCls)}>
+      <div className={cn("flex items-center gap-2 text-sm font-semibold", titleCls)}>
         <Mail className={cn("h-4 w-4 shrink-0", iconCls)} />
-        Buyer-agent feedback email
+        Feedback request
       </div>
+      <p className={cn("mt-1 text-xs leading-snug", mutedCls)}>
+        Review the email below, send it from your mail app, then mark it sent so dashboards stay accurate.
+      </p>
       {genLabel && <p className={cn("mt-1 text-xs", mutedCls)}>Draft last saved {genLabel}</p>}
       {to && (
         <p className={cn("mt-1 truncate text-xs", mutedCls)} title={to}>
@@ -151,10 +174,34 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
         </p>
       )}
 
-      <p className={cn("mt-2 text-xs font-medium uppercase tracking-wide", mutedCls)}>Subject</p>
+      <div className="mt-3 space-y-1.5">
+        <Label
+          htmlFor="buyer-agent-feedback-greeting"
+          className={cn("text-xs font-medium uppercase tracking-wide", mutedCls)}
+        >
+          Greeting
+        </Label>
+        <Select
+          value={greetingMode}
+          onValueChange={(v) => setGreetingMode(v as BuyerAgentFeedbackGreetingMode)}
+        >
+          <SelectTrigger id="buyer-agent-feedback-greeting" className={selectTriggerCls}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {GREETING_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <p className={cn("mt-3 text-xs font-medium uppercase tracking-wide", mutedCls)}>Subject</p>
       <p className={cn("mt-0.5 text-sm", titleCls)}>{sub}</p>
 
-      <p className={cn("mt-3 text-xs font-medium uppercase tracking-wide", mutedCls)}>Body</p>
+      <p className={cn("mt-3 text-xs font-medium uppercase tracking-wide", mutedCls)}>Body preview</p>
       <pre
         className={cn(
           "mt-0.5 max-h-40 overflow-y-auto whitespace-pre-wrap break-words rounded-md p-2 text-sm leading-relaxed",
@@ -166,7 +213,8 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
         {bod}
       </pre>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <p className={cn("mt-4 text-xs font-semibold uppercase tracking-wide", mutedCls)}>Actions</p>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
         {mailtoHref && !mailtoTooLong && (
           <Button
             asChild
@@ -236,20 +284,28 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
           {copied === "both" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
           <span className="ml-1.5">{copied === "both" ? "Copied" : "Copy subject + body"}</span>
         </Button>
-      </div>
-      {showingId?.trim() && (
-        <p className={cn("mt-2 text-xs", mutedCls)}>
-          <button
+
+        {showingId?.trim() ? (
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
+            className={cn(
+              "h-8 text-xs",
+              variant === "brand" ? btnOutline : kpBtnSecondary
+            )}
             disabled={markingSent}
             onClick={markSent}
-            className="font-medium text-kp-teal underline-offset-2 hover:underline disabled:opacity-50"
           >
-            {markingSent ? "Updating…" : "Mark feedback email as sent"}
-          </button>
-          <span className="text-kp-on-surface-variant"> — hides this from review queues.</span>
+            {markingSent ? "Updating…" : "Mark as sent"}
+          </Button>
+        ) : null}
+      </div>
+      {showingId?.trim() ? (
+        <p className={cn("mt-2 text-[11px] leading-snug", mutedCls)}>
+          Use after sending from your email app.
         </p>
-      )}
+      ) : null}
     </div>
   );
 }
