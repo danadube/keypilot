@@ -152,12 +152,15 @@ function KpiCard({
   context,
   href,
   accent = "default",
+  title: titleAttr,
 }: {
   label: string;
   value: number | string;
   context: string;
   href: string;
   accent?: "teal" | "gold" | "default";
+  /** Accessible description for the whole card link */
+  title?: string;
 }) {
   const valueColor =
     accent === "teal"
@@ -169,9 +172,11 @@ function KpiCard({
   return (
     <Link
       href={href}
+      title={titleAttr ?? `Open ${label} (${context})`}
       className={cn(
         "group flex min-h-[96px] flex-col justify-between rounded-xl border border-kp-outline shadow-sm",
-        "bg-kp-surface-high px-4 py-3 transition-colors hover:border-kp-teal/40 hover:bg-kp-surface-higher"
+        "bg-kp-surface-high px-4 py-3 transition-colors hover:border-kp-teal/50 hover:bg-kp-surface-higher",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-gold/45 focus-visible:ring-offset-2 focus-visible:ring-offset-kp-bg"
       )}
     >
       <span className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
@@ -185,7 +190,7 @@ function KpiCard({
       >
         {value}
       </span>
-      <span className="line-clamp-2 text-[11px] leading-snug text-kp-on-surface-variant">
+      <span className="line-clamp-2 text-[11px] leading-snug text-kp-on-surface-variant group-hover:text-kp-on-surface">
         {context}
       </span>
     </Link>
@@ -762,12 +767,12 @@ export function ShowingHQDashboardView() {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex min-h-0 flex-col gap-4 bg-transparent">
+    <div className="flex min-h-0 flex-col gap-6 bg-transparent">
       <DashboardContextStrip label="Today" message={dashboardContextMessage} />
 
-      {/* ── KPI strip (title lives in shell header) ─────────────────────── */}
+      {/* ── KPI strip (click-through to primary tabs / key views) ─────────── */}
       <section
-        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
+        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
         aria-label="Operational metrics"
       >
         <KpiCard
@@ -779,6 +784,7 @@ export function ShowingHQDashboardView() {
           }
           href="/open-houses"
           accent="teal"
+          title="Open Open Houses tab — upcoming events"
         />
         <KpiCard
           label="Visitors (30d)"
@@ -790,6 +796,7 @@ export function ShowingHQDashboardView() {
           }
           href="/showing-hq/visitors"
           accent="gold"
+          title="Open Visitors tab"
         />
         <KpiCard
           label="Follow-ups"
@@ -803,6 +810,7 @@ export function ShowingHQDashboardView() {
           }
           href="/showing-hq/follow-ups"
           accent={kpiFollowUps.overdue > 0 ? "gold" : "default"}
+          title="Open follow-ups and feedback queue"
         />
         <KpiCard
           label="Reports ready"
@@ -816,25 +824,54 @@ export function ShowingHQDashboardView() {
               : "/open-houses"
           }
           accent="teal"
+          title={
+            recentReports[0]
+              ? "Open latest seller report"
+              : "Open Open Houses to manage listings and reports"
+          }
         />
       </section>
 
-      {/* ── Schedule + Queue ─────────────────────────────────────────────── */}
+      {/* ── Today’s queue (primary) then calendar (secondary) ───────────── */}
       <div
-        className="grid min-h-0 items-stretch gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,360px)]"
+        className="grid min-h-0 items-stretch gap-4 lg:grid-cols-[minmax(280px,360px)_minmax(0,1.25fr)]"
         role="region"
-        aria-label="Schedule and queue"
+        aria-label="Queue and schedule"
       >
-        {/* Calendar panel — interior calendar component deferred */}
-        <div className="flex min-h-[400px] flex-col overflow-hidden rounded-xl border border-kp-outline bg-kp-surface-high lg:min-h-[460px]">
-          <div className="flex flex-wrap items-end justify-between gap-2 border-b border-kp-outline bg-kp-surface-higher px-4 py-2.5">
+        <ShowingHQWorkbenchQueue
+          activeOpenHouse={activeOpenHouse}
+          scheduledTodayOpenHouse={scheduledTodayForSignIn}
+          signInUrl={signInUrl}
+          linkCopied={linkCopied}
+          onCopySignIn={handleCopyLink}
+          followUpDraftCount={followUpTasks.length}
+          firstFollowUpDraftId={followUpTasks[0]?.id ?? null}
+          feedbackPendingCount={
+            stats.feedbackRequestsPending ?? pendingFeedbackRequests.length
+          }
+          reportsReadyCount={recentReports.length}
+          firstReportId={recentReports[0]?.id ?? null}
+          scheduleItems={scheduleItems}
+          tomorrowItem={tomorrowItem}
+          formatTime={formatTime}
+          formatDateShort={formatDateShort}
+        />
+
+        <div className="flex min-h-[400px] flex-col overflow-hidden rounded-xl border border-kp-outline/80 bg-kp-surface-high lg:min-h-[460px]">
+          <div className="flex flex-wrap items-end justify-between gap-2 border-b border-kp-outline bg-kp-surface-higher/80 px-4 py-2">
             <div>
-              <h2 className="text-xs font-semibold text-kp-on-surface">Schedule</h2>
-              <p className="text-[10px] text-kp-on-surface/80">
-                Week · planning · Month · open houses & showings
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                Schedule
+              </p>
+              <h2 className="text-sm font-medium text-kp-on-surface">Calendar</h2>
+              <p className="text-[10px] text-kp-on-surface-variant">
+                Week / month · open houses and showings
               </p>
             </div>
-            <Link href="/open-houses" className="text-xs text-kp-teal hover:underline">
+            <Link
+              href="/open-houses"
+              className="shrink-0 text-xs font-medium text-kp-teal hover:underline"
+            >
               All open houses
             </Link>
           </div>
@@ -861,26 +898,6 @@ export function ShowingHQDashboardView() {
             />
           </div>
         </div>
-
-        {/* Queue — existing component, deferred migration */}
-        <ShowingHQWorkbenchQueue
-          activeOpenHouse={activeOpenHouse}
-          scheduledTodayOpenHouse={scheduledTodayForSignIn}
-          signInUrl={signInUrl}
-          linkCopied={linkCopied}
-          onCopySignIn={handleCopyLink}
-          followUpDraftCount={followUpTasks.length}
-          firstFollowUpDraftId={followUpTasks[0]?.id ?? null}
-          feedbackPendingCount={
-            stats.feedbackRequestsPending ?? pendingFeedbackRequests.length
-          }
-          reportsReadyCount={recentReports.length}
-          firstReportId={recentReports[0]?.id ?? null}
-          scheduleItems={scheduleItems}
-          tomorrowItem={tomorrowItem}
-          formatTime={formatTime}
-          formatDateShort={formatDateShort}
-        />
       </div>
 
       {/* ── Modals ───────────────────────────────────────────────────────── */}
@@ -923,12 +940,8 @@ export function ShowingHQDashboardView() {
         />
       )}
 
-      {/* ── Secondary panels ─────────────────────────────────────────────── */}
-      <div className="grid gap-4 xl:grid-cols-3">
-        <ActivityPanel
-          items={activityItems}
-          formatTimeContextual={formatTimeContextual}
-        />
+      {/* ── Secondary: open houses snapshot, reports/feedback, then activity ─ */}
+      <div className="mt-2 grid gap-4 border-t border-kp-outline/70 pt-6 xl:grid-cols-3">
         <OpenHousesPanel
           todaysShowings={todaysShowings}
           upcoming={upcoming}
@@ -939,6 +952,12 @@ export function ShowingHQDashboardView() {
           recentReports={recentReports}
           pendingFeedbackRequests={pendingFeedbackRequests}
         />
+        <div className="xl:opacity-[0.97]">
+          <ActivityPanel
+            items={activityItems}
+            formatTimeContextual={formatTimeContextual}
+          />
+        </div>
       </div>
     </div>
   );
