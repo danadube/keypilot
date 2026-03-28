@@ -30,6 +30,7 @@ import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 import { ShowingBuyerAgentFeedbackDraftPanel } from "@/components/showing-hq/ShowingBuyerAgentFeedbackDraftPanel";
+import { buildPropertyAddressLineForFeedbackDraft } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 import {
   Select,
   SelectContent,
@@ -69,7 +70,7 @@ type Showing = {
   feedbackDraftSubject?: string | null;
   feedbackDraftBody?: string | null;
   feedbackDraftGeneratedAt?: string | null;
-  property: { address1: string; city: string; state: string };
+  property: { address1: string; city: string; state: string; zip?: string | null };
 };
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
@@ -395,8 +396,11 @@ function EditShowingModal({
 
           <ShowingBuyerAgentFeedbackDraftPanel
             variant="kp"
-            subject={showing.feedbackDraftSubject}
-            body={showing.feedbackDraftBody}
+            draftSource={{
+              propertyAddressLine: buildPropertyAddressLineForFeedbackDraft(showing.property),
+              scheduledAt: showing.scheduledAt,
+              buyerAgentName: showing.buyerAgentName,
+            }}
             generatedAt={showing.feedbackDraftGeneratedAt}
             buyerAgentEmail={showing.buyerAgentEmail}
             showingId={showing.id}

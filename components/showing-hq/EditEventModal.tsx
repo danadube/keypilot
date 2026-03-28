@@ -16,6 +16,7 @@ import {
 import { kpCalendarModalField } from "@/components/showing-hq/calendar-modal-field-classes";
 import { kpBtnDangerSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { ShowingBuyerAgentFeedbackDraftPanel } from "@/components/showing-hq/ShowingBuyerAgentFeedbackDraftPanel";
+import { buildPropertyAddressLineForFeedbackDraft } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 import { cn } from "@/lib/utils";
 import { Copy, Check, ClipboardCheck } from "lucide-react";
 
@@ -53,10 +54,11 @@ export function EditEventModal({
   const [feedbackRequest, setFeedbackRequest] = useState<{ token: string; status: string } | null>(null);
   const [feedbackLinkCopied, setFeedbackLinkCopied] = useState(false);
   const [buyerAgentFeedbackDraft, setBuyerAgentFeedbackDraft] = useState<{
-    subject: string | null;
-    body: string | null;
     generatedAt: string | null;
     buyerAgentEmail: string | null;
+    propertyAddressLine: string;
+    scheduledAt: string;
+    buyerAgentName: string | null;
   } | null>(null);
 
   const isOpenHouse = eventType === "open_house";
@@ -126,16 +128,29 @@ export function EditEventModal({
           setFeedbackRequest(fr ?? null);
           const draft = d as {
             buyerAgentEmail?: string | null;
-            feedbackDraftSubject?: string | null;
-            feedbackDraftBody?: string | null;
             feedbackDraftGeneratedAt?: string | null;
+            scheduledAt?: string;
+            buyerAgentName?: string | null;
+            property?: {
+              address1?: string | null;
+              city?: string | null;
+              state?: string | null;
+              zip?: string | null;
+            };
           };
-          setBuyerAgentFeedbackDraft({
-            subject: draft.feedbackDraftSubject ?? null,
-            body: draft.feedbackDraftBody ?? null,
-            generatedAt: draft.feedbackDraftGeneratedAt ?? null,
-            buyerAgentEmail: draft.buyerAgentEmail ?? null,
-          });
+          const email = draft.buyerAgentEmail?.trim() ?? "";
+          const genAt = draft.feedbackDraftGeneratedAt ?? null;
+          if (email && genAt && draft.scheduledAt && draft.property) {
+            setBuyerAgentFeedbackDraft({
+              generatedAt: genAt,
+              buyerAgentEmail: email,
+              propertyAddressLine: buildPropertyAddressLineForFeedbackDraft(draft.property),
+              scheduledAt: draft.scheduledAt,
+              buyerAgentName: draft.buyerAgentName ?? null,
+            });
+          } else {
+            setBuyerAgentFeedbackDraft(null);
+          }
         }
       })
       .catch(() => setError("Failed to load event"))
@@ -358,8 +373,11 @@ export function EditEventModal({
           {!isOpenHouse && buyerAgentFeedbackDraft && (
             <ShowingBuyerAgentFeedbackDraftPanel
               variant="brand"
-              subject={buyerAgentFeedbackDraft.subject}
-              body={buyerAgentFeedbackDraft.body}
+              draftSource={{
+                propertyAddressLine: buyerAgentFeedbackDraft.propertyAddressLine,
+                scheduledAt: buyerAgentFeedbackDraft.scheduledAt,
+                buyerAgentName: buyerAgentFeedbackDraft.buyerAgentName,
+              }}
               generatedAt={buyerAgentFeedbackDraft.generatedAt}
               buyerAgentEmail={buyerAgentFeedbackDraft.buyerAgentEmail}
               showingId={eventId}

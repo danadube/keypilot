@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Check, Copy, Mail, Send } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import { generateShowingBuyerAgentFeedbackDraft } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 
 /** Browsers and mail clients vary; very long mailto URLs may be truncated or ignored. */
 export const BUYER_AGENT_FEEDBACK_MAILTO_MAX_LENGTH = 1950;
@@ -26,9 +27,16 @@ export function buildBuyerAgentFeedbackMailtoHref(
   return `mailto:${encodeURIComponent(to)}?subject=${qSub}&body=${qBody}`;
 }
 
+export type BuyerAgentFeedbackDraftSource = {
+  propertyAddressLine: string;
+  /** ISO 8601 */
+  scheduledAt: string;
+  buyerAgentName: string | null;
+};
+
 export type ShowingBuyerAgentFeedbackDraftProps = {
-  subject: string | null | undefined;
-  body: string | null | undefined;
+  /** Always derive subject/body from this via the shared generator (never stale DB text). */
+  draftSource: BuyerAgentFeedbackDraftSource;
   generatedAt: string | null | undefined;
   /** Required to enable “Create email” (mailto). */
   buyerAgentEmail?: string | null | undefined;
@@ -44,8 +52,7 @@ export type ShowingBuyerAgentFeedbackDraftProps = {
  * Buyer-agent feedback draft: copy actions + optional mailto “Create email” (opens default mail client).
  */
 export function ShowingBuyerAgentFeedbackDraftPanel({
-  subject,
-  body,
+  draftSource,
   generatedAt,
   buyerAgentEmail,
   showingId,
@@ -56,10 +63,25 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
   const [copied, setCopied] = useState<null | "subject" | "body" | "both">(null);
   const [markingSent, setMarkingSent] = useState(false);
 
-  const sub = subject?.trim() ?? "";
-  const bod = body?.trim() ?? "";
+  const { subject: sub, body: bod } = useMemo(() => {
+    const line = draftSource.propertyAddressLine?.trim() ?? "";
+    const at = draftSource.scheduledAt?.trim() ?? "";
+    if (!line || !at) return { subject: "", body: "" };
+    const d = new Date(at);
+    if (Number.isNaN(d.getTime())) return { subject: "", body: "" };
+    return generateShowingBuyerAgentFeedbackDraft({
+      propertyAddressLine: line,
+      scheduledAt: d,
+      buyerAgentName: draftSource.buyerAgentName,
+    });
+  }, [
+    draftSource.propertyAddressLine,
+    draftSource.scheduledAt,
+    draftSource.buyerAgentName,
+  ]);
+
   const to = buyerAgentEmail?.trim() ?? "";
-  if (!sub || !bod) return null;
+  if (!sub.trim() || !bod.trim()) return null;
 
   const mailtoHref = to ? buildBuyerAgentFeedbackMailtoHref(to, sub, bod) : null;
   const mailtoTooLong = mailtoHref != null && mailtoHref.length > BUYER_AGENT_FEEDBACK_MAILTO_MAX_LENGTH;
@@ -122,7 +144,7 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
         <Mail className={cn("h-4 w-4 shrink-0", iconCls)} />
         Buyer-agent feedback email
       </div>
-      {genLabel && <p className={cn("mt-1 text-xs", mutedCls)}>Generated {genLabel}</p>}
+      {genLabel && <p className={cn("mt-1 text-xs", mutedCls)}>Draft last saved {genLabel}</p>}
       {to && (
         <p className={cn("mt-1 truncate text-xs", mutedCls)} title={to}>
           To: {to}

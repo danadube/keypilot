@@ -1,101 +1,18 @@
 /**
- * Plain-text email draft for asking a buyer's agent for post-showing feedback.
- * Used after Supra queue apply; no AI, no outbound send in v1.
- * Body intentionally has no signature — the user sends from a client that adds one.
+ * Persist buyer-agent feedback drafts after Supra apply.
+ * Text generation lives in `buyer-agent-feedback-draft-generate.ts` (client-safe).
  */
 
 import { prismaAdmin } from "@/lib/db";
+import {
+  buildPropertyAddressLineForFeedbackDraft,
+  generateShowingBuyerAgentFeedbackDraft,
+} from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 
-export type GenerateShowingBuyerAgentFeedbackDraftInput = {
-  propertyAddressLine: string;
-  scheduledAt: Date;
-  buyerAgentName: string | null;
-};
+export type { GenerateShowingBuyerAgentFeedbackDraftInput } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 
-function formatShowingDate(d: Date): string {
-  return new Intl.DateTimeFormat(undefined, { dateStyle: "full" }).format(d);
-}
+export { generateShowingBuyerAgentFeedbackDraft } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 
-function formatShowingTime(d: Date): string {
-  return new Intl.DateTimeFormat(undefined, { timeStyle: "short" }).format(d);
-}
-
-/**
- * Trims; drops empty / punctuation-only; softens obvious SHOUTCASE to title case.
- * Otherwise preserves spelling (e.g. "Jane B.", mixed case already correct).
- */
-function formatBuyerAgentGreetingName(raw: string | null | undefined): string | null {
-  const t = raw?.trim() ?? "";
-  if (!t) return null;
-
-  const lettersOnly = t.replace(/[^a-z]/gi, "");
-  if (!lettersOnly) return null;
-
-  const looksShoutcase =
-    lettersOnly.length >= 2 && lettersOnly === lettersOnly.toUpperCase();
-
-  if (!looksShoutcase) return t;
-
-  return t
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) =>
-      word
-        .split("-")
-        .map((part) => {
-          if (!part) return part;
-          const head = part.charAt(0).toUpperCase();
-          const tail = part.slice(1).toLowerCase();
-          return head + tail;
-        })
-        .join("-")
-    )
-    .join(" ");
-}
-
-function buyerAgentGreetingLine(formattedName: string | null): string {
-  return formattedName ? `Hi ${formattedName},` : "Hi there,";
-}
-
-/**
- * Builds subject/body for a professional follow-up to the buyer's agent.
- * Caller should only persist when buyerAgentEmail is non-empty on the Showing.
- */
-export function generateShowingBuyerAgentFeedbackDraft(
-  input: GenerateShowingBuyerAgentFeedbackDraftInput
-): { subject: string; body: string } {
-  const addr = input.propertyAddressLine.trim();
-  const greeting = buyerAgentGreetingLine(
-    formatBuyerAgentGreetingName(input.buyerAgentName)
-  );
-  const dateStr = formatShowingDate(input.scheduledAt);
-  const timeStr = formatShowingTime(input.scheduledAt);
-
-  const subject = `Feedback request — ${addr}`;
-
-  // No sign-off: the user's mail client adds their signature.
-  const lines = [
-    greeting,
-    "",
-    `Thank you for showing ${addr} on ${dateStr} at ${timeStr}.`,
-    "",
-    "When you have a moment, I would appreciate your buyer's feedback, including:",
-    "- overall interest level",
-    "- any concerns or objections",
-    "- pricing or value impressions",
-    "- whether they may have interest in a second showing or follow-up",
-  ];
-
-  const body = lines.join("\n").trimEnd();
-
-  return { subject, body };
-}
-
-/**
- * Loads property + showing, generates draft when buyer agent email exists, persists to Showing.
- * Swallows errors and logs — must not affect Supra apply success.
- * @returns whether draft fields were written to the Showing row.
- */
 export async function persistShowingBuyerAgentFeedbackDraftAfterSupraApply(args: {
   showingId: string;
   propertyId: string;
@@ -127,8 +44,7 @@ export async function persistShowingBuyerAgentFeedbackDraftAfterSupraApply(args:
     const buyerAgentEmail = showing.buyerAgentEmail?.trim();
     if (!buyerAgentEmail) return { saved: false };
 
-    const propertyAddressLine =
-      `${property.address1}, ${property.city}, ${property.state} ${property.zip}`.trim();
+    const propertyAddressLine = buildPropertyAddressLineForFeedbackDraft(property);
 
     const { subject, body } = generateShowingBuyerAgentFeedbackDraft({
       propertyAddressLine,
