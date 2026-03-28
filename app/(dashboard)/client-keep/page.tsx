@@ -81,11 +81,16 @@ export default function ClientKeepOverviewPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Use the sidebar for Contacts, Segments, Communications, Follow-ups, and Tags. Segments are quick links into filtered contact views; the Tags page lists your labels and usage counts.
+            Contacts and Deals stay in the platform sidebar. Segments are quick links into filtered
+            contact views; Tags lists your labels and usage counts. Use the shortcuts below for
+            segments, tags, communications, follow-ups, and recent activity.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "text-xs")} asChild>
               <Link href="/client-keep/segments">Segments</Link>
+            </Button>
+            <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "text-xs")} asChild>
+              <Link href="/client-keep/tags">Tags</Link>
             </Button>
             <Button variant="outline" size="sm" className={cn(kpBtnPrimary, "border-transparent text-xs")} asChild>
               <Link href="/client-keep/communications">Communications hub</Link>
