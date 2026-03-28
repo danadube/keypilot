@@ -21,6 +21,43 @@ function formatShowingTime(d: Date): string {
 }
 
 /**
+ * Trims; drops empty / punctuation-only; softens obvious SHOUTCASE to title case.
+ * Otherwise preserves spelling (e.g. "Jane B.", mixed case already correct).
+ */
+function formatBuyerAgentGreetingName(raw: string | null | undefined): string | null {
+  const t = raw?.trim() ?? "";
+  if (!t) return null;
+
+  const lettersOnly = t.replace(/[^a-z]/gi, "");
+  if (!lettersOnly) return null;
+
+  const looksShoutcase =
+    lettersOnly.length >= 2 && lettersOnly === lettersOnly.toUpperCase();
+
+  if (!looksShoutcase) return t;
+
+  return t
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) =>
+      word
+        .split("-")
+        .map((part) => {
+          if (!part) return part;
+          const head = part.charAt(0).toUpperCase();
+          const tail = part.slice(1).toLowerCase();
+          return head + tail;
+        })
+        .join("-")
+    )
+    .join(" ");
+}
+
+function buyerAgentGreetingLine(formattedName: string | null): string {
+  return formattedName ? `Hi ${formattedName},` : "Hi there,";
+}
+
+/**
  * Builds subject/body for a professional follow-up to the buyer's agent.
  * Caller should only persist when buyerAgentEmail is non-empty on the Showing.
  */
@@ -28,8 +65,9 @@ export function generateShowingBuyerAgentFeedbackDraft(
   input: GenerateShowingBuyerAgentFeedbackDraftInput
 ): { subject: string; body: string } {
   const addr = input.propertyAddressLine.trim();
-  const name = input.buyerAgentName?.trim();
-  const greeting = name ? `Hi ${name},` : "Hi there,";
+  const greeting = buyerAgentGreetingLine(
+    formatBuyerAgentGreetingName(input.buyerAgentName)
+  );
   const dateStr = formatShowingDate(input.scheduledAt);
   const timeStr = formatShowingTime(input.scheduledAt);
 

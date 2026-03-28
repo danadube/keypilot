@@ -57,4 +57,40 @@ describe("generateShowingBuyerAgentFeedbackDraft", () => {
     expect(body).toMatch(/^Hi there,\s*\n/);
     expect(body).not.toMatch(/Your listing partner/i);
   });
+
+  it("uses Hi there for whitespace-only name", () => {
+    const { body } = generateShowingBuyerAgentFeedbackDraft({
+      propertyAddressLine: "1 A, C, S Z",
+      scheduledAt: fixedDate,
+      buyerAgentName: "   \t  ",
+    });
+    expect(body).toMatch(/^Hi there,\s*\n/);
+  });
+
+  it("title-cases obvious all-caps names", () => {
+    const { body } = generateShowingBuyerAgentFeedbackDraft({
+      propertyAddressLine: "10 Pine, Springfield, IL 62701",
+      scheduledAt: fixedDate,
+      buyerAgentName: "BUYERAGENT",
+    });
+    expect(body).toContain("Hi Buyeragent,");
+  });
+
+  it("title-cases each word when entire name is shoutcase", () => {
+    const { body } = generateShowingBuyerAgentFeedbackDraft({
+      propertyAddressLine: "10 Pine, Springfield, IL 62701",
+      scheduledAt: fixedDate,
+      buyerAgentName: "JANE B. SMITH",
+    });
+    expect(body).toContain("Hi Jane B. Smith,");
+  });
+
+  it("preserves normal mixed-case names like Jane B.", () => {
+    const { body } = generateShowingBuyerAgentFeedbackDraft({
+      propertyAddressLine: "10 Pine, Springfield, IL 62701",
+      scheduledAt: fixedDate,
+      buyerAgentName: "Jane B.",
+    });
+    expect(body).toContain("Hi Jane B.,");
+  });
 });
