@@ -1,7 +1,10 @@
 import type { NextRequest } from "next/server";
 
 /**
- * Authorize Vercel Cron (`x-vercel-cron: 1`) or `Authorization: Bearer ${CRON_SECRET}`.
+ * Cron-only: allow Vercel’s job runner header or a shared secret. All other callers get 401.
+ *
+ * - Vercel: exact header `x-vercel-cron: 1`
+ * - External: `Authorization: Bearer <CRON_SECRET>` with no alternate schemes or casing
  */
 export function isAuthorizedCronRequest(req: NextRequest): boolean {
   if (req.headers.get("x-vercel-cron") === "1") {

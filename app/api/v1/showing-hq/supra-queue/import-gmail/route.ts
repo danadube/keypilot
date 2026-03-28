@@ -28,6 +28,15 @@ export async function POST() {
       );
     }
 
+    if (result.skipped && result.reason === "import_already_in_progress") {
+      return apiError(
+        result.message ??
+          "An import is already running. Wait a moment and try again.",
+        409,
+        "IMPORT_BUSY"
+      );
+    }
+
     if (!result.ok && !result.skipped) {
       return apiError(result.error ?? "Import failed", 500, "IMPORT_FAILED");
     }

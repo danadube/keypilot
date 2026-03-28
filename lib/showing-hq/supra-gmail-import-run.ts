@@ -1,7 +1,11 @@
 /**
  * Shared Supra Gmail → queue import (manual POST, scheduled cron, or “Run now” in UI).
- * Updates `SupraGmailImportSettings` with last-run metadata. Ingest remains idempotent via
- * `ingestSupraQueueItemIfNew` (unique externalMessageId per user).
+ * Updates `SupraGmailImportSettings` with last-run metadata.
+ *
+ * Idempotence: each message uses stable `externalMessageId` (`gmail-{id}`); `ingestSupraQueueItemIfNew`
+ * hits `@@unique([hostUserId, externalMessageId])` so repeats create no duplicate queue rows (refresh or skip only).
+ *
+ * Overlap: `importRunStartedAt` is a soft lock (cleared in `finally`; stale after ~12 minutes).
  */
 
 import { prismaAdmin } from "@/lib/db";
@@ -9,7 +13,14 @@ import { fetchSupraGmailMessages } from "@/lib/adapters/gmail";
 import { applySupraV1ParseDraftToQueueItem } from "@/lib/showing-hq/supra-queue-apply-parse-draft";
 import { ingestSupraQueueItemIfNew } from "@/lib/showing-hq/supra-queue-ingest";
 
+/** If a run exceeds this duration without releasing the lock, another run may proceed (crash recovery). */
+export const IMPORT_RUN_LOCK_STALE_MS = 12 * 60 * 1000;
+
 export type SupraGmailImportSource = "manual" | "scheduled";
+
+function normalizeImportErrorMessage(message: string): string {
+  return message.replace(/\s+/g, " ").trim().slice(0, 1000);
+}
 
 export type SupraGmailImportRunResult =
   | {
@@ -24,7 +35,7 @@ export type SupraGmailImportRunResult =
   | {
       ok: false;
       skipped: true;
-      reason: "automation_disabled" | "no_gmail_connection";
+      reason: "automation_disabled" | "no_gmail_connection" | "import_already_in_progress";
       message?: string;
     }
   | {
@@ -32,6 +43,39 @@ export type SupraGmailImportRunResult =
       skipped: false;
       error: string;
     };
+
+async function tryAcquireSupraGmailImportLock(userId: string): Promise<boolean> {
+  const now = new Date();
+  const staleBefore = new Date(now.getTime() - IMPORT_RUN_LOCK_STALE_MS);
+  return prismaAdmin.$transaction(async (tx) => {
+    const row = await tx.supraGmailImportSettings.findUnique({
+      where: { userId },
+      select: { importRunStartedAt: true },
+    });
+    if (
+      row?.importRunStartedAt != null &&
+      row.importRunStartedAt.getTime() >= staleBefore.getTime()
+    ) {
+      return false;
+    }
+    await tx.supraGmailImportSettings.upsert({
+      where: { userId },
+      create: {
+        userId,
+        importRunStartedAt: now,
+      },
+      update: { importRunStartedAt: now },
+    });
+    return true;
+  });
+}
+
+async function releaseSupraGmailImportLock(userId: string): Promise<void> {
+  await prismaAdmin.supraGmailImportSettings.updateMany({
+    where: { userId },
+    data: { importRunStartedAt: null },
+  });
+}
 
 async function persistRunOutcome(
   userId: string,
@@ -88,13 +132,18 @@ async function persistRunOutcome(
         lastRunSkipped: 0,
         lastRunScanned: 0,
         lastRunAutoParsed: 0,
-        lastRunError: data.error.slice(0, 1000),
+        lastRunError: normalizeImportErrorMessage(data.error),
       },
       update: {
         lastRunAt: now,
         lastRunSuccess: false,
         lastRunSource: source,
-        lastRunError: data.error.slice(0, 1000),
+        lastRunImported: null,
+        lastRunRefreshed: null,
+        lastRunSkipped: null,
+        lastRunScanned: null,
+        lastRunAutoParsed: null,
+        lastRunError: normalizeImportErrorMessage(data.error),
       },
     });
   }
@@ -142,6 +191,16 @@ export async function runSupraGmailImportForUser(
     };
   }
 
+  const acquired = await tryAcquireSupraGmailImportLock(hostUserId);
+  if (!acquired) {
+    return {
+      ok: false,
+      skipped: true,
+      reason: "import_already_in_progress",
+      message: "An import is already running for this account.",
+    };
+  }
+
   let imported = 0;
   let refreshed = 0;
   let skippedMessages = 0;
@@ -171,6 +230,7 @@ export async function runSupraGmailImportForUser(
         if (seenGmailIds.has(m.gmailMessageId)) continue;
         seenGmailIds.add(m.gmailMessageId);
 
+        // Stable id → unique (hostUserId, externalMessageId); duplicates become refresh/skip, not new showings.
         const externalMessageId = `gmail-${m.gmailMessageId}`;
         const { status, queueItemId } = await ingestSupraQueueItemIfNew(hostUserId, {
           externalMessageId,
@@ -216,10 +276,16 @@ export async function runSupraGmailImportForUser(
       scanned: seenGmailIds.size,
     };
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    const msg = normalizeImportErrorMessage(
+      e instanceof Error ? e.message : String(e)
+    );
     console.error("[supra-gmail-import] run failed", hostUserId, e);
     await persistRunOutcome(hostUserId, source, { success: false, error: msg });
     return { ok: false, skipped: false, error: msg };
+  } finally {
+    await releaseSupraGmailImportLock(hostUserId).catch((e) => {
+      console.error("[supra-gmail-import] lock release failed", hostUserId, e);
+    });
   }
 }
 

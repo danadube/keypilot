@@ -92,7 +92,15 @@ Production uses Vercel Cron (see root `vercel.json`) to call **GET** `/api/cron/
 
 For **manual or external** triggers (e.g. a third-party scheduler), set **`CRON_SECRET`** in the Vercel environment and call the same URL with header `Authorization: Bearer <CRON_SECRET>`.
 
-Deploy the **`supra_gmail_import_settings`** migration with `npx prisma migrate deploy` so per-user automation flags and last-run metadata persist.
+**Production database — apply migrations:**
+
+Run this against the **production** Postgres instance (e.g. Supabase) before or as part of deploy so `supra_gmail_import_settings` (and follow-up migrations) exist:
+
+```bash
+npx prisma migrate deploy
+```
+
+Migrations are additive only for this feature (new table and `importRunStartedAt` column); no destructive steps and no data backfill required.
 
 ---
 

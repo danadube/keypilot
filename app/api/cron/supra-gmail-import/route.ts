@@ -13,8 +13,10 @@ import {
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-export async function GET(req: NextRequest) {
-  if (!isAuthorizedCronRequest(req)) {
+const CRON_LOG = "[cron/supra-gmail-import]";
+
+export async function GET(request: NextRequest) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json(
       { error: { message: "Unauthorized", code: "CRON_UNAUTHORIZED" } },
       { status: 401 }
@@ -22,11 +24,15 @@ export async function GET(req: NextRequest) {
   }
 
   const userIds = await listUserIdsForScheduledSupraGmailImport();
+  console.log(`${CRON_LOG} start eligibleUsers=${userIds.length}`);
+
   let processed = 0;
   let succeeded = 0;
   let failed = 0;
+  let skippedBusy = 0;
   const errors: { userId: string; message: string }[] = [];
 
+  // Sequential: one user at a time to bound CPU/time and avoid Gmail/token storms.
   for (const userId of userIds) {
     processed += 1;
     const result = await runSupraGmailImportForUser(userId, {
@@ -38,6 +44,8 @@ export async function GET(req: NextRequest) {
     } else if (!result.ok && !result.skipped) {
       failed += 1;
       errors.push({ userId, message: result.error });
+    } else if (result.skipped && result.reason === "import_already_in_progress") {
+      skippedBusy += 1;
     } else if (result.skipped && result.reason === "automation_disabled") {
       /* not counted as failure */
     } else if (result.skipped && result.reason === "no_gmail_connection") {
@@ -45,12 +53,17 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  console.log(
+    `${CRON_LOG} done processed=${processed} succeeded=${succeeded} failed=${failed} skippedBusy=${skippedBusy}`
+  );
+
   return NextResponse.json({
     data: {
       eligibleUsers: userIds.length,
       processed,
       succeeded,
       failed,
+      skippedBusy,
       errors: errors.slice(0, 20),
     },
   });

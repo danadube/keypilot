@@ -494,6 +494,8 @@ model SupraGmailImportSettings {
   lastRunScanned    Int?
   lastRunAutoParsed Int?
   lastRunError      String?   @db.VarChar(1000)
+  /** Set while Gmail import is running; cleared when the run finishes. Stale locks are overridden after ~12 minutes if a worker crashes. */
+  importRunStartedAt DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
