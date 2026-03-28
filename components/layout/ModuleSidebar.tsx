@@ -15,6 +15,8 @@ import {
   TrendingUp,
   Megaphone,
   Handshake,
+  CheckSquare,
+  BarChart3,
 } from "lucide-react";
 import { MODULES, getModuleFromPath } from "@/lib/modules";
 import { UPGRADE_MODULES } from "@/lib/module-access";
@@ -271,6 +273,8 @@ export function ModuleSidebar() {
               if (
                 activeId === "home" ||
                 activeId === "settings" ||
+                activeId === "task-pilot" ||
+                activeId === "insight" ||
                 PLATFORM_MODULE_IDS.includes(activeId)
               ) {
                 return null;
@@ -300,6 +304,42 @@ export function ModuleSidebar() {
                 </li>
               );
             })()}
+          </ul>
+        </div>
+
+        <div className="mt-4 border-t border-white/10 px-2 pt-3">
+          <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+            Tools
+          </p>
+          <ul className="space-y-0.5">
+            <li>
+              <Link
+                href="/task-pilot"
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                  "text-slate-400 hover:bg-white/5 hover:text-white",
+                  pathname.startsWith("/task-pilot") &&
+                    "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
+                )}
+              >
+                <CheckSquare className="h-[18px] w-[18px] shrink-0 opacity-85" />
+                Tasks
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/insight/performance"
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                  "text-slate-400 hover:bg-white/5 hover:text-white",
+                  pathname.startsWith("/insight") &&
+                    "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
+                )}
+              >
+                <BarChart3 className="h-[18px] w-[18px] shrink-0 opacity-85" />
+                Performance
+              </Link>
+            </li>
           </ul>
         </div>
       </nav>
