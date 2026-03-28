@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { kpCalendarModalField } from "@/components/showing-hq/calendar-modal-field-classes";
-import { kpBtnDangerSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import { kpBtnDangerSecondary, kpBtnSave } from "@/components/ui/kp-dashboard-button-tiers";
 import { ShowingBuyerAgentFeedbackDraftPanel } from "@/components/showing-hq/ShowingBuyerAgentFeedbackDraftPanel";
 import { buildPropertyAddressLineForFeedbackDraft } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 import { cn } from "@/lib/utils";
@@ -324,7 +324,7 @@ export function EditEventModal({
                   type="button"
                   variant="outline"
                   disabled={!canSave || markingFeedbackSent || loading}
-                  className={kpCalendarModalField.buttonSave}
+                  className={cn(kpBtnSave, "border-transparent px-4")}
                   onClick={() => void handleMarkFeedbackComplete()}
                 >
                   {markingFeedbackSent ? "Updating…" : "Mark as sent"}
@@ -479,9 +479,6 @@ export function EditEventModal({
                 }}
                 generatedAt={buyerAgentFeedbackDraft.generatedAt}
                 buyerAgentEmail={buyerAgentFeedbackDraft.buyerAgentEmail}
-                showingId={eventId}
-                onMarkAsSent={handleMarkFeedbackComplete}
-                markingSent={markingFeedbackSent}
               />
             </div>
           )}

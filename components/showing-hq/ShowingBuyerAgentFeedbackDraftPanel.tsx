@@ -51,16 +51,6 @@ export type ShowingBuyerAgentFeedbackDraftProps = {
   generatedAt: string | null | undefined;
   /** Required to enable “Create email” (mailto). */
   buyerAgentEmail?: string | null | undefined;
-  /** When present, shows “Mark as sent” to clear DRAFT_READY from dashboards. */
-  showingId?: string | null | undefined;
-  /** Called after default PATCH succeeds (omit if `onMarkAsSent` handles refresh/close). */
-  onMarkedSent?: () => void;
-  /**
-   * When set, “Mark as sent” uses this instead of PATCHing only status (e.g. parent saves form + SENT).
-   * Provide `markingSent` while the promise is in flight.
-   */
-  onMarkAsSent?: () => void | Promise<void>;
-  markingSent?: boolean;
   className?: string;
   /** Calendar BrandModal uses theme vars; showings list uses kp tokens */
   variant?: "kp" | "brand";
@@ -73,26 +63,19 @@ const GREETING_OPTIONS: { value: BuyerAgentFeedbackGreetingMode; label: string }
 ];
 
 /**
- * Buyer-agent feedback request: preview, greeting control, mailto, copy, mark sent.
+ * Buyer-agent feedback request: preview, greeting, Create email / Copy body tools only.
+ * Mark-as-sent completion lives in the parent modal footer.
  */
 export function ShowingBuyerAgentFeedbackDraftPanel({
   draftSource,
   generatedAt,
   buyerAgentEmail,
-  showingId,
-  onMarkedSent,
-  onMarkAsSent,
-  markingSent: markingSentProp,
   className,
   variant = "kp",
 }: ShowingBuyerAgentFeedbackDraftProps) {
   const [greetingMode, setGreetingMode] = useState<BuyerAgentFeedbackGreetingMode>("firstName");
   const [copied, setCopied] = useState<null | "body">(null);
-  const [markingSentInternal, setMarkingSentInternal] = useState(false);
-  const [nudgeMarkSent, setNudgeMarkSent] = useState(false);
-
-  const parentMarksSent = onMarkAsSent != null;
-  const markingSent = parentMarksSent ? Boolean(markingSentProp) : markingSentInternal;
+  const [nudgeFooterMarkSent, setNudgeFooterMarkSent] = useState(false);
 
   const { subject: sub, body: bod } = useMemo(() => {
     const line = draftSource.propertyAddressLine?.trim() ?? "";
@@ -109,10 +92,10 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
   }, [draftSource.propertyAddressLine, draftSource.scheduledAt, draftSource.buyerAgentName, greetingMode]);
 
   useEffect(() => {
-    if (!nudgeMarkSent) return;
-    const t = window.setTimeout(() => setNudgeMarkSent(false), 10000);
+    if (!nudgeFooterMarkSent) return;
+    const t = window.setTimeout(() => setNudgeFooterMarkSent(false), 10000);
     return () => window.clearTimeout(t);
-  }, [nudgeMarkSent]);
+  }, [nudgeFooterMarkSent]);
 
   const to = buyerAgentEmail?.trim() ?? "";
   if (!sub.trim() || !bod.trim()) return null;
@@ -128,30 +111,7 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
   };
 
   const handleCreateEmailClick = () => {
-    setNudgeMarkSent(true);
-  };
-
-  const markSent = async () => {
-    if (parentMarksSent) {
-      await onMarkAsSent();
-      return;
-    }
-    const id = showingId?.trim();
-    if (!id) return;
-    setMarkingSentInternal(true);
-    try {
-      const res = await fetch(`/api/v1/showing-hq/showings/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ feedbackRequestStatus: "SENT" }),
-      });
-      if (!res.ok) throw new Error("Failed to update");
-      onMarkedSent?.();
-    } catch {
-      /* non-fatal */
-    } finally {
-      setMarkingSentInternal(false);
-    }
+    setNudgeFooterMarkSent(true);
   };
 
   const genLabel =
@@ -191,7 +151,8 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
         Feedback request
       </div>
       <p className={cn("mt-1 text-xs leading-snug", mutedCls)}>
-        Review the email below, send it from your mail app, then mark it sent so dashboards stay accurate.
+        Review the email below and send it from your mail app. When you&apos;re done, use{" "}
+        <span className={cn("font-semibold", titleCls)}>Mark as sent</span> in the modal footer to finish.
       </p>
       {genLabel && <p className={cn("mt-1 text-xs", mutedCls)}>Draft last saved {genLabel}</p>}
       {to && (
@@ -239,7 +200,7 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
         {bod}
       </pre>
 
-      <p className={cn("mt-4 text-xs font-semibold uppercase tracking-wide", mutedCls)}>Actions</p>
+      <p className={cn("mt-4 text-xs font-semibold uppercase tracking-wide", mutedCls)}>Tools</p>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         {mailtoHref && !mailtoTooLong && (
           <Button
@@ -284,39 +245,23 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
           {copied === "body" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
           <span className="ml-1.5">{copied === "body" ? "Copied" : "Copy body"}</span>
         </Button>
-
-        {showingId?.trim() || parentMarksSent ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={cn(
-              "h-8 text-xs",
-              variant === "brand" ? btnOutline : kpBtnSecondary,
-              nudgeMarkSent && "ring-2 ring-amber-500/80 ring-offset-2 ring-offset-kp-surface"
-            )}
-            disabled={markingSent}
-            onClick={() => void markSent()}
-          >
-            {markingSent ? "Updating…" : "Mark as sent"}
-          </Button>
-        ) : null}
       </div>
-      {nudgeMarkSent ? (
+
+      {nudgeFooterMarkSent ? (
         <p
           className={cn(
-            "mt-2 text-[11px] leading-snug text-amber-600/90 dark:text-amber-400/90",
+            "mt-3 text-[11px] leading-snug text-amber-600/90 dark:text-amber-400/90",
             variant === "kp" && "text-amber-500/95"
           )}
         >
-          After sending from your email app, click &quot;Mark as sent&quot; to complete.
+          After you send from your email app, click <strong className="font-semibold">Mark as sent</strong> in the
+          footer below to complete.
         </p>
       ) : (
-        (showingId?.trim() || parentMarksSent) && (
-          <p className={cn("mt-2 text-[11px] leading-snug", mutedCls)}>
-          You can mark as sent anytime after the email goes out—even if you didn&apos;t use Create email.
-          </p>
-        )
+        <p className={cn("mt-3 text-[11px] leading-snug", mutedCls)}>
+          You can use <span className={cn("font-semibold", titleCls)}>Mark as sent</span> in the footer anytime after
+          the email goes out—even if you didn&apos;t use Create email.
+        </p>
       )}
     </div>
   );

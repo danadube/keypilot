@@ -463,15 +463,6 @@ function EditShowingModal({
               }}
               generatedAt={showing.feedbackDraftGeneratedAt}
               buyerAgentEmail={showing.buyerAgentEmail}
-              showingId={showing.id}
-              {...(hasEmailDraft
-                ? { onMarkAsSent: handleMarkFeedbackComplete, markingSent }
-                : {
-                    onMarkedSent: () => {
-                      onSaved();
-                      onClose();
-                    },
-                  })}
             />
           </div>
         </div>
