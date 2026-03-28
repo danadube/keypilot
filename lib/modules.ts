@@ -6,7 +6,6 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
-  Building2,
   Briefcase,
   Calendar,
   Users,
@@ -83,7 +82,6 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     available: true,
     sidebar: [
       { label: "Overview", href: "/property-vault", icon: LayoutDashboard, section: "OVERVIEW" },
-      { label: "Properties", href: "/properties", icon: Building2, section: "PROPERTIES" },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
     ],
   },
