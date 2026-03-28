@@ -44,16 +44,33 @@ export async function GET(_req: NextRequest) {
       tagFilter = { contactTags: { some: { tagId: ownedTag.id } } };
     }
 
+    const needsFollowUp = searchParams.get("followUp") === "needs";
+    const followUpFilter = needsFollowUp
+      ? {
+          followUpReminders: {
+            some: { userId: user.id, status: "PENDING" as const },
+          },
+        }
+      : {};
+
     const contacts = await prismaAdmin.contact.findMany({
       where: {
         id: { in: contactIds },
         deletedAt: null,
         ...statusFilter,
         ...tagFilter,
+        ...followUpFilter,
       },
       include: {
         assignedToUser: { select: { id: true, name: true } },
         contactTags: { include: { tag: true } },
+        _count: {
+          select: {
+            followUpReminders: {
+              where: { userId: user.id, status: "PENDING" },
+            },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });

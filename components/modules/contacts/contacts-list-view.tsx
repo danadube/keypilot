@@ -13,6 +13,7 @@ import {
   UserCheck,
   TrendingUp,
   BookmarkPlus,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MetricCard } from "@/components/ui/metric-card";
@@ -24,6 +25,7 @@ import {
   STATUS_TAB_VALUES,
   buildContactsApiUrl,
   hasSegmentFiltersInSearchParams,
+  parseFollowUpNeedsFromSearchParams,
   parseSegmentFromSearchParams,
   parseTagIdFromSearchParams,
   segmentToHref,
@@ -52,6 +54,7 @@ type Contact = {
   assignedToUser?: { id: string; name: string } | null;
   contactTags?: { tag: { id: string; name: string } }[];
   createdAt: string;
+  _count?: { followUpReminders: number };
 };
 
 type StatusTabValue = ContactSegmentStatusTab;
@@ -84,15 +87,23 @@ function statusLabel(s: ContactStatus | null | undefined): string {
 // Server-side status and optional tag filters — same visibility as GET /api/v1/contacts.
 // Client-side search is layered on top of the fetched result.
 
-function useContacts(statusFilter: StatusTabValue, tagIdFilter: string | null) {
+function useContacts(
+  statusFilter: StatusTabValue,
+  tagIdFilter: string | null,
+  needsFollowUp: boolean
+) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  function load(status: StatusTabValue, tagId: string | null) {
+  function load(
+    status: StatusTabValue,
+    tagId: string | null,
+    followUp: boolean
+  ) {
     setError(null);
     setLoading(true);
-    fetch(buildContactsApiUrl(status, tagId))
+    fetch(buildContactsApiUrl(status, tagId, followUp))
       .then((res) => res.json().then((json) => ({ res, json })))
       .then(({ res, json }) => {
         if (!res.ok) {
@@ -117,14 +128,14 @@ function useContacts(statusFilter: StatusTabValue, tagIdFilter: string | null) {
   }
 
   useEffect(() => {
-    load(statusFilter, tagIdFilter);
-  }, [statusFilter, tagIdFilter]);
+    load(statusFilter, tagIdFilter, needsFollowUp);
+  }, [statusFilter, tagIdFilter, needsFollowUp]);
 
   return {
     contacts,
     loading,
     error,
-    reload: () => load(statusFilter, tagIdFilter),
+    reload: () => load(statusFilter, tagIdFilter, needsFollowUp),
   };
 }
 
@@ -320,7 +331,22 @@ function ContactsTable({
             >
               {/* Name */}
               <td className={TD}>
-                <p className="font-medium text-kp-on-surface">{fullName(c)}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-kp-on-surface">{fullName(c)}</p>
+                  {hasCrm &&
+                  (c._count?.followUpReminders ?? 0) > 0 ? (
+                    <Link
+                      href={`/contacts/${c.id}`}
+                      title="Has pending follow-up — open contact"
+                      className="inline-flex items-center gap-0.5 rounded-full border border-kp-teal/35 bg-kp-teal/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-kp-teal hover:bg-kp-teal/20"
+                    >
+                      <Bell className="h-3 w-3" aria-hidden />
+                      {(c._count?.followUpReminders ?? 0) > 1
+                        ? c._count?.followUpReminders
+                        : "FU"}
+                    </Link>
+                  ) : null}
+                </div>
                 {/* Collapsed info visible on small screens */}
                 <p className="mt-0.5 text-xs text-kp-on-surface-variant md:hidden">
                   {c.email || c.phone || "—"}
@@ -447,7 +473,12 @@ export function ContactsListView() {
   const [saveSegmentName, setSaveSegmentName] = useState("");
   const [saveSegmentError, setSaveSegmentError] = useState<string | null>(null);
   const { hasCrm } = useProductTier();
-  const { contacts, loading, error, reload } = useContacts(statusFilter, tagIdFilter);
+  const needsFollowUp = parseFollowUpNeedsFromSearchParams(searchParams);
+  const { contacts, loading, error, reload } = useContacts(
+    statusFilter,
+    tagIdFilter,
+    needsFollowUp
+  );
 
   useEffect(() => {
     const { status, tagId } = parseSegmentFromSearchParams(searchParams);
@@ -479,7 +510,10 @@ export function ContactsListView() {
   }));
 
   const isFiltered =
-    statusFilter !== "__all__" || search.trim().length > 0 || tagIdFilter !== null;
+    statusFilter !== "__all__" ||
+    search.trim().length > 0 ||
+    tagIdFilter !== null ||
+    needsFollowUp;
 
   function handleClearFilters() {
     setStatusFilter("__all__");
@@ -593,9 +627,12 @@ export function ContactsListView() {
                   type="button"
                   onClick={() => {
                     setTagIdFilter(null);
-                    router.replace(segmentToHref(statusFilter, null), {
-                      scroll: false,
-                    });
+                    router.replace(
+                      segmentToHref(statusFilter, null, needsFollowUp),
+                      {
+                        scroll: false,
+                      }
+                    );
                   }}
                   className="font-medium underline-offset-2 hover:underline"
                 >
@@ -603,6 +640,23 @@ export function ContactsListView() {
                 </button>
               </p>
             )}
+            {needsFollowUp ? (
+              <p className="text-xs text-kp-teal">
+                Showing contacts with a pending follow-up ·{" "}
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.replace(
+                      segmentToHref(statusFilter, tagIdFilter, false),
+                      { scroll: false }
+                    )
+                  }
+                  className="font-medium underline-offset-2 hover:underline"
+                >
+                  Clear
+                </button>
+              </p>
+            ) : null}
           </div>
           {showContent && contacts.length > 0 && (
             <span className="shrink-0 text-xs tabular-nums text-kp-on-surface-variant">
@@ -613,21 +667,60 @@ export function ContactsListView() {
           )}
         </div>
 
-        {/* Status tabs (hasCrm only — non-CRM users can't filter by status) */}
-        {showContent && contacts.length > 0 && hasCrm && (
+        {/* Status tabs + follow-up filter (CRM); show when list loaded and there is something to filter or zero results under an active filter */}
+        {showContent &&
+          hasCrm &&
+          (contacts.length > 0 ||
+            needsFollowUp ||
+            tagIdFilter !== null ||
+            statusFilter !== "__all__") && (
           <div className="border-b border-kp-outline px-5">
-            <SectionTabs
-              tabs={tabs}
-              active={statusFilter}
-              onChange={(v) => {
-                setSearch(""); // clear search when switching status tabs
-                const next = v as StatusTabValue;
-                setStatusFilter(next);
-                router.replace(segmentToHref(next, tagIdFilter), {
-                  scroll: false,
-                });
-              }}
-            />
+            {contacts.length > 0 ||
+            statusFilter !== "__all__" ||
+            tagIdFilter !== null ||
+            needsFollowUp ? (
+              <SectionTabs
+                tabs={tabs}
+                active={statusFilter}
+                onChange={(v) => {
+                  setSearch(""); // clear search when switching status tabs
+                  const next = v as StatusTabValue;
+                  setStatusFilter(next);
+                  router.replace(
+                    segmentToHref(next, tagIdFilter, needsFollowUp),
+                    {
+                      scroll: false,
+                    }
+                  );
+                }}
+              />
+            ) : null}
+            <div className="flex flex-wrap items-center gap-2 py-3">
+              <button
+                type="button"
+                onClick={() =>
+                  router.replace(
+                    segmentToHref(statusFilter, tagIdFilter, !needsFollowUp),
+                    { scroll: false }
+                  )
+                }
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
+                  needsFollowUp
+                    ? "border-kp-teal bg-kp-teal/15 text-kp-teal"
+                    : "border-kp-outline bg-kp-surface-high text-kp-on-surface-variant hover:border-kp-teal/40 hover:text-kp-on-surface"
+                )}
+              >
+                <Bell className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                Needs follow-up
+              </button>
+              <Link
+                href="/client-keep/follow-ups"
+                className="text-xs font-medium text-kp-on-surface-variant underline-offset-2 hover:text-kp-teal hover:underline"
+              >
+                Open follow-up queue
+              </Link>
+            </div>
           </div>
         )}
 
@@ -646,7 +739,9 @@ export function ContactsListView() {
             message={error}
             onRetry={reload}
             onClearFilters={
-              tagIdFilter !== null || statusFilter !== "__all__"
+              tagIdFilter !== null ||
+              statusFilter !== "__all__" ||
+              needsFollowUp
                 ? handleClearFilters
                 : undefined
             }

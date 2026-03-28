@@ -13,7 +13,7 @@ export default function ClientKeepFollowUpsPage() {
       backHref="/showing-hq"
     >
       <div className="flex flex-col gap-4">
-        <DashboardContextStrip message="Open house visitor follow-up drafts and reminders—the same data as ShowingHQ → Follow-ups. Use whichever entry point fits your workflow." />
+        <DashboardContextStrip message="Triage what needs attention: overdue reminders first, then email drafts, then upcoming. Each row links to the contact so you can log activity and move on." />
         <FollowUpsView />
       </div>
     </ModuleGate>

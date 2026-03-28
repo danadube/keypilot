@@ -13,72 +13,69 @@ export async function GET() {
   try {
     const user = await getCurrentUser();
 
-    const [draftsNeedsReply, draftsCompleted, remindersUpcoming, remindersCompleted] =
-      await Promise.all([
-        prismaAdmin.followUpDraft.findMany({
-          where: {
-            openHouse: { hostUserId: user.id, deletedAt: null },
-            deletedAt: null,
-            status: { in: ["DRAFT", "REVIEWED"] },
-          },
-          include: {
-            contact: true,
-            openHouse: { include: { property: true } },
-          },
-          orderBy: { updatedAt: "desc" },
-        }),
-        prismaAdmin.followUpDraft.findMany({
-          where: {
-            openHouse: { hostUserId: user.id, deletedAt: null },
-            deletedAt: null,
-            status: { in: ["SENT_MANUAL", "ARCHIVED"] },
-          },
-          include: {
-            contact: true,
-            openHouse: { include: { property: true } },
-          },
-          orderBy: { updatedAt: "desc" },
-          take: 20,
-        }),
-        prismaAdmin.followUpReminder.findMany({
-          where: {
-            userId: user.id,
-            status: "PENDING",
-            dueAt: { gte: new Date() },
-          },
-          include: { contact: true },
-          orderBy: { dueAt: "asc" },
-          take: 20,
-        }),
-        prismaAdmin.followUpReminder.findMany({
-          where: {
-            userId: user.id,
-            status: "DONE",
-          },
-          include: { contact: true },
-          orderBy: { dueAt: "desc" },
-          take: 10,
-        }),
-        (async () => {
-          const allDrafts = [
-            ...(await prismaAdmin.followUpDraft.findMany({
-              where: {
-                openHouse: { hostUserId: user.id, deletedAt: null },
-                deletedAt: null,
-              },
-              select: { contactId: true, openHouseId: true },
-            })),
-          ];
-          if (allDrafts.length === 0) return [] as { contactId: string; openHouseId: string; leadStatus: string | null }[];
-          const visitors = await prismaAdmin.openHouseVisitor.findMany({
-            where: {
-              OR: allDrafts.map((d) => ({ contactId: d.contactId, openHouseId: d.openHouseId })),
-            },
-            select: { contactId: true, openHouseId: true, leadStatus: true },
-          });
-          return visitors;
-        })(),
-      ]);
+    const now = new Date();
+    const [
+      draftsNeedsReply,
+      draftsCompleted,
+      remindersUpcoming,
+      remindersOverdue,
+      remindersCompleted,
+    ] = await Promise.all([
+      prismaAdmin.followUpDraft.findMany({
+        where: {
+          openHouse: { hostUserId: user.id, deletedAt: null },
+          deletedAt: null,
+          status: { in: ["DRAFT", "REVIEWED"] },
+        },
+        include: {
+          contact: true,
+          openHouse: { include: { property: true } },
+        },
+        orderBy: { updatedAt: "desc" },
+      }),
+      prismaAdmin.followUpDraft.findMany({
+        where: {
+          openHouse: { hostUserId: user.id, deletedAt: null },
+          deletedAt: null,
+          status: { in: ["SENT_MANUAL", "ARCHIVED"] },
+        },
+        include: {
+          contact: true,
+          openHouse: { include: { property: true } },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 20,
+      }),
+      prismaAdmin.followUpReminder.findMany({
+        where: {
+          userId: user.id,
+          status: "PENDING",
+          dueAt: { gte: now },
+        },
+        include: { contact: true },
+        orderBy: { dueAt: "asc" },
+        take: 20,
+      }),
+      prismaAdmin.followUpReminder.findMany({
+        where: {
+          userId: user.id,
+          status: "PENDING",
+          dueAt: { lt: now },
+        },
+        include: { contact: true },
+        orderBy: { dueAt: "asc" },
+        take: 20,
+      }),
+      prismaAdmin.followUpReminder.findMany({
+        where: {
+          userId: user.id,
+          status: "DONE",
+        },
+        include: { contact: true },
+        orderBy: { dueAt: "desc" },
+        take: 10,
+      }),
+    ]);
 
     const draftPairs = [
       ...draftsNeedsReply.map((d) => ({ contactId: d.contactId, openHouseId: d.openHouseId })),
@@ -112,8 +109,19 @@ export async function GET() {
       visitors.map((v) => [`${v.contactId}:${v.openHouseId}`, !!v.flyerLinkClickedAt])
     );
 
+    const mapReminder = (r: (typeof remindersUpcoming)[number]) => ({
+      id: r.id,
+      type: "reminder" as const,
+      body: r.body,
+      dueAt: r.dueAt.toISOString(),
+      status: r.status,
+      contact: r.contact,
+      createdAt: r.createdAt.toISOString(),
+    });
+
     return NextResponse.json({
       data: {
+        overdue: remindersOverdue.map(mapReminder),
         needsReply: draftsNeedsReply.map((d) => ({
           id: d.id,
           type: "draft" as const,
@@ -126,15 +134,7 @@ export async function GET() {
           flyerSent: flyerSentMap.get(`${d.contactId}:${d.openHouseId}`) ?? false,
           flyerOpened: flyerOpenedMap.get(`${d.contactId}:${d.openHouseId}`) ?? false,
         })),
-        upcoming: remindersUpcoming.map((r) => ({
-          id: r.id,
-          type: "reminder" as const,
-          body: r.body,
-          dueAt: r.dueAt,
-          status: r.status,
-          contact: r.contact,
-          createdAt: r.createdAt,
-        })),
+        upcoming: remindersUpcoming.map(mapReminder),
         completed: [
           ...draftsCompleted.map((d) => ({
             id: d.id,
@@ -152,10 +152,10 @@ export async function GET() {
             id: r.id,
             type: "reminder" as const,
             body: r.body,
-            dueAt: r.dueAt,
+            dueAt: r.dueAt.toISOString(),
             status: r.status,
             contact: r.contact,
-            createdAt: r.createdAt,
+            createdAt: r.createdAt.toISOString(),
           })),
         ],
       },
