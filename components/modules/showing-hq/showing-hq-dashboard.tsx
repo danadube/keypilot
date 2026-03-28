@@ -9,12 +9,13 @@ import {
 import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
 import {
   buildNeedsAttentionItems,
-  buildTodayContextSummary,
   buildUpcomingRows,
+  countTodayUrgentAttentionItems,
   filterAttentionItemsForToday,
   mapAttentionToOperatingStatus,
   RecentOperatingSection,
-  TodayOperatingSection,
+  TodayActionListSection,
+  TodayCommandHero,
   UpcomingSection,
   type PrivateShowingAttentionRow,
   type RecentOperatingFeedItem,
@@ -199,8 +200,6 @@ export function ShowingHQDashboardView() {
   }));
 
   const showingsTodayCount = scheduleItems.filter((s) => s.type === "showing").length;
-  const openHousesTodayCount = scheduleItems.filter((s) => s.type === "open_house").length;
-  const upcomingThisWeekCount = stats.upcomingThisWeekCount ?? 0;
 
   const recentFeed: RecentOperatingFeedItem[] = Array.isArray(data.recentOperatingFeed)
     ? data.recentOperatingFeed
@@ -243,12 +242,11 @@ export function ShowingHQDashboardView() {
     if (s === "Needs prep") needingPrepCount += 1;
   }
 
-  const contextSummary = buildTodayContextSummary({
-    showingsTodayCount,
-    openHousesTodayCount,
-    needingFeedbackCount,
-    needingPrepCount,
-    upcomingThisWeekCount,
+  const urgentCount = countTodayUrgentAttentionItems(todayActionItems);
+  const calendarDateLabel = attentionNow.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
   });
 
   const upcomingRows = buildUpcomingRows(
@@ -259,12 +257,20 @@ export function ShowingHQDashboardView() {
   );
 
   return (
-    <div className="flex min-h-0 flex-col gap-6 bg-transparent">
-      <TodayOperatingSection
-        contextSummary={contextSummary}
+    <div className="flex min-h-0 flex-col gap-10 bg-transparent sm:gap-12">
+      <TodayCommandHero
+        calendarDateLabel={calendarDateLabel}
+        showingsTodayCount={showingsTodayCount}
+        needingFeedbackCount={needingFeedbackCount}
+        needingPrepCount={needingPrepCount}
+        urgentCount={urgentCount}
+      />
+
+      <TodayActionListSection
         items={todayActionItems}
         formatDate={formatDate}
         formatTime={formatTime}
+        urgentCount={urgentCount}
       />
 
       <RecentOperatingSection

@@ -345,7 +345,7 @@ function needsPrepPhrase(n: number): string {
   return `${n} need prep`;
 }
 
-/** Single-line density summary under the Today heading (no cards). */
+/** Single-line density summary (full operating counts). */
 export function buildTodayContextSummary(args: {
   showingsTodayCount: number;
   openHousesTodayCount: number;
@@ -365,38 +365,112 @@ export function buildTodayContextSummary(args: {
   return parts.join(" • ");
 }
 
-/** Primary “daily operating” block — today’s counts + actionable rows. */
-export function TodayOperatingSection({
-  contextSummary,
-  items,
-  formatDate,
-  formatTime,
+/** Hero secondary line: showings + feedback + prep only (command header). */
+export function buildTodayHeroScheduleSummary(args: {
+  showingsTodayCount: number;
+  needingFeedbackCount: number;
+  needingPrepCount: number;
+}): string {
+  const s = args.showingsTodayCount;
+  const parts = [
+    `${s} showing${s === 1 ? "" : "s"}`,
+    needsFeedbackPhrase(args.needingFeedbackCount),
+    needsPrepPhrase(args.needingPrepCount),
+  ];
+  return parts.join(" • ");
+}
+
+export function countTodayUrgentAttentionItems(items: AttentionListItem[]): number {
+  return items.reduce((n, row) => {
+    return mapAttentionToOperatingStatus(row.attention) === "Ready" ? n : n + 1;
+  }, 0);
+}
+
+function primaryHeroMessage(urgentCount: number): string {
+  if (urgentCount === 0) return "You're caught up for today";
+  if (urgentCount === 1) return "You have 1 item that needs attention";
+  return `You have ${urgentCount} items that need attention`;
+}
+
+/** Command hero: date, status headline, schedule summary — elevated, no list. */
+export function TodayCommandHero({
+  calendarDateLabel,
+  showingsTodayCount,
+  needingFeedbackCount,
+  needingPrepCount,
+  urgentCount,
 }: {
-  contextSummary: string;
-  items: AttentionListItem[];
-  formatDate: (iso: string) => string;
-  formatTime: (iso: string) => string;
+  calendarDateLabel: string;
+  showingsTodayCount: number;
+  needingFeedbackCount: number;
+  needingPrepCount: number;
+  urgentCount: number;
 }) {
+  const scheduleSummary = buildTodayHeroScheduleSummary({
+    showingsTodayCount,
+    needingFeedbackCount,
+    needingPrepCount,
+  });
+
   return (
-    <section
-      className="rounded-xl border border-kp-outline bg-kp-surface px-4 py-5 sm:px-5"
-      aria-labelledby="today-operating-heading"
+    <header
+      className={cn(
+        "rounded-xl border border-kp-outline px-5 py-6 sm:px-7 sm:py-7",
+        "bg-gradient-to-b from-kp-surface-high/70 via-kp-surface to-kp-surface",
+        "shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+      )}
+      aria-labelledby="today-command-heading"
     >
       <h2
-        id="today-operating-heading"
-        className="text-base font-semibold tracking-tight text-kp-on-surface"
+        id="today-command-heading"
+        className="text-2xl font-semibold tracking-tight text-kp-on-surface sm:text-[1.65rem] sm:leading-tight"
       >
         Today
       </h2>
-
-      <p className="mt-1.5 text-[11px] leading-relaxed text-kp-on-surface-variant">
-        {contextSummary}
+      <p className="mt-1 text-sm font-normal text-kp-on-surface-variant sm:text-[0.9375rem]">
+        {calendarDateLabel}
       </p>
+      <p className="mt-4 text-sm font-medium leading-snug text-kp-on-surface sm:text-[0.9375rem]">
+        {primaryHeroMessage(urgentCount)}
+      </p>
+      <p className="mt-2 text-xs leading-relaxed text-kp-on-surface-variant sm:text-[0.8125rem]">
+        {scheduleSummary}
+      </p>
+    </header>
+  );
+}
 
-      <ul className="mt-4 space-y-2 border-t border-kp-outline/70 pt-4">
+/** Primary action list for the current calendar day. */
+export function TodayActionListSection({
+  items,
+  formatDate,
+  formatTime,
+  urgentCount,
+}: {
+  items: AttentionListItem[];
+  formatDate: (iso: string) => string;
+  formatTime: (iso: string) => string;
+  urgentCount: number;
+}) {
+  return (
+    <section
+      className="rounded-xl border border-kp-outline bg-kp-surface px-4 py-5 shadow-sm sm:px-6 sm:py-6"
+      aria-labelledby="today-actions-heading"
+    >
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-2 border-b border-kp-outline/80 pb-3">
+        <h3 id="today-actions-heading" className="text-sm font-semibold text-kp-on-surface">
+          Actions for today
+        </h3>
+        {urgentCount > 0 ? (
+          <span className="text-[11px] font-medium tabular-nums text-kp-on-surface-variant">
+            {urgentCount === 1 ? "1 needs you" : `${urgentCount} need you`}
+          </span>
+        ) : null}
+      </div>
+      <ul className="space-y-2.5">
         {items.length === 0 ? (
-          <li className="py-6 text-center text-sm text-kp-on-surface-variant">
-            Nothing needs you right now today.
+          <li className="py-8 text-center text-sm text-kp-on-surface-variant">
+            Nothing scheduled needs a tap from you right now.
           </li>
         ) : (
           items.map((row) => {
@@ -404,7 +478,7 @@ export function TodayOperatingSection({
             return (
               <li
                 key={row.key}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-kp-outline/90 bg-kp-surface-high/40 px-3 py-3"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-kp-outline bg-kp-surface-high/50 px-3.5 py-3.5 sm:px-4"
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-kp-on-surface">{row.address}</p>

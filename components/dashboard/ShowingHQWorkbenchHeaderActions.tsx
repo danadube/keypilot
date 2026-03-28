@@ -126,6 +126,14 @@ export function ShowingHQWorkbenchHeaderActions() {
               Open house
             </Link>
             <Link
+              href="/properties/new"
+              className={menuItemClass}
+              role="menuitem"
+              onClick={() => setNewOpen(false)}
+            >
+              Property
+            </Link>
+            <Link
               href="/contacts"
               className={menuItemClass}
               role="menuitem"
