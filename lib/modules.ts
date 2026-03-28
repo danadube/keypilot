@@ -7,9 +7,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   Building2,
-  Briefcase,
   Calendar,
-  Users,
   CheckSquare,
   Megaphone,
   BarChart3,
@@ -108,8 +106,6 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     available: true,
     sidebar: [
       { label: "Overview", href: "/client-keep", icon: LayoutDashboard, section: "OVERVIEW" },
-      { label: "Contacts", href: "/contacts", icon: Users, section: "WORK" },
-      { label: "Deals", href: "/deals", icon: Briefcase, section: "WORK" },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
     ],
   },
@@ -222,13 +218,12 @@ export function getModuleFromPath(pathname: string): ModuleId {
     return "property-vault";
   if (pathname.startsWith("/open-houses") || pathname.startsWith("/showing-hq"))
     return "showing-hq";
-  if (pathname.startsWith("/contacts") || pathname.startsWith("/client-keep") || pathname.startsWith("/deals"))
-    return "client-keep";
+  if (pathname.startsWith("/contacts") || pathname.startsWith("/client-keep")) return "client-keep";
   if (pathname.startsWith("/farm-trackr")) return "farm-trackr";
   if (pathname.startsWith("/task-pilot")) return "task-pilot";
   if (pathname.startsWith("/market-pilot")) return "market-pilot";
   if (pathname.startsWith("/seller-pulse")) return "seller-pulse";
   if (pathname.startsWith("/insight")) return "insight";
-  if (pathname.startsWith("/transactions")) return "transactions";
+  if (pathname.startsWith("/transactions") || pathname.startsWith("/deals")) return "transactions";
   return "property-vault"; // default
 }
