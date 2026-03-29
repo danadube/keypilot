@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -242,29 +243,42 @@ export function OpenHouseVisitorRowInline({
         <LeadStatusBadge status={v.leadStatus} />
       </td>
       <td className="py-2 align-top">
-        <div className="flex flex-col items-start gap-1">
-          <Button variant="ghost" size="sm" className={cn(kpBtnTertiary, "h-7 text-xs")} onClick={startEdit}>
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(kpBtnTertiary, "h-7 w-full justify-end gap-1 text-xs")}
+            onClick={startEdit}
+          >
+            <Pencil className="h-3 w-3 shrink-0" aria-hidden />
             Edit
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className={cn(kpBtnTertiary, "h-7 text-xs")}
+            className={cn(kpBtnTertiary, "h-7 w-full justify-end text-xs")}
             disabled={resending || !v.contact.email?.trim()}
             onClick={() => void resendFlyer()}
             title={!v.contact.email?.trim() ? "Add email to resend flyer" : "Resend flyer email"}
           >
             {resending ? "Sending…" : "Resend flyer"}
           </Button>
-          <Button variant="ghost" size="sm" className={cn(kpBtnTertiary, "h-7 text-xs")} asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(kpBtnTertiary, "h-7 w-full justify-end text-xs")}
+            asChild
+          >
             <Link href={`/showing-hq/visitors/${v.id}`}>Profile</Link>
           </Button>
-          <CreateVisitorFollowUpInline
-            visitorId={v.id}
-            contactId={v.contact.id}
-            contactName={fullName(v.contact)}
-            onCreated={onRefresh}
-          />
+          <div className="w-full">
+              <CreateVisitorFollowUpInline
+              visitorId={v.id}
+              contactId={v.contact.id}
+              contactName={fullName(v.contact)}
+              onCreated={onRefresh}
+            />
+          </div>
         </div>
       </td>
     </tr>

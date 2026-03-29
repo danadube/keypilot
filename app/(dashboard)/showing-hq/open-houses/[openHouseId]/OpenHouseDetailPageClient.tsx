@@ -29,6 +29,7 @@ import {
   RefreshCw,
   FileText,
   ArrowLeft,
+  Pencil,
 } from "lucide-react";
 import {
   OpenHousePrepWorkspace,
@@ -47,6 +48,7 @@ import {
 import { buildOpenHousePrepChecklist } from "@/lib/showing-hq/prep-checklist";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { EditableBlockHint } from "@/components/showing-hq/editable-block-hint";
 
 type OpenHouseData = {
   hostUserId?: string;
@@ -475,7 +477,7 @@ export function OpenHouseDetailPageClient() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="sm"
@@ -488,17 +490,28 @@ export function OpenHouseDetailPageClient() {
             </Link>
           </Button>
           <span className="text-kp-outline">/</span>
-          <div>
+          <div className="min-w-0">
             <h1 className="text-xl font-bold text-kp-on-surface">
               Open house — {data.title}
             </h1>
             <p className="text-sm text-kp-on-surface-variant">{contextLine}</p>
             <p className="mt-0.5 text-[11px] text-kp-on-surface-variant/80">
-              Workspace — same tabs as private showings; Details holds schedule, status, QR, and visitor
-              lists.
+              Property, title, schedule, visitors, and host debrief are editable on this page.{" "}
+              <span className="font-medium text-kp-teal/90">Details</span> tab saves event fields;{" "}
+              <span className="font-medium text-kp-teal/90">Feedback</span> for host debrief.
             </p>
           </div>
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={cn(kpBtnSecondary, "h-8 shrink-0 gap-1.5 text-xs font-semibold")}
+          onClick={() => setTab("details")}
+        >
+          <Pencil className="h-3.5 w-3.5" aria-hidden />
+          Edit details
+        </Button>
       </div>
 
       {error ? (
@@ -556,11 +569,16 @@ export function OpenHouseDetailPageClient() {
             Host debrief (traffic, tags, notes) and post-event outputs — all from this workspace.
           </p>
           <div className="rounded-xl border border-kp-outline/80 bg-kp-surface-high/20 p-5">
-            <p className="text-sm font-semibold text-kp-on-surface">Host debrief</p>
-            <p className="mt-1 text-xs text-kp-on-surface-variant">
-              Correct or clear post-event feedback without opening the host console.
-            </p>
-            <div className="mt-4">
+            <div className="flex items-start justify-between gap-2 border-b border-kp-outline/40 pb-2">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-kp-on-surface">Host debrief</p>
+                <p className="mt-1 text-xs text-kp-on-surface-variant">
+                  Correct or clear post-event feedback without opening the host console.
+                </p>
+              </div>
+              <EditableBlockHint className="mt-0.5" />
+            </div>
+            <div className="mt-3">
               <HostFeedbackForm
                 openHouseId={openHouseId}
                 initialData={{
@@ -607,9 +625,12 @@ export function OpenHouseDetailPageClient() {
           </p>
 
           <div className="space-y-3 rounded-xl border border-kp-outline/80 bg-kp-surface-high/25 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-              Event status
-            </p>
+            <div className="flex items-center justify-between gap-2 border-b border-kp-outline/40 pb-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                Event status
+              </p>
+              <EditableBlockHint />
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               {STATUS_QUICK.map((s) => (
                 <Button
@@ -649,9 +670,12 @@ export function OpenHouseDetailPageClient() {
           </div>
 
           <div className="space-y-3 rounded-xl border border-kp-outline/80 bg-kp-surface-high/25 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-              Property & title
-            </p>
+            <div className="flex items-center justify-between gap-2 border-b border-kp-outline/40 pb-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                Property & title
+              </p>
+              <EditableBlockHint />
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5 sm:col-span-2">
                 <Label className="text-xs font-medium text-kp-on-surface">Property</Label>
@@ -681,9 +705,12 @@ export function OpenHouseDetailPageClient() {
           </div>
 
           <div className="space-y-3 rounded-xl border border-kp-outline/80 bg-kp-surface-high/25 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-              Schedule & notes
-            </p>
+            <div className="flex items-center justify-between gap-2 border-b border-kp-outline/40 pb-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                Schedule & notes
+              </p>
+              <EditableBlockHint />
+            </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-kp-on-surface">Start date</Label>
@@ -815,9 +842,18 @@ export function OpenHouseDetailPageClient() {
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Visitor list */}
         <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-          <p className="mb-1 text-sm font-semibold text-kp-on-surface">Visitors</p>
+          <div className="mb-1 flex items-start justify-between gap-2">
+            <p className="text-sm font-semibold text-kp-on-surface">Visitors</p>
+            <EditableBlockHint className="mt-0.5" />
+          </div>
           <p className="mb-4 text-xs text-kp-on-surface-variant">
             {data.visitors.length} sign-in{data.visitors.length !== 1 ? "s" : ""}
+            {data.visitors.length > 0 ? (
+              <>
+                {" "}
+                — use <span className="font-medium text-kp-on-surface/90">Edit</span> on each row.
+              </>
+            ) : null}
           </p>
           {data.visitors.length === 0 ? (
             <p className="py-6 text-center text-sm text-kp-on-surface-variant">
@@ -834,8 +870,11 @@ export function OpenHouseDetailPageClient() {
                     <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Interest</th>
                     <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Sign-in</th>
                     <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Status</th>
-                    <th className="pb-2 w-[180px] text-left text-xs font-semibold text-kp-on-surface-variant">
-                      Actions
+                    <th className="pb-2 w-[180px] text-right text-xs font-semibold text-kp-on-surface-variant">
+                      <span className="inline-flex items-center justify-end gap-1 text-kp-teal">
+                        <Pencil className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
+                        Edit
+                      </span>
                     </th>
                   </tr>
                 </thead>
