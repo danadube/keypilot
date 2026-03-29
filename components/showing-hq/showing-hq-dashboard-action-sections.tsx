@@ -568,9 +568,9 @@ const QUEUE_GROUP_ORDER: Record<WorkflowAttentionRow["queueGroup"], number> = {
 };
 
 const QUEUE_GROUP_LABEL: Record<WorkflowAttentionRow["queueGroup"], string> = {
-  action_now: "Needs action now",
+  action_now: "Do now",
   waiting: "Waiting on others",
-  upcoming: "Coming up next",
+  upcoming: "Plan ahead",
 };
 
 /**
@@ -1068,6 +1068,11 @@ export function ShowingHQCommandStrip({
       className="mb-4 w-full rounded-xl border border-kp-teal/30 bg-kp-surface-high/35 px-4 py-3.5 shadow-[0_0_0_1px_rgba(75,174,216,0.12)] sm:mb-5 sm:px-5"
       aria-label="Next event and schedule stats"
     >
+      {priorityLine ? (
+        <p className="mb-2.5 max-w-3xl text-[13px] font-semibold leading-snug text-kp-on-surface sm:text-[14px]">
+          {priorityLine}
+        </p>
+      ) : null}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
@@ -1135,11 +1140,6 @@ export function ShowingHQCommandStrip({
         <span className="mx-1 text-kp-outline/40">•</span>
         <span className="font-medium tabular-nums text-kp-on-surface">{awaitingCount}</span> awaiting response
       </p>
-      {priorityLine ? (
-        <p className="mt-2 max-w-3xl text-[12px] leading-snug text-kp-on-surface">
-          {priorityLine}
-        </p>
-      ) : null}
     </header>
   );
 }
@@ -1157,8 +1157,8 @@ export function WhatNeedsAttentionSection({
   return (
     <section
       className={cn(
-        "rounded-xl border border-kp-outline/90 bg-kp-surface px-4 py-4 sm:px-5 sm:py-5",
-        "ring-1 ring-kp-on-surface/[0.03]",
+        "rounded-xl border-2 border-kp-outline/80 bg-kp-surface px-4 py-4 sm:px-5 sm:py-5",
+        "shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset]",
         className
       )}
       aria-labelledby="what-needs-attention-heading"
@@ -1166,19 +1166,28 @@ export function WhatNeedsAttentionSection({
       <div className="mb-4 border-b border-kp-outline/55 pb-3">
         <h2
           id="what-needs-attention-heading"
-          className="text-base font-semibold tracking-tight text-kp-on-surface sm:text-lg"
+          className="text-lg font-semibold tracking-tight text-kp-on-surface sm:text-xl"
         >
           What needs attention
         </h2>
-        <p className="mt-1 text-[12px] text-kp-on-surface-variant">
-          Your highest-confidence work items — sorted by urgency, then time. Start at the top.
+        <p className="mt-1.5 text-[11px] leading-snug text-kp-on-surface-variant sm:text-[12px]">
+          Blocking work for showings and open houses — feedback, prep, and seller deliverables. Start
+          with <span className="font-medium text-kp-on-surface/90">Do now</span>; person follow-ups are
+          listed right below.
         </p>
       </div>
       {rows.length === 0 ? (
-        <p className="py-3 text-[13px] leading-snug text-kp-on-surface-variant">
-          No active action items. Check <span className="text-kp-on-surface">Today</span> for the
-          schedule and <span className="text-kp-on-surface">Up next</span> for what&apos;s after now.
-        </p>
+        <div className="space-y-2 py-2">
+          <p className="text-[13px] font-medium leading-snug text-kp-on-surface">
+            Nothing in the event queue right now.
+          </p>
+          <p className="text-[12px] leading-snug text-kp-on-surface-variant">
+            Use <span className="text-kp-on-surface">Today&apos;s schedule</span> for times,{" "}
+            <span className="text-kp-on-surface">Person follow-ups</span> for contact tasks, and{" "}
+            <span className="text-kp-on-surface">Up next</span> for what&apos;s after the current
+            block.
+          </p>
+        </div>
       ) : (
         <div className="space-y-5">
           {groupOrder.map((group) => {
@@ -1211,7 +1220,7 @@ export function WhatNeedsAttentionSection({
                   {inGroup.map((row, indexInGroup) => {
                     const vis = QUEUE_ROW_VISUAL[row.visualKind];
                     const spotlight =
-                      group === "action_now" && indexInGroup < 2 && inGroup.length > 0;
+                      group === "action_now" && indexInGroup < 3 && inGroup.length > 0;
                     return (
                       <li
                         key={row.key}
@@ -1309,16 +1318,18 @@ export function TodayScheduleSection({
   return (
     <section
       className={cn(
-        "rounded-lg border border-kp-outline/55 bg-kp-surface/60 px-3 py-3 sm:px-3.5 sm:py-3.5",
+        "rounded-lg border border-kp-outline/50 bg-kp-surface/50 px-3 py-3 sm:px-3.5 sm:py-3.5",
         className
       )}
       aria-labelledby="today-schedule-heading"
     >
       <h2 id="today-schedule-heading" className="text-[13px] font-semibold text-kp-on-surface">
-        Today
+        Today&apos;s schedule
       </h2>
-      <p className="mt-0.5 text-[11px] text-kp-on-surface-muted">
-        Quick timeline: all-day posture, draft queue status, and scheduled event slots.
+      <p className="mt-0.5 text-[10px] leading-snug text-kp-on-surface-variant sm:text-[11px]">
+        Times and readiness only — actions stay in{" "}
+        <span className="font-medium text-kp-on-surface/85">What needs attention</span> and{" "}
+        <span className="font-medium text-kp-on-surface/85">Person follow-ups</span>.
       </p>
       <ul className="mt-2.5 border-l border-kp-outline/45 pl-3.5">
         <li className="relative pb-2.5">
@@ -1361,7 +1372,10 @@ export function TodayScheduleSection({
         </li>
       </ul>
       {rows.length === 0 ? (
-        <p className="mt-2.5 text-[11px] text-kp-on-surface-muted">No timed slots today.</p>
+        <p className="mt-2.5 text-[11px] leading-snug text-kp-on-surface-variant">
+          No showings or open houses on the calendar for today. Use{" "}
+          <span className="text-kp-on-surface">Up next</span> for later blocks.
+        </p>
       ) : (
         <ul className="mt-2.5 space-y-2">
           {rows.map((row) => (
@@ -1542,21 +1556,28 @@ export function UpNextRailSection({
   return (
     <section
       className={cn(
-        "rounded-lg border border-kp-outline/35 bg-kp-bg/[0.22] px-3 py-3 sm:px-3.5 sm:py-3",
+        "rounded-lg border border-kp-outline/40 bg-kp-surface/45 px-3 py-3 sm:px-3.5 sm:py-3",
         className
       )}
       aria-labelledby="up-next-heading"
     >
-      <div className="mb-1 flex items-center gap-1">
-        <CalendarClock className="h-3.5 w-3.5 shrink-0 text-kp-on-surface-muted" aria-hidden />
-        <h2 id="up-next-heading" className="text-[12px] font-semibold text-kp-on-surface-muted">
-          Up next
-        </h2>
+      <div className="mb-1.5 flex items-start gap-1.5">
+        <CalendarClock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-kp-on-surface-variant/70" aria-hidden />
+        <div>
+          <h2 id="up-next-heading" className="text-[12px] font-semibold text-kp-on-surface">
+            Up next
+          </h2>
+          <p className="text-[9px] leading-snug text-kp-on-surface-variant sm:text-[10px]">
+            Later today and beyond — planning, not your task list.
+          </p>
+        </div>
       </div>
       {rows.length === 0 ? (
-        <p className="text-[11px] text-kp-on-surface-muted">Nothing after now.</p>
+        <p className="text-[10px] leading-snug text-kp-on-surface-variant sm:text-[11px]">
+          No future blocks after right now. You&apos;re clear to focus on the queue.
+        </p>
       ) : (
-        <ul className="space-y-1">
+        <ul className="space-y-1.5">
           {rows.map((row) => (
             <li key={`${row.kind}-${row.id}`}>
               <Link
@@ -1565,15 +1586,15 @@ export function UpNextRailSection({
                     ? openHouseWorkflowTabHref(row.id, "details")
                     : showingWorkflowTabHref(row.id, "details")
                 }
-                className="block rounded px-0 py-0.5 text-left transition-colors hover:bg-kp-surface-high/15"
+                className="block rounded-md px-0 py-0.5 text-left transition-colors hover:bg-kp-surface-high/20"
               >
-                <p className="text-[12px] font-medium tabular-nums leading-snug text-kp-on-surface/90">
+                <p className="text-[11px] font-medium tabular-nums leading-snug text-kp-on-surface sm:text-[12px]">
                   {formatShortDate(row.at)} {formatTime(row.at)}
                   <span className="mx-1 font-normal text-kp-outline/35">—</span>
                   <span className="font-normal">{row.address}</span>
                 </p>
-                <p className="text-[11px] text-kp-on-surface-muted">
-                  {row.kind === "open_house" ? "Open house" : "Showing"}
+                <p className="text-[10px] text-kp-on-surface-variant sm:text-[11px]">
+                  {row.kind === "open_house" ? "Open house" : "Private showing"}
                 </p>
               </Link>
             </li>
@@ -1628,12 +1649,15 @@ export function RecentOutputsRailSection({
   const latest = top[0] ?? null;
   return (
     <section
-      className={cn("rounded-md border border-kp-outline/30 bg-kp-bg/40 px-3 py-2.5 sm:px-3.5", className)}
+      className={cn("rounded-lg border border-kp-outline/40 bg-kp-surface/40 px-3 py-2.5 sm:px-3.5", className)}
       aria-labelledby="recent-outputs-heading"
     >
       <h2 id="recent-outputs-heading" className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
         Recent reports
       </h2>
+      <p className="mt-0.5 text-[9px] leading-snug text-kp-on-surface-variant/90">
+        Reference only — ship new work from the queue.
+      </p>
       {latest ? (
         <div className="mt-2 rounded-md border border-kp-outline/50 bg-kp-surface-high/20 px-2.5 py-2">
           <p className="text-[12px] font-medium text-kp-on-surface">Last open house</p>

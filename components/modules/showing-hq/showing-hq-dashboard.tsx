@@ -414,7 +414,7 @@ export function ShowingHQDashboardView() {
           "xl:gap-x-10"
         )}
       >
-        <div className="flex min-w-0 flex-col gap-5">
+        <div className="flex min-w-0 flex-col gap-5 lg:gap-6">
           <WhatNeedsAttentionSection rows={workflowRows} />
           {data.agentFollowUps === null ? (
             <section className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3">
@@ -448,7 +448,7 @@ export function ShowingHQDashboardView() {
           ) : null}
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-4">
+        <aside className="flex min-w-0 flex-col gap-4 lg:gap-5">
           <QuickActionsRailSection nextEvent={nextEvent} hasDrafts={draftsWaitingCount > 0} />
           <UpNextRailSection
             rows={upNextRows}

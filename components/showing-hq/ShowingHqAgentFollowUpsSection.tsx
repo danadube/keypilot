@@ -26,11 +26,14 @@ export function ShowingHqAgentFollowUpsSection({
 
   if (!hasAny) {
     return (
-      <section className="rounded-xl border border-kp-outline/50 bg-kp-surface-high/10 px-4 py-4">
+      <section className="rounded-xl border border-kp-outline/55 bg-kp-surface-high/10 px-4 py-4 sm:px-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <CalendarClock className="h-4 w-4 text-kp-teal" />
-            <p className="text-sm font-semibold text-kp-on-surface">Person follow-ups</p>
+            <div>
+              <p className="text-sm font-semibold text-kp-on-surface">Person follow-ups</p>
+              <p className="text-[10px] text-kp-on-surface-variant">Contact tasks — email drafts and reminders</p>
+            </div>
           </div>
           <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 text-[11px]")} asChild>
             <Link href="/showing-hq/follow-ups/drafts">Email drafts</Link>
@@ -46,11 +49,11 @@ export function ShowingHqAgentFollowUpsSection({
             <Link href="/showing-hq/open-houses" className="text-kp-teal hover:underline">
               open house visitor
             </Link>{" "}
-            or{" "}
+            or a{" "}
             <Link href="/contacts" className="text-kp-teal hover:underline">
-              contact record
-            </Link>
-            .
+              contact
+            </Link>{" "}
+            when you need a dated reminder.
           </p>
           <div className="mt-2.5">
             <Button variant="outline" size="sm" className={cn(kpBtnTertiary, "h-7 text-[11px]")} asChild>
@@ -65,12 +68,38 @@ export function ShowingHqAgentFollowUpsSection({
     );
   }
 
+  const urgentBanner =
+    overdue.length > 0
+      ? `${overdue.length} overdue`
+      : dueToday.length > 0
+        ? `${dueToday.length} due today`
+        : null;
+
   return (
-    <section className="rounded-xl border border-kp-outline/60 bg-kp-surface-high/15 px-4 py-4">
+    <section className="rounded-xl border border-kp-outline/70 bg-kp-surface-high/18 px-4 py-4 sm:px-5">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <CalendarClock className="h-4 w-4 text-kp-teal" />
-          <h2 className="text-sm font-semibold text-kp-on-surface">Person follow-ups</h2>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <CalendarClock className="h-4 w-4 shrink-0 text-kp-teal" />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-sm font-semibold text-kp-on-surface sm:text-base">Person follow-ups</h2>
+              {urgentBanner ? (
+                <span
+                  className={cn(
+                    "inline-flex shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+                    overdue.length > 0
+                      ? "bg-red-500/15 text-red-200"
+                      : "bg-amber-500/15 text-amber-100"
+                  )}
+                >
+                  {urgentBanner}
+                </span>
+              ) : null}
+            </div>
+            <p className="mt-0.5 text-[10px] text-kp-on-surface-variant sm:text-[11px]">
+              Active work on contacts — complete, edit, or snooze here.
+            </p>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" className={cn(kpBtnTertiary, "h-7 text-[11px]")} asChild>
@@ -81,10 +110,6 @@ export function ShowingHqAgentFollowUpsSection({
           </Button>
         </div>
       </div>
-      <p className="mb-3 text-[11px] text-kp-on-surface-variant">
-        One global list: complete, edit due date, or add notes here. Event pages show the same tasks filtered to that
-        open house.
-      </p>
 
       {overdue.length === 0 && (dueToday.length > 0 || upcoming.length > 0) ? (
         <p className="mb-3 flex items-center gap-1.5 text-[11px] text-kp-teal/90">
@@ -109,9 +134,10 @@ export function ShowingHqAgentFollowUpsSection({
 
       {dueToday.length > 0 ? (
         <div className="mb-4">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-amber-200/90">
+          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200/95">
+            <CalendarClock className="h-3 w-3 shrink-0" aria-hidden />
             Due today ({dueToday.length})
-          </p>
+          </div>
           <div className="space-y-2">
             {dueToday.map((row) => (
               <AgentFollowUpTaskCard key={row.id} task={row} accent="today" onUpdated={onRefresh} />
