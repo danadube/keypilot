@@ -21,6 +21,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
+import { AF, afError, FLASH_QUERY } from "@/lib/ui/action-feedback";
 import {
   Select,
   SelectContent,
@@ -173,9 +174,10 @@ export function NewOpenHouseForm() {
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      router.push(showingHqOpenHouseWorkspaceHref(json.data.id));
+      const href = showingHqOpenHouseWorkspaceHref(json.data.id);
+      router.push(`${href}?flash=${FLASH_QUERY.openHouseCreated}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create");
+      setError(afError(err, AF.couldntCreate));
     } finally {
       setSubmitting(false);
     }
@@ -470,7 +472,7 @@ export function NewOpenHouseForm() {
                   disabled={submitting}
                   className={cn(kpBtnPrimary, "border-transparent")}
                 >
-                  {submitting ? "Creating..." : "Create Open House"}
+                  {submitting ? AF.creating : "Create Open House"}
                 </Button>
                 <Button type="button" variant="outline" className={cn(kpBtnSecondary)} asChild>
                   <Link href="/open-houses">Cancel</Link>

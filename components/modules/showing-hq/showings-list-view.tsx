@@ -52,6 +52,8 @@ import {
 } from "@/lib/showing-hq/saved-views-storage";
 import { normalizeShowingHqListSearchQ } from "@/lib/showing-hq/list-search-q";
 import { showingWorkflowTabHref } from "@/lib/showing-hq/showing-workflow-hrefs";
+import { AF, FLASH_QUERY } from "@/lib/ui/action-feedback";
+import { DismissibleFlashBanner } from "@/components/ui/action-feedback";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -474,6 +476,7 @@ export function ShowingsListView() {
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showScheduledBanner, setShowScheduledBanner] = useState(false);
 
   const replaceListView = useCallback(
     (next: NormalizedShowingsListView) => {
@@ -537,6 +540,15 @@ export function ShowingsListView() {
 
   const canSaveView = hasShowingsSaveableFiltersInSearchParams(searchParams);
   const hasListFilters = canSaveView;
+
+  useEffect(() => {
+    if (searchParams.get("flash") !== FLASH_QUERY.showingCreated) return;
+    setShowScheduledBanner(true);
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("flash");
+    const q = next.toString();
+    router.replace(`/showing-hq/showings${q ? `?${q}` : ""}`, { scroll: false });
+  }, [router, searchParams]);
 
   /** Drop unknown `source=` from the address bar so URL matches fetch normalization. */
   useEffect(() => {
@@ -627,6 +639,14 @@ export function ShowingsListView() {
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
+      {showScheduledBanner ? (
+        <div className="px-6 pt-3 sm:px-8">
+          <DismissibleFlashBanner
+            message={AF.showingScheduled}
+            onDismiss={() => setShowScheduledBanner(false)}
+          />
+        </div>
+      ) : null}
       {/* ── Intro (shell owns title) + primary action ───────────────────── */}
       <div className="flex flex-col gap-3 px-6 pb-3 pt-3 sm:flex-row sm:items-end sm:justify-between sm:px-8">
         <DashboardContextStrip

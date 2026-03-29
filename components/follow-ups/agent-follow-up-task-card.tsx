@@ -15,6 +15,8 @@ import {
   mergeLocalPartsToDatetimeLocalValue,
   splitDatetimeLocalInputValue,
 } from "@/lib/datetime/local-scheduling";
+import { AF, afError } from "@/lib/ui/action-feedback";
+import { InlineSuccessText, useFlashSuccess } from "@/components/ui/action-feedback";
 
 /** Enough shape for dashboard + open-house API payloads */
 export type AgentFollowUpTaskCardModel = {
@@ -70,7 +72,9 @@ export function AgentFollowUpTaskCard({
   const [dueLocal, setDueLocal] = useState(() => isoToDatetimeLocalInputValue(task.dueAt));
   const [notesDraft, setNotesDraft] = useState(task.notes ?? "");
   const [busy, setBusy] = useState(false);
+  const [mutation, setMutation] = useState<"complete" | "reopen" | "save" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { visible: showSavedFlash, flash: flashSaved } = useFlashSuccess();
 
   useEffect(() => {
     setDueLocal(isoToDatetimeLocalInputValue(task.dueAt));
@@ -92,17 +96,20 @@ export function AgentFollowUpTaskCard({
     [task.id]
   );
 
-  const run = async (fn: () => Promise<void>) => {
+  const run = async (kind: "complete" | "reopen" | "save", fn: () => Promise<void>) => {
     setError(null);
     setBusy(true);
+    setMutation(kind);
     try {
       await fn();
       setEditing(false);
+      flashSaved();
       onUpdated();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong");
+      setError(afError(e, AF.couldntSave));
     } finally {
       setBusy(false);
+      setMutation(null);
     }
   };
 
@@ -171,9 +178,9 @@ export function AgentFollowUpTaskCard({
                 size="sm"
                 className={cn(kpBtnSecondary, "h-7 text-[11px]")}
                 disabled={busy}
-                onClick={() => run(() => patch({ status: "CLOSED" }))}
+                onClick={() => run("complete", () => patch({ status: "CLOSED" }))}
               >
-                Complete
+                {busy && mutation === "complete" ? AF.completing : "Complete"}
               </Button>
             ) : (
               <Button
@@ -182,9 +189,9 @@ export function AgentFollowUpTaskCard({
                 size="sm"
                 className={cn(kpBtnSecondary, "h-7 text-[11px]")}
                 disabled={busy}
-                onClick={() => run(() => patch({ status: "NEW", completedAt: null }))}
+                onClick={() => run("reopen", () => patch({ status: "NEW", completedAt: null }))}
               >
-                Reopen
+                {busy && mutation === "reopen" ? AF.reopening : "Reopen"}
               </Button>
             )}
             {!isClosed ? (
@@ -239,7 +246,14 @@ export function AgentFollowUpTaskCard({
               placeholder="Call context, next step, etc."
             />
           </div>
-          {error ? <p className="text-[11px] text-red-400">{error}</p> : null}
+          {error ? (
+            <p className="text-[11px] text-red-400" role="alert">
+              {error} {AF.tryAgain}
+            </p>
+          ) : null}
+          <InlineSuccessText show={showSavedFlash} className="block">
+            {AF.saved}
+          </InlineSuccessText>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -247,7 +261,7 @@ export function AgentFollowUpTaskCard({
               className={cn(kpBtnSecondary, "h-7 text-[11px]")}
               disabled={busy}
               onClick={() =>
-                run(async () => {
+                run("save", async () => {
                   const dueIso = datetimeLocalInputValueToIso(dueLocal);
                   if (!dueIso) throw new Error("Invalid date");
                   const body: Record<string, unknown> = {
@@ -258,7 +272,7 @@ export function AgentFollowUpTaskCard({
                 })
               }
             >
-              {busy ? "Saving…" : "Save changes"}
+              {busy && mutation === "save" ? AF.saving : "Save changes"}
             </Button>
             <Button
               type="button"
@@ -278,7 +292,9 @@ export function AgentFollowUpTaskCard({
           </div>
         </div>
       ) : error && !editing ? (
-        <p className="mt-2 text-[11px] text-red-400">{error}</p>
+        <p className="mt-2 text-[11px] text-red-400" role="alert">
+          {error} {AF.tryAgain}
+        </p>
       ) : null}
     </div>
   );

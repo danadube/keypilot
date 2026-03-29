@@ -54,6 +54,13 @@ import {
   EditableBlockContent,
   EditableBlockTableEditHeading,
 } from "@/components/ui/editable-block";
+import {
+  DismissibleFlashBanner,
+  InlineSuccessText,
+  useFlashSuccess,
+  AF,
+} from "@/components/ui/action-feedback";
+import { afError, FLASH_QUERY } from "@/lib/ui/action-feedback";
 import { DateInputField, TimeInputField, TimeQuickChips } from "@/components/ui/time-input";
 import {
   applyQuickTimePreset,
@@ -179,6 +186,9 @@ export function OpenHouseDetailPageClient() {
   const [detailTitle, setDetailTitle] = useState("");
   const [detailPropertyId, setDetailPropertyId] = useState("");
   const [properties, setProperties] = useState<PropertyOption[]>([]);
+  const [showOhCreatedBanner, setShowOhCreatedBanner] = useState(false);
+  const { flash: flashStatusOk, visible: statusOkVisible } = useFlashSuccess();
+  const { flash: flashScheduleOk, visible: scheduleOkVisible } = useFlashSuccess();
 
   const loadData = useCallback(() => {
     setError(null);
@@ -212,6 +222,17 @@ export function OpenHouseDetailPageClient() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (searchParams.get("flash") !== FLASH_QUERY.openHouseCreated) return;
+    setShowOhCreatedBanner(true);
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("flash");
+    const q = next.toString();
+    router.replace(`/showing-hq/open-houses/${openHouseId}${q ? `?${q}` : ""}`, {
+      scroll: false,
+    });
+  }, [openHouseId, router, searchParams]);
 
   const serverScheduleId = data?.id;
   const serverStartAt = data?.startAt;
@@ -254,20 +275,26 @@ export function OpenHouseDetailPageClient() {
     (newStatus: string) => {
       if (!openHouseId || newStatus === data?.status) return;
       setUpdatingStatus(true);
+      setError(null);
       fetch(`/api/v1/open-houses/${openHouseId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       })
-        .then((res) => res.json())
-        .then((json) => {
-          if (json.error) throw new Error(json.error.message);
+        .then(async (res) => {
+          const json = (await res.json().catch(() => ({}))) as {
+            error?: { message?: string };
+          };
+          if (!res.ok || json.error) {
+            throw new Error(json.error?.message ?? "Request failed");
+          }
           loadData();
+          flashStatusOk();
         })
-        .catch(() => setError("Failed to update status"))
+        .catch((e) => setError(afError(e, AF.couldntUpdateStatus)))
         .finally(() => setUpdatingStatus(false));
     },
-    [openHouseId, data?.status, loadData]
+    [openHouseId, data?.status, loadData, flashStatusOk]
   );
 
   const formatDateTime = (d: string) =>
@@ -307,7 +334,7 @@ export function OpenHouseDetailPageClient() {
       if (json.error) throw new Error(json.error.message);
       loadData();
     } catch (e) {
-      setError((e as Error).message);
+      setError(afError(e, AF.couldntSave));
     } finally {
       setRegenerating(false);
     }
@@ -414,8 +441,9 @@ export function OpenHouseDetailPageClient() {
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
       loadData();
+      flashScheduleOk();
     } catch (e) {
-      setError((e as Error).message);
+      setError(afError(e, AF.couldntSave));
     } finally {
       setDetailSaving(false);
     }
@@ -430,6 +458,7 @@ export function OpenHouseDetailPageClient() {
     detailEndTime,
     detailNotes,
     loadData,
+    flashScheduleOk,
   ]);
 
   if (loading && !data) return <PageLoading message="Loading open house..." />;
@@ -492,8 +521,19 @@ export function OpenHouseDetailPageClient() {
         </Button>
       </div>
 
+      {showOhCreatedBanner ? (
+        <DismissibleFlashBanner
+          className="mb-2"
+          message={AF.openHouseCreated}
+          onDismiss={() => setShowOhCreatedBanner(false)}
+        />
+      ) : null}
+
       {error ? (
-        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+        <div
+          className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400"
+          role="alert"
+        >
           {error}
         </div>
       ) : null}
@@ -641,6 +681,9 @@ export function OpenHouseDetailPageClient() {
                   Cancelled
                 </Button>
               </div>
+              <InlineSuccessText show={statusOkVisible} className="pt-1">
+                {AF.statusUpdated}
+              </InlineSuccessText>
             </EditableBlockContent>
           </EditableBlock>
 
@@ -999,7 +1042,7 @@ export function OpenHouseDetailPageClient() {
                 disabled={regenerating}
               >
                 <RefreshCw className={`mr-1.5 h-3.5 w-3.5 ${regenerating ? "animate-spin" : ""}`} />
-                {regenerating ? "Regenerating..." : "Regenerate QR"}
+                {regenerating ? AF.regenerating : "Regenerate QR"}
               </Button>
               <Button
                 size="sm"
@@ -1037,9 +1080,10 @@ export function OpenHouseDetailPageClient() {
 
           <div
             className={cn(
-              "sticky bottom-4 z-10 flex justify-end rounded-lg border border-kp-outline/70 bg-kp-surface/95 px-3 py-2 shadow-lg backdrop-blur-sm"
+              "sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3 rounded-lg border border-kp-outline/70 bg-kp-surface/95 px-3 py-2 shadow-lg backdrop-blur-sm"
             )}
           >
+            <InlineSuccessText show={scheduleOkVisible}>{AF.openHouseUpdated}</InlineSuccessText>
             <Button
               type="button"
               size="sm"
@@ -1047,7 +1091,7 @@ export function OpenHouseDetailPageClient() {
               disabled={!scheduleDirty || detailSaving}
               onClick={() => void saveEventDetails()}
             >
-              {detailSaving ? "Saving…" : "Save changes"}
+              {detailSaving ? AF.saving : "Save changes"}
             </Button>
           </div>
         </div>

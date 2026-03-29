@@ -15,6 +15,7 @@ import {
   mergeLocalPartsToDatetimeLocalValue,
   splitDatetimeLocalInputValue,
 } from "@/lib/datetime/local-scheduling";
+import { AF, afError } from "@/lib/ui/action-feedback";
 
 type Props = {
   visitorId: string;
@@ -66,7 +67,7 @@ export function CreateVisitorFollowUpInline({
       setOpen(false);
       onCreated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed");
+      setError(afError(err, AF.couldntCreateFollowUp));
     } finally {
       setSaving(false);
     }
@@ -120,7 +121,11 @@ export function CreateVisitorFollowUpInline({
         placeholder="Notes (optional)"
         className="min-h-[56px] border-kp-outline bg-kp-surface text-xs"
       />
-      {error ? <p className="text-[11px] text-red-400">{error}</p> : null}
+      {error ? (
+        <p className="text-[11px] text-red-400" role="alert">
+          {error} {AF.tryAgain}
+        </p>
+      ) : null}
       <div className="flex gap-1">
         <Button
           type="submit"
@@ -128,7 +133,7 @@ export function CreateVisitorFollowUpInline({
           className={cn(kpBtnPrimary, "h-7 flex-1 border-transparent text-[11px]")}
           disabled={saving}
         >
-          {saving ? "Saving…" : "Save"}
+          {saving ? AF.saving : "Save"}
         </Button>
         <Button
           type="button"

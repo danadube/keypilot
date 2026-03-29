@@ -35,6 +35,8 @@ import {
   isoToLocalDateInput,
   isoToLocalTimeInput,
 } from "@/lib/datetime/local-scheduling";
+import { AF, afError } from "@/lib/ui/action-feedback";
+import { InlineSuccessText, useFlashSuccess } from "@/components/ui/action-feedback";
 
 type ShowingDetail = {
   id: string;
@@ -96,6 +98,7 @@ export function ShowingDetailWorkflow() {
     buyerAgentName?: string;
     buyerAgentEmail?: string;
   }>({});
+  const { visible: detailsSavedVisible, flash: flashDetailsSaved } = useFlashSuccess();
 
   const load = useCallback(() => {
     if (!id) return;
@@ -167,8 +170,9 @@ export function ShowingDetailWorkflow() {
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
       setData(json.data);
+      flashDetailsSaved();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Save failed");
+      setError(afError(e, AF.couldntSave));
     } finally {
       setDetailsSaving(false);
     }
@@ -219,7 +223,7 @@ export function ShowingDetailWorkflow() {
       setData(json.data);
       setFieldErrors({});
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Update failed");
+      setError(afError(e, AF.couldntSave));
     } finally {
       setSendSaving(false);
     }
@@ -477,7 +481,7 @@ export function ShowingDetailWorkflow() {
                   disabled={sendSaving}
                   onClick={() => void sendFeedbackRequest()}
                 >
-                  {sendSaving ? "Updating…" : "Mark as sent"}
+                  {sendSaving ? AF.updating : "Mark as sent"}
                 </Button>
               </div>
             </section>
@@ -548,9 +552,10 @@ export function ShowingDetailWorkflow() {
           </div>
           <div
             className={cn(
-              "sticky bottom-4 z-10 flex justify-end rounded-lg border border-kp-outline/70 bg-kp-surface/95 px-3 py-2 shadow-lg backdrop-blur-sm"
+              "sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3 rounded-lg border border-kp-outline/70 bg-kp-surface/95 px-3 py-2 shadow-lg backdrop-blur-sm"
             )}
           >
+            <InlineSuccessText show={detailsSavedVisible}>{AF.showingDetailsSaved}</InlineSuccessText>
             <Button
               type="button"
               variant="outline"
@@ -558,7 +563,7 @@ export function ShowingDetailWorkflow() {
               disabled={detailsSaving}
               onClick={() => void saveDetails()}
             >
-              {detailsSaving ? "Saving…" : "Save changes"}
+              {detailsSaving ? AF.saving : "Save changes"}
             </Button>
           </div>
         </div>

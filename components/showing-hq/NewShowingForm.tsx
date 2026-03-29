@@ -34,6 +34,7 @@ import {
   applyQuickTimePreset,
   combineLocalDateAndTimeToIso,
 } from "@/lib/datetime/local-scheduling";
+import { AF, afError, FLASH_QUERY } from "@/lib/ui/action-feedback";
 
 type Property = {
   id: string;
@@ -96,9 +97,9 @@ export function NewShowingForm() {
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      router.push("/showing-hq/showings");
+      router.push(`/showing-hq/showings?flash=${FLASH_QUERY.showingCreated}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create showing");
+      setError(afError(err, AF.couldntCreate));
     } finally {
       setSubmitting(false);
     }
@@ -238,7 +239,7 @@ export function NewShowingForm() {
                 disabled={submitting}
                 className={cn(kpBtnPrimary, "border-transparent")}
               >
-                {submitting ? "Creating..." : "Create Showing"}
+                {submitting ? AF.scheduling : "Create Showing"}
               </Button>
               <Button variant="outline" type="button" className={cn(kpBtnSecondary)} asChild>
                 <Link href="/showing-hq/showings">Cancel</Link>

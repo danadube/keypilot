@@ -17,6 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { AF, afError } from "@/lib/ui/action-feedback";
+import { InlineSuccessText } from "@/components/ui/action-feedback";
 
 export type OpenHouseVisitorRowModel = {
   id: string;
@@ -56,6 +58,7 @@ export function OpenHouseVisitorRowInline({
   const [saving, setSaving] = useState(false);
   const [resending, setResending] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [savedFlash, setSavedFlash] = useState(false);
 
   const [firstName, setFirstName] = useState(v.contact.firstName);
   const [lastName, setLastName] = useState(v.contact.lastName);
@@ -76,6 +79,7 @@ export function OpenHouseVisitorRowInline({
   const startEdit = () => {
     resetFromProps();
     setErr(null);
+    setSavedFlash(false);
     setEditing(true);
   };
 
@@ -99,11 +103,16 @@ export function OpenHouseVisitorRowInline({
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      setEditing(false);
-      onRefresh();
+      setSaving(false);
+      setSavedFlash(true);
+      setErr(null);
+      window.setTimeout(() => {
+        setSavedFlash(false);
+        setEditing(false);
+        onRefresh();
+      }, 900);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Save failed");
-    } finally {
+      setErr(afError(e, AF.couldntSave));
       setSaving(false);
     }
   };
@@ -119,7 +128,7 @@ export function OpenHouseVisitorRowInline({
       if (json.error) throw new Error(json.error.message);
       onRefresh();
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Could not resend");
+      setErr(afError(e, "Couldn't resend the flyer. Try again."));
     } finally {
       setResending(false);
     }
@@ -130,7 +139,12 @@ export function OpenHouseVisitorRowInline({
       <tr className="align-top">
         <td className="py-2" colSpan={7}>
           <div className="flex flex-col gap-3 rounded-lg border border-kp-outline/80 bg-kp-surface-high/40 p-3">
-            {err ? <p className="text-xs text-red-400">{err}</p> : null}
+            {err ? (
+              <p className="text-xs text-red-400" role="alert">
+                {err} {AF.tryAgain}
+              </p>
+            ) : null}
+            <InlineSuccessText show={savedFlash}>{AF.saved}</InlineSuccessText>
             <div className="grid gap-2 sm:grid-cols-2">
               <div>
                 <label className="text-[10px] font-medium text-kp-on-surface-variant">First name</label>
@@ -207,17 +221,17 @@ export function OpenHouseVisitorRowInline({
                 type="button"
                 size="sm"
                 className={cn(kpBtnSecondary, "h-7 text-xs")}
-                disabled={saving}
+                disabled={saving || savedFlash}
                 onClick={() => void save()}
               >
-                {saving ? "Saving…" : "Save visitor"}
+                {saving ? AF.saving : savedFlash ? AF.saved : "Save visitor"}
               </Button>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 className={cn(kpBtnTertiary, "h-7 text-xs")}
-                disabled={saving}
+                disabled={saving || savedFlash}
                 onClick={() => {
                   setEditing(false);
                   resetFromProps();
@@ -265,8 +279,13 @@ export function OpenHouseVisitorRowInline({
             onClick={() => void resendFlyer()}
             title={!v.contact.email?.trim() ? "Add email to resend flyer" : "Resend flyer email"}
           >
-            {resending ? "Sending…" : "Resend flyer"}
+            {resending ? AF.sending : "Resend flyer"}
           </Button>
+          {err && !editing ? (
+            <p className="max-w-[180px] text-right text-[11px] text-red-400" role="alert">
+              {err}
+            </p>
+          ) : null}
           <Button
             variant="ghost"
             size="sm"

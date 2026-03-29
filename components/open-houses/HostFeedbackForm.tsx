@@ -14,6 +14,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { HOST_FEEDBACK_TAGS, TRAFFIC_LEVELS } from "@/lib/validations/open-house";
+import { AF, afError } from "@/lib/ui/action-feedback";
+import {
+  InlineErrorText,
+  InlineSuccessText,
+  useFlashSuccess,
+} from "@/components/ui/action-feedback";
 
 type HostFeedbackFormProps = {
   openHouseId: string;
@@ -59,7 +65,10 @@ export function HostFeedbackForm({
   );
   const [hostNotes, setHostNotes] = useState(initialData.hostNotes ?? "");
   const [saving, setSaving] = useState(false);
+  const [saveIntent, setSaveIntent] = useState<"save" | "clear" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { visible: showSaved, flash: flashSaved } = useFlashSuccess();
+  const [successLine, setSuccessLine] = useState<string>(AF.debriefSaved);
 
   const toggleTag = (tag: string) => {
     setFeedbackTags((prev) =>
@@ -88,17 +97,21 @@ export function HostFeedbackForm({
       setTrafficLevel(null);
       setFeedbackTags([]);
       setHostNotes("");
+      setSuccessLine(AF.debriefCleared);
+      flashSaved();
       onSave();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to clear");
+      setError(afError(err, AF.couldntSave));
     } finally {
       setSaving(false);
+      setSaveIntent(null);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canEdit) return;
+    setSaveIntent("save");
     setSaving(true);
     setError(null);
     try {
@@ -114,11 +127,14 @@ export function HostFeedbackForm({
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
+      setSuccessLine(AF.debriefSaved);
+      flashSaved();
       onSave();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      setError(afError(err, AF.couldntSave));
     } finally {
       setSaving(false);
+      setSaveIntent(null);
     }
   };
 
@@ -128,11 +144,11 @@ export function HostFeedbackForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+      {error ? (
+        <InlineErrorText className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {error}
-        </div>
-      )}
+        </InlineErrorText>
+      ) : null}
 
       <div className="space-y-2">
         <Label>Traffic level</Label>
@@ -185,14 +201,14 @@ export function HostFeedbackForm({
         />
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button
           type="submit"
           variant="outline"
           className={cn(kpBtnPrimary, "border-transparent")}
           disabled={saving}
         >
-          {saving ? "Saving..." : "Save debrief"}
+          {saving && saveIntent === "save" ? AF.saving : "Save debrief"}
         </Button>
         <Button
           type="button"
@@ -201,8 +217,11 @@ export function HostFeedbackForm({
           disabled={saving}
           onClick={() => void handleClear()}
         >
-          Clear debrief
+          {saving && saveIntent === "clear" ? AF.clearing : "Clear debrief"}
         </Button>
+        <InlineSuccessText show={showSaved} className="min-w-0">
+          {successLine}
+        </InlineSuccessText>
       </div>
       <p className="text-[11px] text-kp-on-surface-variant">
         Same fields as the host console — correct traffic, tags, or notes anytime. Clear resets them for a
