@@ -125,7 +125,7 @@ export function FeedbackRequestsView() {
                     </td>
                     <td className="py-2.5 text-right">
                       <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 text-xs")} asChild>
-                        <Link href={`/showing-hq/showings?openShowing=${encodeURIComponent(s.id)}`}>
+                        <Link href={`/showing-hq/showings/${s.id}?tab=feedback`}>
                           Open draft
                         </Link>
                       </Button>

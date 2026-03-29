@@ -29,10 +29,6 @@ import { Button } from "@/components/ui/button";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
-import { ShowingBuyerAgentFeedbackDraftPanel } from "@/components/showing-hq/ShowingBuyerAgentFeedbackDraftPanel";
-import { PrepChecklistPanel } from "@/components/showing-hq/prep-checklist-panels";
-import { buildShowingPrepChecklist } from "@/lib/showing-hq/prep-checklist";
-import { buildPropertyAddressLineForFeedbackDraft } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 import {
   Select,
   SelectContent,
@@ -55,6 +51,7 @@ import {
   addSavedShowingsView,
 } from "@/lib/showing-hq/saved-views-storage";
 import { normalizeShowingHqListSearchQ } from "@/lib/showing-hq/list-search-q";
+import { showingWorkflowTabHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -155,23 +152,6 @@ function propertySubtitle(s: Showing): string {
 
 function hasBuyerAgentEmailDraft(s: Showing): boolean {
   return !!(s.feedbackDraftGeneratedAt && s.buyerAgentEmail?.trim());
-}
-
-function emailReplyExcerpt(raw: string | null | undefined, max = 240): string {
-  const t = (raw ?? "").trim();
-  if (!t) return "";
-  return t.length <= max ? t : t.slice(0, max) + "…";
-}
-
-function mergeShowingPrepChecklistFlags(
-  existing: Record<string, unknown> | null | undefined,
-  patch: Record<string, unknown>
-): Record<string, unknown> {
-  const base =
-    existing && typeof existing === "object" && !Array.isArray(existing)
-      ? { ...existing }
-      : {};
-  return { ...base, ...patch };
 }
 
 function isEmailDraftPendingSend(s: Showing): boolean {
@@ -305,358 +285,6 @@ function SearchInput({
   );
 }
 
-// ── Request feedback modal (showing details + buyer-agent email draft) ────────
-
-function EditShowingModal({
-  showing,
-  onClose,
-  onSaved,
-}: {
-  showing: Showing;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const dt = new Date(showing.scheduledAt);
-  const initialDate = [
-    dt.getFullYear(),
-    String(dt.getMonth() + 1).padStart(2, "0"),
-    String(dt.getDate()).padStart(2, "0"),
-  ].join("-");
-  const initialTime = [
-    String(dt.getHours()).padStart(2, "0"),
-    String(dt.getMinutes()).padStart(2, "0"),
-  ].join(":");
-
-  const [dateStr, setDateStr] = useState(initialDate);
-  const [timeStr, setTimeStr] = useState(initialTime);
-  const [notes, setNotes] = useState(showing.notes ?? "");
-  const [followUpPathReady, setFollowUpPathReady] = useState(
-    Boolean(
-      (showing.prepChecklistFlags as { followUpPathReady?: boolean } | undefined)
-        ?.followUpPathReady
-    )
-  );
-  const [saving, setSaving] = useState(false);
-  const [markingSent, setMarkingSent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [prepSaving, setPrepSaving] = useState(false);
-  const hasEmailDraft = hasBuyerAgentEmailDraft(showing);
-
-  const prepItems = useMemo(
-    () =>
-      buildShowingPrepChecklist({
-        buyerAgentName: showing.buyerAgentName,
-        buyerAgentEmail: showing.buyerAgentEmail,
-        notes,
-        feedbackRequired: showing.feedbackRequired,
-        feedbackDraftGeneratedAt: showing.feedbackDraftGeneratedAt
-          ? new Date(showing.feedbackDraftGeneratedAt)
-          : null,
-        pendingFeedbackFormCount: 0,
-        prepChecklistFlags: {
-          ...(showing.prepChecklistFlags ?? {}),
-          followUpPathReady,
-        },
-      }),
-    [
-      showing.buyerAgentName,
-      showing.buyerAgentEmail,
-      showing.feedbackRequired,
-      showing.feedbackDraftGeneratedAt,
-      showing.prepChecklistFlags,
-      notes,
-      followUpPathReady,
-    ]
-  );
-
-  const headerSubtitle = useMemo(() => {
-    const [h, m] = timeStr.split(":").map(Number);
-    const scheduledAt = new Date(dateStr);
-    scheduledAt.setHours(h ?? 0, m ?? 0, 0, 0);
-    const when = scheduledAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
-    return `${buildPropertyAddressLineForFeedbackDraft(showing.property)} · ${when}`;
-  }, [showing.property, dateStr, timeStr]);
-
-  const draftPreviewScheduledAt = useMemo(() => {
-    const [h, m] = timeStr.split(":").map(Number);
-    const d = new Date(dateStr);
-    d.setHours(h ?? 0, m ?? 0, 0, 0);
-    return d.toISOString();
-  }, [dateStr, timeStr]);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
-  }, [onClose]);
-
-  useEffect(() => {
-    setMarkingSent(false);
-  }, [showing.id]);
-
-  useEffect(() => {
-    setFollowUpPathReady(
-      Boolean(
-        (showing.prepChecklistFlags as { followUpPathReady?: boolean } | undefined)
-          ?.followUpPathReady
-      )
-    );
-  }, [showing.id, showing.prepChecklistFlags]);
-
-  async function persistFollowUpFlag(next: boolean) {
-    setPrepSaving(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/v1/showing-hq/showings/${showing.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prepChecklistFlags: mergeShowingPrepChecklistFlags(showing.prepChecklistFlags, {
-            followUpPathReady: next,
-          }),
-        }),
-      });
-      const json = await res.json();
-      if (json.error) throw new Error(json.error.message);
-      setFollowUpPathReady(next);
-      onSaved();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Update failed");
-    } finally {
-      setPrepSaving(false);
-    }
-  }
-
-  function handlePrepToggle(id: string, next: boolean) {
-    if (id === "follow_up" && showing.feedbackRequired) void persistFollowUpFlag(next);
-  }
-
-  async function handleMarkFeedbackComplete() {
-    if (!dateStr || !timeStr) { setError("Date and time are required."); return; }
-    const [h, m] = timeStr.split(":").map(Number);
-    const scheduledAt = new Date(dateStr);
-    scheduledAt.setHours(h, m ?? 0, 0, 0);
-
-    setMarkingSent(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/v1/showing-hq/showings/${showing.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scheduledAt: scheduledAt.toISOString(),
-          notes: notes || null,
-          feedbackRequestStatus: "SENT",
-          prepChecklistFlags: mergeShowingPrepChecklistFlags(showing.prepChecklistFlags, {
-            followUpPathReady,
-          }),
-        }),
-      });
-      const json = await res.json();
-      if (json.error) throw new Error(json.error.message);
-      onSaved();
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Update failed");
-    } finally {
-      setMarkingSent(false);
-    }
-  }
-
-  async function handleSave() {
-    if (!dateStr || !timeStr) { setError("Date and time are required."); return; }
-    const [h, m] = timeStr.split(":").map(Number);
-    const scheduledAt = new Date(dateStr);
-    scheduledAt.setHours(h, m ?? 0, 0, 0);
-
-    setSaving(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/v1/showing-hq/showings/${showing.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scheduledAt: scheduledAt.toISOString(),
-          notes: notes || null,
-          prepChecklistFlags: mergeShowingPrepChecklistFlags(showing.prepChecklistFlags, {
-            followUpPathReady,
-          }),
-        }),
-      });
-      const json = await res.json();
-      if (json.error) throw new Error(json.error.message);
-      onSaved();
-      onClose();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Save failed");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="fixed inset-0 bg-black/50" onClick={onClose} aria-hidden />
-      <div className="relative z-10 w-full max-w-lg rounded-xl border border-kp-outline bg-kp-surface shadow-xl">
-        <div className="flex items-center justify-between border-b border-kp-outline p-5">
-          <div>
-            <h2 className="text-base font-semibold text-kp-on-surface">Request Feedback</h2>
-            <p className="mt-0.5 text-xs text-kp-on-surface-variant">{headerSubtitle}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-md p-1 text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="space-y-4 p-5">
-          {error && <p className="text-sm text-red-400">{error}</p>}
-
-          <PrepChecklistPanel
-            title="Prep checklist"
-            items={prepItems}
-            onToggle={handlePrepToggle}
-            disabled={prepSaving || saving || markingSent}
-          />
-
-          {showing.buyerAgentEmailReplyAt ? (
-            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-300/90">
-                Buyer agent reply (email)
-              </p>
-              <p className="mt-1 text-[11px] text-kp-on-surface-variant">
-                Received{" "}
-                {new Date(showing.buyerAgentEmailReplyAt).toLocaleString(undefined, {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                })}
-                {showing.buyerAgentEmailReplyFrom
-                  ? ` · ${showing.buyerAgentEmailReplyFrom}`
-                  : ""}
-              </p>
-              {showing.buyerAgentEmailReplyParsed &&
-              typeof showing.buyerAgentEmailReplyParsed === "object" &&
-              showing.buyerAgentEmailReplyParsed !== null ? (
-                <p className="mt-2 text-[11px] text-kp-on-surface-variant">
-                  <span className="font-medium text-kp-on-surface">Extracted summary</span> (may be
-                  inaccurate):{" "}
-                  {"interestHint" in showing.buyerAgentEmailReplyParsed
-                    ? String(
-                        (showing.buyerAgentEmailReplyParsed as { interestHint?: string })
-                          .interestHint ?? ""
-                      )
-                    : ""}
-                </p>
-              ) : null}
-              <p className="mt-2 whitespace-pre-wrap text-sm text-kp-on-surface">
-                {emailReplyExcerpt(showing.buyerAgentEmailReplyRaw)}
-              </p>
-            </div>
-          ) : null}
-
-          <div className="space-y-3 rounded-lg border border-kp-outline/80 bg-kp-surface-high/25 p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-              Showing details
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Date</label>
-                <input
-                  type="date"
-                  value={dateStr}
-                  onChange={(e) => setDateStr(e.target.value)}
-                  className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Time</label>
-                <input
-                  type="time"
-                  value={timeStr}
-                  onChange={(e) => setTimeStr(e.target.value)}
-                  className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Notes</label>
-              <textarea
-                rows={3}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-              Feedback request (email)
-            </p>
-            <ShowingBuyerAgentFeedbackDraftPanel
-              variant="kp"
-              draftSource={{
-                propertyAddressLine: buildPropertyAddressLineForFeedbackDraft(showing.property),
-                scheduledAt: draftPreviewScheduledAt,
-                buyerAgentName: showing.buyerAgentName,
-              }}
-              generatedAt={showing.feedbackDraftGeneratedAt}
-              buyerAgentEmail={showing.buyerAgentEmail}
-            />
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 border-t border-kp-outline p-5">
-          {hasEmailDraft ? (
-            <>
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={markingSent}
-                className="rounded-lg border border-kp-outline px-4 py-1.5 text-sm text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high disabled:opacity-60"
-              >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleMarkFeedbackComplete()}
-                disabled={markingSent}
-                className="rounded-lg bg-kp-gold px-4 py-1.5 text-sm font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright disabled:opacity-60"
-              >
-                {markingSent ? "Updating…" : "Mark as sent"}
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg border border-kp-outline px-4 py-1.5 text-sm text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSave()}
-                disabled={saving}
-                className="rounded-lg bg-kp-gold px-4 py-1.5 text-sm font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright disabled:opacity-60"
-              >
-                {saving ? "Saving…" : "Save changes"}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Table ─────────────────────────────────────────────────────────────────────
 
 const TH_BASE =
@@ -682,10 +310,10 @@ function FeedbackStatusPill({ children }: { children: ReactNode }) {
 
 function ShowingsTable({
   showings,
-  onEdit,
+  openWorkflow,
 }: {
   showings: Showing[];
-  onEdit: (s: Showing) => void;
+  openWorkflow: (s: Showing) => void;
 }) {
   return (
     <div className="relative overflow-x-auto">
@@ -774,7 +402,7 @@ function ShowingsTable({
                           )
                         : "h-8 w-full gap-1 px-2 text-xs sm:w-auto"
                     )}
-                    onClick={() => onEdit(s)}
+                    onClick={() => openWorkflow(s)}
                   >
                     {hasBuyerAgentEmailDraft(s) ? (
                       <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
@@ -841,7 +469,6 @@ export function ShowingsListView() {
   const skipNextSearchSync = useRef(false);
   const [qInput, setQInput] = useState(() => listView.q ?? "");
   const spKey = searchParams.toString();
-  const [editingShowing, setEditingShowing] = useState<Showing | null>(null);
   const lastHandledOpenShowingRef = useRef<string | null>(null);
 
   const [saveModalOpen, setSaveModalOpen] = useState(false);
@@ -855,6 +482,15 @@ export function ShowingsListView() {
       });
     },
     [router, searchParams]
+  );
+
+  const openShowingWorkflow = useCallback(
+    (s: Showing) => {
+      router.push(
+        showingWorkflowTabHref(s.id, hasBuyerAgentEmailDraft(s) ? "feedback" : "details")
+      );
+    },
+    [router]
   );
 
   useEffect(() => {
@@ -920,34 +556,16 @@ export function ShowingsListView() {
       lastHandledOpenShowingRef.current = null;
       return;
     }
-    if (loading) return;
     if (lastHandledOpenShowingRef.current === oid) return;
-    /** Same canonical list shape as page + fetch; merge draft q so we do not drop in-flight search when clearing deep link. */
+    lastHandledOpenShowingRef.current = oid;
     const listWhenClearingDeepLink: NormalizedShowingsListView = {
       ...listView,
       q: normalizeShowingHqListSearchQ(qInput),
     };
-    const match = showings.find((s) => s.id === oid);
-    if (match) {
-      lastHandledOpenShowingRef.current = oid;
-      setEditingShowing(match);
-      router.replace(showingsListViewToHref(listWhenClearingDeepLink), {
-        scroll: false,
-      });
-      requestAnimationFrame(() => {
-        document.getElementById(`showing-row-${oid}`)?.scrollIntoView({
-          block: "nearest",
-          behavior: "smooth",
-        });
-      });
-      return;
-    }
-    lastHandledOpenShowingRef.current = oid;
-    router.replace(showingsListViewToHref(listWhenClearingDeepLink), {
-      scroll: false,
-    });
+    router.replace(showingsListViewToHref(listWhenClearingDeepLink), { scroll: false });
+    router.push(showingWorkflowTabHref(oid, "feedback"));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- qInput merged only when clearing one-shot openShowing; omit deps so typing with deep link in URL does not re-run
-  }, [openShowingFromUrl, loading, showings, router, listView]);
+  }, [openShowingFromUrl, router, listView, qInput]);
 
   const feedbackCount = useMemo(
     () => showings.filter((s) => s.feedbackRequired).length,
@@ -1182,7 +800,7 @@ export function ShowingsListView() {
         ) : showings.length === 0 ? (
           <EmptyState isFiltered={isFiltered} onReset={clearListFiltersAndSearch} />
         ) : (
-          <ShowingsTable showings={showings} onEdit={setEditingShowing} />
+          <ShowingsTable showings={showings} openWorkflow={openShowingWorkflow} />
         )}
 
         {showContent && showings.length > 0 && (
@@ -1218,14 +836,6 @@ export function ShowingsListView() {
           </div>
         )}
       </div>
-
-      {editingShowing && (
-        <EditShowingModal
-          showing={editingShowing}
-          onClose={() => setEditingShowing(null)}
-          onSaved={() => { reload(); setEditingShowing(null); }}
-        />
-      )}
 
       <BrandModal
         open={saveModalOpen}

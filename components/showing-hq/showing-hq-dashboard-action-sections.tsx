@@ -19,6 +19,11 @@ import {
   formatMissingPrepSummary,
   missingPrepShortLabels,
 } from "@/lib/showing-hq/prep-checklist";
+import {
+  openHouseWorkflowTabHref,
+  showingWorkflowTabHref,
+  workflowHrefForAttention,
+} from "@/lib/showing-hq/showing-workflow-hrefs";
 
 export type PrivateShowingAttentionRow = {
   id: string;
@@ -90,20 +95,17 @@ function propertyLine(p: {
   return tail || "Property";
 }
 
-function actionHref(args: {
+/**
+ * Explicit CTA targets for Needs attention + workflow queue.
+ * Prep → `?tab=prep`; buyer-agent feedback → `?tab=feedback`; web form queue → `/feedback-requests`;
+ * open-house follow-ups → `/open-houses/.../follow-ups`; seller report → `/open-houses/.../report`.
+ */
+export function workflowAttentionHref(args: {
   kind: "showing" | "open_house";
   id: string;
-  action: ShowingAttentionState["action"];
+  attention: Pick<ShowingAttentionState, "label" | "action">;
 }): string {
-  if (args.action === "send_feedback") {
-    return `/showing-hq/showings?openShowing=${encodeURIComponent(args.id)}`;
-  }
-  if (args.action === "review") {
-    return "/showing-hq/feedback-requests";
-  }
-  return args.kind === "open_house"
-    ? `/showing-hq/open-houses/${args.id}`
-    : `/showing-hq/showings?openShowing=${encodeURIComponent(args.id)}`;
+  return workflowHrefForAttention(args);
 }
 
 function actionLabel(action: ShowingAttentionState["action"]): string {
@@ -326,7 +328,13 @@ export function NeedsAttentionSection({
                   className={cn(kpBtnPrimary, "h-8 shrink-0 border-transparent px-3 text-xs font-medium")}
                   asChild
                 >
-                  <Link href={actionHref({ kind: row.kind, id: row.id, action: row.attention.action })}>
+                  <Link
+                    href={workflowAttentionHref({
+                      kind: row.kind,
+                      id: row.id,
+                      attention: row.attention,
+                    })}
+                  >
                     {actionLabel(row.attention.action)}
                   </Link>
                 </Button>
@@ -564,7 +572,11 @@ function attentionItemToWorkflowRow(
     addressLine,
     contextLine,
     ctaLabel,
-    href: actionHref({ kind: row.kind, id: row.id, action: attention.action }),
+    href: workflowAttentionHref({
+      kind: row.kind,
+      id: row.id,
+      attention,
+    }),
   };
 }
 
@@ -959,8 +971,8 @@ export function buildTodayScheduleRows(
         : todayStatusFromAttention(kind, s.id, attentionByKey);
     const href =
       kind === "open_house"
-        ? `/showing-hq/open-houses/${s.id}`
-        : `/showing-hq/showings?openShowing=${encodeURIComponent(s.id)}`;
+        ? openHouseWorkflowTabHref(s.id, "details")
+        : showingWorkflowTabHref(s.id, "details");
     return {
       kind,
       id: s.id,
@@ -1011,8 +1023,8 @@ export function UpcomingSection({
               <Link
                 href={
                   row.kind === "open_house"
-                    ? `/showing-hq/open-houses/${row.id}`
-                    : `/showing-hq/showings?openShowing=${encodeURIComponent(row.id)}`
+                    ? openHouseWorkflowTabHref(row.id, "details")
+                    : showingWorkflowTabHref(row.id, "details")
                 }
                 className="block rounded py-0.5 text-left transition-colors hover:bg-kp-surface-high/25"
               >
@@ -1064,8 +1076,8 @@ export function UpNextRailSection({
               <Link
                 href={
                   row.kind === "open_house"
-                    ? `/showing-hq/open-houses/${row.id}`
-                    : `/showing-hq/showings?openShowing=${encodeURIComponent(row.id)}`
+                    ? openHouseWorkflowTabHref(row.id, "details")
+                    : showingWorkflowTabHref(row.id, "details")
                 }
                 className="block rounded px-0 py-0.5 text-left transition-colors hover:bg-kp-surface-high/20"
               >
@@ -1211,9 +1223,7 @@ export function FollowUpRequiredSection({
               <p className="text-[11px] text-kp-on-surface-variant">Buyer-agent feedback email not sent</p>
             </div>
             <Button variant="outline" size="sm" className={cn(kpBtnPrimary, "h-8 border-transparent px-3 text-xs font-medium")} asChild>
-              <Link href={`/showing-hq/showings?openShowing=${encodeURIComponent(row.id)}`}>
-                Request feedback
-              </Link>
+              <Link href={showingWorkflowTabHref(row.id, "feedback")}>Request feedback</Link>
             </Button>
           </li>
         ))}

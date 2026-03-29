@@ -1508,7 +1508,7 @@ export function SupraInboxView() {
               <Link
                 href={
                   successInfo.applyShowingId
-                    ? `/showing-hq/showings?openShowing=${encodeURIComponent(successInfo.applyShowingId)}`
+                    ? `/showing-hq/showings/${successInfo.applyShowingId}?tab=feedback`
                     : "/showing-hq/showings"
                 }
                 className="inline-flex text-xs font-semibold text-kp-teal underline-offset-2 hover:underline"

@@ -66,6 +66,13 @@ export async function PATCH(
     if (parsed.data.scheduledAt !== undefined) updateData.scheduledAt = parsed.data.scheduledAt;
     if (parsed.data.propertyId !== undefined) updateData.propertyId = parsed.data.propertyId;
     if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes ?? null;
+    if (parsed.data.buyerAgentName !== undefined) {
+      updateData.buyerAgentName = parsed.data.buyerAgentName?.trim() || null;
+    }
+    if (parsed.data.buyerAgentEmail !== undefined) {
+      const e = parsed.data.buyerAgentEmail?.trim() ?? "";
+      updateData.buyerAgentEmail = e === "" ? null : e;
+    }
     if (parsed.data.feedbackRequestStatus !== undefined) {
       updateData.feedbackRequestStatus = parsed.data.feedbackRequestStatus;
       updateData.feedbackEmailSentAt = new Date();

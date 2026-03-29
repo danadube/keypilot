@@ -50,12 +50,8 @@ export const HostFeedbackSchema = z.object({
   hostNotes: z.string().max(2000).optional().nullable(),
 });
 
-export const OpenHousePrepChecklistFlagsSchema = z
-  .object({
-    hostConfirmed: z.boolean().optional(),
-    signsMaterialsReady: z.boolean().optional(),
-  })
-  .strict();
+/** Stored as JSON on OpenHouse — boolean map only (client merges before PUT). */
+export const OpenHousePrepChecklistFlagsSchema = z.record(z.string(), z.boolean());
 
 export const OPEN_HOUSE_STATUSES = ["SCHEDULED", "ACTIVE", "COMPLETED", "CANCELLED"] as const;
 

@@ -1,10 +1,7 @@
 import { z } from "zod";
 
-export const ShowingPrepChecklistFlagsSchema = z
-  .object({
-    followUpPathReady: z.boolean().optional(),
-  })
-  .strict();
+/** Stored as JSON on Showing — boolean map only (merge on PATCH in the client). */
+export const ShowingPrepChecklistFlagsSchema = z.record(z.string(), z.boolean());
 
 export const CreateShowingSchema = z.object({
   propertyId: z.string().uuid(),
@@ -20,10 +17,17 @@ export const RescheduleShowingSchema = z.object({
   scheduledAt: z.coerce.date(),
 });
 
+const optionalBuyerAgentEmail = z
+  .union([z.string().email(), z.literal("")])
+  .optional()
+  .nullable();
+
 export const UpdateShowingSchema = z.object({
   scheduledAt: z.coerce.date().optional(),
   propertyId: z.string().uuid().optional(),
   notes: z.string().max(5000).optional().nullable(),
+  buyerAgentName: z.string().max(500).optional().nullable(),
+  buyerAgentEmail: optionalBuyerAgentEmail,
   /** Buyer-agent email draft workflow — user confirmed they sent the draft from their mail client. */
   feedbackRequestStatus: z.literal("SENT").optional(),
   /** Omit to leave unchanged; `null` clears stored JSON (SQL NULL). */

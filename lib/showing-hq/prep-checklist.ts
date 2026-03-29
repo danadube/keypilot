@@ -1,14 +1,18 @@
 /**
- * Lightweight prep checklists for open houses and private showings.
- * Prefer deriving completeness from existing columns; JSON flags only when needed.
+ * Prep checklists for open houses and private showings.
+ * Completeness = derived from columns when no flag override; explicit true/false in
+ * prepChecklistFlags overrides derived display for manual toggles.
  */
 
 export type PrepChecklistItem = {
   id: string;
+  /** Key stored in prepChecklistFlags JSON */
+  flagKey: string;
   label: string;
   /** Short label for queue copy, e.g. "flyer", "email" */
   shortLabel: string;
   complete: boolean;
+  /** All rows are toggleable when the panel passes onToggle */
   userToggleable: boolean;
 };
 
@@ -37,8 +41,20 @@ export type ShowingPrepInput = {
 
 function readFlag(flags: Record<string, unknown> | null | undefined, key: string): boolean {
   if (!flags || typeof flags !== "object") return false;
-  const v = flags[key];
-  return v === true;
+  return flags[key] === true;
+}
+
+/** Tri-state: explicit true/false wins; otherwise derived default. */
+export function prepItemComplete(
+  flags: Record<string, unknown> | null | undefined,
+  flagKey: string,
+  derived: boolean
+): boolean {
+  if (!flags || typeof flags !== "object") return derived;
+  const v = flags[flagKey];
+  if (v === true) return true;
+  if (v === false) return false;
+  return derived;
 }
 
 export function buildOpenHousePrepChecklist(input: OpenHousePrepInput): PrepChecklistItem[] {
@@ -48,49 +64,54 @@ export function buildOpenHousePrepChecklist(input: OpenHousePrepInput): PrepChec
       input.flyerOverrideUrl?.trim() ||
       input.propertyFlyerUrl?.trim()
   );
-  const qrReady = Boolean(input.qrSlug?.trim());
-  const hostDerived =
+  const qrFromSlug = Boolean(input.qrSlug?.trim());
+  const hostFromRoster =
     Boolean(input.hostAgentId?.trim()) ||
     (input.nonListingHostCount != null && input.nonListingHostCount > 0);
-  const hostConfirmed = hostDerived || readFlag(flags, "hostConfirmed");
-  const signsReady = readFlag(flags, "signsMaterialsReady");
+  /** Roster + legacy manual `hostConfirmed` flag (pre–hostAssigned key). */
+  const hostDerived = hostFromRoster || readFlag(flags, "hostConfirmed");
   const hasNotes = Boolean(input.notes?.trim() || input.hostNotes?.trim());
 
   return [
     {
       id: "flyer",
+      flagKey: "flyerUploaded",
       label: "Flyer uploaded",
       shortLabel: "flyer",
-      complete: hasFlyer,
-      userToggleable: false,
+      complete: prepItemComplete(flags, "flyerUploaded", hasFlyer),
+      userToggleable: true,
     },
     {
       id: "sign_in",
-      label: "Sign-in page / QR ready",
+      flagKey: "qrReady",
+      label: "QR ready",
       shortLabel: "QR",
-      complete: qrReady,
-      userToggleable: false,
+      complete: prepItemComplete(flags, "qrReady", qrFromSlug),
+      userToggleable: true,
     },
     {
       id: "host",
-      label: "Host confirmed",
+      flagKey: "hostAssigned",
+      label: "Host assigned",
       shortLabel: "host",
-      complete: hostConfirmed,
-      userToggleable: !hostDerived,
+      complete: prepItemComplete(flags, "hostAssigned", hostDerived),
+      userToggleable: true,
     },
     {
       id: "signs",
+      flagKey: "signsMaterialsReady",
       label: "Signs / materials ready",
       shortLabel: "signs",
-      complete: signsReady,
+      complete: prepItemComplete(flags, "signsMaterialsReady", false),
       userToggleable: true,
     },
     {
       id: "notes",
-      label: "Notes / instructions complete",
+      flagKey: "notesReady",
+      label: "Notes / instructions",
       shortLabel: "notes",
-      complete: hasNotes,
-      userToggleable: false,
+      complete: prepItemComplete(flags, "notesReady", hasNotes),
+      userToggleable: true,
     },
   ];
 }
@@ -102,39 +123,41 @@ export function buildShowingPrepChecklist(input: ShowingPrepInput): PrepChecklis
   const hasNotes = Boolean(input.notes?.trim());
   const formOrDraftReady =
     (input.pendingFeedbackFormCount ?? 0) > 0 || input.feedbackDraftGeneratedAt != null;
-  const followUpReady =
-    !input.feedbackRequired ||
-    readFlag(flags, "followUpPathReady") ||
-    formOrDraftReady;
+  const followUpDerived =
+    !input.feedbackRequired || formOrDraftReady;
 
   return [
     {
       id: "agent_name",
+      flagKey: "buyerAgentNameReady",
       label: "Buyer agent name",
       shortLabel: "agent name",
-      complete: hasName,
-      userToggleable: false,
+      complete: prepItemComplete(flags, "buyerAgentNameReady", hasName),
+      userToggleable: true,
     },
     {
       id: "agent_email",
+      flagKey: "buyerAgentEmailReady",
       label: "Buyer agent email",
       shortLabel: "email",
-      complete: hasEmail,
-      userToggleable: false,
+      complete: prepItemComplete(flags, "buyerAgentEmailReady", hasEmail),
+      userToggleable: true,
     },
     {
       id: "notes",
+      flagKey: "notesReady",
       label: "Notes / instructions",
       shortLabel: "notes",
-      complete: hasNotes,
-      userToggleable: false,
+      complete: prepItemComplete(flags, "notesReady", hasNotes),
+      userToggleable: true,
     },
     {
       id: "follow_up",
+      flagKey: "followUpPathReady",
       label: "Follow-up path ready",
       shortLabel: "follow-up",
-      complete: followUpReady,
-      userToggleable: input.feedbackRequired && !formOrDraftReady,
+      complete: prepItemComplete(flags, "followUpPathReady", followUpDerived),
+      userToggleable: true,
     },
   ];
 }

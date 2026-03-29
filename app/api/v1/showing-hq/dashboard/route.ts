@@ -16,6 +16,7 @@ import {
   mapAttentionToOperatingStatus,
   type ShowingAttentionState,
 } from "@/lib/showing-hq/showing-attention";
+import { showingWorkflowTabHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 
 export const dynamic = "force-dynamic";
 
@@ -812,7 +813,7 @@ export async function GET() {
           at: atIso,
           reasonLabel: "Awaiting response",
           ctaLabel: "Open",
-          href: `/showing-hq/showings?openShowing=${encodeURIComponent(s.id)}`,
+          href: showingWorkflowTabHref(s.id, "feedback"),
         });
         continue;
       }
@@ -843,9 +844,7 @@ export async function GET() {
           at: atIso,
           reasonLabel: send ? "Feedback not sent" : "Awaiting response",
           ctaLabel: send ? "Request feedback" : "Review",
-          href: send
-            ? `/showing-hq/showings?openShowing=${encodeURIComponent(s.id)}`
-            : "/showing-hq/feedback-requests",
+          href: send ? showingWorkflowTabHref(s.id, "feedback") : "/showing-hq/feedback-requests",
         });
         continue;
       }
@@ -860,7 +859,7 @@ export async function GET() {
           at: atIso,
           reasonLabel: "Feedback not sent",
           ctaLabel: send ? "Request feedback" : "Open",
-          href: `/showing-hq/showings?openShowing=${encodeURIComponent(s.id)}`,
+          href: showingWorkflowTabHref(s.id, "feedback"),
         });
       }
     }
