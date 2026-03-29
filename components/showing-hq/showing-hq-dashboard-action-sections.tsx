@@ -454,7 +454,7 @@ export function getAttentionActionLabel(row: AttentionListItem): string {
   }
   if (a.label === "Prep required") return "Finish prep";
   if (a.label === "Showing soon") return "Finish now";
-  return "Open";
+  return "Open workspace";
 }
 
 /** Queue row button label (same as {@link getAttentionActionLabel}). */

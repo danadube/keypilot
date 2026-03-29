@@ -17,6 +17,10 @@ import {
 } from "@/lib/datetime/local-scheduling";
 import { AF, afError } from "@/lib/ui/action-feedback";
 import { InlineSuccessText, useFlashSuccess } from "@/components/ui/action-feedback";
+import {
+  openHouseWorkflowTabHref,
+  showingWorkflowTabHref,
+} from "@/lib/showing-hq/showing-workflow-hrefs";
 
 /** Enough shape for dashboard + open-house API payloads */
 export type AgentFollowUpTaskCardModel = {
@@ -28,6 +32,9 @@ export type AgentFollowUpTaskCardModel = {
   notes: string | null;
   dueAt: string;
   completedAt?: string | null;
+  /** Optional — used to show "Open workspace" link when source is known. */
+  sourceType?: string | null;
+  sourceId?: string | null;
   contact: {
     firstName: string;
     lastName: string;
@@ -161,6 +168,25 @@ export function AgentFollowUpTaskCard({
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
           <div className="flex flex-wrap justify-end gap-1">
+            {task.sourceType === "OPEN_HOUSE" && task.sourceId ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnTertiary, "h-7 text-[11px]")}
+                asChild
+              >
+                <Link href={openHouseWorkflowTabHref(task.sourceId, "details")}>Open workspace</Link>
+              </Button>
+            ) : task.sourceType === "SHOWING" && task.sourceId ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnTertiary, "h-7 text-[11px]")}
+                asChild
+              >
+                <Link href={showingWorkflowTabHref(task.sourceId, "prep")}>Open workspace</Link>
+              </Button>
+            ) : null}
             {showContactLink ? (
               <Button
                 variant="outline"

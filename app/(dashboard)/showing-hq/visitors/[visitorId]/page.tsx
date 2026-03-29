@@ -187,7 +187,14 @@ export default function VisitorProfilePage() {
           <span className="text-kp-outline">/</span>
           <div>
             <h1 className="text-xl font-bold text-kp-on-surface">{fullName}</h1>
-            <p className="text-sm text-kp-on-surface-variant">{visitor.openHouse.title}</p>
+            <p className="text-sm text-kp-on-surface-variant">
+              <Link
+                href={`/showing-hq/open-houses/${visitor.openHouse.id}`}
+                className="text-kp-teal hover:underline"
+              >
+                {visitor.openHouse.title}
+              </Link>
+            </p>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -401,7 +408,7 @@ export default function VisitorProfilePage() {
                     className={cn(kpBtnSecondary, "h-7 text-xs")}
                     asChild
                   >
-                    <Link href={`/showing-hq/open-houses/${v.openHouse.id}`}>View</Link>
+                    <Link href={`/showing-hq/open-houses/${v.openHouse.id}`}>Open workspace</Link>
                   </Button>
                 </li>
               ))}
@@ -465,7 +472,7 @@ export default function VisitorProfilePage() {
                 className={cn(kpBtnSecondary, "mt-3 h-7 text-xs")}
                 asChild
               >
-                <Link href="/showing-hq/follow-ups">View follow-ups</Link>
+                <Link href="/showing-hq/follow-ups/drafts">View email drafts</Link>
               </Button>
             </div>
           ) : (
@@ -541,7 +548,7 @@ export default function VisitorProfilePage() {
                     >
                       <Link href={`/showing-hq/open-houses/${d.openHouse.id}`}>
                         <ExternalLink className="mr-1 h-3.5 w-3.5" />
-                        Open house
+                        Open workspace
                       </Link>
                     </Button>
                   </div>

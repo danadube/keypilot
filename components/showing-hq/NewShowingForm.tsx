@@ -34,7 +34,8 @@ import {
   applyQuickTimePreset,
   combineLocalDateAndTimeToIso,
 } from "@/lib/datetime/local-scheduling";
-import { AF, afError, FLASH_QUERY } from "@/lib/ui/action-feedback";
+import { AF, afError } from "@/lib/ui/action-feedback";
+import { showingWorkflowTabHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 
 type Property = {
   id: string;
@@ -97,7 +98,8 @@ export function NewShowingForm() {
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      router.push(`/showing-hq/showings?flash=${FLASH_QUERY.showingCreated}`);
+      // Navigate directly to the new showing's workspace — context is self-evident there.
+      router.push(showingWorkflowTabHref(json.data.id, "prep"));
     } catch (err) {
       setError(afError(err, AF.couldntCreate));
     } finally {

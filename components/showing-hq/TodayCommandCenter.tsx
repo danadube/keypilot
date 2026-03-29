@@ -16,6 +16,7 @@ import { BrandButton } from "@/components/ui/BrandButton";
 import { cn } from "@/lib/utils";
 import { kpBtnSecondary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { getRelativeTimeLabel } from "@/lib/relative-time-label";
+import { showingWorkflowTabHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 
 type OpenHouseItem = {
   id: string;
@@ -183,19 +184,16 @@ export function TodayCommandCenter({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {scenario === "showing_soon" && (
+          {scenario === "showing_soon" && nextShowing && (
             <>
               <BrandButton variant="primary" size="sm" className="h-9" asChild>
-                <Link href="/showing-hq/showings">
+                <Link href={showingWorkflowTabHref(nextShowing.id, "prep")}>
                   <Building2 className="mr-1.5 h-4 w-4" />
-                  View showing
+                  Open workspace
                 </Link>
               </BrandButton>
               <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-9")} asChild>
-                <Link href="/showing-hq/showings">Reschedule</Link>
-              </Button>
-              <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-9")} asChild>
-                <Link href="/showing-hq/feedback-requests">Request feedback</Link>
+                <Link href="/showing-hq/showings">All showings</Link>
               </Button>
             </>
           )}
