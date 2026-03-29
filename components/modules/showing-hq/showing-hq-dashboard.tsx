@@ -344,7 +344,7 @@ export function ShowingHQDashboardView() {
         <div className="flex min-w-0 flex-col gap-5">
           <WhatNeedsAttentionSection rows={workflowRows} />
           {data.agentFollowUps ? (
-            <ShowingHqAgentFollowUpsSection buckets={data.agentFollowUps} />
+            <ShowingHqAgentFollowUpsSection buckets={data.agentFollowUps} onRefresh={refetchDashboard} />
           ) : null}
           <TodayScheduleSection rows={todayScheduleRows} formatTime={formatTime} />
           {showGettingStarted && !gettingStartedDismissed ? (

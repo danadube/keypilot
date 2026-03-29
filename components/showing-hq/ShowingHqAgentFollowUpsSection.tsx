@@ -4,8 +4,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnSecondary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
-import { CalendarClock, AlertTriangle } from "lucide-react";
+import { CalendarClock, AlertTriangle, CheckCircle2 } from "lucide-react";
 import type { SerializedAgentFollowUp } from "@/lib/follow-ups/agent-follow-up-buckets";
+import { AgentFollowUpTaskCard } from "@/components/follow-ups/agent-follow-up-task-card";
 
 export type AgentFollowUpBuckets = {
   overdue: SerializedAgentFollowUp[];
@@ -13,72 +14,43 @@ export type AgentFollowUpBuckets = {
   upcoming: SerializedAgentFollowUp[];
 };
 
-function contactLabel(c: SerializedAgentFollowUp["contact"]) {
-  const n = [c.firstName, c.lastName].filter(Boolean).join(" ");
-  return n || "Contact";
-}
-
-function formatDue(iso: string) {
-  return new Date(iso).toLocaleString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function RowCard({
-  row,
-  accent,
+export function ShowingHqAgentFollowUpsSection({
+  buckets,
+  onRefresh,
 }: {
-  row: SerializedAgentFollowUp;
-  accent: "danger" | "today" | "soon";
+  buckets: AgentFollowUpBuckets;
+  onRefresh: () => void;
 }) {
-  const border =
-    accent === "danger"
-      ? "border-red-500/30 bg-red-500/5"
-      : accent === "today"
-        ? "border-amber-500/25 bg-amber-500/5"
-        : "border-kp-outline/60 bg-kp-surface-high/20";
-
-  return (
-    <div className={cn("rounded-lg border px-3 py-2.5", border)}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-kp-on-surface">{row.title}</p>
-          <p className="text-xs text-kp-on-surface-variant">
-            {contactLabel(row.contact)}
-            {row.contact.email ? ` · ${row.contact.email}` : ""}
-          </p>
-          <p className="mt-1 text-[11px] text-kp-on-surface-variant">
-            Due {formatDue(row.dueAt)} · {row.status.replace(/_/g, " ")} · {row.priority}
-          </p>
-        </div>
-        <Button variant="outline" size="sm" className={cn(kpBtnTertiary, "h-7 shrink-0 text-[11px]")} asChild>
-          <Link href={`/contacts/${row.contactId}`}>Contact</Link>
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-export function ShowingHqAgentFollowUpsSection({ buckets }: { buckets: AgentFollowUpBuckets }) {
   const { overdue, dueToday, upcoming } = buckets;
   const hasAny = overdue.length + dueToday.length + upcoming.length > 0;
 
   if (!hasAny) {
     return (
-      <section className="rounded-xl border border-kp-outline/50 bg-kp-surface-high/10 px-4 py-3">
+      <section className="rounded-xl border border-kp-outline/50 bg-kp-surface-high/10 px-4 py-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold text-kp-on-surface">Follow-ups due</p>
+          <div className="flex items-center gap-2">
+            <CalendarClock className="h-4 w-4 text-kp-teal" />
+            <p className="text-sm font-semibold text-kp-on-surface">Person follow-ups</p>
+          </div>
           <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 text-[11px]")} asChild>
             <Link href="/showing-hq/follow-ups">Email drafts &amp; reminders</Link>
           </Button>
         </div>
-        <p className="mt-2 text-xs text-kp-on-surface-variant">
-          No person follow-ups in the next week. Create them from an open house visitor or contact.
-        </p>
+        <div className="mt-3 rounded-lg border border-dashed border-kp-outline/70 bg-kp-surface/40 px-3 py-4 text-center">
+          <CheckCircle2 className="mx-auto mb-2 h-8 w-8 text-kp-teal/70" />
+          <p className="text-sm font-medium text-kp-on-surface">You&apos;re clear for the next week</p>
+          <p className="mt-1 text-xs text-kp-on-surface-variant">
+            No open person follow-ups due in the next 7 days. Create tasks from an{" "}
+            <Link href="/showing-hq/open-houses" className="text-kp-teal hover:underline">
+              open house visitor
+            </Link>{" "}
+            or{" "}
+            <Link href="/contacts" className="text-kp-teal hover:underline">
+              contact record
+            </Link>
+            .
+          </p>
+        </div>
       </section>
     );
   }
@@ -88,15 +60,28 @@ export function ShowingHqAgentFollowUpsSection({ buckets }: { buckets: AgentFoll
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <CalendarClock className="h-4 w-4 text-kp-teal" />
-          <h2 className="text-sm font-semibold text-kp-on-surface">Follow-ups due</h2>
+          <h2 className="text-sm font-semibold text-kp-on-surface">Person follow-ups</h2>
         </div>
-        <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 text-[11px]")} asChild>
-          <Link href="/showing-hq/follow-ups">All follow-up tools</Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" className={cn(kpBtnTertiary, "h-7 text-[11px]")} asChild>
+            <Link href="/showing-hq/open-houses">From open houses</Link>
+          </Button>
+          <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 text-[11px]")} asChild>
+            <Link href="/showing-hq/follow-ups">Email drafts &amp; reminders</Link>
+          </Button>
+        </div>
       </div>
       <p className="mb-3 text-[11px] text-kp-on-surface-variant">
-        Person tasks across open houses and showings — same list everywhere, filtered by context on each event.
+        One global list: complete, edit due date, or add notes here. Event pages show the same tasks filtered to that
+        open house.
       </p>
+
+      {overdue.length === 0 && (dueToday.length > 0 || upcoming.length > 0) ? (
+        <p className="mb-3 flex items-center gap-1.5 text-[11px] text-kp-teal/90">
+          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+          Nothing overdue — keep momentum on what&apos;s due today.
+        </p>
+      ) : null}
 
       {overdue.length > 0 ? (
         <div className="mb-4">
@@ -106,7 +91,7 @@ export function ShowingHqAgentFollowUpsSection({ buckets }: { buckets: AgentFoll
           </div>
           <div className="space-y-2">
             {overdue.map((row) => (
-              <RowCard key={row.id} row={row} accent="danger" />
+              <AgentFollowUpTaskCard key={row.id} task={row} accent="danger" onUpdated={onRefresh} />
             ))}
           </div>
         </div>
@@ -119,10 +104,12 @@ export function ShowingHqAgentFollowUpsSection({ buckets }: { buckets: AgentFoll
           </p>
           <div className="space-y-2">
             {dueToday.map((row) => (
-              <RowCard key={row.id} row={row} accent="today" />
+              <AgentFollowUpTaskCard key={row.id} task={row} accent="today" onUpdated={onRefresh} />
             ))}
           </div>
         </div>
+      ) : upcoming.length > 0 || overdue.length > 0 ? (
+        <p className="mb-3 text-[11px] text-kp-on-surface-variant/90">Nothing due today.</p>
       ) : null}
 
       {upcoming.length > 0 ? (
@@ -132,9 +119,14 @@ export function ShowingHqAgentFollowUpsSection({ buckets }: { buckets: AgentFoll
           </p>
           <div className="space-y-2">
             {upcoming.slice(0, 8).map((row) => (
-              <RowCard key={row.id} row={row} accent="soon" />
+              <AgentFollowUpTaskCard key={row.id} task={row} accent="soon" onUpdated={onRefresh} />
             ))}
           </div>
+          {upcoming.length > 8 ? (
+            <p className="mt-2 text-[10px] text-kp-on-surface-variant">
+              Showing 8 soonest. Snooze or reschedule with <strong>Edit</strong> on a card.
+            </p>
+          ) : null}
         </div>
       ) : null}
     </section>

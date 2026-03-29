@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 
@@ -28,6 +29,7 @@ export function CreateVisitorFollowUpInline({
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   });
+  const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +50,7 @@ export function CreateVisitorFollowUpInline({
           title: title.trim(),
           dueAt: due.toISOString(),
           priority: "MEDIUM",
+          notes: notes.trim() || undefined,
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -93,6 +96,12 @@ export function CreateVisitorFollowUpInline({
         onChange={(e) => setDueAt(e.target.value)}
         className="h-8 border-kp-outline bg-kp-surface text-xs"
         required
+      />
+      <Textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="Notes (optional)"
+        className="min-h-[56px] border-kp-outline bg-kp-surface text-xs"
       />
       {error ? <p className="text-[11px] text-red-400">{error}</p> : null}
       <div className="flex gap-1">

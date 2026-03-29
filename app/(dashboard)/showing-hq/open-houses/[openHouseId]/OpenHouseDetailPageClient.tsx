@@ -38,6 +38,7 @@ import {
 } from "@/components/showing-hq/open-house-prep-workspace";
 import { OpenHouseFlyerUploadButton } from "@/components/showing-hq/OpenHouseFlyerUploadButton";
 import { CreateVisitorFollowUpInline } from "@/components/open-houses/CreateVisitorFollowUpInline";
+import { AgentFollowUpTaskCard } from "@/components/follow-ups/agent-follow-up-task-card";
 import { ShowingHqWorkflowTabStrip } from "@/components/showing-hq/ShowingHqWorkflowTabStrip";
 import {
   normalizeShowingHqWorkflowTab,
@@ -672,67 +673,64 @@ export function OpenHouseDetailPageClient() {
         <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
           <p className="mb-1 text-sm font-semibold text-kp-on-surface">Follow-ups</p>
           <p className="mb-4 text-xs text-kp-on-surface-variant">
-            Person tasks (global) and email drafts for this open house — full list on{" "}
+            Person tasks are global; here you see only this open house. Same entries appear on{" "}
+            <Link href="/showing-hq" className="text-kp-teal hover:underline">
+              ShowingHQ
+            </Link>
+            . Email drafts and bulk tools:{" "}
             <Link href={`/open-houses/${openHouseId}/follow-ups`} className="text-kp-teal hover:underline">
               manage follow-ups
             </Link>
             .
           </p>
-          {(data.taskFollowUps?.length ?? 0) === 0 && data.drafts.length === 0 ? (
-            <p className="py-6 text-center text-sm text-kp-on-surface-variant">
-              No follow-ups yet. Add one from a visitor row or generate email drafts.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {(data.taskFollowUps ?? [])
-                .filter((t) => t.status !== "CLOSED")
-                .map((t) => (
-                  <li
-                    key={t.id}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-kp-teal/25 bg-kp-teal/5 p-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium text-kp-on-surface">{t.title}</p>
-                      <p className="text-xs text-kp-on-surface-variant">
-                        {[t.contact.firstName, t.contact.lastName].filter(Boolean).join(" ")} · Due{" "}
-                        {new Date(t.dueAt).toLocaleString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs text-kp-on-surface-variant">{t.status}</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={cn(kpBtnSecondary, "h-7 text-xs")}
-                        asChild
-                      >
-                        <Link href={`/contacts/${t.contactId}`}>Contact</Link>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={cn(kpBtnTertiary, "h-7 text-xs")}
-                        type="button"
-                        onClick={async () => {
-                          await fetch(`/api/v1/follow-ups/${t.id}`, {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ status: "CLOSED" }),
-                          });
-                          loadData();
-                        }}
-                      >
-                        Done
-                      </Button>
-                    </div>
+          {(() => {
+            const allTasks = data.taskFollowUps ?? [];
+            const activeFollowUps = allTasks.filter((t) => t.status !== "CLOSED");
+            const doneFollowUps = allTasks.filter((t) => t.status === "CLOSED");
+            const noTasks = allTasks.length === 0;
+            const noDrafts = data.drafts.length === 0;
+
+            if (noTasks && noDrafts) {
+              return (
+                <div className="rounded-lg border border-dashed border-kp-outline/80 bg-kp-surface-high/20 px-3 py-5 text-center">
+                  <p className="text-sm font-medium text-kp-on-surface">No follow-ups for this event yet</p>
+                  <p className="mt-2 text-xs text-kp-on-surface-variant">
+                    {data.visitors.length > 0
+                      ? "Use Follow-up on a visitor row to add a dated task. It will show here and on your ShowingHQ home."
+                      : "After visitors sign in, add person follow-ups from each row — or open ShowingHQ to work the global list."}
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <ul className="space-y-3">
+                {activeFollowUps.length > 0 ? (
+                  <li className="list-none space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                      Open tasks ({activeFollowUps.length})
+                    </p>
+                    {activeFollowUps.map((t) => (
+                      <AgentFollowUpTaskCard
+                        key={t.id}
+                        task={t}
+                        accent="neutral"
+                        onUpdated={loadData}
+                      />
+                    ))}
                   </li>
-                ))}
-              {data.drafts.map((d) => (
+                ) : null}
+                {doneFollowUps.length > 0 ? (
+                  <li className="list-none space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                      Completed ({doneFollowUps.length})
+                    </p>
+                    {doneFollowUps.map((t) => (
+                      <AgentFollowUpTaskCard key={t.id} task={t} accent="done" onUpdated={loadData} />
+                    ))}
+                  </li>
+                ) : null}
+                {data.drafts.map((d) => (
                 <li
                   key={d.id}
                   className="flex items-center justify-between rounded-lg border border-kp-outline bg-kp-surface-high p-3"
@@ -757,7 +755,8 @@ export function OpenHouseDetailPageClient() {
                 </li>
               ))}
             </ul>
-          )}
+            );
+          })()}
           <div className="mt-4">
             <Button
               variant="outline"

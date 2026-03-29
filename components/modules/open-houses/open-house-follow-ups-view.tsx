@@ -13,6 +13,7 @@ import {
   kpBtnTertiary,
 } from "@/components/ui/kp-dashboard-button-tiers";
 import { OpenHouseSupportPageFrame } from "@/components/showing-hq/OpenHouseSupportPageFrame";
+import { AgentFollowUpTaskCard } from "@/components/follow-ups/agent-follow-up-task-card";
 import { useOpenHouseContextSubtitle } from "@/components/showing-hq/useOpenHouseContextSubtitle";
 
 type FollowUpDraft = {
@@ -29,6 +30,8 @@ type AgentTaskFollowUp = {
   status: string;
   priority: string;
   dueAt: string;
+  notes: string | null;
+  completedAt: string | null;
   contactId: string;
   contact: { id: string; firstName: string; lastName: string; email: string | null; phone: string | null };
 };
@@ -210,53 +213,51 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
         <p className="mb-4 text-xs text-kp-on-surface-variant">
           Global tasks tied to this event (stored once — also on ShowingHQ home when due).
         </p>
-        {followUps.filter((f) => f.status !== "CLOSED").length === 0 ? (
-          <p className="text-sm text-kp-on-surface-variant">No open tasks. Add from the event workspace visitor rows.</p>
+        {followUps.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-kp-outline/80 bg-kp-surface/40 px-3 py-4 text-center">
+            <p className="text-sm text-kp-on-surface">No person tasks for this event</p>
+            <p className="mt-1 text-xs text-kp-on-surface-variant">
+              Add from{" "}
+              <Link href={`/showing-hq/open-houses/${openHouseId}`} className="text-kp-teal hover:underline">
+                ShowingHQ → this open house
+              </Link>{" "}
+              (visitor row → Follow-up).
+            </p>
+          </div>
         ) : (
-          <ul className="space-y-2">
-            {followUps
-              .filter((f) => f.status !== "CLOSED")
-              .map((t) => (
-                <li
-                  key={t.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-kp-outline bg-kp-surface p-3"
-                >
-                  <div>
-                    <p className="font-medium text-kp-on-surface">{t.title}</p>
-                    <p className="text-xs text-kp-on-surface-variant">
-                      {t.contact.firstName} {t.contact.lastName} · Due{" "}
-                      {new Date(t.dueAt).toLocaleString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 text-xs")} asChild>
-                      <Link href={`/contacts/${t.contactId}`}>Contact</Link>
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={cn(kpBtnTertiary, "h-7 text-xs")}
-                      type="button"
-                      onClick={async () => {
-                        await fetch(`/api/v1/follow-ups/${t.id}`, {
-                          method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ status: "CLOSED" }),
-                        });
-                        loadDrafts();
-                      }}
-                    >
-                      Done
-                    </Button>
-                  </div>
-                </li>
-              ))}
-          </ul>
+          <div className="space-y-3">
+            {followUps.filter((f) => f.status !== "CLOSED").length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                  Open ({followUps.filter((f) => f.status !== "CLOSED").length})
+                </p>
+                {followUps
+                  .filter((f) => f.status !== "CLOSED")
+                  .map((t) => (
+                    <AgentFollowUpTaskCard
+                      key={t.id}
+                      task={t}
+                      accent="neutral"
+                      onUpdated={loadDrafts}
+                    />
+                  ))}
+              </div>
+            ) : (
+              <p className="text-sm text-kp-on-surface-variant">No open tasks — see completed below or add from the event workspace.</p>
+            )}
+            {followUps.some((f) => f.status === "CLOSED") ? (
+              <div className="space-y-2 border-t border-kp-outline/40 pt-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                  Completed
+                </p>
+                {followUps
+                  .filter((f) => f.status === "CLOSED")
+                  .map((t) => (
+                    <AgentFollowUpTaskCard key={t.id} task={t} accent="done" onUpdated={loadDrafts} />
+                  ))}
+              </div>
+            ) : null}
+          </div>
         )}
       </div>
 
