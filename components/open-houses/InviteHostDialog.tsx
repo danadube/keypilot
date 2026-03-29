@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { UserPlus } from "lucide-react";
+import { UserPlus, type LucideIcon } from "lucide-react";
 
 const KP_FIELD =
   "h-10 rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface shadow-none placeholder:text-kp-on-surface-variant/75 focus-visible:border-kp-outline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-400 focus-visible:ring-offset-0 disabled:opacity-50";
@@ -35,6 +35,8 @@ type InviteHostDialogProps = {
   onInviteSent?: () => void;
   /** Button label (default: Invite host) */
   triggerLabel?: string;
+  triggerClassName?: string;
+  triggerIcon?: LucideIcon;
 };
 
 const ROLES = [
@@ -46,6 +48,8 @@ export function InviteHostDialog({
   openHouseId,
   onInviteSent,
   triggerLabel = "Invite host",
+  triggerClassName,
+  triggerIcon: TriggerIcon = UserPlus,
 }: InviteHostDialogProps) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
@@ -87,10 +91,10 @@ export function InviteHostDialog({
         type="button"
         variant="outline"
         size="sm"
-        className={cn(kpBtnSecondary, "h-8 text-xs")}
+        className={cn(kpBtnSecondary, "h-8 text-xs", triggerClassName)}
         onClick={() => setOpen(true)}
       >
-        <UserPlus className="mr-1.5 h-3.5 w-3.5" />
+        <TriggerIcon className="mr-1.5 h-3.5 w-3.5" />
         {triggerLabel}
       </Button>
       <BrandModal
