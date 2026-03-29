@@ -31,15 +31,17 @@ import {
   RefreshCw,
   FileText,
   ArrowLeft,
+  Upload,
 } from "lucide-react";
-import { PrepChecklistPanel } from "@/components/showing-hq/prep-checklist-panels";
-import { buildOpenHousePrepChecklist } from "@/lib/showing-hq/prep-checklist";
-import { mergePrepChecklistFlags } from "@/lib/showing-hq/prep-checklist-flags";
+import { OpenHousePrepWorkspace } from "@/components/showing-hq/open-house-prep-workspace";
 import {
   normalizeShowingHqWorkflowTab,
   openHouseWorkflowTabHref,
   type ShowingHqWorkflowTab,
 } from "@/lib/showing-hq/showing-workflow-hrefs";
+import { buildOpenHousePrepChecklist } from "@/lib/showing-hq/prep-checklist";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type OpenHouseData = {
   hostUserId?: string;
@@ -59,7 +61,7 @@ type OpenHouseData = {
   prepChecklistFlags?: Record<string, unknown> | null;
   hostAgentId?: string | null;
   hosts?: { id: string }[];
-  property: { address1: string; city: string; state: string; zip: string; flyerUrl?: string | null };
+  property: { id?: string; address1: string; city: string; state: string; zip: string; flyerUrl?: string | null };
   listingAgent?: { id: string; name: string; email: string } | null;
   hostAgent?: { id: string; name: string; email: string } | null;
   visitors: {
@@ -80,6 +82,31 @@ type OpenHouseData = {
   draftStatusCounts: { DRAFT: number; REVIEWED: number; SENT_MANUAL: number; ARCHIVED: number };
   qrCodeDataUrl: string;
 };
+
+function isoToDateInput(iso: string) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function isoToTimeInput(iso: string) {
+  const d = new Date(iso);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function combineDateTimeLocal(dateStr: string, timeStr: string): Date {
+  const [h, m] = timeStr.split(":").map(Number);
+  const d = new Date(dateStr);
+  d.setHours(h ?? 0, m ?? 0, 0, 0);
+  return d;
+}
+
+function openHouseStatusLabel(status: string) {
+  if (status === "SCHEDULED") return "Scheduled";
+  if (status === "ACTIVE") return "Active";
+  if (status === "COMPLETED") return "Completed";
+  if (status === "CANCELLED") return "Cancelled";
+  return status.replace(/_/g, " ");
+}
 
 function draftStatusClass(status: string) {
   if (status === "SENT_MANUAL") return "text-emerald-400";
@@ -113,7 +140,12 @@ export function OpenHouseDetailPageClient() {
   const [regenerating, setRegenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [prepSaving, setPrepSaving] = useState(false);
+  const [detailSaving, setDetailSaving] = useState(false);
+  const [detailStartDate, setDetailStartDate] = useState("");
+  const [detailStartTime, setDetailStartTime] = useState("");
+  const [detailEndDate, setDetailEndDate] = useState("");
+  const [detailEndTime, setDetailEndTime] = useState("");
+  const [detailNotes, setDetailNotes] = useState("");
 
   const loadData = useCallback(() => {
     setError(null);
@@ -131,6 +163,19 @@ export function OpenHouseDetailPageClient() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  const serverScheduleId = data?.id;
+  const serverStartAt = data?.startAt;
+  const serverEndAt = data?.endAt;
+  const serverNotes = data?.notes;
+  useEffect(() => {
+    if (!serverScheduleId || !serverStartAt || !serverEndAt) return;
+    setDetailStartDate(isoToDateInput(serverStartAt));
+    setDetailStartTime(isoToTimeInput(serverStartAt));
+    setDetailEndDate(isoToDateInput(serverEndAt));
+    setDetailEndTime(isoToTimeInput(serverEndAt));
+    setDetailNotes(serverNotes ?? "");
+  }, [serverScheduleId, serverStartAt, serverEndAt, serverNotes]);
 
   const handleStatusChange = useCallback(
     (newStatus: string) => {
@@ -213,9 +258,9 @@ export function OpenHouseDetailPageClient() {
   const fullName = (c: { firstName: string; lastName: string }) =>
     [c.firstName, c.lastName].filter(Boolean).join(" ") || "Unknown";
 
-  const prepItems = useMemo(() => {
-    if (!data) return [];
-    return buildOpenHousePrepChecklist({
+  const prepWorkspaceInput = useMemo(() => {
+    if (!data) return null;
+    return {
       flyerUrl: data.flyerUrl,
       flyerOverrideUrl: data.flyerOverrideUrl,
       propertyFlyerUrl: data.property?.flyerUrl,
@@ -225,41 +270,65 @@ export function OpenHouseDetailPageClient() {
       hostAgentId: data.hostAgentId,
       nonListingHostCount: data.hosts?.length ?? 0,
       prepChecklistFlags: data.prepChecklistFlags ?? null,
-    });
+    };
   }, [data]);
 
-  const persistPrepFlags = useCallback(
-    async (patch: Record<string, boolean>) => {
-      if (!openHouseId || !data) return;
-      setPrepSaving(true);
-      setError(null);
-      try {
-        const merged = mergePrepChecklistFlags(data.prepChecklistFlags, patch);
-        const res = await fetch(`/api/v1/open-houses/${openHouseId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            prepChecklistFlags: merged,
-          }),
-        });
-        const json = await res.json();
-        if (json.error) throw new Error(json.error.message);
-        loadData();
-      } catch (e) {
-        setError((e as Error).message);
-      } finally {
-        setPrepSaving(false);
-      }
-    },
-    [openHouseId, data, loadData]
-  );
+  const prepProgress = useMemo(() => {
+    if (!prepWorkspaceInput) return { done: 0, total: 0 };
+    const items = buildOpenHousePrepChecklist(prepWorkspaceInput);
+    const done = items.filter((i) => i.complete).length;
+    return { done, total: items.length };
+  }, [prepWorkspaceInput]);
 
-  const handlePrepToggle = useCallback(
-    (flagKey: string, next: boolean) => {
-      void persistPrepFlags({ [flagKey]: next });
-    },
-    [persistPrepFlags]
-  );
+  const scheduleDirty = useMemo(() => {
+    if (!data) return false;
+    return (
+      detailStartDate !== isoToDateInput(data.startAt) ||
+      detailStartTime !== isoToTimeInput(data.startAt) ||
+      detailEndDate !== isoToDateInput(data.endAt) ||
+      detailEndTime !== isoToTimeInput(data.endAt) ||
+      (detailNotes.trim() || "") !== (data.notes?.trim() || "")
+    );
+  }, [data, detailStartDate, detailStartTime, detailEndDate, detailEndTime, detailNotes]);
+
+  const saveEventDetails = useCallback(async () => {
+    if (!openHouseId || !data) return;
+    setDetailSaving(true);
+    setError(null);
+    try {
+      const startAt = combineDateTimeLocal(detailStartDate, detailStartTime);
+      const endAt = combineDateTimeLocal(detailEndDate, detailEndTime);
+      if (endAt <= startAt) {
+        setError("End time must be after start time.");
+        return;
+      }
+      const res = await fetch(`/api/v1/open-houses/${openHouseId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          startAt: startAt.toISOString(),
+          endAt: endAt.toISOString(),
+          notes: detailNotes.trim() ? detailNotes : null,
+        }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+      loadData();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setDetailSaving(false);
+    }
+  }, [
+    openHouseId,
+    data,
+    detailStartDate,
+    detailStartTime,
+    detailEndDate,
+    detailEndTime,
+    detailNotes,
+    loadData,
+  ]);
 
   if (loading) return <PageLoading message="Loading open house..." />;
   if (error || !data)
@@ -321,7 +390,6 @@ export function OpenHouseDetailPageClient() {
               Seller report
             </Link>
           </Button>
-          <InviteHostDialog openHouseId={openHouseId} onInviteSent={loadData} />
           <Button
             size="sm"
             variant="outline"
@@ -339,6 +407,42 @@ export function OpenHouseDetailPageClient() {
           {error}
         </div>
       )}
+
+      <div className="rounded-xl border border-kp-outline/80 bg-kp-surface-high/20 p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-kp-teal/90">At a glance</p>
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-kp-on-surface">{openHouseStatusLabel(data.status)}</p>
+            <p className="text-xs text-kp-on-surface-variant">
+              {formatDateTime(data.startAt)} – {formatDateTime(data.endAt)}
+            </p>
+            <p className="text-xs text-kp-on-surface-variant">
+              {totalVisitors} visitor{totalVisitors !== 1 ? "s" : ""} signed in ·{" "}
+              {prepProgress.total > 0
+                ? `${prepProgress.done} of ${prepProgress.total} prep complete`
+                : "Prep tracking"}
+            </p>
+            {data.qrSlug ? (
+              <p className="text-xs text-emerald-400/90">Sign-in page is live — share the QR or link below.</p>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <InviteHostDialog openHouseId={openHouseId} onInviteSent={loadData} />
+            <Button size="sm" variant="outline" className={cn(kpBtnSecondary, "h-8 text-xs")} asChild>
+              <Link href={`/open-houses/${openHouseId}`}>
+                <Upload className="mr-1.5 h-3.5 w-3.5" />
+                Upload flyer
+              </Link>
+            </Button>
+            <Button size="sm" variant="outline" className={cn(kpBtnPrimary, "h-8 border-transparent text-xs")} asChild>
+              <Link href={`/open-houses/${openHouseId}/sign-in`}>
+                <QrCode className="mr-1.5 h-3.5 w-3.5" />
+                Open sign-in
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
 
       <div className="flex flex-wrap gap-1 border-b border-kp-outline/70 pb-0.5">
         {OH_TAB_SPECS.map(({ id: tid, label }) => (
@@ -358,14 +462,14 @@ export function OpenHouseDetailPageClient() {
         ))}
       </div>
 
-      {tab === "prep" && (
-        <PrepChecklistPanel
-          title="Prep checklist"
-          items={prepItems}
-          onToggle={handlePrepToggle}
-          disabled={prepSaving}
+      {tab === "prep" && prepWorkspaceInput ? (
+        <OpenHousePrepWorkspace
+          openHouseId={openHouseId}
+          input={prepWorkspaceInput}
+          onReload={loadData}
+          onJumpToDetailsForQr={() => setTab("details")}
         />
-      )}
+      ) : null}
 
       {tab === "feedback" && (
         <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
@@ -394,6 +498,74 @@ export function OpenHouseDetailPageClient() {
 
       {tab === "details" && (
         <>
+      <div className="sticky top-0 z-20 -mx-1 border-b border-kp-outline/70 bg-kp-bg/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-kp-bg/85">
+        <div className="rounded-xl border border-kp-outline/90 bg-kp-surface-high/25 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-kp-on-surface">Event schedule & notes</p>
+              <p className="text-xs text-kp-on-surface-variant">Update when the window shifts or instructions change.</p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              className={cn(kpBtnPrimary, "h-9 border-transparent text-xs font-semibold")}
+              disabled={!scheduleDirty || detailSaving}
+              onClick={() => void saveEventDetails()}
+            >
+              {detailSaving ? "Saving…" : "Save changes"}
+            </Button>
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-kp-on-surface-variant">Start date</Label>
+              <Input
+                type="date"
+                value={detailStartDate}
+                onChange={(e) => setDetailStartDate(e.target.value)}
+                className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-kp-on-surface-variant">Start time</Label>
+              <Input
+                type="time"
+                value={detailStartTime}
+                onChange={(e) => setDetailStartTime(e.target.value)}
+                className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-kp-on-surface-variant">End date</Label>
+              <Input
+                type="date"
+                value={detailEndDate}
+                onChange={(e) => setDetailEndDate(e.target.value)}
+                className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-kp-on-surface-variant">End time</Label>
+              <Input
+                type="time"
+                value={detailEndTime}
+                onChange={(e) => setDetailEndTime(e.target.value)}
+                className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+              />
+            </div>
+          </div>
+          <div className="mt-4 space-y-1.5">
+            <Label className="text-xs text-kp-on-surface-variant">Notes for team / host</Label>
+            <textarea
+              value={detailNotes}
+              onChange={(e) => setDetailNotes(e.target.value)}
+              rows={3}
+              className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant/70"
+              placeholder="Parking, access, staging notes…"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-xl border border-kp-outline bg-kp-surface p-4">

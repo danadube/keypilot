@@ -16,8 +16,7 @@ import {
 import {
   buildOpenHousePrepChecklist,
   buildShowingPrepChecklist,
-  formatMissingPrepSummary,
-  missingPrepShortLabels,
+  formatMissingPrepGuidance,
 } from "@/lib/showing-hq/prep-checklist";
 import {
   openHouseWorkflowTabHref,
@@ -108,12 +107,6 @@ export function workflowAttentionHref(args: {
   return workflowHrefForAttention(args);
 }
 
-function actionLabel(action: ShowingAttentionState["action"]): string {
-  if (action === "send_feedback") return "Request feedback";
-  if (action === "review") return "Review";
-  return "Open";
-}
-
 export type AttentionListItem = {
   key: string;
   kind: "showing" | "open_house";
@@ -185,9 +178,7 @@ export function buildNeedsAttentionItems(
       prepChecklistFlags: (s.prepChecklistFlags ?? null) as Record<string, unknown> | null,
     });
     const missingPrepSummary =
-      attention.label === "Prep required"
-        ? formatMissingPrepSummary(missingPrepShortLabels(prepItems))
-        : undefined;
+      attention.label === "Prep required" ? formatMissingPrepGuidance(prepItems) : undefined;
     items.push({
       key: `s-${s.id}`,
       kind: "showing",
@@ -238,9 +229,7 @@ export function buildNeedsAttentionItems(
       prepChecklistFlags: (oh.prepChecklistFlags ?? null) as Record<string, unknown> | null,
     });
     const missingPrepSummary =
-      attention.label === "Prep required"
-        ? formatMissingPrepSummary(missingPrepShortLabels(prepOh))
-        : undefined;
+      attention.label === "Prep required" ? formatMissingPrepGuidance(prepOh) : undefined;
     items.push({
       key: `oh-${oh.id}`,
       kind: "open_house",
@@ -335,7 +324,7 @@ export function NeedsAttentionSection({
                       attention: row.attention,
                     })}
                   >
-                    {actionLabel(row.attention.action)}
+                    {getAttentionActionLabel(row)}
                   </Link>
                 </Button>
               </li>
@@ -449,6 +438,41 @@ export type NeedsFollowUpRow = {
   href: string;
 };
 
+/** Context-aware CTA for Needs attention (private showing + open house rows). */
+export function getAttentionActionLabel(row: AttentionListItem): string {
+  const { attention: a } = row;
+  const hasAgent = Boolean(row.buyerAgentName?.trim() && row.buyerAgentEmail?.trim());
+
+  if (a.label === "Feedback needed") {
+    if (a.action === "review") return "Review";
+    return hasAgent ? "Request feedback" : "Add details";
+  }
+  if (a.label === "Follow-up required") {
+    if (a.action === "review") return "Review";
+    if (a.action === "send_feedback") return hasAgent ? "Request feedback" : "Add details";
+    return "Open";
+  }
+  if (a.label === "Prep required") return "Finish prep";
+  return "Open";
+}
+
+/** Queue row button label (same as {@link getAttentionActionLabel}). */
+export const getActionLabel = getAttentionActionLabel;
+
+export function getNeedsFollowUpQueueCtaLabel(nf: NeedsFollowUpRow): string {
+  switch (nf.reasonLabel) {
+    case "Awaiting response":
+      return "Review";
+    case "Report needed":
+      return "Send report";
+    case "Follow-ups due":
+      return "Review";
+    case "Feedback not sent":
+    default:
+      return "Request feedback";
+  }
+}
+
 /** Work queue scan color — left border + category pill only (no full-card fill). */
 export type QueueVisualKind = "feedback" | "awaiting" | "prep" | "report_followup";
 
@@ -527,27 +551,23 @@ function attentionItemToWorkflowRow(
   let categoryTitle: string;
   let contextLine: string;
   let visualKind: QueueVisualKind;
-  let ctaLabel: string;
 
   if (attention.label === "Feedback needed") {
     visualKind = "feedback";
     if (attention.action === "review") {
       categoryTitle = "Feedback needed";
       contextLine = "Visitor feedback request still waiting in your queue.";
-      ctaLabel = "Review";
     } else {
       categoryTitle = "Feedback needed";
       const hasAgent = Boolean(row.buyerAgentName?.trim() && row.buyerAgentEmail?.trim());
       contextLine = hasAgent
         ? "Draft is ready — buyer agent has not been emailed yet."
         : "Buyer agent contact is incomplete — outreach not sent yet.";
-      ctaLabel = "Request feedback";
     }
   } else if (attention.label === "Follow-up required") {
     visualKind = "report_followup";
     categoryTitle = "Follow-up due";
     contextLine = "Feedback workflow still needs a nudge or completion.";
-    ctaLabel = attention.action === "send_feedback" ? "Request feedback" : "Review";
   } else if (attention.label === "Prep required") {
     visualKind = "prep";
     categoryTitle = "Prep required";
@@ -556,13 +576,13 @@ function attentionItemToWorkflowRow(
       (row.kind === "open_house"
         ? "Sign-in, flyer, or host details are still incomplete."
         : "Buyer agent contact is missing for an upcoming showing.");
-    ctaLabel = "Open";
   } else {
     visualKind = "prep";
     categoryTitle = "Prep required";
     contextLine = "Starts within two hours — open host checklist to finish prep.";
-    ctaLabel = "Open";
   }
+
+  const ctaLabel = getAttentionActionLabel(row);
 
   return {
     key: row.key,
@@ -595,33 +615,28 @@ function needsFollowUpToWorkflowRow(
   let categoryTitle: string;
   let contextLine: string;
   let visualKind: QueueVisualKind;
-  let ctaLabel: string;
 
   switch (nf.reasonLabel) {
     case "Awaiting response":
       visualKind = "awaiting";
       categoryTitle = "Awaiting response";
       contextLine = "Feedback email sent — no reply yet.";
-      ctaLabel = "Review";
       break;
     case "Report needed":
       visualKind = "report_followup";
       categoryTitle = "Report ready";
       contextLine = "Open house wrapped — seller report not filed yet.";
-      ctaLabel = "Send report";
       break;
     case "Follow-ups due":
       visualKind = "report_followup";
       categoryTitle = "Follow-up due";
       contextLine = "Visitor follow-up drafts still need review or send.";
-      ctaLabel = "Review";
       break;
     case "Feedback not sent":
     default:
       visualKind = "feedback";
       categoryTitle = "Feedback needed";
       contextLine = "Buyer-agent feedback has not gone out yet.";
-      ctaLabel = "Request feedback";
       break;
   }
 
@@ -632,7 +647,7 @@ function needsFollowUpToWorkflowRow(
     categoryTitle,
     addressLine,
     contextLine,
-    ctaLabel,
+    ctaLabel: getNeedsFollowUpQueueCtaLabel(nf),
     href: nf.href,
   };
 }

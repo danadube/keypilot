@@ -54,6 +54,8 @@ export type ShowingBuyerAgentFeedbackDraftProps = {
   className?: string;
   /** Calendar BrandModal uses theme vars; showings list uses kp tokens */
   variant?: "kp" | "brand";
+  /** `page` = copy for showing detail workflow (Mark as sent below); `modal` = footer hint. */
+  footerMode?: "modal" | "page";
 };
 
 const GREETING_OPTIONS: { value: BuyerAgentFeedbackGreetingMode; label: string }[] = [
@@ -72,6 +74,7 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
   buyerAgentEmail,
   className,
   variant = "kp",
+  footerMode = "modal",
 }: ShowingBuyerAgentFeedbackDraftProps) {
   const [greetingMode, setGreetingMode] = useState<BuyerAgentFeedbackGreetingMode>("firstName");
   const [copied, setCopied] = useState<null | "body">(null);
@@ -151,8 +154,18 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
         Feedback request
       </div>
       <p className={cn("mt-1 text-xs leading-snug", mutedCls)}>
-        Review the email below and send it from your mail app. When you&apos;re done, use{" "}
-        <span className={cn("font-semibold", titleCls)}>Mark as sent</span> in the modal footer to finish.
+        {footerMode === "page" ? (
+          <>
+            Review the draft below, then send from your mail app. Use{" "}
+            <span className={cn("font-semibold", titleCls)}>Mark as sent</span> in the actions section when it&apos;s on
+            its way.
+          </>
+        ) : (
+          <>
+            Review the email below and send it from your mail app. When you&apos;re done, use{" "}
+            <span className={cn("font-semibold", titleCls)}>Mark as sent</span> in the modal footer to finish.
+          </>
+        )}
       </p>
       {genLabel && <p className={cn("mt-1 text-xs", mutedCls)}>Draft last saved {genLabel}</p>}
       {to && (
@@ -214,7 +227,7 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
           >
             <a href={mailtoHref} onClick={handleCreateEmailClick}>
               <Send className="h-3.5 w-3.5" />
-              Create email
+              {footerMode === "page" ? "Open mail" : "Create email"}
             </a>
           </Button>
         )}
@@ -228,7 +241,7 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
             title="This draft is too long for a mailto link on some systems. Use copy actions below."
           >
             <Send className="h-3.5 w-3.5" />
-            Create email
+            {footerMode === "page" ? "Open mail" : "Create email"}
           </Button>
         )}
 
@@ -247,7 +260,11 @@ export function ShowingBuyerAgentFeedbackDraftPanel({
         </Button>
       </div>
 
-      {nudgeFooterMarkSent ? (
+      {footerMode === "page" ? (
+        <p className={cn("mt-3 text-[11px] leading-snug", mutedCls)}>
+          Copy the body if your mail app works better with paste. Mark as sent keeps your pipeline accurate.
+        </p>
+      ) : nudgeFooterMarkSent ? (
         <p
           className={cn(
             "mt-3 text-[11px] leading-snug text-amber-600/90 dark:text-amber-400/90",

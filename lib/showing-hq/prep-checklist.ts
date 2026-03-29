@@ -173,6 +173,28 @@ export function formatMissingPrepSummary(labels: string[], maxLabels = 4): strin
   return `Missing: ${shown.join(", ")}${more}`;
 }
 
+/** Human guidance for dashboard / queues (not technical "Missing: …" lists). */
+export function formatMissingPrepGuidance(items: PrepChecklistItem[]): string {
+  const incomplete = items.filter((i) => !i.complete);
+  if (incomplete.length === 0) return "";
+  const ids = new Set(incomplete.map((i) => i.id));
+  const phrases: string[] = [];
+  if (ids.has("agent_name") || ids.has("agent_email")) {
+    phrases.push("buyer agent details");
+  }
+  if (ids.has("notes")) phrases.push("showing notes");
+  if (ids.has("follow_up")) phrases.push("your follow-up plan");
+  if (ids.has("flyer")) phrases.push("a listing flyer");
+  if (ids.has("sign_in")) phrases.push("QR sign-in");
+  if (ids.has("host")) phrases.push("a confirmed host");
+  if (ids.has("signs")) phrases.push("signs and materials");
+  if (phrases.length === 0) return "Complete the remaining prep items to move forward.";
+  if (phrases.length === 1) return `Add ${phrases[0]} so you're ready for this event.`;
+  if (phrases.length === 2) return `Add ${phrases[0]} and ${phrases[1]} so you're ready for this event.`;
+  const last = phrases.pop()!;
+  return `Add ${phrases.join(", ")}, and ${last} so you're ready for this event.`;
+}
+
 export function openHousePrepIncomplete(input: OpenHousePrepInput): boolean {
   return buildOpenHousePrepChecklist(input).some((i) => !i.complete);
 }
