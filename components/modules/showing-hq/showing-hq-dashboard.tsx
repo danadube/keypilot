@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Loader2, AlertCircle } from "lucide-react";
 import {
   GettingStartedCard,
@@ -24,6 +24,7 @@ import {
   ShowingHqAgentFollowUpsSection,
   type AgentFollowUpBuckets,
 } from "@/components/showing-hq/ShowingHqAgentFollowUpsSection";
+import { NewShowingScheduledBanner } from "@/components/showing-hq/new-showing-scheduled-banner";
 import { cn } from "@/lib/utils";
 
 // ── Types (mirrored from API) ───────────────────────────────────────────────
@@ -325,6 +326,9 @@ export function ShowingHQDashboardView() {
 
   return (
     <div className="flex min-h-0 w-full flex-col bg-transparent">
+      <Suspense fallback={null}>
+        <NewShowingScheduledBanner />
+      </Suspense>
       <ShowingHQCommandStrip
         nextEvent={nextEvent}
         upcomingCount={upcomingCount}
