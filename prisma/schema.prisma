@@ -35,6 +35,7 @@ model User {
   assignedContacts  Contact[]
   tags              Tag[]
   followUpReminders FollowUpReminder[]
+  followUps         FollowUp[]
   deals             Deal[]
   connections       Connection[]
   usageEvents       UsageEvent[]
@@ -135,6 +136,7 @@ model Contact {
   followUpDrafts    FollowUpDraft[]
   contactTags       ContactTag[]
   followUpReminders FollowUpReminder[]
+  followUps         FollowUp[]
   deals             Deal[]
   userActivities    UserActivity[]
 
@@ -705,6 +707,55 @@ enum ReminderStatus {
   PENDING
   DONE
   DISMISSED
+}
+
+/** Agent-owned follow-up tasks (people-centric). `sourceType` + `sourceId` link to OH visitor, event, showing, etc. */
+model FollowUp {
+  id              String               @id @default(uuid())
+  createdByUserId String
+  contactId       String
+  sourceType      FollowUpSourceType
+  /** Visitor id, open house id, showing id, feedback request id, or `manual` for MANUAL source. */
+  sourceId        String
+  status          FollowUpTaskStatus   @default(NEW)
+  priority        FollowUpTaskPriority @default(MEDIUM)
+  title           String
+  notes           String?              @db.Text
+  dueAt           DateTime
+  completedAt     DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  createdBy User    @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([createdByUserId, dueAt, status])
+  @@index([createdByUserId, status])
+  @@index([contactId])
+  @@index([sourceType, sourceId])
+  @@map("follow_ups")
+}
+
+enum FollowUpSourceType {
+  OPEN_HOUSE
+  FEEDBACK
+  SHOWING
+  MANUAL
+}
+
+enum FollowUpTaskStatus {
+  NEW
+  PENDING
+  CONTACTED
+  NURTURE
+  CLOSED
+}
+
+enum FollowUpTaskPriority {
+  LOW
+  MEDIUM
+  HIGH
 }
 
 model Deal {

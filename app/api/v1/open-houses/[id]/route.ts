@@ -62,10 +62,27 @@ export async function GET(
         .length,
       ARCHIVED: openHouse.drafts.filter((d) => d.status === "ARCHIVED").length,
     };
+    const visitorIds = openHouse.visitors.map((v) => v.id);
+    const sourceIdsForOh = [...visitorIds, id];
+    const taskFollowUps = await prismaAdmin.followUp.findMany({
+      where: {
+        createdByUserId: user.id,
+        deletedAt: null,
+        sourceType: "OPEN_HOUSE",
+        sourceId: { in: sourceIdsForOh },
+      },
+      include: {
+        contact: {
+          select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+        },
+      },
+      orderBy: [{ status: "asc" }, { dueAt: "asc" }],
+    });
     const qrCodeDataUrl = await generateQrCodeDataUrl(openHouse.qrSlug);
     return NextResponse.json({
       data: {
         ...openHouse,
+        taskFollowUps,
         _count: { visitors: total },
         visitorBreakdown: {
           total,

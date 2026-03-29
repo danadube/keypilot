@@ -20,6 +20,10 @@ import {
   type NeedsFollowUpRow,
   type PrivateShowingAttentionRow,
 } from "@/components/showing-hq/showing-hq-dashboard-action-sections";
+import {
+  ShowingHqAgentFollowUpsSection,
+  type AgentFollowUpBuckets,
+} from "@/components/showing-hq/ShowingHqAgentFollowUpsSection";
 import { cn } from "@/lib/utils";
 
 // ── Types (mirrored from API) ───────────────────────────────────────────────
@@ -105,6 +109,7 @@ type DashboardData = {
     property: { address1?: string | null; city?: string; state?: string };
     visitorCount: number;
   }[];
+  agentFollowUps?: AgentFollowUpBuckets;
 };
 
 const GETTING_STARTED_DISMISSED_KEY = "showinghq-getting-started-dismissed";
@@ -338,6 +343,9 @@ export function ShowingHQDashboardView() {
       >
         <div className="flex min-w-0 flex-col gap-5">
           <WhatNeedsAttentionSection rows={workflowRows} />
+          {data.agentFollowUps ? (
+            <ShowingHqAgentFollowUpsSection buckets={data.agentFollowUps} />
+          ) : null}
           <TodayScheduleSection rows={todayScheduleRows} formatTime={formatTime} />
           {showGettingStarted && !gettingStartedDismissed ? (
             <GettingStartedCard

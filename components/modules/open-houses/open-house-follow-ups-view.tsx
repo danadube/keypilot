@@ -23,6 +23,16 @@ type FollowUpDraft = {
   contact: { id: string; firstName: string; lastName: string; email: string | null };
 };
 
+type AgentTaskFollowUp = {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  dueAt: string;
+  contactId: string;
+  contact: { id: string; firstName: string; lastName: string; email: string | null; phone: string | null };
+};
+
 // Draft status pill styles
 function draftStatusClass(s: string) {
   switch (s) {
@@ -47,6 +57,7 @@ function draftStatusLabel(s: string) {
 export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string }) {
   const subtitle = useOpenHouseContextSubtitle(openHouseId);
   const [drafts, setDrafts] = useState<FollowUpDraft[]>([]);
+  const [followUps, setFollowUps] = useState<AgentTaskFollowUp[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -57,7 +68,16 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
       .then((res) => res.json())
       .then((json) => {
         if (json.error) setError(json.error.message);
-        else setDrafts(json.data || []);
+        else {
+          const d = json.data;
+          if (Array.isArray(d)) {
+            setDrafts(d);
+            setFollowUps([]);
+          } else {
+            setDrafts(d?.drafts ?? []);
+            setFollowUps(d?.followUps ?? []);
+          }
+        }
       })
       .catch(() => setError("Failed to load drafts"));
   };
@@ -67,7 +87,16 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
       .then((res) => res.json())
       .then((json) => {
         if (json.error) setError(json.error.message);
-        else setDrafts(json.data || []);
+        else {
+          const d = json.data;
+          if (Array.isArray(d)) {
+            setDrafts(d);
+            setFollowUps([]);
+          } else {
+            setDrafts(d?.drafts ?? []);
+            setFollowUps(d?.followUps ?? []);
+          }
+        }
       })
       .catch(() => setError("Failed to load drafts"))
       .finally(() => setLoading(false));
@@ -129,7 +158,16 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
               .then((res) => res.json())
               .then((json) => {
                 if (json.error) setError(json.error.message);
-                else setDrafts(json.data || []);
+                else {
+                  const d = json.data;
+                  if (Array.isArray(d)) {
+                    setDrafts(d);
+                    setFollowUps([]);
+                  } else {
+                    setDrafts(d?.drafts ?? []);
+                    setFollowUps(d?.followUps ?? []);
+                  }
+                }
               })
               .catch(() => setError("Failed to load drafts"));
           }}
@@ -148,10 +186,10 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
       <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-bold text-kp-on-surface">Visitor follow-ups</h1>
-          {drafts.length > 0 && (
+          <h1 className="text-xl font-bold text-kp-on-surface">Follow-ups</h1>
+          {(drafts.length > 0 || followUps.length > 0) && (
             <span className="rounded-full bg-kp-surface-high px-2.5 py-0.5 text-xs font-medium text-kp-on-surface-variant">
-              {drafts.length}
+              {followUps.filter((f) => f.status !== "CLOSED").length + drafts.length}
             </span>
           )}
         </div>
@@ -165,6 +203,61 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
           <Sparkles className="mr-1.5 h-3.5 w-3.5" />
           {generating ? "Generating…" : "Generate drafts for new visitors"}
         </Button>
+      </div>
+
+      <div className="rounded-xl border border-kp-outline bg-kp-bg/80 p-5">
+        <h2 className="mb-1 text-sm font-semibold text-kp-on-surface">Person follow-ups</h2>
+        <p className="mb-4 text-xs text-kp-on-surface-variant">
+          Global tasks tied to this event (stored once — also on ShowingHQ home when due).
+        </p>
+        {followUps.filter((f) => f.status !== "CLOSED").length === 0 ? (
+          <p className="text-sm text-kp-on-surface-variant">No open tasks. Add from the event workspace visitor rows.</p>
+        ) : (
+          <ul className="space-y-2">
+            {followUps
+              .filter((f) => f.status !== "CLOSED")
+              .map((t) => (
+                <li
+                  key={t.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-kp-outline bg-kp-surface p-3"
+                >
+                  <div>
+                    <p className="font-medium text-kp-on-surface">{t.title}</p>
+                    <p className="text-xs text-kp-on-surface-variant">
+                      {t.contact.firstName} {t.contact.lastName} · Due{" "}
+                      {new Date(t.dueAt).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 text-xs")} asChild>
+                      <Link href={`/contacts/${t.contactId}`}>Contact</Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(kpBtnTertiary, "h-7 text-xs")}
+                      type="button"
+                      onClick={async () => {
+                        await fetch(`/api/v1/follow-ups/${t.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ status: "CLOSED" }),
+                        });
+                        loadDrafts();
+                      }}
+                    >
+                      Done
+                    </Button>
+                  </div>
+                </li>
+              ))}
+          </ul>
+        )}
       </div>
 
       {drafts.length > 0 && (

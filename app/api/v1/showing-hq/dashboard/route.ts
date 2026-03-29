@@ -17,6 +17,10 @@ import {
   type ShowingAttentionState,
 } from "@/lib/showing-hq/showing-attention";
 import { showingWorkflowTabHref } from "@/lib/showing-hq/showing-workflow-hrefs";
+import {
+  bucketAgentFollowUpsByDue,
+  serializeAgentFollowUpRow,
+} from "@/lib/follow-ups/agent-follow-up-buckets";
 
 export const dynamic = "force-dynamic";
 
@@ -1041,6 +1045,41 @@ export async function GET() {
 
     dashLog(`ok ${stage}`);
 
+    stage = "agent_follow_ups_buckets";
+    dashLog(`start ${stage}`);
+    const followUpWeekEnd = new Date(todayStart);
+    followUpWeekEnd.setDate(followUpWeekEnd.getDate() + 8);
+    const agentFollowUpRows = await withRLSContext(user.id, (tx) =>
+      tx.followUp.findMany({
+        where: {
+          createdByUserId: user.id,
+          deletedAt: null,
+          status: { not: "CLOSED" },
+          dueAt: { lte: followUpWeekEnd },
+        },
+        include: {
+          contact: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
+          },
+        },
+        orderBy: { dueAt: "asc" },
+        take: 80,
+      })
+    );
+    const agentFollowUpsSerialized = agentFollowUpRows.map(serializeAgentFollowUpRow);
+    const agentFollowUps = bucketAgentFollowUpsByDue(
+      agentFollowUpsSerialized,
+      todayStart,
+      todayEnd
+    );
+    dashLog(`ok ${stage}`);
+
     stage = "serialize_json_response";
     dashLog(`start ${stage}`);
     const body = {
@@ -1158,6 +1197,11 @@ export async function GET() {
         pendingReportsCount,
         prepTomorrowCount,
         connections: { hasCalendar, hasGmail, hasBranding },
+        agentFollowUps: {
+          overdue: agentFollowUps.overdue,
+          dueToday: agentFollowUps.dueToday,
+          upcoming: agentFollowUps.upcoming,
+        },
       },
     };
     dashLog(`ok ${stage}`);

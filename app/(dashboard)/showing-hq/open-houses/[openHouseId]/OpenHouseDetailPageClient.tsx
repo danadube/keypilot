@@ -37,6 +37,7 @@ import {
   OPEN_HOUSE_INVITE_HOST_PRIMARY_ANCHOR_ID,
 } from "@/components/showing-hq/open-house-prep-workspace";
 import { OpenHouseFlyerUploadButton } from "@/components/showing-hq/OpenHouseFlyerUploadButton";
+import { CreateVisitorFollowUpInline } from "@/components/open-houses/CreateVisitorFollowUpInline";
 import { ShowingHqWorkflowTabStrip } from "@/components/showing-hq/ShowingHqWorkflowTabStrip";
 import {
   normalizeShowingHqWorkflowTab,
@@ -82,6 +83,25 @@ type OpenHouseData = {
     };
   }[];
   drafts: { id: string; subject: string; status: string }[];
+  taskFollowUps?: {
+    id: string;
+    contactId: string;
+    sourceType: string;
+    sourceId: string;
+    status: string;
+    priority: string;
+    title: string;
+    notes: string | null;
+    dueAt: string;
+    completedAt: string | null;
+    contact: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      email: string | null;
+      phone: string | null;
+    };
+  }[];
   _count: { visitors: number };
   draftStatusCounts: { DRAFT: number; REVIEWED: number; SENT_MANUAL: number; ARCHIVED: number };
   qrCodeDataUrl: string;
@@ -256,11 +276,14 @@ export function OpenHouseDetailPageClient() {
 
   const totalVisitors = data?._count?.visitors ?? 0;
   const contactsCaptured = data?.visitors?.length ?? 0;
-  const followUpsCount =
+  const draftTotal =
     (data?.draftStatusCounts?.DRAFT ?? 0) +
     (data?.draftStatusCounts?.REVIEWED ?? 0) +
     (data?.draftStatusCounts?.SENT_MANUAL ?? 0) +
     (data?.draftStatusCounts?.ARCHIVED ?? 0);
+  const openTaskFollowUps =
+    data?.taskFollowUps?.filter((t) => t.status !== "CLOSED").length ?? 0;
+  const followUpsCount = draftTotal + openTaskFollowUps;
 
   const fullName = (c: { firstName: string; lastName: string }) =>
     [c.firstName, c.lastName].filter(Boolean).join(" ") || "Unknown";
@@ -602,7 +625,9 @@ export function OpenHouseDetailPageClient() {
                     <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Interest</th>
                     <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Sign-in</th>
                     <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Status</th>
-                    <th className="pb-2 w-[80px]"></th>
+                    <th className="pb-2 w-[200px] text-left text-xs font-semibold text-kp-on-surface-variant">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-kp-outline">
@@ -617,15 +642,23 @@ export function OpenHouseDetailPageClient() {
                       <td className="py-2">
                         <LeadStatusBadge status={v.leadStatus} />
                       </td>
-                      <td className="py-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={cn(kpBtnTertiary, "h-7 text-xs")}
-                          asChild
-                        >
-                          <Link href={`/showing-hq/visitors/${v.id}`}>Profile</Link>
-                        </Button>
+                      <td className="py-2 align-top">
+                        <div className="flex flex-col items-start gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={cn(kpBtnTertiary, "h-7 text-xs")}
+                            asChild
+                          >
+                            <Link href={`/showing-hq/visitors/${v.id}`}>Profile</Link>
+                          </Button>
+                          <CreateVisitorFollowUpInline
+                            visitorId={v.id}
+                            contactId={v.contact.id}
+                            contactName={fullName(v.contact)}
+                            onCreated={loadData}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -638,19 +671,76 @@ export function OpenHouseDetailPageClient() {
         {/* Follow-ups */}
         <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
           <p className="mb-1 text-sm font-semibold text-kp-on-surface">Follow-ups</p>
-          <p className="mb-4 text-xs text-kp-on-surface-variant">Tasks generated from this open house</p>
-          {data.drafts.length === 0 ? (
+          <p className="mb-4 text-xs text-kp-on-surface-variant">
+            Person tasks (global) and email drafts for this open house — full list on{" "}
+            <Link href={`/open-houses/${openHouseId}/follow-ups`} className="text-kp-teal hover:underline">
+              manage follow-ups
+            </Link>
+            .
+          </p>
+          {(data.taskFollowUps?.length ?? 0) === 0 && data.drafts.length === 0 ? (
             <p className="py-6 text-center text-sm text-kp-on-surface-variant">
-              No follow-up drafts yet.
+              No follow-ups yet. Add one from a visitor row or generate email drafts.
             </p>
           ) : (
             <ul className="space-y-2">
+              {(data.taskFollowUps ?? [])
+                .filter((t) => t.status !== "CLOSED")
+                .map((t) => (
+                  <li
+                    key={t.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-kp-teal/25 bg-kp-teal/5 p-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-medium text-kp-on-surface">{t.title}</p>
+                      <p className="text-xs text-kp-on-surface-variant">
+                        {[t.contact.firstName, t.contact.lastName].filter(Boolean).join(" ")} · Due{" "}
+                        {new Date(t.dueAt).toLocaleString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-kp-on-surface-variant">{t.status}</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn(kpBtnSecondary, "h-7 text-xs")}
+                        asChild
+                      >
+                        <Link href={`/contacts/${t.contactId}`}>Contact</Link>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={cn(kpBtnTertiary, "h-7 text-xs")}
+                        type="button"
+                        onClick={async () => {
+                          await fetch(`/api/v1/follow-ups/${t.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ status: "CLOSED" }),
+                          });
+                          loadData();
+                        }}
+                      >
+                        Done
+                      </Button>
+                    </div>
+                  </li>
+                ))}
               {data.drafts.map((d) => (
                 <li
                   key={d.id}
                   className="flex items-center justify-between rounded-lg border border-kp-outline bg-kp-surface-high p-3"
                 >
-                  <p className="font-medium text-kp-on-surface">{d.subject}</p>
+                  <div>
+                    <p className="font-medium text-kp-on-surface">{d.subject}</p>
+                    <p className="text-[11px] text-kp-on-surface-variant">Email draft</p>
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className={`text-xs font-medium ${draftStatusClass(d.status)}`}>
                       {d.status.replace(/_/g, " ")}

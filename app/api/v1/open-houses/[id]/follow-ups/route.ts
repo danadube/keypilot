@@ -4,20 +4,25 @@ import { getCurrentUser } from "@/lib/auth";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
 export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser();
-    const openHouseId = params.id;
+    const { id: openHouseId } = await params;
 
     const openHouse = await prismaAdmin.openHouse.findFirst({
       where: {
         id: openHouseId,
-        hostUserId: user.id,
         deletedAt: null,
+        OR: [
+          { hostUserId: user.id },
+          { listingAgentId: user.id },
+          { hostAgentId: user.id },
+        ],
       },
       include: {
+        visitors: { select: { id: true } },
         drafts: {
           where: { deletedAt: null },
           include: { contact: true },
@@ -33,7 +38,25 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ data: openHouse.drafts });
+    const visitorIds = openHouse.visitors.map((v) => v.id);
+    const followUps = await prismaAdmin.followUp.findMany({
+      where: {
+        createdByUserId: user.id,
+        deletedAt: null,
+        sourceType: "OPEN_HOUSE",
+        sourceId: { in: [...visitorIds, openHouseId] },
+      },
+      include: {
+        contact: {
+          select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+        },
+      },
+      orderBy: [{ dueAt: "asc" }],
+    });
+
+    return NextResponse.json({
+      data: { drafts: openHouse.drafts, followUps },
+    });
   } catch (err) {
     return apiErrorFromCaught(err);
   }
