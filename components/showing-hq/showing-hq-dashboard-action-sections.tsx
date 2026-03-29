@@ -660,63 +660,53 @@ export function buildUpNextRows(
   return out.slice(0, take);
 }
 
-/** Thin command context — replaces hero card. */
+function formatShortDayAndTime(iso: string, formatTime: (s: string) => string): string {
+  const day = new Date(iso).toLocaleDateString("en-US", { weekday: "short" });
+  return `${day} ${formatTime(iso)}`;
+}
+
+/** Operational context only — next event + counts (page title/date live in shell header). */
 export function ShowingHQCommandStrip({
-  now,
-  calendarShortLabel,
   nextEvent,
   upcomingCount,
   needPrepCount,
   awaitingCount,
   formatTime,
-  formatMediumDate,
 }: {
-  now: Date;
-  calendarShortLabel: string;
   nextEvent: { address: string; at: string } | null;
   upcomingCount: number;
   needPrepCount: number;
   awaitingCount: number;
   formatTime: (iso: string) => string;
-  formatMediumDate: (iso: string) => string;
 }) {
   const nextLine =
     nextEvent != null ? (
-      <p className="mt-1.5 text-[13px] font-medium leading-snug text-kp-on-surface">
+      <p className="text-[12px] font-medium leading-snug text-kp-on-surface">
         Next:{" "}
         <span className="text-kp-on-surface">{nextEvent.address}</span>
         <span className="text-kp-on-surface-variant"> · </span>
         <span className="tabular-nums text-kp-on-surface-variant">
-          {isSameLocalCalendarDay(nextEvent.at, now)
-            ? formatTime(nextEvent.at)
-            : `${formatMediumDate(nextEvent.at)} ${formatTime(nextEvent.at)}`}
+          {formatShortDayAndTime(nextEvent.at, formatTime)}
         </span>
       </p>
     ) : (
-      <p className="mt-1.5 text-[12px] text-kp-on-surface-variant">No upcoming event on the clock.</p>
+      <p className="text-[11px] leading-snug text-kp-on-surface-variant">No upcoming event on the clock.</p>
     );
 
   return (
     <header
       className="-mx-4 mb-5 border-b border-kp-outline/70 pb-4 sm:mb-6 md:-mx-6"
-      aria-label="ShowingHQ command context"
+      aria-label="Next event and schedule stats"
     >
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px] text-kp-on-surface-variant">
-        <span className="font-semibold tracking-tight text-kp-on-surface">ShowingHQ</span>
-        <span className="text-kp-outline/55" aria-hidden>
-          ·
-        </span>
-        <span className="tabular-nums">{calendarShortLabel}</span>
-      </div>
       {nextLine}
-      <p className="mt-2 text-[11px] leading-relaxed text-kp-on-surface-variant">
+      <p className="mt-2 text-[10px] leading-relaxed text-kp-on-surface-variant sm:text-[11px]">
         <span className="font-medium tabular-nums text-kp-on-surface">{upcomingCount}</span> upcoming
-        <span className="mx-1.5 text-kp-outline/45" aria-hidden>
-          ·
+        <span className="mx-1 text-kp-outline/40" aria-hidden>
+          •
         </span>
         <span className="font-medium tabular-nums text-kp-on-surface">{needPrepCount}</span> need prep
-        <span className="mx-1.5 text-kp-outline/45" aria-hidden>
-          ·
+        <span className="mx-1 text-kp-outline/40" aria-hidden>
+          •
         </span>
         <span className="font-medium tabular-nums text-kp-on-surface">{awaitingCount}</span> awaiting
         response

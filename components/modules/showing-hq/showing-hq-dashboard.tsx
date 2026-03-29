@@ -246,11 +246,6 @@ export function ShowingHQDashboardView() {
     new Date(d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
   const attentionNow = new Date();
-  const calendarShortLabel = attentionNow.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
 
   const needsAttentionItems = buildNeedsAttentionItems(
     privateShowingsAttention,
@@ -314,14 +309,11 @@ export function ShowingHQDashboardView() {
   return (
     <div className="flex min-h-0 flex-col bg-transparent">
       <ShowingHQCommandStrip
-        now={attentionNow}
-        calendarShortLabel={calendarShortLabel}
         nextEvent={nextEvent}
         upcomingCount={upcomingCount}
         needPrepCount={needPrepCount}
         awaitingCount={awaitingCount}
         formatTime={formatTime}
-        formatMediumDate={formatMediumDate}
       />
 
       <div
