@@ -39,20 +39,25 @@ export async function GET(
     }
 
     const visitorIds = openHouse.visitors.map((v) => v.id);
-    const followUps = await prismaAdmin.followUp.findMany({
-      where: {
-        createdByUserId: user.id,
-        deletedAt: null,
-        sourceType: "OPEN_HOUSE",
-        sourceId: { in: [...visitorIds, openHouseId] },
-      },
-      include: {
-        contact: {
-          select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+    let followUps: Awaited<ReturnType<typeof prismaAdmin.followUp.findMany>> = [];
+    try {
+      followUps = await prismaAdmin.followUp.findMany({
+        where: {
+          createdByUserId: user.id,
+          deletedAt: null,
+          sourceType: "OPEN_HOUSE",
+          sourceId: { in: [...visitorIds, openHouseId] },
         },
-      },
-      orderBy: [{ dueAt: "asc" }],
-    });
+        include: {
+          contact: {
+            select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+          },
+        },
+        orderBy: [{ dueAt: "asc" }],
+      });
+    } catch (e) {
+      console.error("[open-houses follow-ups GET] followUps_failed", e);
+    }
 
     return NextResponse.json({
       data: { drafts: openHouse.drafts, followUps },

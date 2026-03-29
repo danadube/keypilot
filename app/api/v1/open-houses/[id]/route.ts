@@ -64,20 +64,25 @@ export async function GET(
     };
     const visitorIds = openHouse.visitors.map((v) => v.id);
     const sourceIdsForOh = [...visitorIds, id];
-    const taskFollowUps = await prismaAdmin.followUp.findMany({
-      where: {
-        createdByUserId: user.id,
-        deletedAt: null,
-        sourceType: "OPEN_HOUSE",
-        sourceId: { in: sourceIdsForOh },
-      },
-      include: {
-        contact: {
-          select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+    let taskFollowUps: Awaited<ReturnType<typeof prismaAdmin.followUp.findMany>> = [];
+    try {
+      taskFollowUps = await prismaAdmin.followUp.findMany({
+        where: {
+          createdByUserId: user.id,
+          deletedAt: null,
+          sourceType: "OPEN_HOUSE",
+          sourceId: { in: sourceIdsForOh },
         },
-      },
-      orderBy: [{ status: "asc" }, { dueAt: "asc" }],
-    });
+        include: {
+          contact: {
+            select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+          },
+        },
+        orderBy: [{ status: "asc" }, { dueAt: "asc" }],
+      });
+    } catch (e) {
+      console.error("[open-houses GET] taskFollowUps_failed", e);
+    }
     const qrCodeDataUrl = await generateQrCodeDataUrl(openHouse.qrSlug);
     return NextResponse.json({
       data: {

@@ -13,6 +13,18 @@ Describe what this PR changes in KeyPilot.
 
 ---
 
+### Database and RLS checklist (required if this PR changes the database)
+
+_If this PR adds or modifies tables, columns, RLS, or grants, complete every item. **If this is not checked, the PR should not be merged.** See `docs/platform/database-migrations.md`._
+
+- [ ] Prisma migration includes **all** required schema changes
+- [ ] RLS policies + **GRANT**s for `keypilot_app` are included in **Prisma** migrations (not only `supabase/migrations`)
+- [ ] `npx prisma migrate deploy` successfully applies everything locally (or against a preview DB)
+- [ ] Feature works **without** manual SQL steps after deploy
+- [ ] Dashboard / critical surfaces **degrade gracefully** if an **additive** query fails (`try/catch`, **logged** error, safe empty fallback)
+
+---
+
 ## Product roadmap checklist
 
 _When merging to `main`, update **`docs/product/KEYPILOT_MASTER_ROADMAP.md`** in this PR or in a fast-follow commit._
@@ -52,7 +64,7 @@ _Skip sections that don't apply. Delete this block entirely for non-DB PRs._
 ## If this PR adds new tables or policies
 - [ ] Migration applied to preview before merge
 - [ ] RLS validation script updated and passing
-- [ ] `keypilot_app` grants added in a separate migration
+- [ ] `keypilot_app` **GRANT**s and RLS policies are in **Prisma** migrations per `docs/platform/database-migrations.md` (Supabase-only is not sufficient for runtime)
 - [ ] Rollback SQL documented in migration header
 
 ## If this PR adds new routes
