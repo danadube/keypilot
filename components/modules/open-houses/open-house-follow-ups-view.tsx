@@ -12,6 +12,7 @@ import {
   kpBtnSecondary,
   kpBtnTertiary,
 } from "@/components/ui/kp-dashboard-button-tiers";
+import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 
 type FollowUpDraft = {
   id: string;
@@ -118,7 +119,7 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
             className={cn(kpBtnTertiary, "h-8 gap-1.5 px-2")}
             asChild
           >
-            <Link href={`/open-houses/${openHouseId}`}>
+            <Link href={showingHqOpenHouseWorkspaceHref(openHouseId)}>
               <ArrowLeft className="h-4 w-4" />
               Open house
             </Link>

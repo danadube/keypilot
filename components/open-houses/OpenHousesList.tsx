@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 import { Badge } from "@/components/ui/badge";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { PageLoading } from "@/components/shared/PageLoading";
@@ -226,7 +227,7 @@ export function OpenHousesList() {
                       <TableCell>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="sm" className={kpBtnTertiary} asChild>
-                            <Link href={`/open-houses/${oh.id}`}>View</Link>
+                            <Link href={showingHqOpenHouseWorkspaceHref(oh.id)}>View</Link>
                           </Button>
                           {(oh.status === "ACTIVE" || oh.status === "SCHEDULED") && (
                             <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
@@ -308,7 +309,7 @@ export function OpenHousesList() {
                     <Link href={`/open-houses/${nextUp.id}/sign-in`}>Open sign-in</Link>
                   </Button>
                   <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
-                    <Link href={`/open-houses/${nextUp.id}`}>View</Link>
+                    <Link href={showingHqOpenHouseWorkspaceHref(nextUp.id)}>View</Link>
                   </Button>
                 </div>
               </CardContent>

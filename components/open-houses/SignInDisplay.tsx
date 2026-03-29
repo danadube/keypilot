@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { SignInFormFields } from "@/components/oh/SignInFormFields";
+import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 
 type SignInData = {
   id: string;
@@ -123,7 +124,7 @@ export function SignInDisplay({ openHouseId }: { openHouseId: string }) {
       {/* Back navigation + Print */}
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <Link
-          href={`/open-houses/${openHouseId}`}
+          href={showingHqOpenHouseWorkspaceHref(openHouseId)}
           className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--brand-text-muted)] transition-colors hover:text-[var(--brand-text)]"
         >
           <ChevronLeft className="h-4 w-4" />

@@ -19,6 +19,7 @@ import {
   ImagePlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 import {
   kpBtnDangerSecondary,
   kpBtnPrimary,
@@ -543,7 +544,7 @@ export function PropertyDetailView({ id }: { id: string }) {
                       className={cn(kpBtnTertiary, "h-7 text-xs")}
                       asChild
                     >
-                      <Link href={`/open-houses/${oh.id}`}>View</Link>
+                      <Link href={showingHqOpenHouseWorkspaceHref(oh.id)}>View</Link>
                     </Button>
                   </li>
                 ))}

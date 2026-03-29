@@ -14,7 +14,7 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/open-houses/new")) return "New Open House";
   if (pathname === "/open-houses/sign-in") return "Sign-in & QR";
   if (/^\/open-houses\/[^/]+\/sign-in/.test(pathname)) return "Host sign-in";
-  if (pathname.startsWith("/open-houses")) return "Open Houses";
+  if (pathname.startsWith("/open-houses")) return "All Open Houses";
   if (pathname.startsWith("/properties/new")) return "New Property";
   if (pathname.startsWith("/properties")) return "Properties";
   if (pathname.startsWith("/property-vault")) return "PropertyVault";

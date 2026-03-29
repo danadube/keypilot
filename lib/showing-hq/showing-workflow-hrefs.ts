@@ -30,6 +30,11 @@ export function openHouseWorkflowTabHref(
   return `/showing-hq/open-houses/${id}?tab=${tab}`;
 }
 
+/** Canonical ShowingHQ workspace for an open house. Legacy `/open-houses/[id]` redirects here. */
+export function showingHqOpenHouseWorkspaceHref(id: string): string {
+  return `/showing-hq/open-houses/${id}`;
+}
+
 /**
  * Maps attention queue rows to the correct surface + tab.
  * Prep-required → prep tab. Feedback / follow-up (showing) → feedback tab or queues.

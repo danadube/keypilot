@@ -1,9 +1,10 @@
-import { OpenHouseDetail } from "@/components/open-houses/OpenHouseDetail";
+import { redirect } from "next/navigation";
+import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 
 export default function OpenHouseDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  return <OpenHouseDetail id={params.id} />;
+  redirect(showingHqOpenHouseWorkspaceHref(params.id));
 }

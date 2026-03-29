@@ -24,6 +24,7 @@ import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { QrCode, Tablet, Printer, ArrowRight, List, Plus } from "lucide-react";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
+import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 
 type OpenHouse = {
   id: string;
@@ -259,7 +260,7 @@ export default function OpenSignInPage() {
                             </Link>
                           </Button>
                           <Button variant="ghost" size="sm" className={kpBtnTertiary} asChild>
-                            <Link href={`/open-houses/${oh.id}`}>
+                            <Link href={showingHqOpenHouseWorkspaceHref(oh.id)}>
                               View <ArrowRight className="ml-1 h-3.5 w-3.5" />
                             </Link>
                           </Button>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 import { useAuth } from "@clerk/nextjs";
 import { Building2, Calendar, Users } from "lucide-react";
 import { BrandButton } from "@/components/ui/BrandButton";
@@ -228,7 +229,7 @@ export function DashboardHome() {
                 <div className="flex items-center gap-[var(--space-sm)]">
                   <BrandBadge tone={statusTone(oh.status)}>{oh.status}</BrandBadge>
                   <BrandButton variant="secondary" size="sm" asChild>
-                    <Link href={`/open-houses/${oh.id}`}>View</Link>
+                    <Link href={showingHqOpenHouseWorkspaceHref(oh.id)}>View</Link>
                   </BrandButton>
                 </div>
               </div>

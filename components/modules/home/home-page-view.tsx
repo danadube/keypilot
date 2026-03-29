@@ -37,6 +37,7 @@ import { cn } from "@/lib/utils";
 import { AITodoItem, type AITodo } from "@/components/home/AITodoItem";
 import { PriorityEmailCard, type PriorityEmail } from "@/components/home/PriorityEmailCard";
 import { MODULES, MODULE_ORDER } from "@/lib/modules";
+import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -134,7 +135,7 @@ function buildCalendarEvents(
         title: oh.title,
         startAt: oh.startAt,
         type: "open_house",
-        href: `/open-houses/${oh.id}`,
+        href: showingHqOpenHouseWorkspaceHref(oh.id),
         meta: oh.property.address1,
       });
     }
@@ -705,7 +706,7 @@ export function HomePageView() {
             {stats.recentOpenHouses.slice(0, 4).map((oh) => (
               <Link
                 key={oh.id}
-                href={`/open-houses/${oh.id}`}
+                href={showingHqOpenHouseWorkspaceHref(oh.id)}
                 className="flex items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-kp-surface-high"
               >
                 <div className="min-w-0 flex-1">

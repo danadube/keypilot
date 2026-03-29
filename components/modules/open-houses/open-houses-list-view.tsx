@@ -46,6 +46,7 @@ import {
   type NormalizedOpenHousesListView,
   type OpenHousesListTabValue,
 } from "@/lib/showing-hq/open-houses-view-query";
+import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 // Mirrors the shape returned by GET /api/v1/open-houses (with full property include)
@@ -322,7 +323,7 @@ function NextUpBanner({ event }: { event: OpenHouse }) {
           Open sign-in
         </Link>
         <Link
-          href={`/open-houses/${event.id}`}
+          href={showingHqOpenHouseWorkspaceHref(event.id)}
           className="inline-flex items-center gap-1 rounded-lg border border-kp-outline px-3 py-1.5 text-xs font-medium text-kp-on-surface-variant transition-colors hover:border-kp-outline/60 hover:text-kp-on-surface"
         >
           View
@@ -425,7 +426,7 @@ function OpenHousesTable({ rows }: { rows: OpenHouse[] }) {
                     </Link>
                   )}
                   <Link
-                    href={`/open-houses/${oh.id}`}
+                    href={showingHqOpenHouseWorkspaceHref(oh.id)}
                     className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high hover:text-kp-on-surface"
                     aria-label={`View ${oh.title}`}
                   >

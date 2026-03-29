@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -161,7 +162,7 @@ export function DashboardContent({ stats }: { stats: Stats }) {
                   <div className="flex items-center gap-2">
                     <Badge variant={statusVariant(oh.status)}>{oh.status}</Badge>
                     <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
-                      <Link href={`/open-houses/${oh.id}`}>View</Link>
+                      <Link href={showingHqOpenHouseWorkspaceHref(oh.id)}>View</Link>
                     </Button>
                   </div>
                 </div>

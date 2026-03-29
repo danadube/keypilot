@@ -20,6 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 import {
   Select,
   SelectContent,
@@ -151,7 +152,7 @@ export function NewOpenHouseForm() {
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      router.push(`/open-houses/${json.data.id}`);
+      router.push(showingHqOpenHouseWorkspaceHref(json.data.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create");
     } finally {

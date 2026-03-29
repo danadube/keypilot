@@ -9,6 +9,7 @@ import { kpBtnPrimary, kpBtnSecondary, kpBtnTertiary } from "@/components/ui/kp-
 import { SellerReportPDF } from "@/components/reports/SellerReportPDF";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ArrowLeft, FileText, Download, RefreshCw, BarChart2, MessageSquare } from "lucide-react";
+import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 
 type ReportData = {
   id: string;
@@ -127,7 +128,7 @@ export function OpenHouseSellerReportView({ openHouseId }: { openHouseId: string
             className={cn(kpBtnTertiary, "h-8 gap-1.5 px-2")}
             asChild
           >
-            <Link href={`/open-houses/${openHouseId}`}>
+            <Link href={showingHqOpenHouseWorkspaceHref(openHouseId)}>
               <ArrowLeft className="h-4 w-4" />
               Open house
             </Link>

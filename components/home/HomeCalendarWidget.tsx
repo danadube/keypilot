@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 
 export type EventType = "showing" | "open_house" | "task" | "campaign";
 
@@ -60,7 +61,7 @@ function buildEvents(
     title: oh.title,
     startAt: oh.startAt,
     meta: `${oh.property.address1}, ${oh.property.city}`,
-    href: `/open-houses/${oh.id}`,
+    href: showingHqOpenHouseWorkspaceHref(oh.id),
   }));
 
   // Mock events for demo

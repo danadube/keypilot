@@ -7,6 +7,7 @@ import { getOpenAIClient } from "../openai-client";
 import type { AiTaskSuggestion } from "../types";
 import type { NormalizedPriorityEmail } from "@/lib/adapters/email-types";
 import type { NormalizedCalendarEvent } from "@/lib/adapters/calendar-types";
+import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 
 const MODEL = "gpt-4o-mini";
 const MAX_SUGGESTIONS = 10;
@@ -132,7 +133,8 @@ function validateSource(s: string): AiTaskSuggestion["source"] {
 }
 
 function inferHref(t: { source: string; sourceId?: string }): string | undefined {
-  if (t.source === "open_house" && t.sourceId) return `/open-houses/${t.sourceId}`;
+  if (t.source === "open_house" && t.sourceId)
+    return showingHqOpenHouseWorkspaceHref(t.sourceId);
   return undefined;
 }
 
@@ -182,7 +184,7 @@ function buildHeuristicSuggestions(params: {
       source: "open_house",
       sourceId: oh.id,
       meta: oh.address,
-      href: `/open-houses/${oh.id}`,
+      href: showingHqOpenHouseWorkspaceHref(oh.id),
       suggestedAt: new Date().toISOString(),
     });
   });
