@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -22,11 +21,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PageLoading } from "@/components/shared/PageLoading";
-import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { QrCode, Users, FileText, ExternalLink, Copy } from "lucide-react";
 import { HOST_FEEDBACK_TAGS, TRAFFIC_LEVELS } from "@/lib/validations/open-house";
 import { VisitorRow } from "./VisitorRow";
 import { SignInFormFields } from "@/components/oh/SignInFormFields";
+
+type HostLoadBlocked = {
+  title: string;
+  body: string;
+};
 
 type HostData = {
   invite: { id: string; email: string; role: string; expiresAt: string };
@@ -76,35 +79,64 @@ export default function HostDashboardPage() {
 
   const [data, setData] = useState<HostData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState<HostLoadBlocked | null>(null);
   const [trafficLevel, setTrafficLevel] = useState<string | null>(null);
   const [feedbackTags, setFeedbackTags] = useState<string[]>([]);
   const [hostNotes, setHostNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  const fetchData = () =>
-    fetch(`/api/v1/host/invite/${token}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) setError(json.error.message);
-        else {
-          setData(json.data);
-          const oh = json.data?.openHouse;
-          if (oh) {
-            setTrafficLevel(oh.trafficLevel ?? null);
-            setFeedbackTags(Array.isArray(oh.feedbackTags) ? [...oh.feedbackTags] : []);
-            setHostNotes(oh.hostNotes ?? "");
+  const fetchData = () => {
+    setBlocked(null);
+    return fetch(`/api/v1/host/invite/${encodeURIComponent(token)}`)
+      .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const raw = typeof json?.error?.message === "string" ? json.error.message : "";
+          if (res.status === 410) {
+            setBlocked({
+              title: "This host link has expired",
+              body: "Ask the listing team to send a new host invite if you still need access.",
+            });
+          } else if (res.status === 404) {
+            setBlocked({
+              title: "This host link isn’t available",
+              body:
+                raw && raw.length < 200
+                  ? raw
+                  : "The link may be wrong, was already used, or the open house is no longer available. Use the link from your invitation email or ask the agent to resend it.",
+            });
+          } else {
+            setBlocked({
+              title: "We couldn’t open this page",
+              body: raw || "Please try again in a moment.",
+            });
           }
+          setData(null);
+          return;
+        }
+        setData(json.data);
+        const oh = json.data?.openHouse;
+        if (oh) {
+          setTrafficLevel(oh.trafficLevel ?? null);
+          setFeedbackTags(Array.isArray(oh.feedbackTags) ? [...oh.feedbackTags] : []);
+          setHostNotes(oh.hostNotes ?? "");
         }
       })
-      .catch(() => setError("Failed to load"))
+      .catch(() =>
+        setBlocked({
+          title: "Connection problem",
+          body: "Check your internet connection and try again.",
+        })
+      )
       .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     if (token) {
       setLoading(true);
-      setError(null);
+      setBlocked(null);
       fetchData();
     }
   }, [token]);
@@ -117,9 +149,10 @@ export default function HostDashboardPage() {
 
   const handleSaveFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaveError(null);
     setSaving(true);
     try {
-      const res = await fetch(`/api/v1/host/invite/${token}/feedback`, {
+      const res = await fetch(`/api/v1/host/invite/${encodeURIComponent(token)}/feedback`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -132,7 +165,7 @@ export default function HostDashboardPage() {
       if (json.error) throw new Error(json.error.message);
       await fetchData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      setSaveError(err instanceof Error ? err.message : "Failed to save. Try again.");
     } finally {
       setSaving(false);
     }
@@ -148,18 +181,36 @@ export default function HostDashboardPage() {
     }
   };
 
-  if (loading) return <PageLoading message="Loading host dashboard..." />;
-  if (error || !data) {
+  if (loading) return <PageLoading message="Loading host console…" />;
+  if (blocked) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <ErrorMessage
-          message={error || "Not found"}
-          onRetry={() => {
-            setError(null);
-            setLoading(true);
-            fetchData();
-          }}
-        />
+      <div className="flex min-h-[60vh] items-center justify-center p-4">
+        <Card className="max-w-md shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-lg text-slate-900">{blocked.title}</CardTitle>
+            <CardDescription className="text-slate-600">{blocked.body}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setLoading(true);
+                fetchData();
+              }}
+            >
+              Try again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  if (!data) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center p-4">
+        <p className="text-sm text-slate-600">Nothing to show for this link.</p>
       </div>
     );
   }
@@ -175,9 +226,12 @@ export default function HostDashboardPage() {
       <div className="mx-auto max-w-4xl space-y-6">
         {/* Header */}
         <header>
-          <h1 className="text-xl font-semibold text-slate-900">Host Dashboard</h1>
+          <h1 className="text-xl font-semibold text-slate-900">Host console</h1>
           <p className="mt-1 text-sm text-slate-600">
             {oh.property.address1}, {oh.property.city}, {oh.property.state}
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            Event-only access — not your full KeyPilot account.
           </p>
           <p className="text-sm text-slate-500">
             {formatDate(oh.startAt)} · {formatTime(oh.startAt)} – {formatTime(oh.endAt)}
@@ -316,6 +370,11 @@ export default function HostDashboardPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSaveFeedback} className="space-y-4">
+              {saveError ? (
+                <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                  {saveError}
+                </p>
+              ) : null}
               <div className="space-y-2">
                 <Label>Traffic level</Label>
                 <Select
@@ -371,12 +430,7 @@ export default function HostDashboardPage() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-xs text-slate-400">
-          Powered by KeyPilot ·{" "}
-          <Link href="/" className="hover:underline">
-            KeyPilot
-          </Link>
-        </p>
+        <p className="text-center text-xs text-slate-400">Powered by KeyPilot</p>
       </div>
     </div>
   );

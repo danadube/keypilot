@@ -9,6 +9,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/v1/visitor-signin",
   "/api/v1/auth/webhook",
   "/api/v1/open-houses/by-slug/(.*)",
+  // Token/public flows — no Clerk session; keep paths explicit in this list.
   "/api/v1/host/invite/(.*)",
   "/api/v1/feedback/by-token/(.*)",
   "/api/v1/feedback/submit",

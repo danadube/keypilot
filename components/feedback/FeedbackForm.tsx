@@ -46,10 +46,15 @@ export function FeedbackForm({ token }: { token: string }) {
 
   useEffect(() => {
     fetch(`/api/v1/feedback/by-token/${encodeURIComponent(token)}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) {
-          setState({ status: "error", message: json.error.message ?? "Invalid link" });
+      .then(async (res) => {
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const msg =
+            json?.error?.message ??
+            (res.status === 404
+              ? "We couldn’t open this link. Check with your agent for an updated URL."
+              : "We couldn’t load this page. Try again in a moment.");
+          setState({ status: "error", message: msg });
           return;
         }
         const d = json.data;
@@ -57,7 +62,12 @@ export function FeedbackForm({ token }: { token: string }) {
         else if (d.status === "EXPIRED") setState({ status: "expired", message: d.message });
         else setState({ status: "pending", property: d.property, scheduledAt: d.scheduledAt, buyerAgentName: d.buyerAgentName });
       })
-      .catch(() => setState({ status: "error", message: "Failed to load" }));
+      .catch(() =>
+        setState({
+          status: "error",
+          message: "Something went wrong loading this page. Check your connection and try again.",
+        })
+      );
   }, [token]);
 
   const toggleReason = (r: string) => {
@@ -79,14 +89,19 @@ export function FeedbackForm({ token }: { token: string }) {
           note: note.trim() || undefined,
         }),
       });
-      const json = await res.json();
-      if (json.error) {
-        setState({ status: "error", message: json.error.message ?? "Submission failed" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const msg =
+          json.error?.message ??
+          (res.status === 410
+            ? "This link has expired. Ask your agent for a new feedback link if you still need to respond."
+            : "We couldn’t save your feedback. Please try again.");
+        setState({ status: "error", message: msg });
         return;
       }
       setSubmitSuccess(true);
     } catch {
-      setState({ status: "error", message: "Something went wrong" });
+      setState({ status: "error", message: "Something went wrong. Please try again." });
     } finally {
       setSubmitting(false);
     }
@@ -101,23 +116,32 @@ export function FeedbackForm({ token }: { token: string }) {
 
   if (state.status === "loading") {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <p className="text-muted-foreground">Loading...</p>
+      <div className="flex min-h-[70vh] items-center justify-center p-4">
+        <p className="text-sm text-muted-foreground">Opening your secure feedback link…</p>
       </div>
     );
   }
 
   if (state.status === "error" || state.status === "responded" || state.status === "expired") {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+      <div className="flex min-h-[70vh] items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-sm">
           <CardHeader>
-            <CardTitle>
-              {state.status === "error" ? "Unable to load" : state.status === "responded" ? "Thank you" : "Link expired"}
+            <CardTitle className="text-lg">
+              {state.status === "error"
+                ? "This link didn’t work"
+                : state.status === "responded"
+                  ? "Thanks — you’re all set"
+                  : "This link isn’t available anymore"}
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">{state.message}</p>
+            <p className="text-sm leading-relaxed text-muted-foreground">{state.message}</p>
+            {state.status === "error" ? (
+              <p className="mt-4 text-xs text-muted-foreground">
+                Only use links from your agent’s email or text. Forwarding may break links.
+              </p>
+            ) : null}
           </CardContent>
         </Card>
       </div>
@@ -140,10 +164,10 @@ export function FeedbackForm({ token }: { token: string }) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex min-h-[70vh] items-center justify-center p-4">
+      <Card className="w-full max-w-md shadow-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Quick feedback</CardTitle>
+          <CardTitle className="text-lg">Quick showing feedback</CardTitle>
           <p className="text-sm text-muted-foreground">{address}</p>
           {state.scheduledAt && (
             <p className="text-xs text-muted-foreground">

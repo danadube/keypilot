@@ -30,9 +30,24 @@ export async function GET(
 
     if (!request) {
       return NextResponse.json(
-        { error: { message: "Feedback link not found" } },
+        { error: { message: "We couldn’t find this feedback link. It may have been mistyped or removed." } },
         { status: 404 }
       );
+    }
+
+    const now = new Date();
+    if (
+      request.status === "PENDING" &&
+      request.expiresAt &&
+      request.expiresAt.getTime() < now.getTime()
+    ) {
+      return NextResponse.json({
+        data: {
+          status: "EXPIRED",
+          message: "This feedback link has expired. If you still need to share feedback, ask your agent for a new link.",
+          property: request.property,
+        },
+      });
     }
 
     if (request.status === "RESPONDED") {
@@ -49,7 +64,7 @@ export async function GET(
       return NextResponse.json({
         data: {
           status: "EXPIRED",
-          message: "This feedback link has expired.",
+          message: "This feedback link is no longer accepting responses.",
           property: request.property,
         },
       });

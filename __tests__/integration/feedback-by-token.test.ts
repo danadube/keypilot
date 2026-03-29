@@ -37,13 +37,14 @@ describe("GET /api/v1/feedback/by-token/[token]", () => {
     );
     expect(res.status).toBe(404);
     const data = await res.json();
-    expect(data.error?.message).toBe("Feedback link not found");
+    expect(String(data.error?.message).toLowerCase()).toContain("find");
   });
 
   it("returns PENDING with property when request is pending", async () => {
     mockFeedbackRequestFindUnique.mockResolvedValue({
       id: "fr-1",
       status: "PENDING",
+      expiresAt: null,
       property: {
         address1: "123 Main St",
         address2: null,
@@ -61,6 +62,24 @@ describe("GET /api/v1/feedback/by-token/[token]", () => {
     const data = await res.json();
     expect(data.data.status).toBe("PENDING");
     expect(data.data.property.address1).toBe("123 Main St");
+  });
+
+  it("returns EXPIRED when PENDING but past expiresAt", async () => {
+    const past = new Date("2020-01-01T00:00:00Z");
+    mockFeedbackRequestFindUnique.mockResolvedValue({
+      id: "fr-1",
+      status: "PENDING",
+      expiresAt: past,
+      property: { address1: "1 A", address2: null, city: "A", state: "TX", zip: "1" },
+      showing: { scheduledAt: new Date(), buyerAgentName: null },
+    });
+    const res = await GET(
+      {} as Request,
+      { params: Promise.resolve({ token: "expired-by-date" }) }
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.data.status).toBe("EXPIRED");
   });
 
   it("returns RESPONDED message when already responded", async () => {

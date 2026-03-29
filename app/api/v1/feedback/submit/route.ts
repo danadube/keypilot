@@ -33,12 +33,19 @@ export async function POST(req: NextRequest) {
 
     if (request.status !== "PENDING") {
       return NextResponse.json(
-        { error: { message: "This feedback request is no longer accepting responses" } },
+        { error: { message: "This feedback link is no longer accepting responses." } },
         { status: 400 }
       );
     }
 
     const now = new Date();
+    if (request.expiresAt && request.expiresAt.getTime() < now.getTime()) {
+      return NextResponse.json(
+        { error: { message: "This feedback link has expired." } },
+        { status: 410 }
+      );
+    }
+
     await prismaAdmin.feedbackRequest.update({
       where: { id: request.id },
       data: {

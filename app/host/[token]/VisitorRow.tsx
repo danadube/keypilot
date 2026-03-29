@@ -40,11 +40,14 @@ export function VisitorRow({
       if (notesTrimmed === (visitor.visitorNotes ?? null) && tagsMatch) return;
       setSaving(true);
       try {
-        const res = await fetch(`/api/v1/host/invite/${token}/visitors/${visitor.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ visitorNotes: notesTrimmed, visitorTags: tagsToSave }),
-        });
+        const res = await fetch(
+          `/api/v1/host/invite/${encodeURIComponent(token)}/visitors/${encodeURIComponent(visitor.id)}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ visitorNotes: notesTrimmed, visitorTags: tagsToSave }),
+          }
+        );
         const json = await res.json();
         if (json.error) throw new Error(json.error.message);
         onSaved();
