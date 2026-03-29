@@ -6,18 +6,16 @@ import {
   GettingStartedCard,
   buildGettingStartedSteps,
 } from "@/components/showing-hq/GettingStartedCard";
-import type { ScheduleItem } from "@/components/showing-hq/TodaysScheduleCard";
 import {
+  RecentOutputsRailSection,
+  ShowingHQCommandStrip,
+  TodayScheduleSection,
+  UpNextRailSection,
+  WhatNeedsAttentionSection,
   buildNeedsAttentionItems,
-  buildUpcomingRows,
-  countTodayUrgentAttentionItems,
-  filterAttentionItemsForToday,
-  mapAttentionToOperatingStatus,
-  NeedsFollowUpSection,
-  QuickActionsStrip,
-  TodayActionListSection,
-  TodayCommandHero,
-  UpcomingSection,
+  buildTodayScheduleRows,
+  buildUpNextRows,
+  buildWorkflowAttentionRows,
   type NeedsFollowUpRow,
   type PrivateShowingAttentionRow,
 } from "@/components/showing-hq/showing-hq-dashboard-action-sections";
@@ -65,7 +63,7 @@ type DashboardData = {
     openHouse: {
       id: string;
       title: string;
-      property?: { address1: string; city?: string; state?: string };
+      property?: { address1?: string | null; city?: string; state?: string };
       visitorCount?: number;
     };
   }[];
@@ -96,7 +94,15 @@ type DashboardData = {
     title: string;
     at: string;
     endAt?: string;
-    property: { address1: string; city: string; state: string };
+    property: { address1: string | null; city: string; state: string };
+    readinessLabel?: string;
+  }[];
+  recentReports?: {
+    id: string;
+    title: string;
+    endAt: string;
+    property: { address1?: string | null; city?: string; state?: string };
+    visitorCount: number;
   }[];
 };
 
@@ -131,8 +137,15 @@ function ErrorState({
   );
 }
 
+function propLine(p: { address1?: string | null; city?: string; state?: string }) {
+  const a = p.address1?.trim();
+  if (a) return a;
+  const tail = [p.city, p.state].filter((x) => x?.trim()).join(", ");
+  return tail || "Property";
+}
+
 /**
- * ShowingHQ “daily operating” home — Today vs upcoming schedule only.
+ * ShowingHQ operational workbench — workflow-first, not a marketing home.
  */
 export function ShowingHQDashboardView() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -187,7 +200,7 @@ export function ShowingHQDashboardView() {
     prepTomorrowCount: 0,
   };
 
-  const todaysShowings = Array.isArray(data.todaysShowings) ? data.todaysShowings : [];
+  const todaysOpenHousesFromApi = Array.isArray(data.todaysShowings) ? data.todaysShowings : [];
   const upcoming = Array.isArray(data.upcomingOpenHouses) ? data.upcomingOpenHouses : [];
   const privateShowingsAttention = Array.isArray(data.privateShowingsAttention)
     ? data.privateShowingsAttention
@@ -199,26 +212,11 @@ export function ShowingHQDashboardView() {
     hasBranding: false,
   };
 
-  const scheduleItems: ScheduleItem[] = (
-    Array.isArray(data.todaysSchedule) ? data.todaysSchedule : []
-  ).map((s) => ({
-    type: s.type,
-    id: s.id,
-    title: s.title,
-    at: s.at,
-    endAt: s.endAt,
-    property: s.property,
-    readinessLabel: (s as { readinessLabel?: string }).readinessLabel,
-  }));
-
-  const showingsTodayCount = scheduleItems.filter((s) => s.type === "showing").length;
-
   const needsFollowUp: NeedsFollowUpRow[] = Array.isArray(data.needsFollowUp)
     ? data.needsFollowUp
     : [];
 
-  const pendingFeedbackCount =
-    data.pendingFeedbackCount ?? stats.pendingFeedbackCount ?? stats.feedbackRequestsPending ?? 0;
+  const recentReports = Array.isArray(data.recentReports) ? data.recentReports : [];
 
   const showGettingStarted = stats.totalShowings < 2 && stats.totalVisitors === 0;
   const gettingStartedSteps = buildGettingStartedSteps({
@@ -230,80 +228,112 @@ export function ShowingHQDashboardView() {
     hasBranding: connections.hasBranding ?? false,
   });
 
-  const formatDate = (d: string) =>
+  const formatMediumDate = (d: string) =>
     new Date(d).toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
       day: "numeric",
     });
+
+  const formatShortDate = (d: string) =>
+    new Date(d).toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+    });
+
   const formatTime = (d: string) =>
     new Date(d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
   const attentionNow = new Date();
-  const needsAttentionItems = buildNeedsAttentionItems(
-    privateShowingsAttention,
-    [...todaysShowings, ...upcoming.slice(0, 6)],
-    attentionNow
-  );
-  const todayActionItems = filterAttentionItemsForToday(needsAttentionItems, attentionNow);
-
-  let needingFeedbackCount = 0;
-  let needingPrepCount = 0;
-  for (const row of todayActionItems) {
-    const s = mapAttentionToOperatingStatus(row.attention);
-    if (s === "Needs feedback") needingFeedbackCount += 1;
-    if (s === "Needs prep") needingPrepCount += 1;
-  }
-
-  const urgentCount = countTodayUrgentAttentionItems(todayActionItems);
-  const calendarDateLabel = attentionNow.toLocaleDateString("en-US", {
+  const calendarShortLabel = attentionNow.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
   });
 
-  const upcomingRows = buildUpcomingRows(
+  const needsAttentionItems = buildNeedsAttentionItems(
     privateShowingsAttention,
-    upcoming,
-    attentionNow,
-    25
+    [...todaysOpenHousesFromApi, ...upcoming.slice(0, 24)],
+    attentionNow
   );
 
-  const upcomingThisWeekCount = stats.upcomingThisWeekCount ?? 0;
-  const prepTomorrowCount = data.prepTomorrowCount ?? stats.prepTomorrowCount ?? 0;
-  const nextShowingHero =
+  const workflowRows = buildWorkflowAttentionRows(
+    needsAttentionItems,
+    needsFollowUp,
+    attentionNow,
+    formatTime,
+    formatMediumDate
+  );
+
+  const todayScheduleRows = buildTodayScheduleRows(
+    (Array.isArray(data.todaysSchedule) ? data.todaysSchedule : []).map((s) => ({
+      type: s.type,
+      id: s.id,
+      at: s.at,
+      property: s.property,
+      readinessLabel: s.readinessLabel,
+    })),
+    needsAttentionItems
+  );
+
+  const upNextRows = buildUpNextRows(
+    attentionNow,
+    (Array.isArray(data.todaysSchedule) ? data.todaysSchedule : []).map((s) => ({
+      type: s.type,
+      id: s.id,
+      at: s.at,
+      property: s.property,
+    })),
+    upcoming,
+    privateShowingsAttention,
+    12
+  );
+
+  let needPrepCount = 0;
+  for (const row of needsAttentionItems) {
+    if (row.attention.label === "Prep required") needPrepCount += 1;
+  }
+
+  const awaitingCount = needsFollowUp.filter((r) => r.reasonLabel === "Awaiting response").length;
+
+  const upcomingCount = stats.upcomingThisWeekCount ?? 0;
+
+  const nextEvent =
     data.nextShowing != null
       ? { address: data.nextShowing.address, at: data.nextShowing.at }
       : null;
 
+  const recentReportOutputs = recentReports.map((r) => ({
+    id: r.id,
+    address: propLine(r.property ?? {}),
+    endAt: r.endAt,
+    visitorCount: r.visitorCount,
+  }));
+
   return (
     <div className="flex min-h-0 flex-col bg-transparent">
-      <TodayCommandHero
-        calendarDateLabel={calendarDateLabel}
-        showingsTodayCount={showingsTodayCount}
-        needingFeedbackCount={needingFeedbackCount}
-        needingPrepCount={needingPrepCount}
-        urgentCount={urgentCount}
-        upcomingThisWeekCount={upcomingThisWeekCount}
-        nextShowing={nextShowingHero}
+      <ShowingHQCommandStrip
+        now={attentionNow}
+        calendarShortLabel={calendarShortLabel}
+        nextEvent={nextEvent}
+        upcomingCount={upcomingCount}
+        needPrepCount={needPrepCount}
+        awaitingCount={awaitingCount}
         formatTime={formatTime}
+        formatMediumDate={formatMediumDate}
       />
-      <QuickActionsStrip showRequestFeedback={pendingFeedbackCount > 0} />
 
       <div
         className={cn(
-          "grid grid-cols-1 gap-8",
-          "lg:grid-cols-[minmax(0,1.45fr)_minmax(260px,1fr)] lg:items-start lg:gap-x-8 lg:gap-y-0",
+          "grid grid-cols-1 gap-5",
+          "lg:grid-cols-[minmax(0,1.5fr)_minmax(240px,0.95fr)] lg:items-start lg:gap-x-8",
           "xl:gap-x-10"
         )}
       >
-        <div className="flex min-w-0 flex-col gap-6 lg:gap-7">
-          <TodayActionListSection
-            items={todayActionItems}
-            formatTime={formatTime}
-            urgentCount={urgentCount}
-            emptyUpcomingThisWeek={upcomingThisWeekCount}
-            emptyPrepTomorrow={prepTomorrowCount}
-          />
+        <div className="flex min-w-0 flex-col gap-5">
+          <WhatNeedsAttentionSection rows={workflowRows} />
+          <TodayScheduleSection rows={todayScheduleRows} formatTime={formatTime} />
           {showGettingStarted && !gettingStartedDismissed ? (
             <GettingStartedCard
               steps={gettingStartedSteps}
@@ -312,17 +342,16 @@ export function ShowingHQDashboardView() {
           ) : null}
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-0">
-          <NeedsFollowUpSection
-            items={needsFollowUp}
+        <aside className="flex min-w-0 flex-col gap-4">
+          <UpNextRailSection
+            rows={upNextRows}
             formatTime={formatTime}
-            className="border-b border-kp-outline/40 pb-6 lg:border-b-0 lg:pb-0"
+            formatShortDate={formatShortDate}
           />
-          <UpcomingSection
-            rows={upcomingRows}
-            formatDate={formatDate}
+          <RecentOutputsRailSection
+            reports={recentReportOutputs}
+            formatShortDate={formatShortDate}
             formatTime={formatTime}
-            className="mt-6 border-t border-t-kp-outline/40 pt-7"
           />
         </aside>
       </div>
