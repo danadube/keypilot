@@ -26,7 +26,8 @@ export const UpdateShowingSchema = z.object({
   notes: z.string().max(5000).optional().nullable(),
   /** Buyer-agent email draft workflow — user confirmed they sent the draft from their mail client. */
   feedbackRequestStatus: z.literal("SENT").optional(),
-  prepChecklistFlags: ShowingPrepChecklistFlagsSchema.optional(),
+  /** Omit to leave unchanged; `null` clears stored JSON (SQL NULL). */
+  prepChecklistFlags: ShowingPrepChecklistFlagsSchema.nullable().optional(),
 });
 
 export type CreateShowingInput = z.infer<typeof CreateShowingSchema>;
