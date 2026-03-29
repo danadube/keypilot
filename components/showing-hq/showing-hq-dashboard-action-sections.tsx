@@ -1419,7 +1419,7 @@ export function FollowUpRequiredSection({
               </p>
             </div>
             <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-8 px-3 text-xs font-medium")} asChild>
-              <Link href="/showing-hq/follow-ups">Review drafts</Link>
+              <Link href="/showing-hq/follow-ups/drafts">Review drafts</Link>
             </Button>
           </li>
         ))}

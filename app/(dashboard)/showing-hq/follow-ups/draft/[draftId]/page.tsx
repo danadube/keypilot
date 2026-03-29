@@ -129,7 +129,7 @@ export default function DraftReviewPage() {
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      window.location.href = "/showing-hq/follow-ups";
+      window.location.href = "/showing-hq/follow-ups/drafts";
       return;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to dismiss");
@@ -159,9 +159,9 @@ export default function DraftReviewPage() {
             className={cn(kpBtnTertiary, "h-8 gap-1.5 px-2")}
             asChild
           >
-            <Link href="/showing-hq/follow-ups">
+            <Link href="/showing-hq/follow-ups/drafts">
               <ArrowLeft className="h-4 w-4" />
-              Follow-ups
+              Email drafts
             </Link>
           </Button>
           <span className="text-kp-outline">/</span>

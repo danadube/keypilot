@@ -189,7 +189,7 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
       <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-bold text-kp-on-surface">Follow-ups</h1>
+          <h1 className="text-xl font-bold text-kp-on-surface">Open house follow-ups</h1>
           {(drafts.length > 0 || followUps.length > 0) && (
             <span className="rounded-full bg-kp-surface-high px-2.5 py-0.5 text-xs font-medium text-kp-on-surface-variant">
               {followUps.filter((f) => f.status !== "CLOSED").length + drafts.length}
@@ -209,9 +209,13 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
       </div>
 
       <div className="rounded-xl border border-kp-outline bg-kp-bg/80 p-5">
-        <h2 className="mb-1 text-sm font-semibold text-kp-on-surface">Person follow-ups</h2>
+        <h2 className="mb-1 text-sm font-semibold text-kp-on-surface">Follow-up tasks</h2>
         <p className="mb-4 text-xs text-kp-on-surface-variant">
-          Global tasks tied to this event (stored once — also on ShowingHQ home when due).
+          Tasks tied to this event — also visible on the{" "}
+          <Link href="/showing-hq/follow-ups" className="text-kp-teal hover:underline">
+            ShowingHQ follow-up queue
+          </Link>{" "}
+          when due.
         </p>
         {followUps.length === 0 ? (
           <div className="rounded-lg border border-dashed border-kp-outline/80 bg-kp-surface/40 px-3 py-4 text-center">

@@ -513,9 +513,9 @@ export function VisitorsListView() {
                 className={cn(kpBtnSecondary, "w-full justify-start")}
                 asChild
               >
-                <Link href="/showing-hq/follow-ups">
+                <Link href="/showing-hq/follow-ups/drafts">
                   <Mail className="mr-2 h-4 w-4" />
-                  Follow-ups
+                  Email drafts
                 </Link>
               </Button>
             </div>

@@ -33,7 +33,7 @@ export function ShowingHqAgentFollowUpsSection({
             <p className="text-sm font-semibold text-kp-on-surface">Person follow-ups</p>
           </div>
           <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 text-[11px]")} asChild>
-            <Link href="/showing-hq/follow-ups">Email drafts &amp; reminders</Link>
+            <Link href="/showing-hq/follow-ups/drafts">Email drafts</Link>
           </Button>
         </div>
         <div className="mt-3 rounded-lg border border-dashed border-kp-outline/70 bg-kp-surface/40 px-3 py-4 text-center">
@@ -67,7 +67,7 @@ export function ShowingHqAgentFollowUpsSection({
             <Link href="/showing-hq/open-houses">From open houses</Link>
           </Button>
           <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 text-[11px]")} asChild>
-            <Link href="/showing-hq/follow-ups">Email drafts &amp; reminders</Link>
+            <Link href="/showing-hq/follow-ups/drafts">Email drafts</Link>
           </Button>
         </div>
       </div>
