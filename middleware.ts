@@ -1,9 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-// Use Node.js runtime to avoid Edge middleware failures on Vercel
-export const runtime = "nodejs";
-
 const isPublicRoute = createRouteMatcher([
   "/oh/(.*)",
   "/flyer/(.*)",
@@ -41,7 +38,7 @@ export default clerkMiddleware(async (auth, req) => {
       // eslint-disable-next-line no-console
       console.log("[middleware] public route — skipping Clerk auth");
     }
-    return;
+    return NextResponse.next();
   }
   const { userId } = await auth();
   if (!userId) {

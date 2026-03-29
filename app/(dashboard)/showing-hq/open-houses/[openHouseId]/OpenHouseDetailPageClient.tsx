@@ -149,12 +149,28 @@ export function OpenHouseDetailPageClient() {
     setError(null);
     setLoading(true);
     fetch(`/api/v1/open-houses/${openHouseId}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) setError(json.error.message);
-        else setData(json.data);
+      .then(async (res) => {
+        const json = (await res.json().catch(() => ({}))) as {
+          error?: { message?: string };
+          data?: OpenHouseData;
+        };
+        if (!res.ok || json.error) {
+          const msg =
+            (typeof json.error === "object" && json.error?.message) ||
+            (res.status === 404 ? "Open house not found" : `Request failed (${res.status})`);
+          setError(msg);
+          setData(null);
+          return;
+        }
+        setData(json.data ?? null);
+        if (!json.data) {
+          setError("Open house not found");
+        }
       })
-      .catch(() => setError("Failed to load open house"))
+      .catch(() => {
+        setError("Failed to load open house");
+        setData(null);
+      })
       .finally(() => setLoading(false));
   }, [openHouseId]);
 
