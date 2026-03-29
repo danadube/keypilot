@@ -407,68 +407,77 @@ export async function GET() {
     const privateShowingEnd = new Date(weekEnd);
     privateShowingEnd.setDate(privateShowingEnd.getDate() + 28);
 
-    const [
-      buyerAgentEmailDraftReviews,
-      lastSupraIngest,
-      supraQueueActionCount,
-      supraGmailImportSettings,
-      privateShowingsAttentionRows,
-    ] = await Promise.all([
-      prismaAdmin.showing.findMany({
-        where: reviewDraftWhere,
-        orderBy: { scheduledAt: "desc" },
-        take: 10,
-        select: {
-          id: true,
-          scheduledAt: true,
-          buyerAgentName: true,
-          source: true,
-          feedbackRequestStatus: true,
-          property: { select: { address1: true, city: true } },
-        },
-      }),
-      prismaAdmin.supraQueueItem.findFirst({
-        where: { hostUserId: user.id },
-        orderBy: { receivedAt: "desc" },
-        select: { receivedAt: true },
-      }),
-      prismaAdmin.supraQueueItem.count({
-        where: {
-          hostUserId: user.id,
-          queueState: {
-            in: ["INGESTED", "PARSED", "NEEDS_REVIEW", "READY_TO_APPLY"],
+    const [buyerAgentEmailDraftReviews, privateShowingsAttentionRows] =
+      await Promise.all([
+        prismaAdmin.showing.findMany({
+          where: reviewDraftWhere,
+          orderBy: { scheduledAt: "desc" },
+          take: 10,
+          select: {
+            id: true,
+            scheduledAt: true,
+            buyerAgentName: true,
+            source: true,
+            feedbackRequestStatus: true,
+            property: { select: { address1: true, city: true } },
           },
-        },
-      }),
-      prismaAdmin.supraGmailImportSettings.findUnique({
-        where: { userId: user.id },
-      }),
-      prismaAdmin.showing.findMany({
-        where: {
-          hostUserId: user.id,
-          deletedAt: null,
-          scheduledAt: { gte: privateShowingStart, lte: privateShowingEnd },
-        },
-        select: {
-          id: true,
-          scheduledAt: true,
-          buyerAgentName: true,
-          buyerAgentEmail: true,
-          buyerName: true,
-          notes: true,
-          feedbackRequestStatus: true,
-          feedbackRequired: true,
-          feedbackDraftGeneratedAt: true,
-          prepChecklistFlags: true,
-          property: { select: { address1: true, city: true, state: true, zip: true } },
-          feedbackRequests: {
-            where: { status: "PENDING" },
-            select: { id: true },
+        }),
+        prismaAdmin.showing.findMany({
+          where: {
+            hostUserId: user.id,
+            deletedAt: null,
+            scheduledAt: { gte: privateShowingStart, lte: privateShowingEnd },
           },
-        },
-        orderBy: { scheduledAt: "asc" },
-      }),
-    ]);
+          select: {
+            id: true,
+            scheduledAt: true,
+            buyerAgentName: true,
+            buyerAgentEmail: true,
+            buyerName: true,
+            notes: true,
+            feedbackRequestStatus: true,
+            feedbackRequired: true,
+            feedbackDraftGeneratedAt: true,
+            prepChecklistFlags: true,
+            property: { select: { address1: true, city: true, state: true, zip: true } },
+            feedbackRequests: {
+              where: { status: "PENDING" },
+              select: { id: true },
+            },
+          },
+          orderBy: { scheduledAt: "asc" },
+        }),
+      ]);
+
+    /** Inbox + Gmail import metadata — non-fatal when tables/columns lag migrations. */
+    let lastSupraIngest: { receivedAt: Date } | null = null;
+    let supraQueueActionCount = 0;
+    let supraGmailImportSettings: Awaited<
+      ReturnType<typeof prismaAdmin.supraGmailImportSettings.findUnique>
+    > = null;
+    try {
+      [lastSupraIngest, supraQueueActionCount, supraGmailImportSettings] =
+        await Promise.all([
+          prismaAdmin.supraQueueItem.findFirst({
+            where: { hostUserId: user.id },
+            orderBy: { receivedAt: "desc" },
+            select: { receivedAt: true },
+          }),
+          prismaAdmin.supraQueueItem.count({
+            where: {
+              hostUserId: user.id,
+              queueState: {
+                in: ["INGESTED", "PARSED", "NEEDS_REVIEW", "READY_TO_APPLY"],
+              },
+            },
+          }),
+          prismaAdmin.supraGmailImportSettings.findUnique({
+            where: { userId: user.id },
+          }),
+        ]);
+    } catch (e) {
+      console.error(DASH_TAG, "supra_summary_queries_nonfatal", errMessage(e));
+    }
     dashLog(`ok ${stage}`);
 
     stage = "destructure_parallel_results";
