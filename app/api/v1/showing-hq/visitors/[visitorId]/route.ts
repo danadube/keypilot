@@ -3,6 +3,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
 import { UpdateVisitorSchema } from "@/lib/validations/visitor";
@@ -10,18 +11,30 @@ import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
+/** Matches open house workspace access (listing / host / owner). */
+function openHouseAccessForUser(userId: string): Prisma.OpenHouseWhereInput {
+  return {
+    deletedAt: null,
+    OR: [
+      { hostUserId: userId },
+      { listingAgentId: userId },
+      { hostAgentId: userId },
+    ],
+  };
+}
+
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { visitorId: string } }
+  { params }: { params: Promise<{ visitorId: string }> }
 ) {
   try {
     const user = await getCurrentUser();
-    const visitorId = params.visitorId;
+    const { visitorId } = await params;
 
     const existing = await prismaAdmin.openHouseVisitor.findFirst({
       where: {
         id: visitorId,
-        openHouse: { hostUserId: user.id, deletedAt: null },
+        openHouse: openHouseAccessForUser(user.id),
       },
     });
 
@@ -38,13 +51,75 @@ export async function PATCH(
       return apiError(parsed.error.issues[0]?.message ?? "Validation failed", 400);
     }
 
-    const updated = await prismaAdmin.openHouseVisitor.update({
-      where: { id: visitorId },
-      data: parsed.data,
-      include: {
-        contact: true,
-        openHouse: { include: { property: true } },
-      },
+    const { contact: contactPatch, ...visitorFields } = parsed.data;
+
+    const visitorUpdate: Prisma.OpenHouseVisitorUpdateInput = {};
+    if (visitorFields.leadStatus !== undefined) {
+      visitorUpdate.leadStatus = visitorFields.leadStatus;
+    }
+    if (visitorFields.interestLevel !== undefined) {
+      visitorUpdate.interestLevel = visitorFields.interestLevel;
+    }
+
+    const contactUpdate: Prisma.ContactUpdateInput = {};
+    if (contactPatch) {
+      const curContact = await prismaAdmin.contact.findFirst({
+        where: { id: existing.contactId, deletedAt: null },
+      });
+      if (!curContact) {
+        return NextResponse.json({ error: { message: "Contact not found" } }, { status: 404 });
+      }
+      const mergedEmail =
+        contactPatch.email !== undefined
+          ? contactPatch.email === null || contactPatch.email.trim() === ""
+            ? null
+            : contactPatch.email.trim()
+          : curContact.email;
+      const mergedPhone =
+        contactPatch.phone !== undefined
+          ? contactPatch.phone === null || contactPatch.phone.trim() === ""
+            ? null
+            : contactPatch.phone.trim()
+          : curContact.phone;
+      if (!mergedEmail?.trim() && !mergedPhone?.trim()) {
+        return apiError("Contact must have an email or phone", 400);
+      }
+      if (contactPatch.firstName !== undefined) {
+        contactUpdate.firstName = contactPatch.firstName;
+      }
+      if (contactPatch.lastName !== undefined) {
+        contactUpdate.lastName = contactPatch.lastName;
+      }
+      if (contactPatch.email !== undefined) {
+        const e = contactPatch.email?.trim();
+        contactUpdate.email = e && e.length > 0 ? e : null;
+      }
+      if (contactPatch.phone !== undefined) {
+        const p = contactPatch.phone?.trim();
+        contactUpdate.phone = p && p.length > 0 ? p : null;
+      }
+    }
+
+    const updated = await prismaAdmin.$transaction(async (tx) => {
+      if (Object.keys(visitorUpdate).length > 0) {
+        await tx.openHouseVisitor.update({
+          where: { id: visitorId },
+          data: visitorUpdate,
+        });
+      }
+      if (Object.keys(contactUpdate).length > 0) {
+        await tx.contact.update({
+          where: { id: existing.contactId },
+          data: contactUpdate,
+        });
+      }
+      return tx.openHouseVisitor.findFirstOrThrow({
+        where: { id: visitorId },
+        include: {
+          contact: true,
+          openHouse: { include: { property: true } },
+        },
+      });
     });
 
     return NextResponse.json({
@@ -52,6 +127,7 @@ export async function PATCH(
         visitor: {
           id: updated.id,
           leadStatus: updated.leadStatus,
+          interestLevel: updated.interestLevel,
           signInMethod: updated.signInMethod,
           submittedAt: updated.submittedAt,
           contact: updated.contact,

@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
-import { LeadStatusBadge } from "@/components/shared/LeadStatusBadge";
-import { InterestBadge } from "@/components/shared/InterestBadge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -37,7 +35,8 @@ import {
   OPEN_HOUSE_INVITE_HOST_PRIMARY_ANCHOR_ID,
 } from "@/components/showing-hq/open-house-prep-workspace";
 import { OpenHouseFlyerUploadButton } from "@/components/showing-hq/OpenHouseFlyerUploadButton";
-import { CreateVisitorFollowUpInline } from "@/components/open-houses/CreateVisitorFollowUpInline";
+import { HostFeedbackForm } from "@/components/open-houses/HostFeedbackForm";
+import { OpenHouseVisitorRowInline } from "@/components/showing-hq/open-house-visitor-row-inline";
 import { AgentFollowUpTaskCard } from "@/components/follow-ups/agent-follow-up-task-card";
 import { ShowingHqWorkflowTabStrip } from "@/components/showing-hq/ShowingHqWorkflowTabStrip";
 import {
@@ -118,17 +117,35 @@ function isoToTimeInput(iso: string) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-function combineDateTimeLocal(dateStr: string, timeStr: string): Date {
-  const [h, m] = timeStr.split(":").map(Number);
-  const d = new Date(dateStr);
-  d.setHours(h ?? 0, m ?? 0, 0, 0);
-  return d;
+function dateToDateInput(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
+
+function dateToTimeInput(d: Date) {
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+}
+
+function combineDateTimeLocal(dateStr: string, timeStr: string): Date {
+  return new Date(`${dateStr}T${timeStr}:00`);
+}
+
+type PropertyOption = {
+  id: string;
+  address1: string;
+  city: string;
+  state: string;
+};
+
+const STATUS_QUICK = [
+  { value: "SCHEDULED", label: "Scheduled" },
+  { value: "ACTIVE", label: "Live" },
+  { value: "COMPLETED", label: "Complete" },
+] as const;
 
 function openHouseStatusLabel(status: string) {
   if (status === "SCHEDULED") return "Scheduled";
-  if (status === "ACTIVE") return "Active";
-  if (status === "COMPLETED") return "Completed";
+  if (status === "ACTIVE") return "Live";
+  if (status === "COMPLETED") return "Complete";
   if (status === "CANCELLED") return "Cancelled";
   return status.replace(/_/g, " ");
 }
@@ -165,6 +182,9 @@ export function OpenHouseDetailPageClient() {
   const [detailEndDate, setDetailEndDate] = useState("");
   const [detailEndTime, setDetailEndTime] = useState("");
   const [detailNotes, setDetailNotes] = useState("");
+  const [detailTitle, setDetailTitle] = useState("");
+  const [detailPropertyId, setDetailPropertyId] = useState("");
+  const [properties, setProperties] = useState<PropertyOption[]>([]);
 
   const loadData = useCallback(() => {
     setError(null);
@@ -211,6 +231,30 @@ export function OpenHouseDetailPageClient() {
     setDetailEndTime(isoToTimeInput(serverEndAt));
     setDetailNotes(serverNotes ?? "");
   }, [serverScheduleId, serverStartAt, serverEndAt, serverNotes]);
+
+  useEffect(() => {
+    if (!data?.id) return;
+    setDetailTitle(data.title ?? "");
+    setDetailPropertyId(data.property?.id ?? "");
+  }, [data?.id, data?.title, data?.property?.id]);
+
+  useEffect(() => {
+    fetch("/api/v1/properties")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.data && Array.isArray(json.data)) {
+          setProperties(
+            json.data.map((p: { id: string; address1: string; city: string; state: string }) => ({
+              id: p.id,
+              address1: p.address1,
+              city: p.city,
+              state: p.state,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleStatusChange = useCallback(
     (newStatus: string) => {
@@ -286,9 +330,6 @@ export function OpenHouseDetailPageClient() {
     data?.taskFollowUps?.filter((t) => t.status !== "CLOSED").length ?? 0;
   const followUpsCount = draftTotal + openTaskFollowUps;
 
-  const fullName = (c: { firstName: string; lastName: string }) =>
-    [c.firstName, c.lastName].filter(Boolean).join(" ") || "Unknown";
-
   const prepWorkspaceInput = useMemo(() => {
     if (!data) return null;
     return {
@@ -313,22 +354,68 @@ export function OpenHouseDetailPageClient() {
 
   const scheduleDirty = useMemo(() => {
     if (!data) return false;
+    const propId = data.property?.id ?? "";
     return (
+      (detailTitle.trim() || "") !== (data.title?.trim() || "") ||
+      detailPropertyId !== propId ||
       detailStartDate !== isoToDateInput(data.startAt) ||
       detailStartTime !== isoToTimeInput(data.startAt) ||
       detailEndDate !== isoToDateInput(data.endAt) ||
       detailEndTime !== isoToTimeInput(data.endAt) ||
       (detailNotes.trim() || "") !== (data.notes?.trim() || "")
     );
-  }, [data, detailStartDate, detailStartTime, detailEndDate, detailEndTime, detailNotes]);
+  }, [
+    data,
+    detailTitle,
+    detailPropertyId,
+    detailStartDate,
+    detailStartTime,
+    detailEndDate,
+    detailEndTime,
+    detailNotes,
+  ]);
+
+  const bumpStartMinutes = (deltaMinutes: number) => {
+    const base = combineDateTimeLocal(detailStartDate, detailStartTime);
+    if (Number.isNaN(base.getTime())) return;
+    base.setMinutes(base.getMinutes() + deltaMinutes);
+    setDetailStartDate(dateToDateInput(base));
+    setDetailStartTime(dateToTimeInput(base));
+  };
+
+  const setStartNow = () => {
+    const n = new Date();
+    setDetailStartDate(dateToDateInput(n));
+    setDetailStartTime(dateToTimeInput(n));
+  };
+
+  const alignEndHoursAfterStart = (hours: number) => {
+    const start = combineDateTimeLocal(detailStartDate, detailStartTime);
+    if (Number.isNaN(start.getTime())) return;
+    const end = new Date(start.getTime() + hours * 60 * 60 * 1000);
+    setDetailEndDate(dateToDateInput(end));
+    setDetailEndTime(dateToTimeInput(end));
+  };
 
   const saveEventDetails = useCallback(async () => {
     if (!openHouseId || !data) return;
     setDetailSaving(true);
     setError(null);
     try {
+      if (!detailPropertyId?.trim()) {
+        setError("Property is required.");
+        return;
+      }
+      if (!detailTitle.trim()) {
+        setError("Event title is required.");
+        return;
+      }
       const startAt = combineDateTimeLocal(detailStartDate, detailStartTime);
       const endAt = combineDateTimeLocal(detailEndDate, detailEndTime);
+      if (Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime())) {
+        setError("Invalid date or time.");
+        return;
+      }
       if (endAt <= startAt) {
         setError("End time must be after start time.");
         return;
@@ -337,6 +424,8 @@ export function OpenHouseDetailPageClient() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          title: detailTitle.trim(),
+          propertyId: detailPropertyId.trim(),
           startAt: startAt.toISOString(),
           endAt: endAt.toISOString(),
           notes: detailNotes.trim() ? detailNotes : null,
@@ -355,6 +444,8 @@ export function OpenHouseDetailPageClient() {
     data,
     detailStartDate,
     detailStartTime,
+    detailTitle,
+    detailPropertyId,
     detailEndDate,
     detailEndTime,
     detailNotes,
@@ -462,8 +553,27 @@ export function OpenHouseDetailPageClient() {
       {tab === "feedback" && (
         <div className="space-y-4">
           <p className="text-xs text-kp-on-surface-variant">
-            After the event, run reports and follow-ups from here — still inside this open house workspace.
+            Host debrief (traffic, tags, notes) and post-event outputs — all from this workspace.
           </p>
+          <div className="rounded-xl border border-kp-outline/80 bg-kp-surface-high/20 p-5">
+            <p className="text-sm font-semibold text-kp-on-surface">Host debrief</p>
+            <p className="mt-1 text-xs text-kp-on-surface-variant">
+              Correct or clear post-event feedback without opening the host console.
+            </p>
+            <div className="mt-4">
+              <HostFeedbackForm
+                openHouseId={openHouseId}
+                initialData={{
+                  trafficLevel: data.trafficLevel,
+                  feedbackTags: data.feedbackTags,
+                  hostNotes: data.hostNotes,
+                }}
+                isHostAgent={false}
+                workspaceOwnerEdit
+                onSave={() => loadData()}
+              />
+            </div>
+          </div>
           <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
           <p className="text-sm font-semibold text-kp-on-surface">Post-event outputs</p>
           <p className="mt-1 text-xs text-kp-on-surface-variant">
@@ -500,17 +610,74 @@ export function OpenHouseDetailPageClient() {
             <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
               Event status
             </p>
-            <Select value={data.status} onValueChange={handleStatusChange} disabled={updatingStatus}>
-              <SelectTrigger className="h-9 max-w-xs border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent className="border-kp-outline bg-kp-surface">
-                <SelectItem value="SCHEDULED" className="text-kp-on-surface">Scheduled</SelectItem>
-                <SelectItem value="ACTIVE" className="text-kp-on-surface">Active</SelectItem>
-                <SelectItem value="COMPLETED" className="text-kp-on-surface">Completed</SelectItem>
-                <SelectItem value="CANCELLED" className="text-kp-on-surface">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap items-center gap-2">
+              {STATUS_QUICK.map((s) => (
+                <Button
+                  key={s.value}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={updatingStatus}
+                  className={cn(
+                    "h-9 min-w-[100px] text-xs font-semibold",
+                    data.status === s.value
+                      ? cn(kpBtnPrimary, "border-transparent")
+                      : kpBtnSecondary
+                  )}
+                  onClick={() => handleStatusChange(s.value)}
+                >
+                  {s.label}
+                </Button>
+              ))}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={updatingStatus}
+                className={cn(
+                  "h-9 text-xs",
+                  data.status === "CANCELLED" ? kpBtnPrimary : kpBtnTertiary
+                )}
+                onClick={() => handleStatusChange("CANCELLED")}
+              >
+                Cancelled
+              </Button>
+            </div>
+            <p className="text-[10px] text-kp-on-surface-variant">
+              Updates apply immediately — no save bar required.
+            </p>
+          </div>
+
+          <div className="space-y-3 rounded-xl border border-kp-outline/80 bg-kp-surface-high/25 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+              Property & title
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-xs font-medium text-kp-on-surface">Property</Label>
+                <Select value={detailPropertyId} onValueChange={setDetailPropertyId}>
+                  <SelectTrigger className="h-10 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface">
+                    <SelectValue placeholder="Select property" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-64 border-kp-outline bg-kp-surface">
+                    {properties.map((p) => (
+                      <SelectItem key={p.id} value={p.id} className="text-kp-on-surface">
+                        {p.address1}, {p.city}, {p.state}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label className="text-xs font-medium text-kp-on-surface">Event title</Label>
+                <Input
+                  value={detailTitle}
+                  onChange={(e) => setDetailTitle(e.target.value)}
+                  className="h-10 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+                  placeholder="Open house title"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="space-y-3 rounded-xl border border-kp-outline/80 bg-kp-surface-high/25 p-4">
@@ -531,9 +698,10 @@ export function OpenHouseDetailPageClient() {
                 <Label className="text-xs font-medium text-kp-on-surface">Start time</Label>
                 <Input
                   type="time"
+                  step={60}
                   value={detailStartTime}
                   onChange={(e) => setDetailStartTime(e.target.value)}
-                  className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+                  className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface tabular-nums"
                 />
               </div>
               <div className="space-y-1.5">
@@ -549,19 +717,58 @@ export function OpenHouseDetailPageClient() {
                 <Label className="text-xs font-medium text-kp-on-surface">End time</Label>
                 <Input
                   type="time"
+                  step={60}
                   value={detailEndTime}
                   onChange={(e) => setDetailEndTime(e.target.value)}
-                  className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+                  className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface tabular-nums"
                 />
               </div>
             </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
+                onClick={setStartNow}
+              >
+                Start: Now
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
+                onClick={() => bumpStartMinutes(30)}
+              >
+                Start +30m
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
+                onClick={() => bumpStartMinutes(60)}
+              >
+                Start +1h
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
+                onClick={() => alignEndHoursAfterStart(2)}
+              >
+                End +2h from start
+              </Button>
+            </div>
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-kp-on-surface">Notes for team / host</Label>
+              <Label className="text-xs font-medium text-kp-on-surface-variant">Notes for team / host</Label>
               <textarea
                 value={detailNotes}
                 onChange={(e) => setDetailNotes(e.target.value)}
                 rows={3}
-                className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant/70"
+                className="w-full rounded-lg border border-kp-outline/80 bg-kp-surface-high/80 px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant/70"
                 placeholder="Parking, access, staging notes…"
               />
             </div>
@@ -623,45 +830,23 @@ export function OpenHouseDetailPageClient() {
                   <tr className="border-b border-kp-outline">
                     <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Name</th>
                     <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Email</th>
+                    <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Phone</th>
                     <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Interest</th>
                     <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Sign-in</th>
                     <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Status</th>
-                    <th className="pb-2 w-[200px] text-left text-xs font-semibold text-kp-on-surface-variant">
+                    <th className="pb-2 w-[180px] text-left text-xs font-semibold text-kp-on-surface-variant">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-kp-outline">
                   {data.visitors.map((v) => (
-                    <tr key={v.id} className="hover:bg-kp-surface-high/50">
-                      <td className="py-2 font-medium text-kp-on-surface">{fullName(v.contact)}</td>
-                      <td className="py-2 text-kp-on-surface-variant">{v.contact.email ?? "—"}</td>
-                      <td className="py-2">
-                        <InterestBadge interestLevel={v.interestLevel} />
-                      </td>
-                      <td className="py-2 text-kp-on-surface-variant">{formatDateTime(v.submittedAt)}</td>
-                      <td className="py-2">
-                        <LeadStatusBadge status={v.leadStatus} />
-                      </td>
-                      <td className="py-2 align-top">
-                        <div className="flex flex-col items-start gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className={cn(kpBtnTertiary, "h-7 text-xs")}
-                            asChild
-                          >
-                            <Link href={`/showing-hq/visitors/${v.id}`}>Profile</Link>
-                          </Button>
-                          <CreateVisitorFollowUpInline
-                            visitorId={v.id}
-                            contactId={v.contact.id}
-                            contactName={fullName(v.contact)}
-                            onCreated={loadData}
-                          />
-                        </div>
-                      </td>
-                    </tr>
+                    <OpenHouseVisitorRowInline
+                      key={v.id}
+                      v={v}
+                      formatDateTime={formatDateTime}
+                      onRefresh={loadData}
+                    />
                   ))}
                 </tbody>
               </table>

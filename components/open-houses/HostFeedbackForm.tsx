@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { kpBtnPrimary } from "@/components/ui/kp-dashboard-button-tiers";
+import { kpBtnPrimary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -22,7 +22,10 @@ type HostFeedbackFormProps = {
     feedbackTags?: string[] | null;
     hostNotes?: string | null;
   };
+  /** Token / assistant host path */
   isHostAgent: boolean;
+  /** ShowingHQ workspace — listing agent can edit without being assigned host */
+  workspaceOwnerEdit?: boolean;
   onSave: () => void;
 };
 
@@ -45,6 +48,7 @@ export function HostFeedbackForm({
   openHouseId,
   initialData,
   isHostAgent,
+  workspaceOwnerEdit = false,
   onSave,
 }: HostFeedbackFormProps) {
   const [trafficLevel, setTrafficLevel] = useState<string | null>(
@@ -63,9 +67,38 @@ export function HostFeedbackForm({
     );
   };
 
+  const canEdit = isHostAgent || workspaceOwnerEdit;
+
+  const handleClear = async () => {
+    if (!canEdit) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/open-houses/${openHouseId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          trafficLevel: null,
+          feedbackTags: [],
+          hostNotes: null,
+        }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+      setTrafficLevel(null);
+      setFeedbackTags([]);
+      setHostNotes("");
+      onSave();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to clear");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isHostAgent) return;
+    if (!canEdit) return;
     setSaving(true);
     setError(null);
     try {
@@ -89,7 +122,7 @@ export function HostFeedbackForm({
     }
   };
 
-  if (!isHostAgent) {
+  if (!canEdit) {
     return null;
   }
 
@@ -152,14 +185,29 @@ export function HostFeedbackForm({
         />
       </div>
 
-      <Button
-        type="submit"
-        variant="outline"
-        className={cn(kpBtnPrimary, "border-transparent")}
-        disabled={saving}
-      >
-        {saving ? "Saving..." : "Save feedback"}
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="submit"
+          variant="outline"
+          className={cn(kpBtnPrimary, "border-transparent")}
+          disabled={saving}
+        >
+          {saving ? "Saving..." : "Save debrief"}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className={cn(kpBtnTertiary, "text-kp-on-surface-variant")}
+          disabled={saving}
+          onClick={() => void handleClear()}
+        >
+          Clear debrief
+        </Button>
+      </div>
+      <p className="text-[11px] text-kp-on-surface-variant">
+        Same fields as the host console — correct traffic, tags, or notes anytime. Clear resets them for a
+        fresh pass.
+      </p>
     </form>
   );
 }

@@ -33,8 +33,33 @@ export const VisitorLeadStatusEnum = z.enum([
   "ARCHIVED",
 ]);
 
-export const UpdateVisitorSchema = z.object({
-  leadStatus: VisitorLeadStatusEnum.optional(),
+const optionalContactEmail = z
+  .union([z.string().email(), z.literal("")])
+  .optional()
+  .nullable();
+
+export const UpdateVisitorContactPatchSchema = z.object({
+  firstName: z.string().min(1).optional(),
+  lastName: z.string().min(1).optional(),
+  email: optionalContactEmail,
+  phone: z.string().optional().nullable(),
 });
+
+export const UpdateVisitorSchema = z
+  .object({
+    leadStatus: VisitorLeadStatusEnum.optional(),
+    interestLevel: z
+      .enum(["VERY_INTERESTED", "MAYBE_INTERESTED", "JUST_BROWSING"])
+      .optional()
+      .nullable(),
+    contact: UpdateVisitorContactPatchSchema.optional(),
+  })
+  .refine(
+    (data) =>
+      data.leadStatus !== undefined ||
+      data.interestLevel !== undefined ||
+      data.contact !== undefined,
+    { message: "No updates provided" }
+  );
 
 export type UpdateVisitorInput = z.infer<typeof UpdateVisitorSchema>;
