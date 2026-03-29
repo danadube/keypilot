@@ -307,7 +307,7 @@ export function ShowingHQDashboardView() {
   }));
 
   return (
-    <div className="flex min-h-0 flex-col bg-transparent">
+    <div className="flex min-h-0 w-full flex-col bg-transparent">
       <ShowingHQCommandStrip
         nextEvent={nextEvent}
         upcomingCount={upcomingCount}

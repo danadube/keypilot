@@ -70,7 +70,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             shellTopRowHeightClass(pathname)
           )}
         >
-          <div className="flex min-w-0 flex-1 items-center overflow-hidden pl-4 pr-3 md:pl-6 md:pr-4">
+          <div className="flex min-w-0 flex-1 items-center overflow-hidden pl-6 pr-3 md:pl-8 md:pr-4 lg:pl-10">
             <div className="min-w-0">
               <h1 className="truncate text-sm font-semibold leading-tight text-kp-on-surface md:text-base">
                 {getPageTitle(pathname)}
@@ -91,10 +91,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-auto bg-kp-bg px-4 pb-5 pt-2 md:px-6 md:pb-6 md:pt-3">
-          <div className="mx-auto min-h-[50vh]" style={{ maxWidth: 1280 }}>
-            {children}
-          </div>
+        <main className="min-h-0 flex-1 overflow-auto bg-kp-bg px-6 pb-5 pt-2 md:px-8 md:pb-6 md:pt-3 lg:px-10">
+          <div className="mx-auto min-h-[50vh] w-full max-w-6xl">{children}</div>
         </main>
       </div>
     </div>

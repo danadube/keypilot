@@ -695,7 +695,7 @@ export function ShowingHQCommandStrip({
 
   return (
     <header
-      className="-mx-4 mb-5 border-b border-kp-outline/70 pb-4 sm:mb-6 md:-mx-6"
+      className="mb-5 w-full border-b border-kp-outline/70 pb-4 sm:mb-6"
       aria-label="Next event and schedule stats"
     >
       {nextLine}
