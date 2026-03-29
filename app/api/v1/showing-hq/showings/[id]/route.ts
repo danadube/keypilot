@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 import { UpdateShowingSchema } from "@/lib/validations/showing";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
@@ -66,12 +67,18 @@ export async function PATCH(
       propertyId?: string;
       notes?: string | null;
       feedbackRequestStatus?: string;
+      feedbackEmailSentAt?: Date;
+      prepChecklistFlags?: Prisma.InputJsonValue;
     } = {};
     if (parsed.data.scheduledAt !== undefined) updateData.scheduledAt = parsed.data.scheduledAt;
     if (parsed.data.propertyId !== undefined) updateData.propertyId = parsed.data.propertyId;
     if (parsed.data.notes !== undefined) updateData.notes = parsed.data.notes ?? null;
     if (parsed.data.feedbackRequestStatus !== undefined) {
       updateData.feedbackRequestStatus = parsed.data.feedbackRequestStatus;
+      updateData.feedbackEmailSentAt = new Date();
+    }
+    if (parsed.data.prepChecklistFlags !== undefined) {
+      updateData.prepChecklistFlags = parsed.data.prepChecklistFlags as Prisma.InputJsonValue;
     }
 
     const showing = await prismaAdmin.showing.update({

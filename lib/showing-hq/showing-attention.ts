@@ -1,7 +1,9 @@
 /**
- * Derived ShowingHQ attention / readiness (no DB migrations).
+ * Derived ShowingHQ attention / readiness.
  * Used by dashboard and can be reused by list views.
  */
+
+import { openHousePrepIncomplete, showingPrepIncomplete } from "@/lib/showing-hq/prep-checklist";
 
 export type AttentionAction = "open" | "review" | "send_feedback";
 
@@ -57,11 +59,13 @@ export type ShowingAttentionInput = {
   buyerAgentEmail?: string | null;
   /** Buyer (client) name — optional prep signal when present without agent contact */
   buyerName?: string | null;
+  notes?: string | null;
   feedbackRequestStatus?: string | null;
   feedbackRequired?: boolean;
   feedbackDraftGeneratedAt?: Date | null;
   /** Count of web form feedback requests still PENDING for this showing */
   pendingFeedbackFormCount?: number;
+  prepChecklistFlags?: Record<string, unknown> | null;
 };
 
 /**
@@ -70,7 +74,7 @@ export type ShowingAttentionInput = {
  * - Past + still owed outreach → "Follow-up required"
  * - Today, start within 2h → "Showing soon"
  * - Else today → "Today"
- * - Future + missing agent contact → "Prep required"
+ * - Future (or today) with prep checklist gaps → "Prep required"
  */
 export function getShowingAttentionState(
   input: ShowingAttentionInput,
@@ -99,6 +103,16 @@ export function getShowingAttentionState(
     }
   }
 
+  const prepIncomplete = showingPrepIncomplete({
+    buyerAgentName: input.buyerAgentName,
+    buyerAgentEmail: input.buyerAgentEmail,
+    notes: input.notes,
+    feedbackRequired: input.feedbackRequired ?? false,
+    feedbackDraftGeneratedAt: input.feedbackDraftGeneratedAt ?? null,
+    pendingFeedbackFormCount: input.pendingFeedbackFormCount,
+    prepChecklistFlags: input.prepChecklistFlags ?? null,
+  });
+
   const isPast = at < startToday;
   const isToday = at >= startToday && at < endToday;
   const isFuture = at >= endToday;
@@ -117,13 +131,21 @@ export function getShowingAttentionState(
   }
 
   if (isToday) {
+    if (prepIncomplete) {
+      const soon = isStartWithinShowingSoon(at, now);
+      return {
+        label: "Prep required",
+        priority: soon ? "high" : "medium",
+        action: "open",
+      };
+    }
     if (isStartWithinShowingSoon(at, now)) {
       return { label: "Showing soon", priority: "high", action: "open" };
     }
     return { label: "Today", priority: "medium", action: "open" };
   }
 
-  if (isFuture && !hasAgentContact) {
+  if (isFuture && prepIncomplete) {
     return { label: "Prep required", priority: "low", action: "open" };
   }
 
@@ -138,6 +160,13 @@ export type OpenHouseAttentionInput = {
   agentEmail?: string | null;
   flyerUrl?: string | null;
   flyerOverrideUrl?: string | null;
+  propertyFlyerUrl?: string | null;
+  qrSlug?: string | null;
+  notes?: string | null;
+  hostNotes?: string | null;
+  hostAgentId?: string | null;
+  nonListingHostCount?: number;
+  prepChecklistFlags?: Record<string, unknown> | null;
 };
 
 /**
@@ -153,15 +182,29 @@ export function getOpenHouseAttentionState(
   const endToday = addDays(startToday, 1);
   const at = oh.startAt;
 
-  const hasFlyer = Boolean(oh.flyerUrl?.trim() || oh.flyerOverrideUrl?.trim());
-  const hasAgent = Boolean(oh.agentName?.trim() || oh.agentEmail?.trim());
+  const checklistIncomplete = openHousePrepIncomplete({
+    flyerUrl: oh.flyerUrl,
+    flyerOverrideUrl: oh.flyerOverrideUrl,
+    propertyFlyerUrl: oh.propertyFlyerUrl,
+    qrSlug: oh.qrSlug,
+    notes: oh.notes,
+    hostNotes: oh.hostNotes,
+    hostAgentId: oh.hostAgentId,
+    nonListingHostCount: oh.nonListingHostCount,
+    prepChecklistFlags: oh.prepChecklistFlags ?? null,
+  });
   const needsPrep =
     oh.status === "DRAFT" ||
-    (oh.status === "SCHEDULED" && at.getTime() > now.getTime() && (!hasFlyer || !hasAgent));
+    (oh.status === "SCHEDULED" && at.getTime() > now.getTime() && checklistIncomplete);
 
   if (at >= startToday && at < endToday) {
     if (needsPrep) {
-      return { label: "Prep required", priority: "low", action: "open" };
+      const soon = isStartWithinShowingSoon(at, now);
+      return {
+        label: "Prep required",
+        priority: soon ? "high" : "low",
+        action: "open",
+      };
     }
     if (isStartWithinShowingSoon(at, now)) {
       return { label: "Showing soon", priority: "high", action: "open" };
@@ -184,9 +227,18 @@ export function getOpenHouseScheduleReadinessLabel(
   if (oh.status === "ACTIVE") return "Ready";
   if (oh.status === "DRAFT") return "Prep required";
 
-  const hasFlyer = Boolean(oh.flyerUrl?.trim() || oh.flyerOverrideUrl?.trim());
-  const hasAgent = Boolean(oh.agentName?.trim() || oh.agentEmail?.trim());
-  if (oh.status === "SCHEDULED" && (!hasFlyer || !hasAgent)) return "Prep required";
+  const checklistIncomplete = openHousePrepIncomplete({
+    flyerUrl: oh.flyerUrl,
+    flyerOverrideUrl: oh.flyerOverrideUrl,
+    propertyFlyerUrl: oh.propertyFlyerUrl,
+    qrSlug: oh.qrSlug,
+    notes: oh.notes,
+    hostNotes: oh.hostNotes,
+    hostAgentId: oh.hostAgentId,
+    nonListingHostCount: oh.nonListingHostCount,
+    prepChecklistFlags: oh.prepChecklistFlags ?? null,
+  });
+  if (oh.status === "SCHEDULED" && checklistIncomplete) return "Prep required";
 
   const end = oh.endAt.getTime();
   if (oh.status === "SCHEDULED" && oh.startAt.getTime() <= now.getTime() && end >= now.getTime()) {

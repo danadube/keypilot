@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+export const ShowingPrepChecklistFlagsSchema = z
+  .object({
+    followUpPathReady: z.boolean().optional(),
+  })
+  .strict();
+
 export const CreateShowingSchema = z.object({
   propertyId: z.string().uuid(),
   scheduledAt: z.coerce.date(),
@@ -14,13 +20,13 @@ export const RescheduleShowingSchema = z.object({
   scheduledAt: z.coerce.date(),
 });
 
-/** PATCH body for editing a showing (date/time, property, notes) */
 export const UpdateShowingSchema = z.object({
   scheduledAt: z.coerce.date().optional(),
   propertyId: z.string().uuid().optional(),
   notes: z.string().max(5000).optional().nullable(),
   /** Buyer-agent email draft workflow — user confirmed they sent the draft from their mail client. */
   feedbackRequestStatus: z.literal("SENT").optional(),
+  prepChecklistFlags: ShowingPrepChecklistFlagsSchema.optional(),
 });
 
 export type CreateShowingInput = z.infer<typeof CreateShowingSchema>;

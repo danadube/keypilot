@@ -7,7 +7,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
-import { aggregateFeedbackSummary } from "@/lib/feedback-summary";
+import {
+  aggregateFeedbackSummary,
+  excerptEmailFeedbackRaw,
+  type FeedbackEmailReplyEntry,
+} from "@/lib/feedback-summary";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import type { SellerReportData } from "@/lib/seller-report";
 
@@ -92,10 +96,40 @@ export async function GET(
     });
     const feedback = aggregateFeedbackSummary(requests);
 
+    const replyRows = await prismaAdmin.showing.findMany({
+      where: {
+        propertyId,
+        hostUserId: user.id,
+        deletedAt: null,
+        buyerAgentEmailReplyAt: { not: null },
+      },
+      select: {
+        id: true,
+        buyerAgentEmailReplyAt: true,
+        buyerAgentEmailReplyFrom: true,
+        buyerAgentEmailReplyRaw: true,
+        buyerAgentEmailReplyParsed: true,
+      },
+      orderBy: { buyerAgentEmailReplyAt: "desc" },
+      take: 20,
+    });
+
+    const feedbackEmailReplies: FeedbackEmailReplyEntry[] = replyRows.map((r) => ({
+      id: `email-${r.id}`,
+      showingId: r.id,
+      source: "EMAIL_REPLY",
+      receivedAt: (r.buyerAgentEmailReplyAt ?? new Date()).toISOString(),
+      from: r.buyerAgentEmailReplyFrom,
+      excerpt: excerptEmailFeedbackRaw(r.buyerAgentEmailReplyRaw),
+      rawAvailable: Boolean(r.buyerAgentEmailReplyRaw?.trim()),
+      parsed: r.buyerAgentEmailReplyParsed,
+    }));
+
     const data: SellerReportData = {
       traffic,
       engagement: { followUpsSentCount },
       feedback,
+      feedbackEmailReplies,
     };
 
     return NextResponse.json({ data });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { PageLoading } from "@/components/shared/PageLoading";
@@ -32,6 +32,8 @@ import {
   FileText,
   ArrowLeft,
 } from "lucide-react";
+import { PrepChecklistPanel } from "@/components/showing-hq/prep-checklist-panels";
+import { buildOpenHousePrepChecklist } from "@/lib/showing-hq/prep-checklist";
 
 type OpenHouseData = {
   hostUserId?: string;
@@ -41,11 +43,17 @@ type OpenHouseData = {
   endAt: string;
   status: string;
   qrSlug: string;
+  flyerUrl?: string | null;
+  flyerOverrideUrl?: string | null;
   agentName: string | null;
   trafficLevel: string | null;
   feedbackTags: string[] | null;
   hostNotes: string | null;
-  property: { address1: string; city: string; state: string; zip: string };
+  notes?: string | null;
+  prepChecklistFlags?: Record<string, unknown> | null;
+  hostAgentId?: string | null;
+  hosts?: { id: string }[];
+  property: { address1: string; city: string; state: string; zip: string; flyerUrl?: string | null };
   listingAgent?: { id: string; name: string; email: string } | null;
   hostAgent?: { id: string; name: string; email: string } | null;
   visitors: {
@@ -83,6 +91,7 @@ export default function ShowingHQOpenHouseDetailPage() {
   const [regenerating, setRegenerating] = useState(false);
   const [copied, setCopied] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [prepSaving, setPrepSaving] = useState(false);
 
   const loadData = useCallback(() => {
     setError(null);
@@ -182,6 +191,55 @@ export default function ShowingHQOpenHouseDetailPage() {
   const fullName = (c: { firstName: string; lastName: string }) =>
     [c.firstName, c.lastName].filter(Boolean).join(" ") || "Unknown";
 
+  const prepItems = useMemo(() => {
+    if (!data) return [];
+    return buildOpenHousePrepChecklist({
+      flyerUrl: data.flyerUrl,
+      flyerOverrideUrl: data.flyerOverrideUrl,
+      propertyFlyerUrl: data.property?.flyerUrl,
+      qrSlug: data.qrSlug,
+      notes: data.notes,
+      hostNotes: data.hostNotes,
+      hostAgentId: data.hostAgentId,
+      nonListingHostCount: data.hosts?.length ?? 0,
+      prepChecklistFlags: data.prepChecklistFlags ?? null,
+    });
+  }, [data]);
+
+  const persistPrepFlags = useCallback(
+    async (next: { hostConfirmed?: boolean; signsMaterialsReady?: boolean }) => {
+      if (!openHouseId || !data) return;
+      setPrepSaving(true);
+      setError(null);
+      try {
+        const prev = (data.prepChecklistFlags ?? {}) as Record<string, unknown>;
+        const res = await fetch(`/api/v1/open-houses/${openHouseId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prepChecklistFlags: { ...prev, ...next },
+          }),
+        });
+        const json = await res.json();
+        if (json.error) throw new Error(json.error.message);
+        loadData();
+      } catch (e) {
+        setError((e as Error).message);
+      } finally {
+        setPrepSaving(false);
+      }
+    },
+    [openHouseId, data, loadData]
+  );
+
+  const handlePrepToggle = useCallback(
+    (id: string, next: boolean) => {
+      if (id === "host") void persistPrepFlags({ hostConfirmed: next });
+      if (id === "signs") void persistPrepFlags({ signsMaterialsReady: next });
+    },
+    [persistPrepFlags]
+  );
+
   if (loading) return <PageLoading message="Loading open house..." />;
   if (error || !data)
     return (
@@ -260,6 +318,13 @@ export default function ShowingHQOpenHouseDetailPage() {
           {error}
         </div>
       )}
+
+      <PrepChecklistPanel
+        title="Prep checklist"
+        items={prepItems}
+        onToggle={handlePrepToggle}
+        disabled={prepSaving}
+      />
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-3">

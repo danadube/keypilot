@@ -27,6 +27,10 @@ export async function GET(
         property: true,
         listingAgent: { select: { id: true, name: true, email: true } },
         hostAgent: { select: { id: true, name: true, email: true } },
+        hosts: {
+          where: { role: { in: ["HOST_AGENT", "ASSISTANT"] } },
+          select: { id: true },
+        },
         visitors: {
           include: { contact: true },
         },
@@ -119,6 +123,7 @@ export async function PUT(
       trafficLevel,
       feedbackTags,
       hostNotes,
+      prepChecklistFlags,
     } = parsed;
     const updateData: Record<string, unknown> = {};
     if (propertyId !== undefined) updateData.propertyId = propertyId;
@@ -135,6 +140,9 @@ export async function PUT(
     if (trafficLevel !== undefined) updateData.trafficLevel = trafficLevel;
     if (feedbackTags !== undefined) updateData.feedbackTags = feedbackTags;
     if (hostNotes !== undefined) updateData.hostNotes = hostNotes?.trim() || null;
+    if (prepChecklistFlags !== undefined) {
+      updateData.prepChecklistFlags = prepChecklistFlags;
+    }
     const openHouse = await prismaAdmin.openHouse.update({
       where: { id },
       data: updateData,

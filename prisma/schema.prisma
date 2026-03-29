@@ -177,6 +177,8 @@ model OpenHouse {
   trafficLevel    String?
   feedbackTags    Json?
   hostNotes       String?         @db.Text
+  /** User-confirmed prep items not inferrable from other columns, e.g. { "hostConfirmed": true, "signsMaterialsReady": true } */
+  prepChecklistFlags Json?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   deletedAt       DateTime?
@@ -328,6 +330,18 @@ model Showing {
   feedbackDraftSubject   String?
   feedbackDraftBody      String?         @db.Text
   feedbackDraftGeneratedAt DateTime?
+  /** When the host marked the buyer-agent feedback email as sent from their mail client. */
+  feedbackEmailSentAt    DateTime?
+  /** User-confirmed prep when feedback workflow needs explicit confirmation, e.g. { "followUpPathReady": true } */
+  prepChecklistFlags    Json?
+  /** Raw plain-text body of buyer-agent email reply (source of truth). */
+  buyerAgentEmailReplyRaw      String?         @db.Text
+  buyerAgentEmailReplyAt       DateTime?
+  buyerAgentEmailReplyFrom     String?
+  /** Gmail message id for idempotent ingestion */
+  buyerAgentEmailReplyGmailId  String?         @unique
+  /** Optional rule-based highlights { interestHint?, concerns?, pricingComment?, followUpInterest?, confidence } — never replaces raw */
+  buyerAgentEmailReplyParsed   Json?
   createdAt          DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
   deletedAt         DateTime?

@@ -13,6 +13,12 @@ import {
   needsAttentionSortRank,
   type ShowingAttentionState,
 } from "@/lib/showing-hq/showing-attention";
+import {
+  buildOpenHousePrepChecklist,
+  buildShowingPrepChecklist,
+  formatMissingPrepSummary,
+  missingPrepShortLabels,
+} from "@/lib/showing-hq/prep-checklist";
 
 export type PrivateShowingAttentionRow = {
   id: string;
@@ -20,14 +26,17 @@ export type PrivateShowingAttentionRow = {
   buyerAgentName: string | null;
   buyerAgentEmail: string | null;
   buyerName: string | null;
+  notes?: string | null;
   feedbackRequestStatus: string | null;
   feedbackRequired: boolean;
   feedbackDraftGeneratedAt: string | null;
+  prepChecklistFlags?: unknown;
   property: {
     address1: string | null;
     city: string | null;
     state: string | null;
     zip: string | null;
+    flyerUrl?: string | null;
   };
   pendingFeedbackFormCount: number;
 };
@@ -39,11 +48,16 @@ export type DashboardOpenHouseRow = {
   endAt: string;
   status: string;
   qrSlug?: string;
+  hostAgentId?: string | null;
+  notes?: string | null;
+  hostNotes?: string | null;
+  prepChecklistFlags?: unknown;
+  hosts?: { id: string }[];
   agentName?: string | null;
   agentEmail?: string | null;
   flyerUrl?: string | null;
   flyerOverrideUrl?: string | null;
-  property: { address1: string | null; city: string; state: string };
+  property: { address1: string | null; city: string; state: string; flyerUrl?: string | null };
   _count?: { visitors: number };
 };
 
@@ -108,6 +122,8 @@ export type AttentionListItem = {
   buyerAgentName?: string | null;
   buyerAgentEmail?: string | null;
   buyerName?: string | null;
+  /** Short "Missing: …" line when attention is Prep required */
+  missingPrepSummary?: string;
 };
 
 function isSameLocalCalendarDay(iso: string, now: Date): boolean {
@@ -143,16 +159,33 @@ export function buildNeedsAttentionItems(
         buyerAgentName: s.buyerAgentName,
         buyerAgentEmail: s.buyerAgentEmail,
         buyerName: s.buyerName,
+        notes: s.notes,
         feedbackRequestStatus: s.feedbackRequestStatus,
         feedbackRequired: s.feedbackRequired,
         feedbackDraftGeneratedAt: s.feedbackDraftGeneratedAt
           ? new Date(s.feedbackDraftGeneratedAt)
           : null,
         pendingFeedbackFormCount: s.pendingFeedbackFormCount,
+        prepChecklistFlags: (s.prepChecklistFlags ?? null) as Record<string, unknown> | null,
       },
       now
     );
     if (!attention) continue;
+    const prepItems = buildShowingPrepChecklist({
+      buyerAgentName: s.buyerAgentName,
+      buyerAgentEmail: s.buyerAgentEmail,
+      notes: s.notes,
+      feedbackRequired: s.feedbackRequired,
+      feedbackDraftGeneratedAt: s.feedbackDraftGeneratedAt
+        ? new Date(s.feedbackDraftGeneratedAt)
+        : null,
+      pendingFeedbackFormCount: s.pendingFeedbackFormCount,
+      prepChecklistFlags: (s.prepChecklistFlags ?? null) as Record<string, unknown> | null,
+    });
+    const missingPrepSummary =
+      attention.label === "Prep required"
+        ? formatMissingPrepSummary(missingPrepShortLabels(prepItems))
+        : undefined;
     items.push({
       key: `s-${s.id}`,
       kind: "showing",
@@ -163,6 +196,7 @@ export function buildNeedsAttentionItems(
       buyerAgentName: s.buyerAgentName,
       buyerAgentEmail: s.buyerAgentEmail,
       buyerName: s.buyerName,
+      missingPrepSummary,
     });
   }
 
@@ -179,10 +213,32 @@ export function buildNeedsAttentionItems(
         agentEmail: oh.agentEmail,
         flyerUrl: oh.flyerUrl,
         flyerOverrideUrl: oh.flyerOverrideUrl,
+        propertyFlyerUrl: oh.property?.flyerUrl,
+        qrSlug: oh.qrSlug,
+        notes: oh.notes,
+        hostNotes: oh.hostNotes,
+        hostAgentId: oh.hostAgentId,
+        nonListingHostCount: oh.hosts?.length,
+        prepChecklistFlags: (oh.prepChecklistFlags ?? null) as Record<string, unknown> | null,
       },
       now
     );
     if (!attention) continue;
+    const prepOh = buildOpenHousePrepChecklist({
+      flyerUrl: oh.flyerUrl,
+      flyerOverrideUrl: oh.flyerOverrideUrl,
+      propertyFlyerUrl: oh.property?.flyerUrl,
+      qrSlug: oh.qrSlug,
+      notes: oh.notes,
+      hostNotes: oh.hostNotes,
+      hostAgentId: oh.hostAgentId,
+      nonListingHostCount: oh.hosts?.length,
+      prepChecklistFlags: (oh.prepChecklistFlags ?? null) as Record<string, unknown> | null,
+    });
+    const missingPrepSummary =
+      attention.label === "Prep required"
+        ? formatMissingPrepSummary(missingPrepShortLabels(prepOh))
+        : undefined;
     items.push({
       key: `oh-${oh.id}`,
       kind: "open_house",
@@ -190,6 +246,7 @@ export function buildNeedsAttentionItems(
       address: propertyLine(oh.property),
       at: oh.startAt,
       attention,
+      missingPrepSummary,
     });
   }
 
@@ -257,6 +314,11 @@ export function NeedsAttentionSection({
                   >
                     {row.attention.label}
                   </span>
+                  {row.missingPrepSummary ? (
+                    <p className="mt-1 text-[10px] leading-snug text-amber-200/90">
+                      {row.missingPrepSummary}
+                    </p>
+                  ) : null}
                 </div>
                 <Button
                   variant="outline"
@@ -482,9 +544,10 @@ function attentionItemToWorkflowRow(
     visualKind = "prep";
     categoryTitle = "Prep required";
     contextLine =
-      row.kind === "open_house"
+      row.missingPrepSummary ||
+      (row.kind === "open_house"
         ? "Sign-in, flyer, or host details are still incomplete."
-        : "Buyer agent contact is missing for an upcoming showing.";
+        : "Buyer agent contact is missing for an upcoming showing.");
     ctaLabel = "Open";
   } else {
     visualKind = "prep";

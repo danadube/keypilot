@@ -32,8 +32,30 @@ export type FeedbackSummary = {
     interestLevel: string;
     reasons: string[];
     notePreview: string | null;
+    /** Distinct from email — always WEB_FORM for rows from FeedbackRequest */
+    source?: "WEB_FORM";
   }>;
 };
+
+const EXCERPT_LEN = 220;
+
+export type FeedbackEmailReplyEntry = {
+  id: string;
+  showingId: string;
+  source: "EMAIL_REPLY";
+  receivedAt: string;
+  from: string | null;
+  excerpt: string;
+  rawAvailable: boolean;
+  parsed: unknown | null;
+};
+
+export function excerptEmailFeedbackRaw(raw: string | null | undefined): string {
+  const t = (raw ?? "").trim();
+  if (!t) return "";
+  if (t.length <= EXCERPT_LEN) return t;
+  return t.slice(0, EXCERPT_LEN) + "…";
+}
 
 const INTEREST_LEVELS: InterestLevel[] = [...FEEDBACK_INTEREST_LEVELS];
 const REASONS: Reason[] = [...FEEDBACK_REASONS];
@@ -95,6 +117,7 @@ export function aggregateFeedbackSummary(
           ? r.note.trim()
           : r.note.trim().slice(0, NOTE_PREVIEW_LENGTH) + "…"
         : null,
+    source: "WEB_FORM" as const,
   }));
 
   return {

@@ -6,11 +6,13 @@ import { GET } from "@/app/api/v1/showing-hq/properties/[propertyId]/feedback-su
 
 const mockPropertyFindFirst = jest.fn();
 const mockFeedbackRequestFindMany = jest.fn();
+const mockShowingFindMany = jest.fn();
 
 jest.mock("@/lib/db", () => {
   const db = {
     property: { findFirst: (...args: unknown[]) => mockPropertyFindFirst(...args) },
     feedbackRequest: { findMany: (...args: unknown[]) => mockFeedbackRequestFindMany(...args) },
+    showing: { findMany: (...args: unknown[]) => mockShowingFindMany(...args) },
   };
   return { prisma: db, prismaAdmin: db };
 });
@@ -23,6 +25,7 @@ const PROP_ID = "550e8400-e29b-41d4-a716-446655440000";
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockShowingFindMany.mockResolvedValue([]);
   mockPropertyFindFirst.mockResolvedValue({
     id: PROP_ID,
     createdByUserId: "user-1",
@@ -76,5 +79,7 @@ describe("GET /api/v1/showing-hq/properties/[propertyId]/feedback-summary", () =
     expect(data.data.recentResponses[0].interestLevel).toBe("LOVED_IT");
     expect(data.data.recentResponses[0].reasons).toEqual(["PRICE", "LAYOUT"]);
     expect(data.data.recentResponses[0].notePreview).toBe("Great place");
+    expect(Array.isArray(data.data.emailReplies)).toBe(true);
+    expect(data.data.emailReplies).toHaveLength(0);
   });
 });

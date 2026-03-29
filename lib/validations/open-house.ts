@@ -50,6 +50,13 @@ export const HostFeedbackSchema = z.object({
   hostNotes: z.string().max(2000).optional().nullable(),
 });
 
+export const OpenHousePrepChecklistFlagsSchema = z
+  .object({
+    hostConfirmed: z.boolean().optional(),
+    signsMaterialsReady: z.boolean().optional(),
+  })
+  .strict();
+
 export const OPEN_HOUSE_STATUSES = ["SCHEDULED", "ACTIVE", "COMPLETED", "CANCELLED"] as const;
 
 export const UpdateOpenHouseSchema = z
@@ -65,6 +72,7 @@ export const UpdateOpenHouseSchema = z
     agentEmail: z.string().optional().nullable(),
     agentPhone: z.string().optional().nullable(),
     notes: z.string().optional().nullable(),
+    prepChecklistFlags: OpenHousePrepChecklistFlagsSchema.optional(),
     ...HostFeedbackSchema.shape,
   })
   .refine(

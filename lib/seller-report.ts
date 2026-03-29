@@ -4,7 +4,7 @@
  * Used by seller-report API and prepared for future email/weekly automation.
  */
 
-import type { FeedbackSummary } from "@/lib/feedback-summary";
+import type { FeedbackEmailReplyEntry, FeedbackSummary } from "@/lib/feedback-summary";
 
 export type SellerReportTraffic = {
   visitorCount: number;
@@ -20,4 +20,5 @@ export type SellerReportData = {
   traffic: SellerReportTraffic;
   engagement: SellerReportEngagement;
   feedback: FeedbackSummary;
+  feedbackEmailReplies?: FeedbackEmailReplyEntry[];
 };

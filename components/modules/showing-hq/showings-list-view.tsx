@@ -30,6 +30,8 @@ import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 import { ShowingBuyerAgentFeedbackDraftPanel } from "@/components/showing-hq/ShowingBuyerAgentFeedbackDraftPanel";
+import { PrepChecklistPanel } from "@/components/showing-hq/prep-checklist-panels";
+import { buildShowingPrepChecklist } from "@/lib/showing-hq/prep-checklist";
 import { buildPropertyAddressLineForFeedbackDraft } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 import {
   Select,
@@ -70,6 +72,11 @@ type Showing = {
   feedbackDraftSubject?: string | null;
   feedbackDraftBody?: string | null;
   feedbackDraftGeneratedAt?: string | null;
+  prepChecklistFlags?: Record<string, unknown> | null;
+  buyerAgentEmailReplyAt?: string | null;
+  buyerAgentEmailReplyFrom?: string | null;
+  buyerAgentEmailReplyRaw?: string | null;
+  buyerAgentEmailReplyParsed?: unknown;
   property: { address1: string; city: string; state: string; zip?: string | null };
 };
 
@@ -148,6 +155,12 @@ function propertySubtitle(s: Showing): string {
 
 function hasBuyerAgentEmailDraft(s: Showing): boolean {
   return !!(s.feedbackDraftGeneratedAt && s.buyerAgentEmail?.trim());
+}
+
+function emailReplyExcerpt(raw: string | null | undefined, max = 240): string {
+  const t = (raw ?? "").trim();
+  if (!t) return "";
+  return t.length <= max ? t : t.slice(0, max) + "…";
 }
 
 function isEmailDraftPendingSend(s: Showing): boolean {
@@ -306,10 +319,44 @@ function EditShowingModal({
   const [dateStr, setDateStr] = useState(initialDate);
   const [timeStr, setTimeStr] = useState(initialTime);
   const [notes, setNotes] = useState(showing.notes ?? "");
+  const [followUpPathReady, setFollowUpPathReady] = useState(
+    Boolean(
+      (showing.prepChecklistFlags as { followUpPathReady?: boolean } | undefined)
+        ?.followUpPathReady
+    )
+  );
   const [saving, setSaving] = useState(false);
   const [markingSent, setMarkingSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [prepSaving, setPrepSaving] = useState(false);
   const hasEmailDraft = hasBuyerAgentEmailDraft(showing);
+
+  const prepItems = useMemo(
+    () =>
+      buildShowingPrepChecklist({
+        buyerAgentName: showing.buyerAgentName,
+        buyerAgentEmail: showing.buyerAgentEmail,
+        notes,
+        feedbackRequired: showing.feedbackRequired,
+        feedbackDraftGeneratedAt: showing.feedbackDraftGeneratedAt
+          ? new Date(showing.feedbackDraftGeneratedAt)
+          : null,
+        pendingFeedbackFormCount: 0,
+        prepChecklistFlags: {
+          ...(showing.prepChecklistFlags ?? {}),
+          followUpPathReady,
+        },
+      }),
+    [
+      showing.buyerAgentName,
+      showing.buyerAgentEmail,
+      showing.feedbackRequired,
+      showing.feedbackDraftGeneratedAt,
+      showing.prepChecklistFlags,
+      notes,
+      followUpPathReady,
+    ]
+  );
 
   const headerSubtitle = useMemo(() => {
     const [h, m] = timeStr.split(":").map(Number);
@@ -337,6 +384,44 @@ function EditShowingModal({
     setMarkingSent(false);
   }, [showing.id]);
 
+  useEffect(() => {
+    setFollowUpPathReady(
+      Boolean(
+        (showing.prepChecklistFlags as { followUpPathReady?: boolean } | undefined)
+          ?.followUpPathReady
+      )
+    );
+  }, [showing.id, showing.prepChecklistFlags]);
+
+  async function persistFollowUpFlag(next: boolean) {
+    setPrepSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/showing-hq/showings/${showing.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prepChecklistFlags: {
+            ...(showing.prepChecklistFlags as object),
+            followUpPathReady: next,
+          },
+        }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message);
+      setFollowUpPathReady(next);
+      onSaved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Update failed");
+    } finally {
+      setPrepSaving(false);
+    }
+  }
+
+  function handlePrepToggle(id: string, next: boolean) {
+    if (id === "follow_up" && showing.feedbackRequired) void persistFollowUpFlag(next);
+  }
+
   async function handleMarkFeedbackComplete() {
     if (!dateStr || !timeStr) { setError("Date and time are required."); return; }
     const [h, m] = timeStr.split(":").map(Number);
@@ -353,6 +438,10 @@ function EditShowingModal({
           scheduledAt: scheduledAt.toISOString(),
           notes: notes || null,
           feedbackRequestStatus: "SENT",
+          prepChecklistFlags: {
+            ...(showing.prepChecklistFlags as object),
+            followUpPathReady,
+          },
         }),
       });
       const json = await res.json();
@@ -378,7 +467,14 @@ function EditShowingModal({
       const res = await fetch(`/api/v1/showing-hq/showings/${showing.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scheduledAt: scheduledAt.toISOString(), notes: notes || null }),
+        body: JSON.stringify({
+          scheduledAt: scheduledAt.toISOString(),
+          notes: notes || null,
+          prepChecklistFlags: {
+            ...(showing.prepChecklistFlags as object),
+            followUpPathReady,
+          },
+        }),
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
@@ -414,6 +510,48 @@ function EditShowingModal({
         </div>
         <div className="space-y-4 p-5">
           {error && <p className="text-sm text-red-400">{error}</p>}
+
+          <PrepChecklistPanel
+            title="Prep checklist"
+            items={prepItems}
+            onToggle={handlePrepToggle}
+            disabled={prepSaving || saving || markingSent}
+          />
+
+          {showing.buyerAgentEmailReplyAt ? (
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 text-xs">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-300/90">
+                Buyer agent reply (email)
+              </p>
+              <p className="mt-1 text-[11px] text-kp-on-surface-variant">
+                Received{" "}
+                {new Date(showing.buyerAgentEmailReplyAt).toLocaleString(undefined, {
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                })}
+                {showing.buyerAgentEmailReplyFrom
+                  ? ` · ${showing.buyerAgentEmailReplyFrom}`
+                  : ""}
+              </p>
+              {showing.buyerAgentEmailReplyParsed &&
+              typeof showing.buyerAgentEmailReplyParsed === "object" &&
+              showing.buyerAgentEmailReplyParsed !== null ? (
+                <p className="mt-2 text-[11px] text-kp-on-surface-variant">
+                  <span className="font-medium text-kp-on-surface">Extracted summary</span> (may be
+                  inaccurate):{" "}
+                  {"interestHint" in showing.buyerAgentEmailReplyParsed
+                    ? String(
+                        (showing.buyerAgentEmailReplyParsed as { interestHint?: string })
+                          .interestHint ?? ""
+                      )
+                    : ""}
+                </p>
+              ) : null}
+              <p className="mt-2 whitespace-pre-wrap text-sm text-kp-on-surface">
+                {emailReplyExcerpt(showing.buyerAgentEmailReplyRaw)}
+              </p>
+            </div>
+          ) : null}
 
           <div className="space-y-3 rounded-lg border border-kp-outline/80 bg-kp-surface-high/25 p-3">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
@@ -595,9 +733,13 @@ function ShowingsTable({
                   <FeedbackStatusPill>Form link pending</FeedbackStatusPill>
                 ) : hasBuyerAgentEmailDraft(s) ? (
                   <FeedbackStatusPill>
-                    {s.feedbackRequestStatus === "SENT"
-                      ? "Feedback email sent"
-                      : "Draft ready"}
+                    {s.feedbackRequestStatus === "RECEIVED" && s.buyerAgentEmailReplyAt
+                      ? "Feedback received (email)"
+                      : s.feedbackRequestStatus === "SENT"
+                        ? "Feedback email sent"
+                        : s.feedbackRequestStatus === "RECEIVED"
+                          ? "Feedback received"
+                          : "Draft ready"}
                   </FeedbackStatusPill>
                 ) : (
                   <span className="text-xs text-kp-on-surface-variant">—</span>

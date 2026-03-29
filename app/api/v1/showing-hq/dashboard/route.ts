@@ -187,6 +187,10 @@ export async function GET() {
         },
         include: {
           _count: { select: { visitors: true } },
+          hosts: {
+            where: { role: { in: ["HOST_AGENT", "ASSISTANT"] } },
+            select: { id: true },
+          },
         },
         orderBy: { startAt: "asc" },
       }),
@@ -199,6 +203,10 @@ export async function GET() {
         },
         include: {
           _count: { select: { visitors: true } },
+          hosts: {
+            where: { role: { in: ["HOST_AGENT", "ASSISTANT"] } },
+            select: { id: true },
+          },
         },
         orderBy: { startAt: "asc" },
         take: 10,
@@ -209,6 +217,12 @@ export async function GET() {
           deletedAt: null,
           startAt: { gte: monthStart, lte: monthEnd },
           status: { in: ["SCHEDULED", "ACTIVE", "COMPLETED"] },
+        },
+        include: {
+          hosts: {
+            where: { role: { in: ["HOST_AGENT", "ASSISTANT"] } },
+            select: { id: true },
+          },
         },
         orderBy: { startAt: "asc" },
       }),
@@ -436,9 +450,11 @@ export async function GET() {
           buyerAgentName: true,
           buyerAgentEmail: true,
           buyerName: true,
+          notes: true,
           feedbackRequestStatus: true,
           feedbackRequired: true,
           feedbackDraftGeneratedAt: true,
+          prepChecklistFlags: true,
           property: { select: { address1: true, city: true, state: true, zip: true } },
           feedbackRequests: {
             where: { status: "PENDING" },
@@ -494,8 +510,17 @@ export async function GET() {
               agentEmail: true,
               flyerUrl: true,
               flyerOverrideUrl: true,
-              property: { select: { address1: true, city: true, state: true } },
+              qrSlug: true,
+              hostAgentId: true,
+              notes: true,
+              hostNotes: true,
+              prepChecklistFlags: true,
+              property: { select: { address1: true, city: true, state: true, flyerUrl: true } },
               _count: { select: { visitors: true } },
+              hosts: {
+                where: { role: { in: ["HOST_AGENT", "ASSISTANT"] } },
+                select: { id: true },
+              },
             },
           });
     const openHouseEnrichMap = new Map(openHouseEnrichment.map((o) => [o.id, o]));
@@ -548,7 +573,17 @@ export async function GET() {
           agentEmail?: string | null;
           flyerUrl?: string | null;
           flyerOverrideUrl?: string | null;
+          qrSlug?: string | null;
+          hostAgentId?: string | null;
+          notes?: string | null;
+          hostNotes?: string | null;
+          prepChecklistFlags?: unknown;
+          hosts?: { id: string }[];
         };
+        const e = openHouseEnrichMap.get(oh.id);
+        const pFlyer = e?.property
+          ? (e.property as { flyerUrl?: string | null }).flyerUrl
+          : null;
         return {
           type: "open_house" as const,
           id: oh.id,
@@ -561,10 +596,20 @@ export async function GET() {
               startAt: oh.startAt,
               endAt: oh.endAt,
               status: oh.status,
-              agentName: r.agentName,
-              agentEmail: r.agentEmail,
-              flyerUrl: r.flyerUrl,
-              flyerOverrideUrl: r.flyerOverrideUrl,
+              agentName: r.agentName ?? e?.agentName,
+              agentEmail: r.agentEmail ?? e?.agentEmail,
+              flyerUrl: r.flyerUrl ?? e?.flyerUrl,
+              flyerOverrideUrl: r.flyerOverrideUrl ?? e?.flyerOverrideUrl,
+              propertyFlyerUrl: pFlyer,
+              qrSlug: r.qrSlug ?? e?.qrSlug,
+              notes: r.notes ?? e?.notes,
+              hostNotes: r.hostNotes ?? e?.hostNotes,
+              hostAgentId: r.hostAgentId ?? e?.hostAgentId,
+              nonListingHostCount: r.hosts?.length ?? e?.hosts?.length ?? 0,
+              prepChecklistFlags: (r.prepChecklistFlags ?? e?.prepChecklistFlags) as Record<
+                string,
+                unknown
+              > | null,
             },
             new Date()
           ),
@@ -778,10 +823,12 @@ export async function GET() {
           buyerAgentName: s.buyerAgentName,
           buyerAgentEmail: s.buyerAgentEmail,
           buyerName: s.buyerName,
+          notes: s.notes,
           feedbackRequestStatus: s.feedbackRequestStatus,
           feedbackRequired: s.feedbackRequired,
           feedbackDraftGeneratedAt: s.feedbackDraftGeneratedAt,
           pendingFeedbackFormCount: pendingForms,
+          prepChecklistFlags: s.prepChecklistFlags as Record<string, unknown> | null,
         },
             nowForAttention
           );
@@ -933,34 +980,53 @@ export async function GET() {
           buyerAgentName: s.buyerAgentName,
           buyerAgentEmail: s.buyerAgentEmail,
           buyerName: s.buyerName,
+          notes: s.notes,
           feedbackRequestStatus: s.feedbackRequestStatus,
           feedbackRequired: s.feedbackRequired,
           feedbackDraftGeneratedAt: s.feedbackDraftGeneratedAt,
           pendingFeedbackFormCount: s.feedbackRequests.length,
+          prepChecklistFlags: s.prepChecklistFlags as Record<string, unknown> | null,
         },
         nowForAttention
       );
       if (att) tomorrowAttentionItems.push({ attention: att });
     }
     for (const oh of ohTomorrow) {
-      /**
-       * @type {{ agentName?: string | null; agentEmail?: string | null; flyerUrl?: string | null; flyerOverrideUrl?: string | null }}
-       */
       const r = oh as {
         agentName?: string | null;
         agentEmail?: string | null;
         flyerUrl?: string | null;
         flyerOverrideUrl?: string | null;
+        qrSlug?: string | null;
+        hostAgentId?: string | null;
+        notes?: string | null;
+        hostNotes?: string | null;
+        prepChecklistFlags?: unknown;
+        hosts?: { id: string }[];
       };
+      const e = openHouseEnrichMap.get(oh.id);
+      const pFlyer = e?.property
+        ? (e.property as { flyerUrl?: string | null }).flyerUrl
+        : null;
       const att = getOpenHouseAttentionState(
         {
           startAt: oh.startAt,
           endAt: oh.endAt,
           status: oh.status,
-          agentName: r.agentName,
-          agentEmail: r.agentEmail,
-          flyerUrl: r.flyerUrl,
-          flyerOverrideUrl: r.flyerOverrideUrl,
+          agentName: r.agentName ?? e?.agentName,
+          agentEmail: r.agentEmail ?? e?.agentEmail,
+          flyerUrl: r.flyerUrl ?? e?.flyerUrl,
+          flyerOverrideUrl: r.flyerOverrideUrl ?? e?.flyerOverrideUrl,
+          propertyFlyerUrl: pFlyer,
+          qrSlug: r.qrSlug ?? e?.qrSlug,
+          notes: r.notes ?? e?.notes,
+          hostNotes: r.hostNotes ?? e?.hostNotes,
+          hostAgentId: r.hostAgentId ?? e?.hostAgentId,
+          nonListingHostCount: r.hosts?.length ?? e?.hosts?.length ?? 0,
+          prepChecklistFlags: (r.prepChecklistFlags ?? e?.prepChecklistFlags) as Record<
+            string,
+            unknown
+          > | null,
         },
         nowForAttention
       );
@@ -1018,9 +1084,11 @@ export async function GET() {
           buyerAgentName: s.buyerAgentName,
           buyerAgentEmail: s.buyerAgentEmail,
           buyerName: s.buyerName,
+          notes: s.notes,
           feedbackRequestStatus: s.feedbackRequestStatus,
           feedbackRequired: s.feedbackRequired,
           feedbackDraftGeneratedAt: s.feedbackDraftGeneratedAt?.toISOString() ?? null,
+          prepChecklistFlags: s.prepChecklistFlags,
           property: s.property,
           pendingFeedbackFormCount: s.feedbackRequests.length,
         })),

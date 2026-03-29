@@ -268,3 +268,115 @@ export async function fetchSupraGmailMessages(
     (a, b) => b.receivedAt.getTime() - a.receivedAt.getTime()
   );
 }
+
+const FEEDBACK_REPLY_GMAIL_QUERY = "newer_than:21d in:inbox -from:suprasystems.com -from:suprashowing";
+const MAX_FEEDBACK_REPLY_RESULTS = 40;
+
+export type GmailFeedbackReplyCandidate = {
+  gmailMessageId: string;
+  threadId: string | null;
+  subject: string;
+  normalizedSubject: string;
+  rawBodyText: string;
+  sender: string | null;
+  senderEmail: string | null;
+  receivedAt: Date;
+  inReplyTo: string | null;
+  references: string | null;
+  rfcMessageId: string | null;
+};
+
+export function normalizeFeedbackEmailSubject(subject: string): string {
+  return subject
+    .replace(/^(re|fwd|fw)\s*:\s*/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+export function extractEmailAddressFromFromHeader(from: string | null): string | null {
+  if (!from) return null;
+  const m = from.match(/<([^>]+)>/);
+  const raw = (m ? m[1] : from).trim().toLowerCase();
+  if (!raw.includes("@")) return null;
+  return raw;
+}
+
+/**
+ * Inbox messages likely to be human replies (not Supra notifications).
+ * Used to attach buyer-agent email feedback to showings.
+ */
+export async function fetchGmailFeedbackReplyCandidates(
+  conn: GmailConnection,
+  options: { maxResults?: number } = {}
+): Promise<GmailFeedbackReplyCandidate[]> {
+  const auth = await ensureValidGoogleOAuth2Client(conn);
+  const gmail = google.gmail({ version: "v1", auth });
+
+  const maxResults = Math.min(
+    options.maxResults ?? MAX_FEEDBACK_REPLY_RESULTS,
+    MAX_FEEDBACK_REPLY_RESULTS
+  );
+
+  const { data: listData } = await gmail.users.messages.list({
+    userId: "me",
+    maxResults,
+    q: FEEDBACK_REPLY_GMAIL_QUERY,
+  });
+
+  const refs = listData.messages ?? [];
+  const out: GmailFeedbackReplyCandidate[] = [];
+
+  for (const ref of refs) {
+    if (!ref.id) continue;
+    try {
+      const { data: msg } = await gmail.users.messages.get({
+        userId: "me",
+        id: ref.id,
+        format: "full",
+      });
+
+      const headers = msg.payload?.headers ?? [];
+      const getHeader = (name: string) =>
+        headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? "";
+
+      const subject = (getHeader("Subject") || "(No subject)").slice(0, 500);
+      const normalizedSubject = normalizeFeedbackEmailSubject(subject);
+      const from = getHeader("From") || null;
+      const dateHeader = getHeader("Date");
+      const receivedAt = msg.internalDate
+        ? new Date(Number(msg.internalDate))
+        : dateHeader
+          ? new Date(dateHeader)
+          : new Date();
+
+      const { plainParts, htmlParts } = gatherMailBodies(msg.payload ?? undefined);
+      let rawBodyText = pickSupraRawBodyFromChunks(plainParts, htmlParts);
+      if (!rawBodyText.trim()) {
+        rawBodyText = (msg.snippet ?? "").trim() || "(Empty body)";
+      }
+      if (rawBodyText.length > MAX_RAW_BODY_CHARS) {
+        rawBodyText = rawBodyText.slice(0, MAX_RAW_BODY_CHARS);
+      }
+
+      out.push({
+        gmailMessageId: ref.id,
+        threadId: msg.threadId ?? null,
+        subject,
+        normalizedSubject,
+        rawBodyText,
+        sender: from,
+        senderEmail: extractEmailAddressFromFromHeader(from),
+        receivedAt,
+        inReplyTo: getHeader("In-Reply-To")?.trim() || null,
+        references: getHeader("References")?.trim() || null,
+        rfcMessageId: getHeader("Message-ID")?.trim() || null,
+      });
+    } catch (err) {
+      console.error("[gmail] fetch feedback reply message failed", ref.id, err);
+    }
+  }
+
+  return out.sort(
+    (a, b) => b.receivedAt.getTime() - a.receivedAt.getTime()
+  );
+}

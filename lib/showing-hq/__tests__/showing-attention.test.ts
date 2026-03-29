@@ -52,6 +52,7 @@ describe("getShowingAttentionState", () => {
         scheduledAt: at(15, 0),
         buyerAgentName: "Pat",
         buyerAgentEmail: "p@x.com",
+        notes: "Access instructions sent.",
         feedbackRequestStatus: "RECEIVED",
       },
       now
@@ -66,6 +67,7 @@ describe("getShowingAttentionState", () => {
         scheduledAt: at(14, 0),
         buyerAgentName: "Pat",
         buyerAgentEmail: "p@x.com",
+        notes: "Access instructions sent.",
         feedbackRequestStatus: "RECEIVED",
       },
       now
@@ -93,6 +95,7 @@ describe("getShowingAttentionState", () => {
         scheduledAt: at(14, 2),
         buyerAgentName: "Pat",
         buyerAgentEmail: "p@x.com",
+        notes: "Notes complete.",
         feedbackRequestStatus: null,
       },
       now
@@ -170,6 +173,10 @@ describe("getOpenHouseScheduleReadinessLabel", () => {
           status: "SCHEDULED",
           flyerUrl: "pdf",
           agentName: "A",
+          qrSlug: "slug-1",
+          hostAgentId: "host-1",
+          notes: "Setup notes",
+          prepChecklistFlags: { signsMaterialsReady: true },
         },
         now
       )

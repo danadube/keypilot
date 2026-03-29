@@ -12,6 +12,7 @@ import { prismaAdmin } from "@/lib/db";
 import { fetchSupraGmailMessages } from "@/lib/adapters/gmail";
 import { applySupraV1ParseDraftToQueueItem } from "@/lib/showing-hq/supra-queue-apply-parse-draft";
 import { ingestSupraQueueItemIfNew } from "@/lib/showing-hq/supra-queue-ingest";
+import { runBuyerAgentFeedbackReplyImportForUser } from "@/lib/showing-hq/buyer-agent-feedback-reply-import";
 
 /** If a run exceeds this duration without releasing the lock, another run may proceed (crash recovery). */
 export const IMPORT_RUN_LOCK_STALE_MS = 12 * 60 * 1000;
@@ -255,6 +256,19 @@ export async function runSupraGmailImportForUser(
           }
         }
       }
+    }
+
+    try {
+      const fr = await runBuyerAgentFeedbackReplyImportForUser(hostUserId);
+      if (fr.matched > 0) {
+        console.log(
+          "[supra-gmail-import] buyer-agent feedback replies matched",
+          hostUserId,
+          fr.matched
+        );
+      }
+    } catch (e) {
+      console.error("[supra-gmail-import] buyer-agent reply import failed", hostUserId, e);
     }
 
     await persistRunOutcome(hostUserId, source, {
