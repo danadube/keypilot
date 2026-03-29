@@ -37,6 +37,9 @@ function getPageTitle(pathname: string): string {
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
   const isShowingHqRoute = pathname.startsWith("/showing-hq");
+  /** Module open house surfaces (`/open-houses/*`) use the same + New affordance as ShowingHQ. */
+  const showHeaderNewMenu =
+    isShowingHqRoute || pathname.startsWith("/open-houses");
   const isShowingHQWorkbenchHome = pathname === "/showing-hq";
   const workbenchDateLine = React.useMemo(
     () =>
@@ -76,7 +79,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 border-l border-kp-outline bg-kp-surface px-2.5 md:gap-2 md:px-3.5">
-            <ShowingHQWorkbenchHeaderActions showNewMenu={isShowingHqRoute} />
+            <ShowingHQWorkbenchHeaderActions showNewMenu={showHeaderNewMenu} />
           </div>
         </header>
 
