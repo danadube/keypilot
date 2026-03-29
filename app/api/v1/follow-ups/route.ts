@@ -22,43 +22,49 @@ export async function GET() {
     const weekEnd = new Date(todayStart);
     weekEnd.setDate(weekEnd.getDate() + 8);
 
-    const rows = await withRLSContext(user.id, (tx) =>
-      tx.followUp.findMany({
-        where: {
-          createdByUserId: user.id,
-          deletedAt: null,
-          status: { not: "CLOSED" },
-          dueAt: { lte: weekEnd },
-        },
-        include: {
-          contact: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phone: true,
+    let overdue: ReturnType<typeof serializeAgentFollowUpRow>[] = [];
+    let dueToday: ReturnType<typeof serializeAgentFollowUpRow>[] = [];
+    let upcoming: ReturnType<typeof serializeAgentFollowUpRow>[] = [];
+    let all: ReturnType<typeof serializeAgentFollowUpRow>[] = [];
+    try {
+      const rows = await withRLSContext(user.id, (tx) =>
+        tx.followUp.findMany({
+          where: {
+            createdByUserId: user.id,
+            deletedAt: null,
+            status: { not: "CLOSED" },
+            dueAt: { lte: weekEnd },
+          },
+          include: {
+            contact: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+              },
             },
           },
-        },
-        orderBy: { dueAt: "asc" },
-        take: 80,
-      })
-    );
-
-    const serialized = rows.map(serializeAgentFollowUpRow);
-    const { overdue, dueToday, upcoming } = bucketAgentFollowUpsByDue(
-      serialized,
-      todayStart,
-      todayEnd
-    );
+          orderBy: { dueAt: "asc" },
+          take: 80,
+        })
+      );
+      all = rows.map(serializeAgentFollowUpRow);
+      const buckets = bucketAgentFollowUpsByDue(all, todayStart, todayEnd);
+      overdue = buckets.overdue;
+      dueToday = buckets.dueToday;
+      upcoming = buckets.upcoming;
+    } catch (e) {
+      console.error("[follow-ups GET]", e);
+    }
 
     return NextResponse.json({
       data: {
         overdue,
         dueToday,
         upcoming,
-        all: serialized,
+        all,
       },
     });
   } catch (e) {

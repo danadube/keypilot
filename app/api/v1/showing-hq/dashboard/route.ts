@@ -1049,36 +1049,46 @@ export async function GET() {
     dashLog(`start ${stage}`);
     const followUpWeekEnd = new Date(todayStart);
     followUpWeekEnd.setDate(followUpWeekEnd.getDate() + 8);
-    const agentFollowUpRows = await withRLSContext(user.id, (tx) =>
-      tx.followUp.findMany({
-        where: {
-          createdByUserId: user.id,
-          deletedAt: null,
-          status: { not: "CLOSED" },
-          dueAt: { lte: followUpWeekEnd },
-        },
-        include: {
-          contact: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phone: true,
+    let agentFollowUps = {
+      overdue: [] as ReturnType<typeof serializeAgentFollowUpRow>[],
+      dueToday: [] as ReturnType<typeof serializeAgentFollowUpRow>[],
+      upcoming: [] as ReturnType<typeof serializeAgentFollowUpRow>[],
+    };
+    try {
+      const agentFollowUpRows = await withRLSContext(user.id, (tx) =>
+        tx.followUp.findMany({
+          where: {
+            createdByUserId: user.id,
+            deletedAt: null,
+            status: { not: "CLOSED" },
+            dueAt: { lte: followUpWeekEnd },
+          },
+          include: {
+            contact: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+              },
             },
           },
-        },
-        orderBy: { dueAt: "asc" },
-        take: 80,
-      })
-    );
-    const agentFollowUpsSerialized = agentFollowUpRows.map(serializeAgentFollowUpRow);
-    const agentFollowUps = bucketAgentFollowUpsByDue(
-      agentFollowUpsSerialized,
-      todayStart,
-      todayEnd
-    );
-    dashLog(`ok ${stage}`);
+          orderBy: { dueAt: "asc" },
+          take: 80,
+        })
+      );
+      const agentFollowUpsSerialized = agentFollowUpRows.map(serializeAgentFollowUpRow);
+      agentFollowUps = bucketAgentFollowUpsByDue(
+        agentFollowUpsSerialized,
+        todayStart,
+        todayEnd
+      );
+      dashLog(`ok ${stage}`);
+    } catch (e) {
+      console.error(DASH_TAG, "agent_follow_ups_failed", errMessage(e));
+      dashLog(`skip ${stage} (empty buckets)`);
+    }
 
     stage = "serialize_json_response";
     dashLog(`start ${stage}`);
