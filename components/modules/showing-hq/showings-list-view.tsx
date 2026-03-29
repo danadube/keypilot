@@ -163,6 +163,17 @@ function emailReplyExcerpt(raw: string | null | undefined, max = 240): string {
   return t.length <= max ? t : t.slice(0, max) + "…";
 }
 
+function mergeShowingPrepChecklistFlags(
+  existing: Record<string, unknown> | null | undefined,
+  patch: Record<string, unknown>
+): Record<string, unknown> {
+  const base =
+    existing && typeof existing === "object" && !Array.isArray(existing)
+      ? { ...existing }
+      : {};
+  return { ...base, ...patch };
+}
+
 function isEmailDraftPendingSend(s: Showing): boolean {
   if (!hasBuyerAgentEmailDraft(s)) return false;
   const st = s.feedbackRequestStatus;
@@ -401,10 +412,9 @@ function EditShowingModal({
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          prepChecklistFlags: {
-            ...(showing.prepChecklistFlags as object),
+          prepChecklistFlags: mergeShowingPrepChecklistFlags(showing.prepChecklistFlags, {
             followUpPathReady: next,
-          },
+          }),
         }),
       });
       const json = await res.json();
@@ -438,10 +448,9 @@ function EditShowingModal({
           scheduledAt: scheduledAt.toISOString(),
           notes: notes || null,
           feedbackRequestStatus: "SENT",
-          prepChecklistFlags: {
-            ...(showing.prepChecklistFlags as object),
+          prepChecklistFlags: mergeShowingPrepChecklistFlags(showing.prepChecklistFlags, {
             followUpPathReady,
-          },
+          }),
         }),
       });
       const json = await res.json();
@@ -470,10 +479,9 @@ function EditShowingModal({
         body: JSON.stringify({
           scheduledAt: scheduledAt.toISOString(),
           notes: notes || null,
-          prepChecklistFlags: {
-            ...(showing.prepChecklistFlags as object),
+          prepChecklistFlags: mergeShowingPrepChecklistFlags(showing.prepChecklistFlags, {
             followUpPathReady,
-          },
+          }),
         }),
       });
       const json = await res.json();

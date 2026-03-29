@@ -81,6 +81,20 @@ export async function PATCH(
       updateData.prepChecklistFlags = parsed.data.prepChecklistFlags as Prisma.InputJsonValue;
     }
 
+    if (Object.keys(updateData).length === 0) {
+      const showing = await prismaAdmin.showing.findFirst({
+        where: { id, hostUserId: user.id, deletedAt: null },
+        include: { property: true },
+      });
+      if (!showing) {
+        return NextResponse.json(
+          { error: { message: "Showing not found" } },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json({ data: showing });
+    }
+
     const showing = await prismaAdmin.showing.update({
       where: { id },
       data: updateData,
