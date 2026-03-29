@@ -140,7 +140,7 @@ export function HostFeedbackForm({
           value={trafficLevel ?? ""}
           onValueChange={(v) => setTrafficLevel(v || null)}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[180px]" data-editable-focus>
             <SelectValue placeholder="Select traffic level" />
           </SelectTrigger>
           <SelectContent>

@@ -48,7 +48,12 @@ import {
 import { buildOpenHousePrepChecklist } from "@/lib/showing-hq/prep-checklist";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { EditableBlockHint } from "@/components/showing-hq/editable-block-hint";
+import {
+  EditableBlock,
+  EditableBlockHeader,
+  EditableBlockContent,
+  EditableBlockTableEditHeading,
+} from "@/components/ui/editable-block";
 
 type OpenHouseData = {
   hostUserId?: string;
@@ -568,17 +573,16 @@ export function OpenHouseDetailPageClient() {
           <p className="text-xs text-kp-on-surface-variant">
             Host debrief (traffic, tags, notes) and post-event outputs — all from this workspace.
           </p>
-          <div className="rounded-xl border border-kp-outline/80 bg-kp-surface-high/20 p-5">
-            <div className="flex items-start justify-between gap-2 border-b border-kp-outline/40 pb-2">
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-kp-on-surface">Host debrief</p>
-                <p className="mt-1 text-xs text-kp-on-surface-variant">
-                  Correct or clear post-event feedback without opening the host console.
-                </p>
-              </div>
-              <EditableBlockHint className="mt-0.5" />
-            </div>
-            <div className="mt-3">
+          <EditableBlock
+            variant="inline"
+            className="border-kp-outline/80 bg-kp-surface-high/20 p-5"
+          >
+            <EditableBlockHeader
+              titleTone="default"
+              title="Host debrief"
+              description="Correct or clear post-event feedback without opening the host console."
+            />
+            <EditableBlockContent className="space-y-0">
               <HostFeedbackForm
                 openHouseId={openHouseId}
                 initialData={{
@@ -590,8 +594,8 @@ export function OpenHouseDetailPageClient() {
                 workspaceOwnerEdit
                 onSave={() => loadData()}
               />
-            </div>
-          </div>
+            </EditableBlockContent>
+          </EditableBlock>
           <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
           <p className="text-sm font-semibold text-kp-on-surface">Post-event outputs</p>
           <p className="mt-1 text-xs text-kp-on-surface-variant">
@@ -624,182 +628,196 @@ export function OpenHouseDetailPageClient() {
             QR, visitors, and follow-ups are below.
           </p>
 
-          <div className="space-y-3 rounded-xl border border-kp-outline/80 bg-kp-surface-high/25 p-4">
-            <div className="flex items-center justify-between gap-2 border-b border-kp-outline/40 pb-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-                Event status
-              </p>
-              <EditableBlockHint />
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {STATUS_QUICK.map((s) => (
+          <EditableBlock variant="inline">
+            <EditableBlockHeader
+              title="Event status"
+              description="Tap a status to update now — no save bar required."
+            />
+            <EditableBlockContent>
+              <div className="flex flex-wrap items-center gap-2">
+                {STATUS_QUICK.map((s, i) => (
+                  <Button
+                    key={s.value}
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={updatingStatus}
+                    className={cn(
+                      "h-9 min-w-[100px] text-xs font-semibold",
+                      data.status === s.value
+                        ? cn(kpBtnPrimary, "border-transparent")
+                        : kpBtnSecondary
+                    )}
+                    onClick={() => handleStatusChange(s.value)}
+                    {...(i === 0 ? { "data-editable-focus": true as const } : {})}
+                  >
+                    {s.label}
+                  </Button>
+                ))}
                 <Button
-                  key={s.value}
                   type="button"
                   size="sm"
                   variant="outline"
                   disabled={updatingStatus}
                   className={cn(
-                    "h-9 min-w-[100px] text-xs font-semibold",
-                    data.status === s.value
-                      ? cn(kpBtnPrimary, "border-transparent")
-                      : kpBtnSecondary
+                    "h-9 text-xs",
+                    data.status === "CANCELLED" ? kpBtnPrimary : kpBtnTertiary
                   )}
-                  onClick={() => handleStatusChange(s.value)}
+                  onClick={() => handleStatusChange("CANCELLED")}
                 >
-                  {s.label}
+                  Cancelled
                 </Button>
-              ))}
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={updatingStatus}
-                className={cn(
-                  "h-9 text-xs",
-                  data.status === "CANCELLED" ? kpBtnPrimary : kpBtnTertiary
-                )}
-                onClick={() => handleStatusChange("CANCELLED")}
-              >
-                Cancelled
-              </Button>
-            </div>
-            <p className="text-[10px] text-kp-on-surface-variant">
-              Updates apply immediately — no save bar required.
-            </p>
-          </div>
+              </div>
+            </EditableBlockContent>
+          </EditableBlock>
 
-          <div className="space-y-3 rounded-xl border border-kp-outline/80 bg-kp-surface-high/25 p-4">
-            <div className="flex items-center justify-between gap-2 border-b border-kp-outline/40 pb-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-                Property & title
-              </p>
-              <EditableBlockHint />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label className="text-xs font-medium text-kp-on-surface">Property</Label>
-                <Select value={detailPropertyId} onValueChange={setDetailPropertyId}>
-                  <SelectTrigger className="h-10 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface">
-                    <SelectValue placeholder="Select property" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-64 border-kp-outline bg-kp-surface">
-                    {properties.map((p) => (
-                      <SelectItem key={p.id} value={p.id} className="text-kp-on-surface">
-                        {p.address1}, {p.city}, {p.state}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <EditableBlock variant="inline">
+            <EditableBlockHeader
+              title="Property & title"
+              description="Listing and how this event appears in ShowingHQ."
+            />
+            <EditableBlockContent>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-xs font-medium text-kp-on-surface">Property</Label>
+                  <Select value={detailPropertyId} onValueChange={setDetailPropertyId}>
+                    <SelectTrigger
+                      className="h-10 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+                      data-editable-focus
+                    >
+                      <SelectValue placeholder="Select property" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-64 border-kp-outline bg-kp-surface">
+                      {properties.map((p) => (
+                        <SelectItem key={p.id} value={p.id} className="text-kp-on-surface">
+                          {p.address1}, {p.city}, {p.state}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-xs font-medium text-kp-on-surface">Event title</Label>
+                  <Input
+                    value={detailTitle}
+                    onChange={(e) => setDetailTitle(e.target.value)}
+                    className="h-10 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+                    placeholder="Open house title"
+                  />
+                </div>
               </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label className="text-xs font-medium text-kp-on-surface">Event title</Label>
-                <Input
-                  value={detailTitle}
-                  onChange={(e) => setDetailTitle(e.target.value)}
-                  className="h-10 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
-                  placeholder="Open house title"
-                />
-              </div>
-            </div>
-          </div>
+            </EditableBlockContent>
+          </EditableBlock>
 
-          <div className="space-y-3 rounded-xl border border-kp-outline/80 bg-kp-surface-high/25 p-4">
-            <div className="flex items-center justify-between gap-2 border-b border-kp-outline/40 pb-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-                Schedule & notes
-              </p>
-              <EditableBlockHint />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <EditableBlock variant="inline">
+            <EditableBlockHeader
+              title="Schedule"
+              description="Start and end — quick actions adjust start or align end from start."
+            />
+            <EditableBlockContent>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-kp-on-surface">Start date</Label>
+                  <Input
+                    type="date"
+                    value={detailStartDate}
+                    onChange={(e) => setDetailStartDate(e.target.value)}
+                    className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+                    data-editable-focus
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-kp-on-surface">Start time</Label>
+                  <Input
+                    type="time"
+                    step={60}
+                    value={detailStartTime}
+                    onChange={(e) => setDetailStartTime(e.target.value)}
+                    className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface tabular-nums"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-kp-on-surface">End date</Label>
+                  <Input
+                    type="date"
+                    value={detailEndDate}
+                    onChange={(e) => setDetailEndDate(e.target.value)}
+                    className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-kp-on-surface">End time</Label>
+                  <Input
+                    type="time"
+                    step={60}
+                    value={detailEndTime}
+                    onChange={(e) => setDetailEndTime(e.target.value)}
+                    className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface tabular-nums"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
+                  onClick={setStartNow}
+                >
+                  Start: Now
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
+                  onClick={() => bumpStartMinutes(30)}
+                >
+                  Start +30m
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
+                  onClick={() => bumpStartMinutes(60)}
+                >
+                  Start +1h
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
+                  onClick={() => alignEndHoursAfterStart(2)}
+                >
+                  End +2h from start
+                </Button>
+              </div>
+            </EditableBlockContent>
+          </EditableBlock>
+
+          <EditableBlock variant="inline">
+            <EditableBlockHeader
+              title="Notes"
+              description="For team / host — saved with the rest of the event via Save changes."
+            />
+            <EditableBlockContent>
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-kp-on-surface">Start date</Label>
-                <Input
-                  type="date"
-                  value={detailStartDate}
-                  onChange={(e) => setDetailStartDate(e.target.value)}
-                  className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+                <Label className="text-xs font-medium text-kp-on-surface-variant">
+                  Notes for team / host
+                </Label>
+                <textarea
+                  value={detailNotes}
+                  onChange={(e) => setDetailNotes(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-lg border border-kp-outline/80 bg-kp-surface-high/80 px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant/70"
+                  placeholder="Parking, access, staging notes…"
+                  data-editable-focus
                 />
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-kp-on-surface">Start time</Label>
-                <Input
-                  type="time"
-                  step={60}
-                  value={detailStartTime}
-                  onChange={(e) => setDetailStartTime(e.target.value)}
-                  className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface tabular-nums"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-kp-on-surface">End date</Label>
-                <Input
-                  type="date"
-                  value={detailEndDate}
-                  onChange={(e) => setDetailEndDate(e.target.value)}
-                  className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-medium text-kp-on-surface">End time</Label>
-                <Input
-                  type="time"
-                  step={60}
-                  value={detailEndTime}
-                  onChange={(e) => setDetailEndTime(e.target.value)}
-                  className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface tabular-nums"
-                />
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
-                onClick={setStartNow}
-              >
-                Start: Now
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
-                onClick={() => bumpStartMinutes(30)}
-              >
-                Start +30m
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
-                onClick={() => bumpStartMinutes(60)}
-              >
-                Start +1h
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
-                onClick={() => alignEndHoursAfterStart(2)}
-              >
-                End +2h from start
-              </Button>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-medium text-kp-on-surface-variant">Notes for team / host</Label>
-              <textarea
-                value={detailNotes}
-                onChange={(e) => setDetailNotes(e.target.value)}
-                rows={3}
-                className="w-full rounded-lg border border-kp-outline/80 bg-kp-surface-high/80 px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant/70"
-                placeholder="Parking, access, staging notes…"
-              />
-            </div>
-          </div>
+            </EditableBlockContent>
+          </EditableBlock>
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
@@ -841,57 +859,53 @@ export function OpenHouseDetailPageClient() {
       {/* Visitors + Follow-ups */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Visitor list */}
-        <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-          <div className="mb-1 flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold text-kp-on-surface">Visitors</p>
-            <EditableBlockHint className="mt-0.5" />
-          </div>
-          <p className="mb-4 text-xs text-kp-on-surface-variant">
-            {data.visitors.length} sign-in{data.visitors.length !== 1 ? "s" : ""}
-            {data.visitors.length > 0 ? (
-              <>
-                {" "}
-                — use <span className="font-medium text-kp-on-surface/90">Edit</span> on each row.
-              </>
-            ) : null}
-          </p>
-          {data.visitors.length === 0 ? (
-            <p className="py-6 text-center text-sm text-kp-on-surface-variant">
-              No visitors yet. Share your sign-in link.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-kp-outline">
-                    <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Name</th>
-                    <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Email</th>
-                    <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Phone</th>
-                    <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Interest</th>
-                    <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Sign-in</th>
-                    <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Status</th>
-                    <th className="pb-2 w-[180px] text-right text-xs font-semibold text-kp-on-surface-variant">
-                      <span className="inline-flex items-center justify-end gap-1 text-kp-teal">
-                        <Pencil className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
-                        Edit
-                      </span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-kp-outline">
-                  {data.visitors.map((v) => (
-                    <OpenHouseVisitorRowInline
-                      key={v.id}
-                      v={v}
-                      formatDateTime={formatDateTime}
-                      onRefresh={loadData}
-                    />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <EditableBlock variant="table">
+          <EditableBlockHeader
+            titleTone="default"
+            title="Visitors"
+            description={
+              data.visitors.length === 0
+                ? "Sign-ins appear here after visitors use your link."
+                : `${data.visitors.length} sign-in${data.visitors.length !== 1 ? "s" : ""} — use Edit on each row.`
+            }
+          />
+          <EditableBlockContent className="space-y-0">
+            {data.visitors.length === 0 ? (
+              <p className="py-6 text-center text-sm text-kp-on-surface-variant">
+                No visitors yet. Share your sign-in link.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-kp-outline">
+                      <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Name</th>
+                      <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Email</th>
+                      <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Phone</th>
+                      <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Interest</th>
+                      <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Sign-in</th>
+                      <th className="pb-2 text-left text-xs font-semibold text-kp-on-surface-variant">Status</th>
+                      <th className="pb-2 w-[180px] text-right text-xs font-semibold text-kp-on-surface-variant">
+                        <EditableBlockTableEditHeading className="w-full justify-end" />
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-kp-outline">
+                    {data.visitors.map((v, i) => (
+                      <OpenHouseVisitorRowInline
+                        key={v.id}
+                        v={v}
+                        formatDateTime={formatDateTime}
+                        onRefresh={loadData}
+                        anchorEditFocus={i === 0}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </EditableBlockContent>
+        </EditableBlock>
 
         {/* Follow-ups */}
         <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">

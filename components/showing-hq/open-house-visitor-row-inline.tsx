@@ -44,10 +44,13 @@ export function OpenHouseVisitorRowInline({
   v,
   formatDateTime,
   onRefresh,
+  /** First row: section “Edit” focuses this control */
+  anchorEditFocus = false,
 }: {
   v: OpenHouseVisitorRowModel;
   formatDateTime: (iso: string) => string;
   onRefresh: () => void;
+  anchorEditFocus?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -249,6 +252,7 @@ export function OpenHouseVisitorRowInline({
             size="sm"
             className={cn(kpBtnTertiary, "h-7 w-full justify-end gap-1 text-xs")}
             onClick={startEdit}
+            {...(anchorEditFocus ? { "data-editable-focus": true } : {})}
           >
             <Pencil className="h-3 w-3 shrink-0" aria-hidden />
             Edit
