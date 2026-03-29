@@ -15,16 +15,16 @@ const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
  * For user-scoped routes, use withRLSContext() from lib/db-context.ts instead.
  * withRLSContext switches to the keypilot_app role, which enforces per-user RLS policies.
  */
-export const prismaAdmin =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+if (!globalForPrisma.prisma) {
+  globalForPrisma.prisma = new PrismaClient({
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "error", "warn"]
         : ["error"],
   });
+}
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prismaAdmin;
+export const prismaAdmin = globalForPrisma.prisma;
 
 /**
  * @deprecated Use prismaAdmin for explicit BYPASSRLS intent, or withRLSContext for

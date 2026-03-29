@@ -34,12 +34,9 @@ export default function RootLayout({
     console.error("Missing or invalid NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY");
   }
 
-  const signInUrl =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") + "/sign-in" ||
-    "/sign-in";
-  const signUpUrl =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") + "/sign-up" ||
-    "/sign-up";
+  const appBase = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ?? "";
+  const signInUrl = appBase ? `${appBase}/sign-in` : "/sign-in";
+  const signUpUrl = appBase ? `${appBase}/sign-up` : "/sign-up";
 
   return (
     <ClerkProvider
