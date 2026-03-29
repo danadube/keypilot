@@ -27,8 +27,12 @@ export async function POST(
     const openHouse = await prismaAdmin.openHouse.findFirst({
       where: {
         id,
-        hostUserId: user.id,
         deletedAt: null,
+        OR: [
+          { hostUserId: user.id },
+          { listingAgentId: user.id },
+          { hostAgentId: user.id },
+        ],
       },
     });
     if (!openHouse) {

@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnSecondary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { buildOpenHousePrepChecklist } from "@/lib/showing-hq/prep-checklist";
 import { mergePrepChecklistFlags } from "@/lib/showing-hq/prep-checklist-flags";
+import { OpenHouseFlyerUploadButton } from "@/components/showing-hq/OpenHouseFlyerUploadButton";
 
 /** DOM id for the primary “Invite host” control in quick actions (scroll target from prep). */
 export const OPEN_HOUSE_INVITE_HOST_PRIMARY_ANCHOR_ID = "oh-invite-host-primary";
@@ -62,12 +62,14 @@ export function OpenHousePrepWorkspace({
   openHouseId,
   input,
   onReload,
-  onJumpToDetailsForQr,
+  onOpenDetailsTab,
+  onFlyerUploadError,
 }: {
   openHouseId: string;
   input: OpenHousePrepWorkspaceInput;
   onReload: () => void;
-  onJumpToDetailsForQr?: () => void;
+  onOpenDetailsTab?: () => void;
+  onFlyerUploadError?: (message: string | null) => void;
 }) {
   const [flagBusy, setFlagBusy] = useState(false);
   const [notes, setNotes] = useState(input.notes ?? "");
@@ -162,6 +164,12 @@ export function OpenHousePrepWorkspace({
   const hostLooksAssigned =
     Boolean(input.hostAgentId) || (input.nonListingHostCount ?? 0) > 0;
 
+  const resolvedFlyerUrl =
+    input.flyerOverrideUrl?.trim() ||
+    input.flyerUrl?.trim() ||
+    input.propertyFlyerUrl?.trim() ||
+    null;
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-kp-teal/25 bg-kp-teal/[0.06] px-4 py-3">
@@ -201,8 +209,8 @@ export function OpenHousePrepWorkspace({
           const helper = (() => {
             if (isFlyer) {
               return item.complete
-                ? "Flyer is linked — update on the open house record if the file changes."
-                : "Upload or attach a flyer, then mark this when it’s ready for visitors.";
+                ? "Flyer is linked — replace the PDF anytime with Upload flyer or View flyer."
+                : "Use Upload flyer for a PDF (or quick actions above), then mark when it’s ready.";
             }
             if (isQr) {
               return item.complete
@@ -254,9 +262,22 @@ export function OpenHousePrepWorkspace({
                 )}
               >
                 {isFlyer ? (
-                  <Button variant="outline" size="sm" className={cn(kpBtnTertiary, "h-7 text-[11px]")} asChild>
-                    <Link href={`/open-houses/${openHouseId}`}>Manage flyer</Link>
-                  </Button>
+                  <>
+                    <OpenHouseFlyerUploadButton
+                      openHouseId={openHouseId}
+                      size="sm"
+                      onUploaded={() => onReload()}
+                      onError={(m) => onFlyerUploadError?.(m)}
+                      className={cn(kpBtnTertiary, "h-7 text-[11px]")}
+                    />
+                    {resolvedFlyerUrl ? (
+                      <Button variant="outline" size="sm" className={cn(kpBtnTertiary, "h-7 text-[11px]")} asChild>
+                        <a href={resolvedFlyerUrl} target="_blank" rel="noopener noreferrer">
+                          View flyer
+                        </a>
+                      </Button>
+                    ) : null}
+                  </>
                 ) : null}
                 {isQr ? (
                   <Button
@@ -264,7 +285,7 @@ export function OpenHousePrepWorkspace({
                     variant="outline"
                     size="sm"
                     className={cn(kpBtnTertiary, "h-7 text-[11px]")}
-                    onClick={() => onJumpToDetailsForQr?.()}
+                    onClick={() => onOpenDetailsTab?.()}
                   >
                     QR tools
                   </Button>
@@ -293,8 +314,14 @@ export function OpenHousePrepWorkspace({
             placeholder="Host instructions, parking, special notes…"
             className="mt-2 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant/70"
           />
-          <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "mt-2 h-7 text-[11px]")} asChild>
-            <Link href={`/open-houses/${openHouseId}`}>Full editor</Link>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn(kpBtnSecondary, "mt-2 h-7 text-[11px]")}
+            onClick={() => onOpenDetailsTab?.()}
+          >
+            Open Details tab
           </Button>
         </div>
       </div>

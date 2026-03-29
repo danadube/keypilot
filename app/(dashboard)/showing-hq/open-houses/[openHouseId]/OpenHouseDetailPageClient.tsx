@@ -31,12 +31,13 @@ import {
   RefreshCw,
   FileText,
   ArrowLeft,
-  Upload,
 } from "lucide-react";
 import {
   OpenHousePrepWorkspace,
   OPEN_HOUSE_INVITE_HOST_PRIMARY_ANCHOR_ID,
 } from "@/components/showing-hq/open-house-prep-workspace";
+import { OpenHouseFlyerUploadButton } from "@/components/showing-hq/OpenHouseFlyerUploadButton";
+import { ShowingHqWorkflowTabStrip } from "@/components/showing-hq/ShowingHqWorkflowTabStrip";
 import {
   normalizeShowingHqWorkflowTab,
   openHouseWorkflowTabHref,
@@ -118,12 +119,6 @@ function draftStatusClass(status: string) {
   return "text-kp-gold"; // DRAFT
 }
 
-const OH_TAB_SPECS: { id: ShowingHqWorkflowTab; label: string }[] = [
-  { id: "prep", label: "Prep" },
-  { id: "feedback", label: "Feedback" },
-  { id: "details", label: "Details" },
-];
-
 export function OpenHouseDetailPageClient() {
   const params = useParams();
   const router = useRouter();
@@ -200,13 +195,6 @@ export function OpenHouseDetailPageClient() {
     [openHouseId, data?.status, loadData]
   );
 
-  const formatDate = (d: string) =>
-    new Date(d).toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
   const formatDateTime = (d: string) =>
     new Date(d).toLocaleString("en-US", {
       month: "short",
@@ -333,19 +321,29 @@ export function OpenHouseDetailPageClient() {
     loadData,
   ]);
 
-  if (loading) return <PageLoading message="Loading open house..." />;
-  if (error || !data)
+  if (loading && !data) return <PageLoading message="Loading open house..." />;
+  if (!data) {
     return (
       <ErrorMessage
         message={error ?? "Open house not found"}
         onRetry={loadData}
       />
     );
+  }
+
+  const contextLine = [
+    address || null,
+    `${formatDateTime(data.startAt)} – ${formatDateTime(data.endAt)}`,
+    openHouseStatusLabel(data.status),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const openDetails = () => setTab("details");
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
@@ -355,117 +353,60 @@ export function OpenHouseDetailPageClient() {
           >
             <Link href="/showing-hq">
               <ArrowLeft className="h-4 w-4" />
-              Dashboard
+              ShowingHQ
             </Link>
           </Button>
           <span className="text-kp-outline">/</span>
           <div>
-            <h1 className="text-xl font-bold text-kp-on-surface">{data.title}</h1>
-            <p className="text-sm text-kp-on-surface-variant">
-              {address} · {formatDate(data.startAt)}
+            <h1 className="text-xl font-bold text-kp-on-surface">
+              Open house — {data.title}
+            </h1>
+            <p className="text-sm text-kp-on-surface-variant">{contextLine}</p>
+            <p className="mt-0.5 text-[11px] text-kp-on-surface-variant/80">
+              Workspace — same tabs as private showings; Details holds schedule, status, QR, and visitor
+              lists.
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={data.status}
-            onValueChange={handleStatusChange}
-            disabled={updatingStatus}
-          >
-            <SelectTrigger className="h-8 w-[140px] border-kp-outline bg-kp-surface-high text-xs text-kp-on-surface">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent className="border-kp-outline bg-kp-surface">
-              <SelectItem value="SCHEDULED" className="text-kp-on-surface">Scheduled</SelectItem>
-              <SelectItem value="ACTIVE" className="text-kp-on-surface">Active</SelectItem>
-              <SelectItem value="COMPLETED" className="text-kp-on-surface">Completed</SelectItem>
-              <SelectItem value="CANCELLED" className="text-kp-on-surface">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            size="sm"
-            variant="outline"
-            className={cn(kpBtnSecondary, "h-8 text-xs")}
-            asChild
-          >
-            <Link href={`/open-houses/${openHouseId}/report`}>
-              <FileText className="mr-1.5 h-3.5 w-3.5" />
-              Seller report
-            </Link>
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className={cn(kpBtnSecondary, "h-8 text-xs")}
-            asChild
-          >
-            <Link href="/open-houses">All open houses</Link>
-          </Button>
-        </div>
       </div>
 
-      {/* Error */}
-      {error && (
+      {error ? (
         <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           {error}
         </div>
-      )}
+      ) : null}
 
-      <div className="rounded-xl border border-kp-outline/80 bg-kp-surface-high/20 p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-kp-teal/90">At a glance</p>
-        <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-kp-on-surface">{openHouseStatusLabel(data.status)}</p>
-            <p className="text-xs text-kp-on-surface-variant">
-              {formatDateTime(data.startAt)} – {formatDateTime(data.endAt)}
-            </p>
-            <p className="text-xs text-kp-on-surface-variant">
-              {totalVisitors} visitor{totalVisitors !== 1 ? "s" : ""} signed in ·{" "}
-              {prepProgress.total > 0
-                ? `${prepProgress.done} of ${prepProgress.total} prep complete`
-                : "Prep tracking"}
-            </p>
-            {data.qrSlug ? (
-              <p className="text-xs text-emerald-400/90">Sign-in page is live — share the QR or link below.</p>
-            ) : null}
-          </div>
-          <div
-            id={OPEN_HOUSE_INVITE_HOST_PRIMARY_ANCHOR_ID}
-            className="flex flex-wrap gap-2 scroll-mt-24"
-          >
-            <InviteHostDialog openHouseId={openHouseId} onInviteSent={loadData} />
-            <Button size="sm" variant="outline" className={cn(kpBtnSecondary, "h-8 text-xs")} asChild>
-              <Link href={`/open-houses/${openHouseId}`}>
-                <Upload className="mr-1.5 h-3.5 w-3.5" />
-                Upload flyer
-              </Link>
-            </Button>
-            <Button size="sm" variant="outline" className={cn(kpBtnPrimary, "h-8 border-transparent text-xs")} asChild>
-              <Link href={`/open-houses/${openHouseId}/sign-in`}>
-                <QrCode className="mr-1.5 h-3.5 w-3.5" />
-                Open sign-in
-              </Link>
-            </Button>
-          </div>
+      <ShowingHqWorkflowTabStrip tab={tab} onTabChange={setTab} />
+
+      <div className="flex flex-col gap-2 rounded-lg border border-kp-outline/70 bg-kp-surface-high/15 px-3 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <p className="text-[11px] text-kp-on-surface-variant">
+          {totalVisitors} visitor{totalVisitors !== 1 ? "s" : ""} ·{" "}
+          {prepProgress.total > 0
+            ? `Prep ${prepProgress.done}/${prepProgress.total}`
+            : "Prep"}{" "}
+          {data.qrSlug ? "· Sign-in live" : ""}
+        </p>
+        <div
+          id={OPEN_HOUSE_INVITE_HOST_PRIMARY_ANCHOR_ID}
+          className="flex flex-wrap gap-2 scroll-mt-28"
+        >
+          <InviteHostDialog openHouseId={openHouseId} onInviteSent={loadData} />
+          <OpenHouseFlyerUploadButton
+            openHouseId={openHouseId}
+            size="sm"
+            onUploaded={() => {
+              setError(null);
+              loadData();
+            }}
+            onError={(m) => setError(m)}
+          />
+          <Button size="sm" variant="outline" className={cn(kpBtnPrimary, "h-8 border-transparent text-xs")} asChild>
+            <Link href={`/open-houses/${openHouseId}/sign-in`}>
+              <QrCode className="mr-1.5 h-3.5 w-3.5" />
+              Open sign-in
+            </Link>
+          </Button>
         </div>
-      </div>
-
-      <div className="flex flex-wrap gap-1 border-b border-kp-outline/70 pb-0.5">
-        {OH_TAB_SPECS.map(({ id: tid, label }) => (
-          <button
-            key={tid}
-            type="button"
-            onClick={() => setTab(tid)}
-            className={cn(
-              "rounded-t-md px-3 py-2 text-xs font-semibold transition-colors",
-              tab === tid
-                ? "bg-kp-surface-high text-kp-on-surface"
-                : "text-kp-on-surface-variant hover:bg-kp-surface-high/50 hover:text-kp-on-surface"
-            )}
-          >
-            {label}
-          </button>
-        ))}
       </div>
 
       {tab === "prep" && prepWorkspaceInput ? (
@@ -473,12 +414,17 @@ export function OpenHouseDetailPageClient() {
           openHouseId={openHouseId}
           input={prepWorkspaceInput}
           onReload={loadData}
-          onJumpToDetailsForQr={() => setTab("details")}
+          onOpenDetailsTab={openDetails}
+          onFlyerUploadError={(m) => setError(m)}
         />
       ) : null}
 
       {tab === "feedback" && (
-        <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+        <div className="space-y-4">
+          <p className="text-xs text-kp-on-surface-variant">
+            After the event, run reports and follow-ups from here — still inside this open house workspace.
+          </p>
+          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
           <p className="text-sm font-semibold text-kp-on-surface">Post-event outputs</p>
           <p className="mt-1 text-xs text-kp-on-surface-variant">
             Seller report and visitor follow-ups for this open house.
@@ -500,77 +446,86 @@ export function OpenHouseDetailPageClient() {
             </Button>
           </div>
         </div>
+        </div>
       )}
 
       {tab === "details" && (
-        <>
-      <div className="sticky top-0 z-20 -mx-1 border-b border-kp-outline/70 bg-kp-bg/95 px-1 py-3 backdrop-blur supports-[backdrop-filter]:bg-kp-bg/85">
-        <div className="rounded-xl border border-kp-outline/90 bg-kp-surface-high/25 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-kp-on-surface">Event schedule & notes</p>
-              <p className="text-xs text-kp-on-surface-variant">Update when the window shifts or instructions change.</p>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              className={cn(kpBtnPrimary, "h-9 border-transparent text-xs font-semibold")}
-              disabled={!scheduleDirty || detailSaving}
-              onClick={() => void saveEventDetails()}
-            >
-              {detailSaving ? "Saving…" : "Save changes"}
-            </Button>
+        <div className="space-y-6">
+          <p className="text-xs text-kp-on-surface-variant">
+            Event status, schedule, and field notes — save when you&apos;re done with changes on this tab.
+            QR, visitors, and follow-ups are below.
+          </p>
+
+          <div className="space-y-3 rounded-xl border border-kp-outline/80 bg-kp-surface-high/25 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+              Event status
+            </p>
+            <Select value={data.status} onValueChange={handleStatusChange} disabled={updatingStatus}>
+              <SelectTrigger className="h-9 max-w-xs border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className="border-kp-outline bg-kp-surface">
+                <SelectItem value="SCHEDULED" className="text-kp-on-surface">Scheduled</SelectItem>
+                <SelectItem value="ACTIVE" className="text-kp-on-surface">Active</SelectItem>
+                <SelectItem value="COMPLETED" className="text-kp-on-surface">Completed</SelectItem>
+                <SelectItem value="CANCELLED" className="text-kp-on-surface">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-kp-on-surface-variant">Start date</Label>
-              <Input
-                type="date"
-                value={detailStartDate}
-                onChange={(e) => setDetailStartDate(e.target.value)}
-                className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
-              />
+
+          <div className="space-y-3 rounded-xl border border-kp-outline/80 bg-kp-surface-high/25 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+              Schedule & notes
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-kp-on-surface">Start date</Label>
+                <Input
+                  type="date"
+                  value={detailStartDate}
+                  onChange={(e) => setDetailStartDate(e.target.value)}
+                  className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-kp-on-surface">Start time</Label>
+                <Input
+                  type="time"
+                  value={detailStartTime}
+                  onChange={(e) => setDetailStartTime(e.target.value)}
+                  className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-kp-on-surface">End date</Label>
+                <Input
+                  type="date"
+                  value={detailEndDate}
+                  onChange={(e) => setDetailEndDate(e.target.value)}
+                  className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-kp-on-surface">End time</Label>
+                <Input
+                  type="time"
+                  value={detailEndTime}
+                  onChange={(e) => setDetailEndTime(e.target.value)}
+                  className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+                />
+              </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-kp-on-surface-variant">Start time</Label>
-              <Input
-                type="time"
-                value={detailStartTime}
-                onChange={(e) => setDetailStartTime(e.target.value)}
-                className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-kp-on-surface-variant">End date</Label>
-              <Input
-                type="date"
-                value={detailEndDate}
-                onChange={(e) => setDetailEndDate(e.target.value)}
-                className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-kp-on-surface-variant">End time</Label>
-              <Input
-                type="time"
-                value={detailEndTime}
-                onChange={(e) => setDetailEndTime(e.target.value)}
-                className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+              <Label className="text-xs font-medium text-kp-on-surface">Notes for team / host</Label>
+              <textarea
+                value={detailNotes}
+                onChange={(e) => setDetailNotes(e.target.value)}
+                rows={3}
+                className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant/70"
+                placeholder="Parking, access, staging notes…"
               />
             </div>
           </div>
-          <div className="mt-4 space-y-1.5">
-            <Label className="text-xs text-kp-on-surface-variant">Notes for team / host</Label>
-            <textarea
-              value={detailNotes}
-              onChange={(e) => setDetailNotes(e.target.value)}
-              rows={3}
-              className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant/70"
-              placeholder="Parking, access, staging notes…"
-            />
-          </div>
-        </div>
-      </div>
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
@@ -786,7 +741,23 @@ export function OpenHouseDetailPageClient() {
           </div>
         </div>
       </div>
-        </>
+
+          <div
+            className={cn(
+              "sticky bottom-4 z-10 flex justify-end rounded-lg border border-kp-outline/70 bg-kp-surface/95 px-3 py-2 shadow-lg backdrop-blur-sm"
+            )}
+          >
+            <Button
+              type="button"
+              size="sm"
+              className={cn(kpBtnPrimary, "h-9 border-transparent text-xs font-semibold")}
+              disabled={!scheduleDirty || detailSaving}
+              onClick={() => void saveEventDetails()}
+            >
+              {detailSaving ? "Saving…" : "Save changes"}
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

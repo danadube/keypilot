@@ -21,6 +21,7 @@ import {
   type ShowingHqWorkflowTab,
 } from "@/lib/showing-hq/showing-workflow-hrefs";
 import { ShowingBuyerAgentFeedbackDraftPanel } from "@/components/showing-hq/ShowingBuyerAgentFeedbackDraftPanel";
+import { ShowingHqWorkflowTabStrip } from "@/components/showing-hq/ShowingHqWorkflowTabStrip";
 import { buildPropertyAddressLineForFeedbackDraft } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 
 type ShowingDetail = {
@@ -51,12 +52,6 @@ function emailReplyExcerpt(raw: string | null | undefined, max = 240): string {
   if (!t) return "";
   return t.length <= max ? t : `${t.slice(0, max)}…`;
 }
-
-const TAB_SPECS: { id: ShowingHqWorkflowTab; label: string }[] = [
-  { id: "prep", label: "Prep" },
-  { id: "feedback", label: "Feedback" },
-  { id: "details", label: "Details" },
-];
 
 export function ShowingDetailWorkflow() {
   const params = useParams();
@@ -222,7 +217,7 @@ export function ShowingDetailWorkflow() {
   }
 
   if (loading && !data) return <PageLoading message="Loading showing…" />;
-  if (error && !data) {
+  if (!data && error) {
     return (
       <ErrorMessage
         message={error}
@@ -234,6 +229,14 @@ export function ShowingDetailWorkflow() {
     );
   }
   if (!data) return null;
+
+  const scheduledLabel = new Date(data.scheduledAt).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+  const buyerLine = data.buyerName?.trim()
+    ? `Buyer: ${data.buyerName.trim()}`
+    : "Buyer: —";
 
   const addressLine = buildPropertyAddressLineForFeedbackDraft(data.property);
   const hasDraft = hasBuyerAgentEmailDraft({
@@ -250,17 +253,20 @@ export function ShowingDetailWorkflow() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <Button variant="ghost" size="sm" className={cn(kpBtnTertiary, "h-8 gap-1.5 px-2")} asChild>
-            <Link href="/showing-hq/showings">
+            <Link href="/showing-hq">
               <ArrowLeft className="h-4 w-4" />
-              Showings
+              ShowingHQ
             </Link>
           </Button>
           <span className="text-kp-outline">/</span>
           <div>
             <h1 className="text-xl font-bold text-kp-on-surface">Private showing</h1>
             <p className="text-sm text-kp-on-surface-variant">{addressLine}</p>
+            <p className="text-sm text-kp-on-surface-variant">
+              {scheduledLabel} · {buyerLine}
+            </p>
             <p className="mt-0.5 text-[11px] text-kp-on-surface-variant/80">
-              Workspace — fields on Prep and Feedback save as you go or when you click save actions.
+              Workspace — Prep, Feedback, and Details share one flow; save from Details or feedback actions when needed.
             </p>
           </div>
         </div>
@@ -272,26 +278,13 @@ export function ShowingDetailWorkflow() {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap gap-1 border-b border-kp-outline/70 pb-0.5">
-        {TAB_SPECS.map(({ id: tid, label }) => (
-          <button
-            key={tid}
-            type="button"
-            onClick={() => setTab(tid)}
-            className={cn(
-              "rounded-t-md px-3 py-2 text-xs font-semibold transition-colors",
-              tab === tid
-                ? "bg-kp-surface-high text-kp-on-surface"
-                : "text-kp-on-surface-variant hover:bg-kp-surface-high/50 hover:text-kp-on-surface"
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <ShowingHqWorkflowTabStrip tab={tab} onTabChange={setTab} />
 
       {tab === "prep" && (
         <div className="space-y-6">
+          <p className="text-xs text-kp-on-surface-variant">
+            Checklist and buyer agent fields — same workspace as Feedback and Details.
+          </p>
           <ShowingPrepWorkspace
             source={{
               id: data.id,

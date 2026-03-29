@@ -10,15 +10,8 @@ import { cn } from "@/lib/utils";
 import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
 
 function getPageTitle(pathname: string): string {
-  if (pathname === "/showing-hq") return "ShowingHQ";
-  if (pathname.startsWith("/showing-hq/showings/new")) return "Schedule Showing";
-  if (pathname.startsWith("/showing-hq/showings")) return "Showings";
-  if (pathname.startsWith("/showing-hq/visitors")) return "Visitors";
-  if (pathname.startsWith("/showing-hq/follow-ups")) return "Follow-ups";
-  if (pathname.startsWith("/showing-hq/supra-inbox")) return "Supra Inbox";
-  if (pathname.startsWith("/showing-hq/feedback-requests")) return "Feedback Requests";
-  if (pathname.startsWith("/showing-hq/activity")) return "Activity";
-  if (pathname.startsWith("/showing-hq/templates")) return "Templates";
+  // All routes under ShowingHQ use one shell title; entity context lives on the page.
+  if (pathname.startsWith("/showing-hq")) return "ShowingHQ";
   if (pathname.startsWith("/open-houses/new")) return "New Open House";
   if (pathname === "/open-houses/sign-in") return "Sign-in & QR";
   if (/^\/open-houses\/[^/]+\/sign-in/.test(pathname)) return "Host sign-in";

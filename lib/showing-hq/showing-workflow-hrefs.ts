@@ -13,7 +13,7 @@ export function normalizeShowingHqWorkflowTab(
   raw: string | null | undefined
 ): ShowingHqWorkflowTab {
   if (raw === "prep" || raw === "feedback" || raw === "details") return raw;
-  return "details";
+  return "prep";
 }
 
 export function showingWorkflowTabHref(
