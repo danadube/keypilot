@@ -7,6 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { kpBtnSecondary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
+import { TimeQuickChips } from "@/components/ui/time-input";
+import {
+  applyQuickTimePreset,
+  datetimeLocalInputValueToIso,
+  isoToDatetimeLocalInputValue,
+  mergeLocalPartsToDatetimeLocalValue,
+  splitDatetimeLocalInputValue,
+} from "@/lib/datetime/local-scheduling";
 
 /** Enough shape for dashboard + open-house API payloads */
 export type AgentFollowUpTaskCardModel = {
@@ -41,12 +49,6 @@ function formatDue(iso: string) {
   });
 }
 
-function isoToDatetimeLocal(iso: string) {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 function statusLabel(status: string) {
   return status.replace(/_/g, " ");
 }
@@ -65,13 +67,13 @@ export function AgentFollowUpTaskCard({
   showContactLink?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
-  const [dueLocal, setDueLocal] = useState(() => isoToDatetimeLocal(task.dueAt));
+  const [dueLocal, setDueLocal] = useState(() => isoToDatetimeLocalInputValue(task.dueAt));
   const [notesDraft, setNotesDraft] = useState(task.notes ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setDueLocal(isoToDatetimeLocal(task.dueAt));
+    setDueLocal(isoToDatetimeLocalInputValue(task.dueAt));
     setNotesDraft(task.notes ?? "");
   }, [task.id, task.dueAt, task.notes]);
 
@@ -216,6 +218,15 @@ export function AgentFollowUpTaskCard({
               onChange={(e) => setDueLocal(e.target.value)}
               className="h-8 border-kp-outline bg-kp-surface text-xs"
             />
+            <TimeQuickChips
+              density="compact"
+              className="gap-1 pt-1"
+              onSelect={(p) => {
+                const parts = splitDatetimeLocalInputValue(dueLocal);
+                const next = applyQuickTimePreset(p, parts ?? undefined);
+                setDueLocal(mergeLocalPartsToDatetimeLocalValue(next.date, next.time));
+              }}
+            />
           </div>
           <div>
             <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-kp-on-surface-variant">
@@ -237,10 +248,10 @@ export function AgentFollowUpTaskCard({
               disabled={busy}
               onClick={() =>
                 run(async () => {
-                  const nextDue = new Date(dueLocal);
-                  if (Number.isNaN(nextDue.getTime())) throw new Error("Invalid date");
+                  const dueIso = datetimeLocalInputValueToIso(dueLocal);
+                  if (!dueIso) throw new Error("Invalid date");
                   const body: Record<string, unknown> = {
-                    dueAt: nextDue.toISOString(),
+                    dueAt: dueIso,
                     notes: notesDraft.trim() || null,
                   };
                   await patch(body);
@@ -256,7 +267,7 @@ export function AgentFollowUpTaskCard({
               className={cn(kpBtnTertiary, "h-7 text-[11px]")}
               disabled={busy}
               onClick={() => {
-                setDueLocal(isoToDatetimeLocal(task.dueAt));
+                setDueLocal(isoToDatetimeLocalInputValue(task.dueAt));
                 setNotesDraft(task.notes ?? "");
                 setEditing(false);
                 setError(null);

@@ -24,6 +24,16 @@ import {
 } from "@/components/ui/select";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
+import {
+  DateInputField,
+  TimeInputField,
+  TimeQuickChips,
+  DateTimeFieldGroup,
+} from "@/components/ui/time-input";
+import {
+  applyQuickTimePreset,
+  combineLocalDateAndTimeToIso,
+} from "@/lib/datetime/local-scheduling";
 
 type Property = {
   id: string;
@@ -42,7 +52,8 @@ export function NewShowingForm() {
   const [error, setError] = useState<string | null>(null);
 
   const [propertyId, setPropertyId] = useState("");
-  const [scheduledAt, setScheduledAt] = useState("");
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
   const [buyerAgentName, setBuyerAgentName] = useState("");
   const [buyerAgentEmail, setBuyerAgentEmail] = useState("");
   const [buyerName, setBuyerName] = useState("");
@@ -62,8 +73,9 @@ export function NewShowingForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!propertyId?.trim() || !scheduledAt?.trim()) {
-      setError("Property and date/time are required.");
+    const scheduledIso = combineLocalDateAndTimeToIso(scheduledDate, scheduledTime);
+    if (!propertyId?.trim() || !scheduledIso) {
+      setError("Property and a valid date and time are required.");
       return;
     }
     setSubmitting(true);
@@ -74,7 +86,7 @@ export function NewShowingForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           propertyId: propertyId.trim(),
-          scheduledAt: new Date(scheduledAt).toISOString(),
+          scheduledAt: scheduledIso,
           buyerAgentName: buyerAgentName.trim() || null,
           buyerAgentEmail: buyerAgentEmail.trim() || null,
           buyerName: buyerName.trim() || null,
@@ -132,13 +144,41 @@ export function NewShowingForm() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="scheduledAt">Date & Time *</Label>
-              <Input
-                id="scheduledAt"
-                type="datetime-local"
-                value={scheduledAt}
-                onChange={(e) => setScheduledAt(e.target.value)}
-                required
+              <Label>Date & time *</Label>
+              <DateTimeFieldGroup>
+                <div className="space-y-1.5">
+                  <Label htmlFor="scheduledDate" className="text-xs text-kp-on-surface-variant">
+                    Date
+                  </Label>
+                  <DateInputField
+                    id="scheduledDate"
+                    value={scheduledDate}
+                    onChange={(e) => setScheduledDate(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="scheduledTime" className="text-xs text-kp-on-surface-variant">
+                    Time
+                  </Label>
+                  <TimeInputField
+                    id="scheduledTime"
+                    value={scheduledTime}
+                    onChange={(e) => setScheduledTime(e.target.value)}
+                    required
+                  />
+                </div>
+              </DateTimeFieldGroup>
+              <TimeQuickChips
+                className="pt-1"
+                onSelect={(p) => {
+                  const next = applyQuickTimePreset(p, {
+                    date: scheduledDate,
+                    time: scheduledTime,
+                  });
+                  setScheduledDate(next.date);
+                  setScheduledTime(next.time);
+                }}
               />
             </div>
             <div className="space-y-2">

@@ -23,6 +23,18 @@ import {
 import { ShowingBuyerAgentFeedbackDraftPanel } from "@/components/showing-hq/ShowingBuyerAgentFeedbackDraftPanel";
 import { ShowingHqWorkflowTabStrip } from "@/components/showing-hq/ShowingHqWorkflowTabStrip";
 import { buildPropertyAddressLineForFeedbackDraft } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
+import {
+  DateInputField,
+  TimeInputField,
+  TimeQuickChips,
+  DateTimeFieldGroup,
+} from "@/components/ui/time-input";
+import {
+  applyQuickTimePreset,
+  combineLocalDateAndTimeToIso,
+  isoToLocalDateInput,
+  isoToLocalTimeInput,
+} from "@/lib/datetime/local-scheduling";
 
 type ShowingDetail = {
   id: string;
@@ -103,13 +115,8 @@ export function ShowingDetailWorkflow() {
       .then((row) => {
         setData(row);
         if (row) {
-          const dt = new Date(row.scheduledAt);
-          setDateStr(
-            `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`
-          );
-          setTimeStr(
-            `${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}`
-          );
+          setDateStr(isoToLocalDateInput(row.scheduledAt));
+          setTimeStr(isoToLocalTimeInput(row.scheduledAt));
           setBuyerAgentName(row.buyerAgentName?.trim() ?? "");
           setBuyerAgentEmail(row.buyerAgentEmail?.trim() ?? "");
           setNotes(row.notes ?? "");
@@ -124,11 +131,9 @@ export function ShowingDetailWorkflow() {
   }, [load]);
 
   const draftPreviewScheduledAt = useMemo(() => {
-    if (!dateStr || !timeStr) return data?.scheduledAt ?? new Date().toISOString();
-    const [h, m] = timeStr.split(":").map(Number);
-    const d = new Date(dateStr);
-    d.setHours(h ?? 0, m ?? 0, 0, 0);
-    return d.toISOString();
+    const merged = combineLocalDateAndTimeToIso(dateStr, timeStr);
+    if (merged) return merged;
+    return data?.scheduledAt ?? new Date().toISOString();
   }, [dateStr, timeStr, data?.scheduledAt]);
 
   const onPrepWorkspaceUpdated = useCallback((json: { data: ShowingDetail }) => {
@@ -143,9 +148,11 @@ export function ShowingDetailWorkflow() {
       setError("Date and time are required.");
       return;
     }
-    const [h, m] = timeStr.split(":").map(Number);
-    const scheduledAt = new Date(dateStr);
-    scheduledAt.setHours(h ?? 0, m ?? 0, 0, 0);
+    const scheduledIso = combineLocalDateAndTimeToIso(dateStr, timeStr);
+    if (!scheduledIso) {
+      setError("Invalid date or time.");
+      return;
+    }
     setDetailsSaving(true);
     setError(null);
     try {
@@ -153,7 +160,7 @@ export function ShowingDetailWorkflow() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          scheduledAt: scheduledAt.toISOString(),
+          scheduledAt: scheduledIso,
           notes: notes.trim() ? notes : null,
         }),
       });
@@ -186,9 +193,11 @@ export function ShowingDetailWorkflow() {
       return;
     }
     if (!validateFeedbackSend()) return;
-    const [h, m] = timeStr.split(":").map(Number);
-    const scheduledAt = new Date(dateStr);
-    scheduledAt.setHours(h ?? 0, m ?? 0, 0, 0);
+    const scheduledIso = combineLocalDateAndTimeToIso(dateStr, timeStr);
+    if (!scheduledIso) {
+      setError("Invalid date or time.");
+      return;
+    }
 
     setSendSaving(true);
     setError(null);
@@ -197,7 +206,7 @@ export function ShowingDetailWorkflow() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          scheduledAt: scheduledAt.toISOString(),
+          scheduledAt: scheduledIso,
           buyerAgentName: buyerAgentName.trim(),
           buyerAgentEmail: buyerAgentEmail.trim(),
           notes: notes.trim() ? notes : null,
@@ -496,26 +505,37 @@ export function ShowingDetailWorkflow() {
           </p>
           <div className="space-y-3 rounded-lg border border-kp-outline/80 bg-kp-surface-high/25 p-3">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">Schedule</p>
-            <div className="grid max-w-md grid-cols-2 gap-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Date</label>
-                <input
-                  type="date"
+            <DateTimeFieldGroup className="max-w-md">
+              <div className="space-y-1">
+                <label htmlFor="showing-detail-date" className="block text-xs font-medium text-kp-on-surface-variant">
+                  Date
+                </label>
+                <DateInputField
+                  id="showing-detail-date"
                   value={dateStr}
                   onChange={(e) => setDateStr(e.target.value)}
                   className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface"
                 />
               </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Time</label>
-                <input
-                  type="time"
+              <div className="space-y-1">
+                <label htmlFor="showing-detail-time" className="block text-xs font-medium text-kp-on-surface-variant">
+                  Time
+                </label>
+                <TimeInputField
+                  id="showing-detail-time"
                   value={timeStr}
                   onChange={(e) => setTimeStr(e.target.value)}
                   className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface"
                 />
               </div>
-            </div>
+            </DateTimeFieldGroup>
+            <TimeQuickChips
+              onSelect={(p) => {
+                const next = applyQuickTimePreset(p, { date: dateStr, time: timeStr });
+                setDateStr(next.date);
+                setTimeStr(next.time);
+              }}
+            />
             <div>
               <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Notes</label>
               <textarea

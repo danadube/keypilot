@@ -18,6 +18,12 @@ import { kpBtnDangerSecondary, kpBtnSave } from "@/components/ui/kp-dashboard-bu
 import { ShowingBuyerAgentFeedbackDraftPanel } from "@/components/showing-hq/ShowingBuyerAgentFeedbackDraftPanel";
 import { buildPropertyAddressLineForFeedbackDraft } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
 import { cn } from "@/lib/utils";
+import { TimeQuickChips } from "@/components/ui/time-input";
+import {
+  applyQuickTimePreset,
+  combineLocalDateAndTimeToIso,
+  localDateTimeFromParts,
+} from "@/lib/datetime/local-scheduling";
 import { Copy, Check, ClipboardCheck } from "lucide-react";
 
 type Property = { id: string; address1: string; city: string; state: string };
@@ -163,17 +169,22 @@ export function EditEventModal({
     e.preventDefault();
     if (!eventId) return;
     if (!isOpenHouse && buyerAgentFeedbackDraft) return;
-    const [sh, sm] = startTimeStr.split(":").map(Number);
-    const startAt = new Date(dateStr);
-    startAt.setHours(sh, sm ?? 0, 0, 0);
+    const startAt = localDateTimeFromParts(dateStr, startTimeStr);
+    if (Number.isNaN(startAt.getTime())) {
+      setError("Invalid date or start time.");
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
     try {
       if (isOpenHouse) {
-        const [eh, em] = endTimeStr.split(":").map(Number);
-        const endAt = new Date(dateStr);
-        endAt.setHours(eh, em ?? 0, 0, 0);
+        const endAt = localDateTimeFromParts(dateStr, endTimeStr);
+        if (Number.isNaN(endAt.getTime())) {
+          setError("Invalid end time.");
+          setSubmitting(false);
+          return;
+        }
         if (endAt <= startAt) {
           setError("End time must be after start time.");
           setSubmitting(false);
@@ -216,9 +227,11 @@ export function EditEventModal({
 
   const handleMarkFeedbackComplete = async () => {
     if (!eventId || !buyerAgentFeedbackDraft) return;
-    const [sh, sm] = startTimeStr.split(":").map(Number);
-    const startAt = new Date(dateStr);
-    startAt.setHours(sh, sm ?? 0, 0, 0);
+    const startAt = localDateTimeFromParts(dateStr, startTimeStr);
+    if (Number.isNaN(startAt.getTime())) {
+      setError("Invalid date or start time.");
+      return;
+    }
     setMarkingFeedbackSent(true);
     setError(null);
     try {
@@ -269,19 +282,16 @@ export function EditEventModal({
     if (!buyerAgentFeedbackDraft || !dateStr || !startTimeStr) {
       return buyerAgentFeedbackDraft?.scheduledAt ?? "";
     }
-    const [sh, sm] = startTimeStr.split(":").map(Number);
-    const d = new Date(dateStr);
-    d.setHours(sh ?? 0, sm ?? 0, 0, 0);
-    return d.toISOString();
+    return combineLocalDateAndTimeToIso(dateStr, startTimeStr) ?? buyerAgentFeedbackDraft.scheduledAt;
   }, [buyerAgentFeedbackDraft, dateStr, startTimeStr]);
 
   const showingSubtitle =
     !isOpenHouse && selectedProperty && dateStr && startTimeStr
       ? (() => {
-          const [sh, sm] = startTimeStr.split(":").map(Number);
-          const dt = new Date(dateStr);
-          dt.setHours(sh ?? 0, sm ?? 0, 0, 0);
-          const when = dt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+          const dt = localDateTimeFromParts(dateStr, startTimeStr);
+          const when = Number.isNaN(dt.getTime())
+            ? ""
+            : dt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
           return `${selectedProperty.address1}, ${selectedProperty.city}, ${selectedProperty.state} · ${when}`;
         })()
       : null;
@@ -428,6 +438,14 @@ export function EditEventModal({
                   />
                 </div>
               </div>
+              <TimeQuickChips
+                className="pt-1"
+                onSelect={(p) => {
+                  const next = applyQuickTimePreset(p, { date: dateStr, time: startTimeStr });
+                  setDateStr(next.date);
+                  setStartTimeStr(next.time);
+                }}
+              />
               {isOpenHouse && (
                 <div className="space-y-1.5 sm:max-w-[calc(50%-0.375rem)]">
                   <Label className={kpCalendarModalField.label}>End time</Label>

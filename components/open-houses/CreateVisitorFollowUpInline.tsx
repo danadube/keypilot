@@ -6,6 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import { TimeQuickChips } from "@/components/ui/time-input";
+import {
+  applyQuickTimePreset,
+  dateToLocalDateInput,
+  dateToLocalTimeInput,
+  datetimeLocalInputValueToIso,
+  mergeLocalPartsToDatetimeLocalValue,
+  splitDatetimeLocalInputValue,
+} from "@/lib/datetime/local-scheduling";
 
 type Props = {
   visitorId: string;
@@ -26,8 +35,7 @@ export function CreateVisitorFollowUpInline({
     const d = new Date();
     d.setDate(d.getDate() + 1);
     d.setHours(17, 0, 0, 0);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return mergeLocalPartsToDatetimeLocalValue(dateToLocalDateInput(d), dateToLocalTimeInput(d));
   });
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
@@ -38,8 +46,8 @@ export function CreateVisitorFollowUpInline({
     setError(null);
     setSaving(true);
     try {
-      const due = new Date(dueAt);
-      if (Number.isNaN(due.getTime())) throw new Error("Invalid date");
+      const dueIso = datetimeLocalInputValueToIso(dueAt);
+      if (!dueIso) throw new Error("Invalid date");
       const res = await fetch("/api/v1/follow-ups", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -48,7 +56,7 @@ export function CreateVisitorFollowUpInline({
           sourceType: "OPEN_HOUSE",
           sourceId: visitorId,
           title: title.trim(),
-          dueAt: due.toISOString(),
+          dueAt: dueIso,
           priority: "MEDIUM",
           notes: notes.trim() || undefined,
         }),
@@ -96,6 +104,15 @@ export function CreateVisitorFollowUpInline({
         onChange={(e) => setDueAt(e.target.value)}
         className="h-8 border-kp-outline bg-kp-surface text-xs"
         required
+      />
+      <TimeQuickChips
+        density="compact"
+        className="gap-1"
+        onSelect={(p) => {
+          const parts = splitDatetimeLocalInputValue(dueAt);
+          const next = applyQuickTimePreset(p, parts ?? undefined);
+          setDueAt(mergeLocalPartsToDatetimeLocalValue(next.date, next.time));
+        }}
       />
       <Textarea
         value={notes}

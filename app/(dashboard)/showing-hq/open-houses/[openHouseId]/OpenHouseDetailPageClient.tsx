@@ -54,6 +54,15 @@ import {
   EditableBlockContent,
   EditableBlockTableEditHeading,
 } from "@/components/ui/editable-block";
+import { DateInputField, TimeInputField, TimeQuickChips } from "@/components/ui/time-input";
+import {
+  applyQuickTimePreset,
+  dateToLocalDateInput,
+  dateToLocalTimeInput,
+  isoToLocalDateInput,
+  isoToLocalTimeInput,
+  localDateTimeFromParts,
+} from "@/lib/datetime/local-scheduling";
 
 type OpenHouseData = {
   hostUserId?: string;
@@ -113,28 +122,6 @@ type OpenHouseData = {
   draftStatusCounts: { DRAFT: number; REVIEWED: number; SENT_MANUAL: number; ARCHIVED: number };
   qrCodeDataUrl: string;
 };
-
-function isoToDateInput(iso: string) {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function isoToTimeInput(iso: string) {
-  const d = new Date(iso);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-function dateToDateInput(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function dateToTimeInput(d: Date) {
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-function combineDateTimeLocal(dateStr: string, timeStr: string): Date {
-  return new Date(`${dateStr}T${timeStr}:00`);
-}
 
 type PropertyOption = {
   id: string;
@@ -232,10 +219,10 @@ export function OpenHouseDetailPageClient() {
   const serverNotes = data?.notes;
   useEffect(() => {
     if (!serverScheduleId || !serverStartAt || !serverEndAt) return;
-    setDetailStartDate(isoToDateInput(serverStartAt));
-    setDetailStartTime(isoToTimeInput(serverStartAt));
-    setDetailEndDate(isoToDateInput(serverEndAt));
-    setDetailEndTime(isoToTimeInput(serverEndAt));
+    setDetailStartDate(isoToLocalDateInput(serverStartAt));
+    setDetailStartTime(isoToLocalTimeInput(serverStartAt));
+    setDetailEndDate(isoToLocalDateInput(serverEndAt));
+    setDetailEndTime(isoToLocalTimeInput(serverEndAt));
     setDetailNotes(serverNotes ?? "");
   }, [serverScheduleId, serverStartAt, serverEndAt, serverNotes]);
 
@@ -365,10 +352,10 @@ export function OpenHouseDetailPageClient() {
     return (
       (detailTitle.trim() || "") !== (data.title?.trim() || "") ||
       detailPropertyId !== propId ||
-      detailStartDate !== isoToDateInput(data.startAt) ||
-      detailStartTime !== isoToTimeInput(data.startAt) ||
-      detailEndDate !== isoToDateInput(data.endAt) ||
-      detailEndTime !== isoToTimeInput(data.endAt) ||
+      detailStartDate !== isoToLocalDateInput(data.startAt) ||
+      detailStartTime !== isoToLocalTimeInput(data.startAt) ||
+      detailEndDate !== isoToLocalDateInput(data.endAt) ||
+      detailEndTime !== isoToLocalTimeInput(data.endAt) ||
       (detailNotes.trim() || "") !== (data.notes?.trim() || "")
     );
   }, [
@@ -382,26 +369,12 @@ export function OpenHouseDetailPageClient() {
     detailNotes,
   ]);
 
-  const bumpStartMinutes = (deltaMinutes: number) => {
-    const base = combineDateTimeLocal(detailStartDate, detailStartTime);
-    if (Number.isNaN(base.getTime())) return;
-    base.setMinutes(base.getMinutes() + deltaMinutes);
-    setDetailStartDate(dateToDateInput(base));
-    setDetailStartTime(dateToTimeInput(base));
-  };
-
-  const setStartNow = () => {
-    const n = new Date();
-    setDetailStartDate(dateToDateInput(n));
-    setDetailStartTime(dateToTimeInput(n));
-  };
-
   const alignEndHoursAfterStart = (hours: number) => {
-    const start = combineDateTimeLocal(detailStartDate, detailStartTime);
+    const start = localDateTimeFromParts(detailStartDate, detailStartTime);
     if (Number.isNaN(start.getTime())) return;
     const end = new Date(start.getTime() + hours * 60 * 60 * 1000);
-    setDetailEndDate(dateToDateInput(end));
-    setDetailEndTime(dateToTimeInput(end));
+    setDetailEndDate(dateToLocalDateInput(end));
+    setDetailEndTime(dateToLocalTimeInput(end));
   };
 
   const saveEventDetails = useCallback(async () => {
@@ -417,8 +390,8 @@ export function OpenHouseDetailPageClient() {
         setError("Event title is required.");
         return;
       }
-      const startAt = combineDateTimeLocal(detailStartDate, detailStartTime);
-      const endAt = combineDateTimeLocal(detailEndDate, detailEndTime);
+      const startAt = localDateTimeFromParts(detailStartDate, detailStartTime);
+      const endAt = localDateTimeFromParts(detailEndDate, detailEndTime);
       if (Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime())) {
         setError("Invalid date or time.");
         return;
@@ -718,8 +691,7 @@ export function OpenHouseDetailPageClient() {
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-kp-on-surface">Start date</Label>
-                  <Input
-                    type="date"
+                  <DateInputField
                     value={detailStartDate}
                     onChange={(e) => setDetailStartDate(e.target.value)}
                     className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
@@ -728,18 +700,15 @@ export function OpenHouseDetailPageClient() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-kp-on-surface">Start time</Label>
-                  <Input
-                    type="time"
-                    step={60}
+                  <TimeInputField
                     value={detailStartTime}
                     onChange={(e) => setDetailStartTime(e.target.value)}
-                    className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface tabular-nums"
+                    className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-kp-on-surface">End date</Label>
-                  <Input
-                    type="date"
+                  <DateInputField
                     value={detailEndDate}
                     onChange={(e) => setDetailEndDate(e.target.value)}
                     className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
@@ -747,43 +716,24 @@ export function OpenHouseDetailPageClient() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-kp-on-surface">End time</Label>
-                  <Input
-                    type="time"
-                    step={60}
+                  <TimeInputField
                     value={detailEndTime}
                     onChange={(e) => setDetailEndTime(e.target.value)}
-                    className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface tabular-nums"
+                    className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
                   />
                 </div>
               </div>
+              <TimeQuickChips
+                onSelect={(p) => {
+                  const next = applyQuickTimePreset(p, {
+                    date: detailStartDate,
+                    time: detailStartTime,
+                  });
+                  setDetailStartDate(next.date);
+                  setDetailStartTime(next.time);
+                }}
+              />
               <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
-                  onClick={setStartNow}
-                >
-                  Start: Now
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
-                  onClick={() => bumpStartMinutes(30)}
-                >
-                  Start +30m
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
-                  onClick={() => bumpStartMinutes(60)}
-                >
-                  Start +1h
-                </Button>
                 <Button
                   type="button"
                   variant="outline"

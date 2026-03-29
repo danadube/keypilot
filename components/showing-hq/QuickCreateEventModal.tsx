@@ -14,6 +14,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { kpCalendarModalField } from "@/components/showing-hq/calendar-modal-field-classes";
 import { cn } from "@/lib/utils";
+import { TimeQuickChips } from "@/components/ui/time-input";
+import {
+  applyQuickTimePreset,
+  localDateTimeFromParts,
+} from "@/lib/datetime/local-scheduling";
 
 type Property = {
   id: string;
@@ -92,9 +97,11 @@ export function QuickCreateEventModal({
       return;
     }
 
-    const [sh, sm] = startTimeStr.split(":").map(Number);
-    const startAt = new Date(dateStr);
-    startAt.setHours(sh, sm ?? 0, 0, 0);
+    const startAt = localDateTimeFromParts(dateStr, startTimeStr);
+    if (Number.isNaN(startAt.getTime())) {
+      setError("Invalid date or start time.");
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -111,9 +118,12 @@ export function QuickCreateEventModal({
         const json = await res.json();
         if (json.error) throw new Error(json.error.message);
       } else if (eventType === "open_house") {
-        const [eh, em] = (endTimeStr || "11:00").split(":").map(Number);
-        const endAt = new Date(dateStr);
-        endAt.setHours(eh, em ?? 0, 0, 0);
+        const endAt = localDateTimeFromParts(dateStr, endTimeStr || "11:00");
+        if (Number.isNaN(endAt.getTime())) {
+          setError("Invalid end time.");
+          setSubmitting(false);
+          return;
+        }
         if (endAt <= startAt) {
           setError("End time must be after start time.");
           setSubmitting(false);
@@ -260,6 +270,15 @@ export function QuickCreateEventModal({
               />
             </div>
           </div>
+          <TimeQuickChips
+            className="pt-1"
+            disabled={!typeOpt?.enabled}
+            onSelect={(p) => {
+              const next = applyQuickTimePreset(p, { date: dateStr, time: startTimeStr });
+              setDateStr(next.date);
+              setStartTimeStr(next.time);
+            }}
+          />
           {eventType === "open_house" && (
             <div className="space-y-1.5 sm:max-w-[calc(50%-0.375rem)]">
               <Label className={kpCalendarModalField.label}>End time</Label>

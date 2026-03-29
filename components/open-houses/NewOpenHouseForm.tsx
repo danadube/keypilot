@@ -31,6 +31,19 @@ import {
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { ImagePlus } from "lucide-react";
+import {
+  DateInputField,
+  TimeInputField,
+  TimeQuickChips,
+  DateTimeFieldGroup,
+} from "@/components/ui/time-input";
+import {
+  applyQuickTimePreset,
+  combineLocalDateAndTimeToIso,
+  dateToLocalDateInput,
+  dateToLocalTimeInput,
+  localDateTimeFromParts,
+} from "@/lib/datetime/local-scheduling";
 
 type Property = {
   id: string;
@@ -60,8 +73,10 @@ export function NewOpenHouseForm() {
 
   const [propertyId, setPropertyId] = useState("");
   const [title, setTitle] = useState("");
-  const [startAt, setStartAt] = useState("");
-  const [endAt, setEndAt] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [notes, setNotes] = useState("");
   const [agentSource, setAgentSource] = useState<"me" | "custom">("me");
   const [agentName, setAgentName] = useState("");
@@ -127,8 +142,14 @@ export function NewOpenHouseForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!propertyId || !title || !startAt || !endAt) {
-      setError("Please fill in all required fields");
+    const startIso = combineLocalDateAndTimeToIso(startDate, startTime);
+    const endIso = combineLocalDateAndTimeToIso(endDate, endTime);
+    if (!propertyId || !title || !startIso || !endIso) {
+      setError("Please fill in all required fields with valid date and time.");
+      return;
+    }
+    if (new Date(endIso) <= new Date(startIso)) {
+      setError("End time must be after start time.");
       return;
     }
     const name = agentSource === "me" ? (agents.find((a) => a.id === "me")?.name ?? agentName) : agentName;
@@ -142,8 +163,8 @@ export function NewOpenHouseForm() {
         body: JSON.stringify({
           propertyId,
           title,
-          startAt: new Date(startAt).toISOString(),
-          endAt: new Date(endAt).toISOString(),
+          startAt: startIso,
+          endAt: endIso,
           notes: notes || null,
           agentName: name?.trim() || null,
           agentEmail: email?.trim() || null,
@@ -353,27 +374,82 @@ export function NewOpenHouseForm() {
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="startAt">Start date & time *</Label>
-                  <Input
-                    id="startAt"
-                    type="datetime-local"
-                    value={startAt}
-                    onChange={(e) => setStartAt(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="endAt">End date & time *</Label>
-                  <Input
-                    id="endAt"
-                    type="datetime-local"
-                    value={endAt}
-                    onChange={(e) => setEndAt(e.target.value)}
-                    required
-                  />
-                </div>
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-kp-on-surface-variant">Start *</p>
+                <DateTimeFieldGroup>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ohStartDate" className="text-xs">
+                      Date
+                    </Label>
+                    <DateInputField
+                      id="ohStartDate"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ohStartTime" className="text-xs">
+                      Time
+                    </Label>
+                    <TimeInputField
+                      id="ohStartTime"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                </DateTimeFieldGroup>
+                <TimeQuickChips
+                  onSelect={(p) => {
+                    const next = applyQuickTimePreset(p, { date: startDate, time: startTime });
+                    setStartDate(next.date);
+                    setStartTime(next.time);
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
+                  onClick={() => {
+                    const start = localDateTimeFromParts(startDate, startTime);
+                    if (Number.isNaN(start.getTime())) return;
+                    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+                    setEndDate(dateToLocalDateInput(end));
+                    setEndTime(dateToLocalTimeInput(end));
+                  }}
+                >
+                  Set end +2h from start
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-kp-on-surface-variant">End *</p>
+                <DateTimeFieldGroup>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ohEndDate" className="text-xs">
+                      Date
+                    </Label>
+                    <DateInputField
+                      id="ohEndDate"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ohEndTime" className="text-xs">
+                      Time
+                    </Label>
+                    <TimeInputField
+                      id="ohEndTime"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                </DateTimeFieldGroup>
               </div>
 
               <div className="space-y-2">
