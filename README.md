@@ -2,6 +2,8 @@
 
 A modular real estate operations SaaS platform for agents. Phase 1 focuses on **Open House Lead Capture**—capturing visitor sign-ins via QR code, managing follow-ups, and generating seller reports.
 
+**Product roadmap & priorities:** [`docs/product/KEYPILOT_MASTER_ROADMAP.md`](docs/product/KEYPILOT_MASTER_ROADMAP.md)
+
 ## Tech Stack
 
 - **Framework:** Next.js 14 (App Router) + TypeScript

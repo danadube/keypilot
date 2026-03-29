@@ -13,6 +13,17 @@ Describe what this PR changes in KeyPilot.
 
 ---
 
+## Product roadmap checklist
+
+_When merging to `main`, update **`docs/product/KEYPILOT_MASTER_ROADMAP.md`** in this PR or in a fast-follow commit._
+
+- [ ] I have reviewed `docs/product/KEYPILOT_MASTER_ROADMAP.md`
+- [ ] I have updated it to reflect any changes in this PR (or N/A — docs-only / trivial)
+- [ ] New features are listed under **Completed / Shipped** (or N/A)
+- [ ] New issues / follow-ups are added to the correct section (or N/A)
+
+---
+
 # Why this change is needed
 
 Explain:
