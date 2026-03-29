@@ -12,6 +12,7 @@ import {
   TodayScheduleSection,
   UpNextRailSection,
   WhatNeedsAttentionSection,
+  buildCommandStripPriorityLine,
   buildNeedsAttentionItems,
   buildTodayScheduleRows,
   buildUpNextRows,
@@ -296,8 +297,19 @@ export function ShowingHQDashboardView() {
 
   const nextEvent =
     data.nextShowing != null
-      ? { address: data.nextShowing.address, at: data.nextShowing.at }
+      ? {
+          kind: data.nextShowing.kind,
+          address: data.nextShowing.address,
+          at: data.nextShowing.at,
+        }
       : null;
+
+  const priorityLine = buildCommandStripPriorityLine({
+    workflowRows,
+    nextEvent,
+    now: attentionNow,
+    formatMediumDate,
+  });
 
   const recentReportOutputs = recentReports.map((r) => ({
     id: r.id,
@@ -314,6 +326,7 @@ export function ShowingHQDashboardView() {
         needPrepCount={needPrepCount}
         awaitingCount={awaitingCount}
         formatTime={formatTime}
+        priorityLine={priorityLine}
       />
 
       <div
