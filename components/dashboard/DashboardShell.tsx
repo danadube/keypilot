@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
 import { ProductTierProvider } from "@/components/ProductTierProvider";
 import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
 import { ShowingHQWorkbenchHeaderActions } from "@/components/dashboard/ShowingHQWorkbenchHeaderActions";
@@ -37,7 +36,8 @@ function getPageTitle(pathname: string): string {
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
-  const isShowingHQWorkbench = pathname === "/showing-hq";
+  const isShowingHqRoute = pathname.startsWith("/showing-hq");
+  const isShowingHQWorkbenchHome = pathname === "/showing-hq";
   const workbenchDateLine = React.useMemo(
     () =>
       new Date().toLocaleDateString("en-US", {
@@ -68,7 +68,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               <h1 className="truncate text-sm font-semibold leading-tight text-kp-on-surface md:text-base">
                 {getPageTitle(pathname)}
               </h1>
-              {isShowingHQWorkbench ? (
+              {isShowingHQWorkbenchHome ? (
                 <p className="mt-0.5 truncate text-[10px] leading-tight text-kp-on-surface-variant">
                   {workbenchDateLine}
                 </p>
@@ -76,11 +76,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 border-l border-kp-outline bg-kp-surface px-2.5 md:gap-2 md:px-3.5">
-            {isShowingHQWorkbench ? (
-              <ShowingHQWorkbenchHeaderActions />
-            ) : (
-              <UserButton afterSignOutUrl="/" />
-            )}
+            <ShowingHQWorkbenchHeaderActions showNewMenu={isShowingHqRoute} />
           </div>
         </header>
 
