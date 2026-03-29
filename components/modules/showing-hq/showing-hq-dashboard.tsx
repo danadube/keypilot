@@ -13,12 +13,13 @@ import {
   countTodayUrgentAttentionItems,
   filterAttentionItemsForToday,
   mapAttentionToOperatingStatus,
-  RecentOperatingSection,
+  NeedsFollowUpSection,
+  QuickActionsStrip,
   TodayActionListSection,
   TodayCommandHero,
   UpcomingSection,
+  type NeedsFollowUpRow,
   type PrivateShowingAttentionRow,
-  type RecentOperatingFeedItem,
 } from "@/components/showing-hq/showing-hq-dashboard-action-sections";
 import { cn } from "@/lib/utils";
 
@@ -78,8 +79,15 @@ type DashboardData = {
     feedbackRequestsPending?: number;
     buyerAgentEmailDraftsPending?: number;
     upcomingThisWeekCount?: number;
+    pendingFeedbackCount?: number;
+    pendingReportsCount?: number;
+    prepTomorrowCount?: number;
   };
-  recentOperatingFeed?: RecentOperatingFeedItem[];
+  needsFollowUp?: NeedsFollowUpRow[];
+  nextShowing?: { kind: "showing" | "open_house"; id: string; address: string; at: string } | null;
+  pendingFeedbackCount?: number;
+  pendingReportsCount?: number;
+  prepTomorrowCount?: number;
   privateShowingsAttention?: PrivateShowingAttentionRow[];
   connections?: { hasCalendar: boolean; hasGmail: boolean; hasBranding: boolean };
   todaysSchedule?: {
@@ -174,6 +182,9 @@ export function ShowingHQDashboardView() {
     privateShowingsToday: 0,
     feedbackRequestsPending: 0,
     upcomingThisWeekCount: 0,
+    pendingFeedbackCount: 0,
+    pendingReportsCount: 0,
+    prepTomorrowCount: 0,
   };
 
   const todaysShowings = Array.isArray(data.todaysShowings) ? data.todaysShowings : [];
@@ -202,9 +213,12 @@ export function ShowingHQDashboardView() {
 
   const showingsTodayCount = scheduleItems.filter((s) => s.type === "showing").length;
 
-  const recentFeed: RecentOperatingFeedItem[] = Array.isArray(data.recentOperatingFeed)
-    ? data.recentOperatingFeed
+  const needsFollowUp: NeedsFollowUpRow[] = Array.isArray(data.needsFollowUp)
+    ? data.needsFollowUp
     : [];
+
+  const pendingFeedbackCount =
+    data.pendingFeedbackCount ?? stats.pendingFeedbackCount ?? stats.feedbackRequestsPending ?? 0;
 
   const showGettingStarted = stats.totalShowings < 2 && stats.totalVisitors === 0;
   const gettingStartedSteps = buildGettingStartedSteps({
@@ -224,9 +238,6 @@ export function ShowingHQDashboardView() {
     });
   const formatTime = (d: string) =>
     new Date(d).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  const formatShortDate = (d: string) =>
-    new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-
   const attentionNow = new Date();
   const needsAttentionItems = buildNeedsAttentionItems(
     privateShowingsAttention,
@@ -257,6 +268,13 @@ export function ShowingHQDashboardView() {
     25
   );
 
+  const upcomingThisWeekCount = stats.upcomingThisWeekCount ?? 0;
+  const prepTomorrowCount = data.prepTomorrowCount ?? stats.prepTomorrowCount ?? 0;
+  const nextShowingHero =
+    data.nextShowing != null
+      ? { address: data.nextShowing.address, at: data.nextShowing.at }
+      : null;
+
   return (
     <div className="flex min-h-0 flex-col bg-transparent">
       <TodayCommandHero
@@ -265,7 +283,11 @@ export function ShowingHQDashboardView() {
         needingFeedbackCount={needingFeedbackCount}
         needingPrepCount={needingPrepCount}
         urgentCount={urgentCount}
+        upcomingThisWeekCount={upcomingThisWeekCount}
+        nextShowing={nextShowingHero}
+        formatTime={formatTime}
       />
+      <QuickActionsStrip showRequestFeedback={pendingFeedbackCount > 0} />
 
       <div
         className={cn(
@@ -279,6 +301,8 @@ export function ShowingHQDashboardView() {
             items={todayActionItems}
             formatTime={formatTime}
             urgentCount={urgentCount}
+            emptyUpcomingThisWeek={upcomingThisWeekCount}
+            emptyPrepTomorrow={prepTomorrowCount}
           />
           {showGettingStarted && !gettingStartedDismissed ? (
             <GettingStartedCard
@@ -289,17 +313,16 @@ export function ShowingHQDashboardView() {
         </div>
 
         <aside className="flex min-w-0 flex-col gap-0">
+          <NeedsFollowUpSection
+            items={needsFollowUp}
+            formatTime={formatTime}
+            className="border-b border-kp-outline/40 pb-6 lg:border-b-0 lg:pb-0"
+          />
           <UpcomingSection
             rows={upcomingRows}
             formatDate={formatDate}
             formatTime={formatTime}
-            className="order-2 lg:order-1"
-          />
-          <RecentOperatingSection
-            items={recentFeed}
-            formatTime={formatTime}
-            formatShortDate={formatShortDate}
-            className="order-1 border-b border-kp-outline/40 pb-6 lg:order-2 lg:mt-6 lg:border-b-0 lg:border-t lg:border-t-kp-outline/40 lg:pb-0 lg:pt-7"
+            className="mt-6 border-t border-t-kp-outline/40 pt-7"
           />
         </aside>
       </div>

@@ -201,3 +201,16 @@ export function attentionPriorityOrder(p: ShowingAttentionState["priority"]): nu
   if (p === "medium") return 1;
   return 2;
 }
+
+/** Operating labels for dashboard queue (shared by API + UI). */
+export function mapAttentionToOperatingStatus(
+  attention: ShowingAttentionState
+): "Needs feedback" | "Needs prep" | "Ready" {
+  if (attention.label === "Feedback needed" || attention.label === "Follow-up required") {
+    return "Needs feedback";
+  }
+  if (attention.label === "Prep required") {
+    return "Needs prep";
+  }
+  return "Ready";
+}

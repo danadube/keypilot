@@ -9,6 +9,7 @@ import {
   attentionPriorityOrder,
   getOpenHouseAttentionState,
   getShowingAttentionState,
+  mapAttentionToOperatingStatus,
   needsAttentionSortRank,
   type ShowingAttentionState,
 } from "@/lib/showing-hq/showing-attention";
@@ -93,7 +94,7 @@ function actionHref(args: {
 
 function actionLabel(action: ShowingAttentionState["action"]): string {
   if (action === "send_feedback") return "Request feedback";
-  if (action === "review") return "Request feedback";
+  if (action === "review") return "Review";
   return "Open";
 }
 
@@ -104,6 +105,8 @@ export type AttentionListItem = {
   address: string;
   at: string;
   attention: ShowingAttentionState;
+  buyerAgentName?: string | null;
+  buyerName?: string | null;
 };
 
 function isSameLocalCalendarDay(iso: string, now: Date): boolean {
@@ -123,17 +126,7 @@ export function filterAttentionItemsForToday(
   return items.filter((row) => isSameLocalCalendarDay(row.at, now));
 }
 
-export function mapAttentionToOperatingStatus(
-  attention: ShowingAttentionState
-): "Needs feedback" | "Needs prep" | "Ready" {
-  if (attention.label === "Feedback needed" || attention.label === "Follow-up required") {
-    return "Needs feedback";
-  }
-  if (attention.label === "Prep required") {
-    return "Needs prep";
-  }
-  return "Ready";
-}
+export { mapAttentionToOperatingStatus };
 
 export function buildNeedsAttentionItems(
   privateRows: PrivateShowingAttentionRow[],
@@ -166,6 +159,8 @@ export function buildNeedsAttentionItems(
       address: propertyLine(s.property),
       at: s.scheduledAt,
       attention,
+      buyerAgentName: s.buyerAgentName,
+      buyerName: s.buyerName,
     });
   }
 
@@ -386,8 +381,8 @@ export function countTodayUrgentAttentionItems(items: AttentionListItem[]): numb
   }, 0);
 }
 
-function primaryHeroMessage(urgentCount: number): string {
-  if (urgentCount === 0) return "You're caught up for today";
+function primaryHeroHeadline(urgentCount: number): string {
+  if (urgentCount === 0) return "You're caught up for now";
   if (urgentCount === 1) return "You have 1 item that needs attention";
   return `You have ${urgentCount} items that need attention`;
 }
@@ -399,18 +394,25 @@ export function TodayCommandHero({
   needingFeedbackCount,
   needingPrepCount,
   urgentCount,
+  upcomingThisWeekCount,
+  nextShowing,
+  formatTime,
 }: {
   calendarDateLabel: string;
   showingsTodayCount: number;
   needingFeedbackCount: number;
   needingPrepCount: number;
   urgentCount: number;
+  upcomingThisWeekCount: number;
+  nextShowing: { address: string; at: string } | null;
+  formatTime: (iso: string) => string;
 }) {
   const scheduleSummary = buildTodayHeroScheduleSummary({
     showingsTodayCount,
     needingFeedbackCount,
     needingPrepCount,
   });
+  const caughtUp = urgentCount === 0;
 
   return (
     <header
@@ -435,9 +437,25 @@ export function TodayCommandHero({
           {calendarDateLabel}
         </p>
         <p className="mt-5 max-w-3xl text-[0.9375rem] font-semibold leading-snug text-kp-on-surface md:text-base">
-          {primaryHeroMessage(urgentCount)}
+          {primaryHeroHeadline(urgentCount)}
         </p>
-        <p className="mt-2.5 max-w-3xl text-xs leading-relaxed text-kp-on-surface-variant md:text-[0.8125rem]">
+        {caughtUp ? (
+          <div className="mt-2.5 max-w-3xl space-y-1 text-sm leading-snug text-kp-on-surface-variant">
+            <p>
+              Next: <span className="font-medium text-kp-on-surface">{upcomingThisWeekCount}</span>{" "}
+              upcoming
+            </p>
+            {nextShowing ? (
+              <p>
+                Next showing:{" "}
+                <span className="font-medium text-kp-on-surface">{nextShowing.address}</span>
+                {" at "}
+                <span className="tabular-nums">{formatTime(nextShowing.at)}</span>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        <p className="mt-3 max-w-3xl text-xs leading-relaxed text-kp-on-surface-variant md:text-[0.8125rem]">
           {scheduleSummary}
         </p>
       </div>
@@ -445,16 +463,51 @@ export function TodayCommandHero({
   );
 }
 
+/** Small inline actions under the command hero. */
+export function QuickActionsStrip({ showRequestFeedback }: { showRequestFeedback: boolean }) {
+  const btnClass = cn(
+    kpBtnSecondary,
+    "h-7 gap-1 rounded-md border border-kp-outline/80 bg-kp-surface px-2.5 text-[11px] font-medium text-kp-on-surface"
+  );
+  return (
+    <div className="mb-6 flex flex-wrap items-center gap-2 sm:mb-7">
+      {showRequestFeedback ? (
+        <Button type="button" variant="outline" size="sm" className={btnClass} asChild>
+          <Link href="/showing-hq/feedback-requests">Request feedback</Link>
+        </Button>
+      ) : null}
+      <Button type="button" variant="outline" size="sm" className={btnClass} asChild>
+        <Link href="/open-houses/new">Create open house</Link>
+      </Button>
+      <Button type="button" variant="outline" size="sm" className={btnClass} asChild>
+        <Link href="/showing-hq/showings/new">Add showing</Link>
+      </Button>
+    </div>
+  );
+}
+
+function actionRowStatusPill(attention: ShowingAttentionState): string {
+  if (attention.label === "Feedback needed" || attention.label === "Follow-up required") {
+    return "Needs feedback";
+  }
+  if (attention.label === "Prep required") return "Needs prep";
+  return "Ready";
+}
+
 /** Primary action list for the current calendar day — dominant work surface. */
 export function TodayActionListSection({
   items,
   formatTime,
   urgentCount,
+  emptyUpcomingThisWeek,
+  emptyPrepTomorrow,
   className,
 }: {
   items: AttentionListItem[];
   formatTime: (iso: string) => string;
   urgentCount: number;
+  emptyUpcomingThisWeek: number;
+  emptyPrepTomorrow: number;
   className?: string;
 }) {
   return (
@@ -487,33 +540,53 @@ export function TodayActionListSection({
       </div>
       <ul className="space-y-2">
         {items.length === 0 ? (
-          <li className="py-8 text-center text-sm text-kp-on-surface-variant">
-            Nothing scheduled needs a tap from you right now.
+          <li className="py-6 text-center">
+            <p className="text-sm font-medium text-kp-on-surface">You&apos;re caught up for now</p>
+            <p className="mt-2 text-xs text-kp-on-surface-variant">
+              <span className="font-semibold tabular-nums text-kp-on-surface">{emptyUpcomingThisWeek}</span>{" "}
+              upcoming this week
+            </p>
+            <p className="mt-1 text-xs text-kp-on-surface-variant">
+              <span className="font-semibold tabular-nums text-kp-on-surface">{emptyPrepTomorrow}</span>{" "}
+              {emptyPrepTomorrow === 1 ? "needs" : "need"} prep tomorrow
+            </p>
           </li>
         ) : (
           items.map((row) => {
-            const status = mapAttentionToOperatingStatus(row.attention);
+            const pill = actionRowStatusPill(row.attention);
+            const buyer =
+              row.buyerAgentName?.trim() ||
+              row.buyerName?.trim() ||
+              null;
             return (
               <li
                 key={row.key}
                 className={cn(
-                  "flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-lg border border-kp-outline bg-kp-surface-high/70",
+                  "flex flex-wrap items-start justify-between gap-x-3 gap-y-2 rounded-lg border border-kp-outline bg-kp-surface-high/70",
                   "px-3 py-2.5 sm:px-3.5 sm:py-3"
                 )}
               >
-                <div className="min-w-0 flex-1">
-                  <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[13px] leading-snug text-kp-on-surface sm:text-sm">
-                    <span className="shrink-0 tabular-nums text-xs font-semibold text-kp-on-surface-variant">
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <p className="text-[13px] leading-snug text-kp-on-surface sm:text-sm">
+                    <span className="tabular-nums text-xs font-semibold text-kp-on-surface-variant">
                       {formatTime(row.at)}
                     </span>
-                    <span className="text-kp-outline/65" aria-hidden>
+                    <span className="mx-1.5 text-kp-outline/65" aria-hidden>
                       —
                     </span>
-                    <span className="min-w-0 truncate font-semibold text-kp-on-surface">{row.address}</span>
-                    <span className="text-kp-outline/65" aria-hidden>
-                      —
+                    <span className="font-bold text-kp-on-surface">{row.address}</span>
+                  </p>
+                  <p className="flex flex-wrap items-center gap-x-2 text-[11px] text-kp-on-surface-variant">
+                    <span>
+                      Buyer:{" "}
+                      <span className="font-medium text-kp-on-surface">
+                        {buyer ?? "—"}
+                      </span>
                     </span>
-                    <span className="text-xs font-semibold text-kp-on-surface-variant">{status}</span>
+                    <span className="text-kp-outline/50">·</span>
+                    <span className="inline-flex items-center rounded-md border border-kp-outline/60 bg-kp-surface px-2 py-0.5 text-[10px] font-semibold text-kp-on-surface">
+                      {pill}
+                    </span>
                   </p>
                 </div>
                 <Button
@@ -540,69 +613,74 @@ export function TodayActionListSection({
   );
 }
 
-export type RecentOperatingFeedItem = {
-  kind: "feedback_request_sent" | "showing_completed" | "open_house_created";
-  at: string;
+export type NeedsFollowUpRow = {
+  key: string;
+  kind: "showing" | "open_house";
+  id: string;
   address: string;
+  at: string | null;
+  reasonLabel: string;
+  ctaLabel: string;
   href: string;
 };
 
-function recentOperatingLabel(kind: RecentOperatingFeedItem["kind"]): string {
-  switch (kind) {
-    case "feedback_request_sent":
-      return "Feedback request sent";
-    case "showing_completed":
-      return "Showing completed";
-    case "open_house_created":
-      return "Open house created";
-  }
-}
-
-/** Lightest recap — informational, minimal chrome (sidebar / below fold). */
-export function RecentOperatingSection({
+/** Waiting-on queue — sidebar / command support. */
+export function NeedsFollowUpSection({
   items,
   formatTime,
-  formatShortDate,
   className,
 }: {
-  items: RecentOperatingFeedItem[];
+  items: NeedsFollowUpRow[];
   formatTime: (iso: string) => string;
-  formatShortDate: (iso: string) => string;
   className?: string;
 }) {
-  if (items.length === 0) return null;
-
   return (
     <section
-      className={cn("min-w-0", className)}
-      aria-labelledby="recent-operating-heading"
+      className={cn(
+        "min-w-0 rounded-lg border border-kp-outline/55 bg-kp-surface/90 px-3.5 py-3.5 sm:px-4",
+        className
+      )}
+      aria-labelledby="needs-follow-up-heading"
     >
       <h2
-        id="recent-operating-heading"
-        className="text-[10px] font-semibold uppercase tracking-[0.14em] text-kp-on-surface-variant/90"
+        id="needs-follow-up-heading"
+        className="text-xs font-semibold text-kp-on-surface sm:text-[13px]"
       >
-        Recent
+        Needs follow-up
       </h2>
-      <p className="mt-1 text-[10px] leading-snug text-kp-on-surface-variant/80">
-        For your awareness — not your queue
+      <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">
+        What you&apos;re waiting on or owes an owner touchpoint
       </p>
-      <ul className="mt-3 space-y-0.5">
-        {items.map((row, i) => (
-          <li key={`${row.kind}-${row.at}-${i}`} className="text-[11px] leading-snug">
-            <Link
-              href={row.href}
-              className="group block rounded px-0 py-1.5 text-kp-on-surface transition-colors hover:bg-kp-surface-high/30"
+      {items.length === 0 ? (
+        <p className="mt-3 text-[11px] text-kp-on-surface-variant">Nothing in the follow-up queue.</p>
+      ) : (
+        <ul className="mt-3 space-y-2">
+          {items.map((row) => (
+            <li
+              key={row.key}
+              className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-kp-outline/45 bg-kp-surface-high/40 px-2.5 py-2"
             >
-              <span className="tabular-nums text-kp-on-surface-variant/85">
-                {formatShortDate(row.at)} {formatTime(row.at)}
-              </span>
-              <span className="mx-1 text-kp-outline/40">·</span>
-              <span className="font-medium text-kp-on-surface-variant">{recentOperatingLabel(row.kind)}</span>
-              <span className="text-kp-on-surface-variant/75"> — {row.address}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[11px] font-bold text-kp-on-surface">{row.address}</p>
+                {row.at ? (
+                  <p className="mt-0.5 text-[10px] tabular-nums text-kp-on-surface-variant">
+                    {formatTime(row.at)}
+                  </p>
+                ) : null}
+                <p className="mt-1 text-[10px] font-medium text-kp-on-surface-variant">{row.reasonLabel}</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnSecondary, "h-7 shrink-0 px-2.5 text-[10px] font-semibold")}
+                asChild
+              >
+                <Link href={row.href}>{row.ctaLabel}</Link>
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
