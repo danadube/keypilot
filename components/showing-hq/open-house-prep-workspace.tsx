@@ -5,9 +5,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnSecondary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
-import { InviteHostDialog } from "@/components/open-houses/InviteHostDialog";
 import { buildOpenHousePrepChecklist } from "@/lib/showing-hq/prep-checklist";
 import { mergePrepChecklistFlags } from "@/lib/showing-hq/prep-checklist-flags";
+
+/** DOM id for the primary “Invite host” control in quick actions (scroll target from prep). */
+export const OPEN_HOUSE_INVITE_HOST_PRIMARY_ANCHOR_ID = "oh-invite-host-primary";
 
 export type OpenHousePrepWorkspaceInput = {
   flyerUrl?: string | null;
@@ -151,6 +153,15 @@ export function OpenHousePrepWorkspace({
     void persistPrepFlags({ [flagKey]: next });
   }
 
+  function scrollToPrimaryInviteHost() {
+    document
+      .getElementById(OPEN_HOUSE_INVITE_HOST_PRIMARY_ANCHOR_ID)
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  const hostLooksAssigned =
+    Boolean(input.hostAgentId) || (input.nonListingHostCount ?? 0) > 0;
+
   return (
     <div className="space-y-4">
       <div className="rounded-xl border border-kp-teal/25 bg-kp-teal/[0.06] px-4 py-3">
@@ -182,27 +193,72 @@ export function OpenHousePrepWorkspace({
         {(["flyer", "sign_in", "host", "signs"] as const).map((key) => {
           const item = getItem(key);
           if (!item) return null;
-          const editFlyer = key === "flyer";
-          const editQr = key === "sign_in";
-          const editHost = key === "host";
+          const isFlyer = key === "flyer";
+          const isQr = key === "sign_in";
+          const isHost = key === "host";
+          const isSigns = key === "signs";
+
+          const helper = (() => {
+            if (isFlyer) {
+              return item.complete
+                ? "Flyer is linked — update on the open house record if the file changes."
+                : "Upload or attach a flyer, then mark this when it’s ready for visitors.";
+            }
+            if (isQr) {
+              return item.complete
+                ? "Sign-in is set — use QR tools if you need to copy, print, or regenerate."
+                : "Open QR tools on the Details tab to copy links or print when you’re ready.";
+            }
+            if (isHost) {
+              if (item.complete) {
+                return hostLooksAssigned
+                  ? "Host is in place — adjust only if your staffing changed."
+                  : "Marked ready — confirm assignments in Quick actions if anything shifted.";
+              }
+              return hostLooksAssigned
+                ? "Host assignment looks covered — mark when you’ve confirmed they’re set."
+                : "Invite a host from Quick actions above, then mark this when they’re confirmed.";
+            }
+            if (isSigns) {
+              return item.complete
+                ? "Materials are out — toggle off if you need to revisit placement."
+                : "Yard signs, directionals, lockbox cues — mark when everything is in place.";
+            }
+            return item.complete
+              ? "Marked ready — adjust if something changed."
+              : "Mark when this piece is truly ready.";
+          })();
+
           return (
             <div
               key={key}
-              className="flex flex-col gap-2 rounded-lg border border-kp-outline/60 bg-kp-surface/40 p-3 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 rounded-lg border border-kp-outline/60 bg-kp-surface/40 p-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
             >
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-medium text-kp-on-surface">{item.label}</p>
-                <p className="mt-0.5 text-[11px] text-kp-on-surface-variant">
-                  {item.complete ? "Marked ready — adjust if something changed." : "Mark when this piece is truly ready."}
-                </p>
+                <p className="mt-1 text-[11px] leading-snug text-kp-on-surface-variant">{helper}</p>
+                {isHost && !hostLooksAssigned ? (
+                  <button
+                    type="button"
+                    onClick={scrollToPrimaryInviteHost}
+                    className="mt-1.5 text-left text-[11px] font-medium text-kp-teal underline-offset-2 hover:underline"
+                  >
+                    Jump to Invite host (quick actions)
+                  </button>
+                ) : null}
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {editFlyer ? (
+              <div
+                className={cn(
+                  "flex shrink-0 flex-wrap items-center gap-2 sm:justify-end",
+                  isSigns && "sm:mt-0.5"
+                )}
+              >
+                {isFlyer ? (
                   <Button variant="outline" size="sm" className={cn(kpBtnTertiary, "h-7 text-[11px]")} asChild>
                     <Link href={`/open-houses/${openHouseId}`}>Manage flyer</Link>
                   </Button>
                 ) : null}
-                {editQr ? (
+                {isQr ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -212,9 +268,6 @@ export function OpenHousePrepWorkspace({
                   >
                     QR tools
                   </Button>
-                ) : null}
-                {editHost ? (
-                  <InviteHostDialog openHouseId={openHouseId} onInviteSent={onReload} />
                 ) : null}
                 <ToggleSwitch
                   label={item.label}

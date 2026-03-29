@@ -33,7 +33,10 @@ import {
   ArrowLeft,
   Upload,
 } from "lucide-react";
-import { OpenHousePrepWorkspace } from "@/components/showing-hq/open-house-prep-workspace";
+import {
+  OpenHousePrepWorkspace,
+  OPEN_HOUSE_INVITE_HOST_PRIMARY_ANCHOR_ID,
+} from "@/components/showing-hq/open-house-prep-workspace";
 import {
   normalizeShowingHqWorkflowTab,
   openHouseWorkflowTabHref,
@@ -426,7 +429,10 @@ export function OpenHouseDetailPageClient() {
               <p className="text-xs text-emerald-400/90">Sign-in page is live — share the QR or link below.</p>
             ) : null}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div
+            id={OPEN_HOUSE_INVITE_HOST_PRIMARY_ANCHOR_ID}
+            className="flex flex-wrap gap-2 scroll-mt-24"
+          >
             <InviteHostDialog openHouseId={openHouseId} onInviteSent={loadData} />
             <Button size="sm" variant="outline" className={cn(kpBtnSecondary, "h-8 text-xs")} asChild>
               <Link href={`/open-houses/${openHouseId}`}>
