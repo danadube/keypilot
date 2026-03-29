@@ -22,6 +22,7 @@ _If this PR adds or modifies tables, columns, RLS, or grants, complete every ite
 - [ ] `npx prisma migrate deploy` successfully applies everything locally (or against a preview DB)
 - [ ] Feature works **without** manual SQL steps after deploy
 - [ ] Dashboard / critical surfaces **degrade gracefully** if an **additive** query fails (`try/catch`, **logged** error, safe empty fallback)
+- [ ] `npm run validate:db-safety` passes locally (CI **DB safety** workflow must be green for DB-related PRs)
 
 ---
 

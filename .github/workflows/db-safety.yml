@@ -1,0 +1,39 @@
+# Lightweight checks so schema + RLS deploy path issues are caught in CI.
+# See docs/platform/db-safety-validator.md
+
+name: DB safety
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches:
+      - "feature/**"
+
+jobs:
+  validate:
+    name: Validate DB change safety
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run DB safety validator
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.event.after }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            export BASE_SHA="$PR_BASE"
+            export HEAD_SHA="$PR_HEAD"
+          else
+            export BASE_SHA="$PUSH_BEFORE"
+            export HEAD_SHA="$PUSH_AFTER"
+          fi
+          node scripts/validate-db-safety.mjs

@@ -117,8 +117,13 @@ Historically, **`keypilot_app`** policies and **GRANT**s for most tables were in
 
 ---
 
+## Automated checks
+
+- **`npm run validate:db-safety`** — diff-based guard for schema vs migrations and RLS markers in new Prisma SQL. See **`docs/platform/db-safety-validator.md`**.
+
 ## Related docs
 
+- `docs/platform/db-safety-validator.md` — CI and local validator for this standard
 - `docs/RLS_ARCHITECTURE.md` — RLS model and `withRLSContext`
 - `docs/DEVELOPER_ONBOARDING_RLS.md` — local setup
 - `docs/BRANCHING_AND_DEPLOYMENT.md` — preview/production workflow

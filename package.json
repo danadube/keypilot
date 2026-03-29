@@ -14,6 +14,7 @@
     "test:integration": "jest tests/",
     "test:watch": "jest --watch",
     "check:prisma": "node scripts/check-prisma-usage.js",
+    "validate:db-safety": "node scripts/validate-db-safety.mjs",
     "db:push": "prisma db push",
     "db:push:direct": "node scripts/db-push-direct.cjs",
     "release:patch": "npm version patch",
