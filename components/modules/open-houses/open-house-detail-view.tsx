@@ -328,7 +328,7 @@ export function OpenHouseDetailView({ id }: { id: string }) {
             >
               <Link href={`/open-houses/${id}/sign-in`}>
                 <QrCode className="mr-1.5 h-3.5 w-3.5" />
-                Sign-in display
+                Host console
               </Link>
             </Button>
             <Button

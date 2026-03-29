@@ -419,7 +419,7 @@ export function OpenHouseDetailPageClient() {
           <Button size="sm" variant="outline" className={cn(kpBtnPrimary, "h-8 border-transparent text-xs")} asChild>
             <Link href={`/open-houses/${openHouseId}/sign-in`}>
               <QrCode className="mr-1.5 h-3.5 w-3.5" />
-              Open sign-in
+              Host console
             </Link>
           </Button>
         </div>
@@ -732,7 +732,7 @@ export function OpenHouseDetailPageClient() {
               >
                 <Link href={`/open-houses/${openHouseId}/sign-in`}>
                   <QrCode className="mr-1.5 h-3.5 w-3.5" />
-                  Host sign-in
+                  Host console
                 </Link>
               </Button>
               <Button

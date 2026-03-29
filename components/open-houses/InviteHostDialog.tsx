@@ -33,6 +33,8 @@ const KP_SELECT_ITEM =
 type InviteHostDialogProps = {
   openHouseId: string;
   onInviteSent?: () => void;
+  /** Button label (default: Invite host) */
+  triggerLabel?: string;
 };
 
 const ROLES = [
@@ -40,7 +42,11 @@ const ROLES = [
   { value: "ASSISTANT", label: "Assistant" },
 ] as const;
 
-export function InviteHostDialog({ openHouseId, onInviteSent }: InviteHostDialogProps) {
+export function InviteHostDialog({
+  openHouseId,
+  onInviteSent,
+  triggerLabel = "Invite host",
+}: InviteHostDialogProps) {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"HOST_AGENT" | "ASSISTANT">("HOST_AGENT");
@@ -85,7 +91,7 @@ export function InviteHostDialog({ openHouseId, onInviteSent }: InviteHostDialog
         onClick={() => setOpen(true)}
       >
         <UserPlus className="mr-1.5 h-3.5 w-3.5" />
-        Invite host
+        {triggerLabel}
       </Button>
       <BrandModal
         open={open}

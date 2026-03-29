@@ -112,10 +112,17 @@ export default function PrintQRPosterPage() {
     >
       <p className="no-print mb-4 text-sm text-kp-on-surface-variant">
         <Link
-          href={`/open-houses/${id}/sign-in`}
+          href={`/open-houses/${id}/sign-in/tablet`}
           className="font-medium text-kp-on-surface hover:underline"
         >
-          Open host sign-in (tablet)
+          Open tablet check-in (QR + walk-in form)
+        </Link>
+        <span className="mx-2 text-kp-outline">·</span>
+        <Link
+          href={`/open-houses/${id}/sign-in`}
+          className="font-medium text-kp-teal hover:underline"
+        >
+          Host console
         </Link>
       </p>
 

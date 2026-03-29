@@ -57,7 +57,7 @@ export function SignInQuickCard({
           <Button variant="outline" size="sm" className={cn(kpBtnSecondary)} asChild>
             <Link href={`/open-houses/${openHouseId}/sign-in`}>
               <QrCode className="mr-2 h-4 w-4" />
-              View QR
+              Host console
             </Link>
           </Button>
         </div>

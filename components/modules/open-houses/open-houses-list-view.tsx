@@ -320,7 +320,7 @@ function NextUpBanner({ event }: { event: OpenHouse }) {
           )}
         >
           <QrCode className="h-3.5 w-3.5" />
-          Open sign-in
+          Host console
         </Link>
         <Link
           href={showingHqOpenHouseWorkspaceHref(event.id)}
@@ -419,10 +419,10 @@ function OpenHousesTable({ rows }: { rows: OpenHouse[] }) {
                     <Link
                       href={`/open-houses/${oh.id}/sign-in`}
                       className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-kp-teal transition-colors hover:bg-kp-teal/10"
-                      aria-label={`Open sign-in for ${oh.title}`}
+                      aria-label={`Open host console for ${oh.title}`}
                     >
                       <QrCode className="h-3 w-3" />
-                      Sign-in
+                      Console
                     </Link>
                   )}
                   <Link

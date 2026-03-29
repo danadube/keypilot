@@ -205,7 +205,7 @@ export function TodayCommandCenter({
               <BrandButton variant="primary" size="sm" className="h-9" asChild>
                 <Link href={`/open-houses/${primaryOh.id}/sign-in`}>
                   <QrCode className="mr-1.5 h-4 w-4" />
-                  Host Mode
+                  Host console
                 </Link>
               </BrandButton>
               {signInUrl && (
@@ -239,7 +239,7 @@ export function TodayCommandCenter({
               <BrandButton variant="primary" size="sm" className="h-9" asChild>
                 <Link href={`/open-houses/${primaryOh.id}/sign-in`}>
                   <QrCode className="mr-1.5 h-4 w-4" />
-                  Host Mode
+                  Host console
                 </Link>
               </BrandButton>
               {signInUrl && (

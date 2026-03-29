@@ -231,7 +231,7 @@ export function OpenHousesList() {
                           </Button>
                           {(oh.status === "ACTIVE" || oh.status === "SCHEDULED") && (
                             <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
-                              <Link href={`/open-houses/${oh.id}/sign-in`}>Sign-in</Link>
+                              <Link href={`/open-houses/${oh.id}/sign-in`}>Console</Link>
                             </Button>
                           )}
                         </div>
@@ -271,7 +271,7 @@ export function OpenHousesList() {
               >
                 <Link href="/open-houses/sign-in">
                   <QrCode className="mr-2 h-4 w-4" />
-                  Launch sign-in & QR
+                  Live open houses
                 </Link>
               </Button>
               <Button
@@ -306,7 +306,7 @@ export function OpenHousesList() {
                     className={cn(kpBtnPrimary, "border-transparent")}
                     asChild
                   >
-                    <Link href={`/open-houses/${nextUp.id}/sign-in`}>Open sign-in</Link>
+                    <Link href={`/open-houses/${nextUp.id}/sign-in`}>Host console</Link>
                   </Button>
                   <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
                     <Link href={showingHqOpenHouseWorkspaceHref(nextUp.id)}>View</Link>

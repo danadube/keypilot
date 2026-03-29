@@ -1,9 +1,9 @@
-import { SignInDisplay } from "@/components/open-houses/SignInDisplay";
+import { OpenHouseHostConsole } from "@/components/open-houses/OpenHouseHostConsole";
 
-export default function OpenHouseSignInPage({
+export default function OpenHouseHostConsolePage({
   params,
 }: {
   params: { id: string };
 }) {
-  return <SignInDisplay openHouseId={params.id} />;
+  return <OpenHouseHostConsole openHouseId={params.id} />;
 }

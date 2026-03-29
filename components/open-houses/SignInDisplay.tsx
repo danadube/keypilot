@@ -82,7 +82,7 @@ export function SignInDisplay({ openHouseId }: { openHouseId: string }) {
     return (
       <OpenHouseSupportPageFrame openHouseId={openHouseId}>
         <div className="flex justify-center py-16">
-          <PageLoading message="Loading sign-in display..." />
+          <PageLoading message="Loading tablet check-in…" />
         </div>
       </OpenHouseSupportPageFrame>
     );
@@ -133,23 +133,32 @@ export function SignInDisplay({ openHouseId }: { openHouseId: string }) {
       contextSubtitle={contextSubtitle}
       maxWidthClass="max-w-4xl"
       headerRight={
-        <Link
-          href={`/open-houses/${openHouseId}/sign-in/print`}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-kp-on-surface-variant transition-colors hover:text-kp-on-surface"
-        >
-          <Printer className="h-4 w-4" />
-          Print QR poster
-        </Link>
+        <div className="flex flex-wrap items-center gap-4">
+          <Link
+            href={`/open-houses/${openHouseId}/sign-in`}
+            className="text-sm font-medium text-kp-teal transition-colors hover:underline"
+          >
+            Host console
+          </Link>
+          <Link
+            href={`/open-houses/${openHouseId}/sign-in/print`}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-kp-on-surface-variant transition-colors hover:text-kp-on-surface"
+          >
+            <Printer className="h-4 w-4" />
+            Print QR poster
+          </Link>
+        </div>
       }
     >
       <header className="mb-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-xl font-semibold text-kp-on-surface sm:text-2xl">
-              Host sign-in
+              Tablet walk-in check-in
             </h1>
             <p className="mt-1 text-sm text-kp-on-surface-variant">
-              Tablet-friendly QR and walk-in check-in for this event.
+              Door-side QR and walk-in form. Visitors normally sign in on the public property page; use the host
+              console for links, go-live, and run-of-show.
             </p>
             <p className="mt-3 text-sm text-kp-on-surface">
               {data.property.address1}

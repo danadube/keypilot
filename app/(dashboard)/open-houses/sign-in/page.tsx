@@ -21,7 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
-import { QrCode, Tablet, Printer, ArrowRight, List, Plus } from "lucide-react";
+import { QrCode, Radio, Printer, ArrowRight, List, Plus } from "lucide-react";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
@@ -92,7 +92,7 @@ export default function OpenSignInPage() {
     });
 
   if (active.length === 1) {
-    return <PageLoading message="Opening sign-in..." />;
+    return <PageLoading message="Loading host tools…" />;
   }
 
   const rightPanel = (
@@ -101,9 +101,9 @@ export default function OpenSignInPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <QrCode className="h-4 w-4" />
-            Sign-in workflow
+            Host workflow
           </CardTitle>
-          <CardDescription>How host sign-in and QR work</CardDescription>
+          <CardDescription>Host console, tablet check-in, and visitor QR</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
           <div className="flex gap-3">
@@ -116,15 +116,19 @@ export default function OpenSignInPage() {
           <div className="flex gap-3">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">2</span>
             <div>
-              <p className="font-medium">Open host sign-in</p>
-              <p className="text-muted-foreground">Use on a tablet at the door to check visitors in.</p>
+              <p className="font-medium">Open the host console</p>
+              <p className="text-muted-foreground">
+                Run the event, copy the visitor link, or jump to tablet walk-in check-in from there.
+              </p>
             </div>
           </div>
           <div className="flex gap-3">
             <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">3</span>
             <div>
               <p className="font-medium">QR or print poster</p>
-              <p className="text-muted-foreground">Visitors scan QR or use the link; you can print a poster from the host page.</p>
+              <p className="text-muted-foreground">
+                Visitors scan QR or use the public link; print a poster from the host console or print view.
+              </p>
             </div>
           </div>
         </CardContent>
@@ -184,11 +188,11 @@ export default function OpenSignInPage() {
         <DashboardContextStrip
           className="min-w-0 flex-1 sm:max-w-2xl"
           label="Host tools"
-          message="Choose an event below to open host sign-in on a tablet or print a QR poster for visitors."
+          message="Choose an event to open its host console — start the event, copy the visitor link, open tablet check-in, or print a QR poster."
         />
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <BrandButton variant="primary" size="sm" asChild>
-            <Link href="#host-sign-in">Open host sign-in</Link>
+            <Link href="#host-console-events">Jump to events</Link>
           </BrandButton>
           <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "shrink-0")} asChild>
             <Link href="/open-houses">Browse all events</Link>
@@ -204,7 +208,7 @@ export default function OpenSignInPage() {
               <CardHeader>
                 <CardTitle>No events yet</CardTitle>
                 <CardDescription>
-                  Create an event first. Then return here to open host sign-in on a tablet or print the QR poster for visitors.
+                  Create an event first. Then return here to open the host console or print the QR poster for visitors.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
@@ -219,11 +223,11 @@ export default function OpenSignInPage() {
           ) : (
             <div className="space-y-6">
               {active.length > 0 && (
-                <Card id="host-sign-in">
+                <Card id="host-console-events">
                   <CardHeader>
-                    <CardTitle className="text-lg">Launch host sign-in</CardTitle>
+                    <CardTitle className="text-lg">Launch host console</CardTitle>
                     <CardDescription>
-                      Select an open house to open the host page (tablet check-in and QR). Each event has its own link.
+                      Select an open house for the live host surface — links, stats, tablet check-in, and print. Each event has its own URL.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -249,8 +253,8 @@ export default function OpenSignInPage() {
                             asChild
                           >
                             <Link href={`/open-houses/${oh.id}/sign-in`}>
-                              <Tablet className="mr-2 h-4 w-4" />
-                              Host sign-in
+                              <Radio className="mr-2 h-4 w-4" />
+                              Host console
                             </Link>
                           </Button>
                           <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
@@ -275,7 +279,7 @@ export default function OpenSignInPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base">Past events</CardTitle>
-                    <CardDescription>Reopen sign-in for a completed or cancelled event if needed.</CardDescription>
+                    <CardDescription>Reopen the host console for a completed or cancelled event if needed.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {recentOthers.map((oh) => (
@@ -292,7 +296,7 @@ export default function OpenSignInPage() {
                         <div className="flex items-center gap-2">
                           <Badge variant="secondary" className="text-xs">{oh.status}</Badge>
                           <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
-                            <Link href={`/open-houses/${oh.id}/sign-in`}>Open</Link>
+                            <Link href={`/open-houses/${oh.id}/sign-in`}>Console</Link>
                           </Button>
                         </div>
                       </div>

@@ -8,6 +8,7 @@ import { prismaAdmin } from "@/lib/db";
 export type UsageEventName =
   | "open_house_created"
   | "sign_in_page_opened"
+  | "host_console_opened"
   | "visitor_captured"
   | "gmail_connected"
   | "calendar_connected"
