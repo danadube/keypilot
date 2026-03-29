@@ -7,14 +7,20 @@ import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
 import { ShowingHQWorkbenchHeaderActions } from "@/components/dashboard/ShowingHQWorkbenchHeaderActions";
 import { cn } from "@/lib/utils";
 import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
+import {
+  isOpenHousesListPath,
+  isShowingHQContext,
+} from "@/lib/showing-hq/isShowingHQContext";
 
 function getPageTitle(pathname: string): string {
+  const base = (pathname.split("?")[0] ?? "").replace(/\/$/, "") || "/";
   // All routes under ShowingHQ use one shell title; entity context lives on the page.
-  if (pathname.startsWith("/showing-hq")) return "ShowingHQ";
-  if (pathname.startsWith("/open-houses/new")) return "New Open House";
-  if (pathname === "/open-houses/sign-in") return "Sign-in & QR";
-  if (/^\/open-houses\/[^/]+\/sign-in/.test(pathname)) return "Host sign-in";
-  if (pathname.startsWith("/open-houses")) return "All Open Houses";
+  if (base.startsWith("/showing-hq")) return "ShowingHQ";
+  if (base.startsWith("/open-houses")) {
+    if (isOpenHousesListPath(pathname)) return "All Open Houses";
+    if (base.startsWith("/open-houses/new")) return "New Open House";
+    return "ShowingHQ";
+  }
   if (pathname.startsWith("/properties/new")) return "New Property";
   if (pathname.startsWith("/properties")) return "Properties";
   if (pathname.startsWith("/property-vault")) return "PropertyVault";
@@ -36,10 +42,8 @@ function getPageTitle(pathname: string): string {
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
-  const isShowingHqRoute = pathname.startsWith("/showing-hq");
-  /** Module open house surfaces (`/open-houses/*`) use the same + New affordance as ShowingHQ. */
-  const showHeaderNewMenu =
-    isShowingHqRoute || pathname.startsWith("/open-houses");
+  /** Open house module routes share ShowingHQ header actions. */
+  const showHeaderNewMenu = isShowingHQContext(pathname);
   const isShowingHQWorkbenchHome = pathname === "/showing-hq";
   const workbenchDateLine = React.useMemo(
     () =>

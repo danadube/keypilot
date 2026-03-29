@@ -5,14 +5,15 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { PageLoading } from "@/components/shared/PageLoading";
-import { ArrowLeft, Mail, Sparkles } from "lucide-react";
+import { Mail, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   kpBtnPrimary,
   kpBtnSecondary,
   kpBtnTertiary,
 } from "@/components/ui/kp-dashboard-button-tiers";
-import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
+import { OpenHouseSupportPageFrame } from "@/components/showing-hq/OpenHouseSupportPageFrame";
+import { useOpenHouseContextSubtitle } from "@/components/showing-hq/useOpenHouseContextSubtitle";
 
 type FollowUpDraft = {
   id: string;
@@ -44,6 +45,7 @@ function draftStatusLabel(s: string) {
 }
 
 export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string }) {
+  const subtitle = useOpenHouseContextSubtitle(openHouseId);
   const [drafts, setDrafts] = useState<FollowUpDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,29 +105,50 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
     }
   };
 
-  if (loading) return <PageLoading message="Loading drafts..." />;
-  if (error) return <ErrorMessage message={error} onRetry={() => { setError(null); setLoading(true); loadDrafts(); }} />;
+  if (loading) {
+    return (
+      <OpenHouseSupportPageFrame
+        openHouseId={openHouseId}
+        contextSubtitle={subtitle}
+      >
+        <PageLoading message="Loading drafts..." />
+      </OpenHouseSupportPageFrame>
+    );
+  }
+  if (error) {
+    return (
+      <OpenHouseSupportPageFrame
+        openHouseId={openHouseId}
+        contextSubtitle={subtitle}
+      >
+        <ErrorMessage
+          message={error}
+          onRetry={() => {
+            setError(null);
+            fetch(`/api/v1/open-houses/${openHouseId}/follow-ups`)
+              .then((res) => res.json())
+              .then((json) => {
+                if (json.error) setError(json.error.message);
+                else setDrafts(json.data || []);
+              })
+              .catch(() => setError("Failed to load drafts"));
+          }}
+        />
+      </OpenHouseSupportPageFrame>
+    );
+  }
 
   const pendingCount = drafts.filter((d) => d.status === "DRAFT" || d.status === "REVIEWED").length;
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Header */}
+    <OpenHouseSupportPageFrame
+      openHouseId={openHouseId}
+      contextSubtitle={subtitle}
+    >
+      <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn(kpBtnTertiary, "h-8 gap-1.5 px-2")}
-            asChild
-          >
-            <Link href={showingHqOpenHouseWorkspaceHref(openHouseId)}>
-              <ArrowLeft className="h-4 w-4" />
-              Open house
-            </Link>
-          </Button>
-          <span className="text-kp-outline">/</span>
-          <h1 className="text-xl font-bold text-kp-on-surface">Follow-ups</h1>
+          <h1 className="text-xl font-bold text-kp-on-surface">Visitor follow-ups</h1>
           {drafts.length > 0 && (
             <span className="rounded-full bg-kp-surface-high px-2.5 py-0.5 text-xs font-medium text-kp-on-surface-variant">
               {drafts.length}
@@ -144,9 +167,8 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
         </Button>
       </div>
 
-      {/* Summary strip */}
       {drafts.length > 0 && (
-        <div className="flex flex-wrap gap-4 rounded-xl border border-kp-outline bg-kp-surface px-5 py-3">
+        <div className="flex flex-wrap gap-4 rounded-xl border border-kp-outline bg-kp-bg/80 px-5 py-3">
           <div>
             <p className="text-xs font-medium text-kp-on-surface-variant">Pending</p>
             <p className="text-xl font-bold text-kp-gold">{pendingCount}</p>
@@ -162,8 +184,7 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
         </div>
       )}
 
-      {/* Drafts table */}
-      <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+      <div className="rounded-xl border border-kp-outline bg-kp-bg/80 p-5">
         <div className="mb-3 flex items-center gap-2">
           <Mail className="h-4 w-4 text-kp-on-surface-variant" />
           <h2 className="text-sm font-semibold text-kp-on-surface">Email drafts</h2>
@@ -242,6 +263,7 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </OpenHouseSupportPageFrame>
   );
 }

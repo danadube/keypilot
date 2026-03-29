@@ -5,10 +5,11 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { kpBtnPrimary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
+import { kpBtnPrimary } from "@/components/ui/kp-dashboard-button-tiers";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
-import { ChevronLeft, Printer } from "lucide-react";
+import { Printer } from "lucide-react";
+import { OpenHouseSupportPageFrame } from "@/components/showing-hq/OpenHouseSupportPageFrame";
 
 type PrintData = {
   id: string;
@@ -47,15 +48,34 @@ export default function PrintQRPosterPage() {
 
   const handlePrint = () => window.print();
 
-  if (loading) return <PageLoading message="Loading..." />;
+  if (!id) {
+    return (
+      <div className="py-8">
+        <ErrorMessage message="Missing event" onRetry={() => window.location.reload()} />
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <OpenHouseSupportPageFrame openHouseId={id}>
+        <div className="flex justify-center py-16">
+          <PageLoading message="Loading…" />
+        </div>
+      </OpenHouseSupportPageFrame>
+    );
+  }
+
   if (error || !data) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <ErrorMessage
-          message={error ?? "Not found"}
-          onRetry={() => window.location.reload()}
-        />
-      </div>
+      <OpenHouseSupportPageFrame openHouseId={id}>
+        <div className="py-8">
+          <ErrorMessage
+            message={error ?? "Not found"}
+            onRetry={() => window.location.reload()}
+          />
+        </div>
+      </OpenHouseSupportPageFrame>
     );
   }
 
@@ -67,48 +87,61 @@ export default function PrintQRPosterPage() {
     .filter(Boolean)
     .join(", ");
 
-  return (
-    <div className="mx-auto max-w-2xl space-y-6 py-8 px-4">
-        <div className="no-print flex flex-wrap items-center justify-between gap-4">
-          <Button variant="ghost" size="sm" className={cn(kpBtnTertiary)} asChild>
-            <Link href={`/open-houses/${id}/sign-in`} className="inline-flex items-center gap-1.5">
-              <ChevronLeft className="h-4 w-4" />
-              Back to host sign-in
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            onClick={handlePrint}
-            className={cn(kpBtnPrimary, "border-transparent inline-flex items-center gap-2")}
-          >
-            <Printer className="h-4 w-4" />
-            Print QR poster
-          </Button>
-        </div>
+  const contextSubtitle = [data.property.address1, data.property.city]
+    .filter(Boolean)
+    .join(", ");
 
-        <div className="print-qr-poster flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-8 md:p-12 text-center">
-          <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
-            Scan to sign in
-          </h1>
-          <p className="mt-2 text-lg text-slate-600">
-            {address}
-          </p>
-          {data.qrCodeDataUrl && (
-            <div className="mt-8 flex justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={data.qrCodeDataUrl}
-                alt="Scan to sign in at open house"
-                width={280}
-                height={280}
-                className="rounded-lg border-2 border-slate-200 bg-white p-2"
-              />
-            </div>
+  return (
+    <OpenHouseSupportPageFrame
+      openHouseId={id}
+      contextSubtitle={contextSubtitle}
+      maxWidthClass="max-w-3xl"
+      headerRight={
+        <Button
+          variant="outline"
+          onClick={handlePrint}
+          className={cn(
+            kpBtnPrimary,
+            "inline-flex items-center gap-2 border-transparent"
           )}
-          <p className="mt-6 text-base font-medium text-slate-700">
-            Open house · {data.title}
-          </p>
-        </div>
-    </div>
+        >
+          <Printer className="h-4 w-4" />
+          Print QR poster
+        </Button>
+      }
+    >
+      <p className="no-print mb-4 text-sm text-kp-on-surface-variant">
+        <Link
+          href={`/open-houses/${id}/sign-in`}
+          className="font-medium text-kp-on-surface hover:underline"
+        >
+          Open host sign-in (tablet)
+        </Link>
+      </p>
+
+      <div className="print-qr-poster flex flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-8 text-center md:p-12">
+        <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">
+          Scan to sign in
+        </h1>
+        <p className="mt-2 text-lg text-slate-600">
+          {address}
+        </p>
+        {data.qrCodeDataUrl && (
+          <div className="mt-8 flex justify-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={data.qrCodeDataUrl}
+              alt="Scan to sign in at open house"
+              width={280}
+              height={280}
+              className="rounded-lg border-2 border-slate-200 bg-white p-2"
+            />
+          </div>
+        )}
+        <p className="mt-6 text-base font-medium text-slate-700">
+          Open house · {data.title}
+        </p>
+      </div>
+    </OpenHouseSupportPageFrame>
   );
 }

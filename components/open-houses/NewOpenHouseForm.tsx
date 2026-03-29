@@ -208,7 +208,7 @@ export function NewOpenHouseForm() {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Open house details</CardTitle>
+            <CardTitle>Event details</CardTitle>
             <CardDescription>
               Schedule an open house for one of your properties
             </CardDescription>

@@ -143,7 +143,7 @@ export default function OpenSignInPage() {
           >
             <Link href="/open-houses">
               <List className="mr-2 h-4 w-4" />
-              All open houses
+              All events
             </Link>
           </Button>
           <Button
@@ -154,7 +154,7 @@ export default function OpenSignInPage() {
           >
             <Link href="/open-houses/new">
               <Plus className="mr-2 h-4 w-4" />
-              New open house
+              New event
             </Link>
           </Button>
         </CardContent>
@@ -191,7 +191,7 @@ export default function OpenSignInPage() {
             <Link href="#host-sign-in">Open host sign-in</Link>
           </BrandButton>
           <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "shrink-0")} asChild>
-            <Link href="/open-houses">View open houses</Link>
+            <Link href="/open-houses">Browse all events</Link>
           </Button>
         </div>
       </div>
@@ -202,17 +202,17 @@ export default function OpenSignInPage() {
           {active.length === 0 && recentOthers.length === 0 ? (
             <Card>
               <CardHeader>
-                <CardTitle>No open houses yet</CardTitle>
+                <CardTitle>No events yet</CardTitle>
                 <CardDescription>
-                  Create an open house first. Then return here to open the host sign-in page on a tablet or print the QR poster for visitors.
+                  Create an event first. Then return here to open host sign-in on a tablet or print the QR poster for visitors.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col gap-4">
                 <Button variant="outline" className={cn(kpBtnPrimary, "border-transparent")} asChild>
-                  <Link href="/open-houses/new">New open house</Link>
+                  <Link href="/open-houses/new">New event</Link>
                 </Button>
                 <Button variant="outline" className={kpBtnSecondary} asChild>
-                  <Link href="/open-houses">View open houses</Link>
+                  <Link href="/open-houses">Browse all events</Link>
                 </Button>
               </CardContent>
             </Card>

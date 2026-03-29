@@ -195,7 +195,7 @@ export function FollowUpsView() {
               className={cn(kpBtnSecondary, "text-xs")}
               asChild
             >
-              <Link href="/open-houses">View open houses</Link>
+              <Link href="/open-houses">Browse all events</Link>
             </Button>
           }
           tasks={needsReply}

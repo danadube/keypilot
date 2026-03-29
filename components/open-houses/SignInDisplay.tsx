@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { trackEvent } from "@/lib/track-usage-client";
 import Link from "next/link";
-import { ChevronLeft, Printer } from "lucide-react";
+import { Printer } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { SignInFormFields } from "@/components/oh/SignInFormFields";
-import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
+import { OpenHouseSupportPageFrame } from "@/components/showing-hq/OpenHouseSupportPageFrame";
 
 type SignInData = {
   id: string;
@@ -80,30 +80,34 @@ export function SignInDisplay({ openHouseId }: { openHouseId: string }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <PageLoading message="Loading sign-in display..." />
-      </div>
+      <OpenHouseSupportPageFrame openHouseId={openHouseId}>
+        <div className="flex justify-center py-16">
+          <PageLoading message="Loading sign-in display..." />
+        </div>
+      </OpenHouseSupportPageFrame>
     );
   }
   if (error || !data) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <ErrorMessage
-          message={error || "Not found"}
-          onRetry={() => {
-            setError(null);
-            setLoading(true);
-            fetch(`/api/v1/open-houses/${openHouseId}`)
-              .then((res) => res.json())
-              .then((json) => {
-                if (json.error) setError(json.error.message);
-                else setData(json.data);
-              })
-              .catch(() => setError("Failed to load"))
-              .finally(() => setLoading(false));
-          }}
-        />
-      </div>
+      <OpenHouseSupportPageFrame openHouseId={openHouseId}>
+        <div className="py-8">
+          <ErrorMessage
+            message={error || "Not found"}
+            onRetry={() => {
+              setError(null);
+              setLoading(true);
+              fetch(`/api/v1/open-houses/${openHouseId}`)
+                .then((res) => res.json())
+                .then((json) => {
+                  if (json.error) setError(json.error.message);
+                  else setData(json.data);
+                })
+                .catch(() => setError("Failed to load"))
+                .finally(() => setLoading(false));
+            }}
+          />
+        </div>
+      </OpenHouseSupportPageFrame>
     );
   }
 
@@ -119,41 +123,42 @@ export function SignInDisplay({ openHouseId }: { openHouseId: string }) {
     property: data.property,
   };
 
+  const contextSubtitle = [data.property.address1, data.property.city]
+    .filter(Boolean)
+    .join(", ");
+
   return (
-    <div className="mx-auto flex min-h-screen max-w-6xl flex-col py-8 px-6">
-      {/* Back navigation + Print */}
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <Link
-          href={showingHqOpenHouseWorkspaceHref(openHouseId)}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--brand-text-muted)] transition-colors hover:text-[var(--brand-text)]"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Back to open house details
-        </Link>
+    <OpenHouseSupportPageFrame
+      openHouseId={openHouseId}
+      contextSubtitle={contextSubtitle}
+      maxWidthClass="max-w-4xl"
+      headerRight={
         <Link
           href={`/open-houses/${openHouseId}/sign-in/print`}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--brand-text-muted)] transition-colors hover:text-[var(--brand-text)]"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-kp-on-surface-variant transition-colors hover:text-kp-on-surface"
         >
           <Printer className="h-4 w-4" />
           Print QR poster
         </Link>
-      </div>
-
-      {/* Page header */}
-      <header className="mb-10">
+      }
+    >
+      <header className="mb-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-[var(--brand-text)]">
-              Open House Sign-In
+            <h1 className="text-xl font-semibold text-kp-on-surface sm:text-2xl">
+              Host sign-in
             </h1>
-            <p className="mt-1 text-[var(--brand-text-muted)]">
+            <p className="mt-1 text-sm text-kp-on-surface-variant">
+              Tablet-friendly QR and walk-in check-in for this event.
+            </p>
+            <p className="mt-3 text-sm text-kp-on-surface">
               {data.property.address1}
               {data.property.address2 ? `, ${data.property.address2}` : ""}
             </p>
-            <p className="text-sm text-[var(--brand-text-muted)]">
+            <p className="text-sm text-kp-on-surface-variant">
               {data.property.city}, {data.property.state} {data.property.zip}
             </p>
-            <p className="mt-2 text-sm text-[var(--brand-text-muted)]">
+            <p className="mt-2 text-sm text-kp-on-surface-variant">
               {formatDate(data.startAt)} · {formatTime(data.startAt)}
               {" – "}
               {formatTime(data.endAt)}
@@ -163,25 +168,20 @@ export function SignInDisplay({ openHouseId }: { openHouseId: string }) {
         </div>
       </header>
 
-      {/* Two-column layout: QR (slightly dominant) | Form */}
-      <div className="grid w-full gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-        {/* QR Code card */}
-        <Card className="overflow-hidden border-[var(--brand-border)] bg-[var(--brand-surface)] shadow-[var(--shadow-sm)]">
+      <div className="grid w-full gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+        <Card className="overflow-hidden border-kp-outline bg-white shadow-sm">
           <CardHeader className="pb-4 text-center">
-            <CardTitle
-              className="text-lg font-semibold"
-              style={{ color: "var(--brand-text)" }}
-            >
-              Scan to sign in on your phone
+            <CardTitle className="text-lg font-semibold text-kp-on-surface">
+              Scan to sign in on a phone
             </CardTitle>
-            <CardDescription className="mt-1.5 text-sm text-[var(--brand-text-muted)]">
+            <CardDescription className="mt-1.5 text-sm text-kp-on-surface-variant">
               Visitors can point their camera at the QR code to open the sign-in
-              page instantly
+              page instantly.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-6 pb-8">
             {data.qrCodeDataUrl && (
-              <div className="flex items-center justify-center rounded-xl border border-[var(--brand-border)] bg-white p-5">
+              <div className="flex items-center justify-center rounded-xl border border-kp-outline bg-white p-5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={data.qrCodeDataUrl}
@@ -193,27 +193,23 @@ export function SignInDisplay({ openHouseId }: { openHouseId: string }) {
               </div>
             )}
             <div className="w-full max-w-sm">
-              <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-[var(--brand-text-muted)]">
+              <p className="mb-2 text-center text-xs font-medium uppercase tracking-wider text-kp-on-surface-variant">
                 Short link
               </p>
-              <p className="break-all text-center font-mono text-sm text-[var(--brand-text-muted)]">
+              <p className="break-all text-center font-mono text-sm text-kp-on-surface-variant">
                 {signInUrl}
               </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Sign-in form card */}
-        <Card className="overflow-hidden border-[var(--brand-border)] bg-[var(--brand-surface)] shadow-[var(--shadow-sm)]">
+        <Card className="overflow-hidden border-kp-outline bg-white shadow-sm">
           <CardHeader className="pb-4">
-            <CardTitle
-              className="text-lg font-semibold"
-              style={{ color: "var(--brand-text)" }}
-            >
+            <CardTitle className="text-lg font-semibold text-kp-on-surface">
               Check in here
             </CardTitle>
-            <CardDescription className="mt-1.5 text-[var(--brand-text-muted)]">
-              Sign in directly on this tablet
+            <CardDescription className="mt-1.5 text-kp-on-surface-variant">
+              Sign in directly on this tablet.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -225,6 +221,6 @@ export function SignInDisplay({ openHouseId }: { openHouseId: string }) {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </OpenHouseSupportPageFrame>
   );
 }
