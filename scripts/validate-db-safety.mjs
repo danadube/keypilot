@@ -34,31 +34,57 @@ function sh(cmd) {
   }).trim();
 }
 
+/**
+ * @returns {{ base: string, head: string, diffStrategy: string }}
+ */
 function resolveBaseHead() {
-  let base = process.env.DB_SAFETY_BASE || process.env.BASE_SHA;
-  let head =
-    process.env.DB_SAFETY_HEAD ||
-    process.env.HEAD_SHA ||
-    sh("git rev-parse HEAD");
-
   const nullSha = /^0{40}$/;
-  if (!base || nullSha.test(base)) {
+  const envBaseRaw = (process.env.DB_SAFETY_BASE || process.env.BASE_SHA || "").trim();
+  const envHeadRaw = (process.env.DB_SAFETY_HEAD || process.env.HEAD_SHA || "").trim();
+
+  const head =
+    envHeadRaw && !nullSha.test(envHeadRaw)
+      ? envHeadRaw
+      : sh("git rev-parse HEAD");
+  const headSource =
+    envHeadRaw && !nullSha.test(envHeadRaw)
+      ? "HEAD_SHA or DB_SAFETY_HEAD"
+      : "git rev-parse HEAD (no non-empty HEAD_SHA)";
+
+  let base = envBaseRaw;
+  /** @type {string} */
+  let diffStrategy;
+
+  if (base && !nullSha.test(base)) {
+    diffStrategy = `env-provided SHA range (base from BASE_SHA/DB_SAFETY_BASE; head from ${headSource})`;
+  } else {
+    let mergeRef = "";
+    base = "";
     for (const ref of ["origin/main", "origin/master", "main", "master"]) {
       try {
         base = sh(`git merge-base ${ref} HEAD`);
+        mergeRef = ref;
         break;
       } catch {
         /* try next */
       }
     }
+    if (envBaseRaw && nullSha.test(envBaseRaw)) {
+      diffStrategy = `push fallback: zero BASE_SHA → merge-base with ${mergeRef} (typical new-branch push; compares merge-base..HEAD)`;
+    } else if (envBaseRaw) {
+      diffStrategy = `merge-base fallback: BASE_SHA unusable → merge-base with ${mergeRef}`;
+    } else {
+      diffStrategy = `merge-base fallback: no BASE_SHA in environment → merge-base with ${mergeRef}`;
+    }
   }
+
   if (!base || nullSha.test(base)) {
     console.error(
       "DB safety: ERR — Could not resolve base commit. Set DB_SAFETY_BASE or BASE_SHA (e.g. github.event.pull_request.base.sha)."
     );
     process.exit(1);
   }
-  return { base, head };
+  return { base, head, diffStrategy };
 }
 
 /**
@@ -90,10 +116,13 @@ function readRepoFile(path) {
 }
 
 function main() {
-  const { base, head } = resolveBaseHead();
+  const { base, head, diffStrategy } = resolveBaseHead();
 
   console.log("=== DB Safety Validator ===");
-  console.log(`Compare: ${base.slice(0, 7)}..${head.slice(0, 7)}`);
+  console.log(`Base SHA:  ${base}`);
+  console.log(`Head SHA:  ${head}`);
+  console.log(`Diff strategy: ${diffStrategy}`);
+  console.log("---");
 
   const changed = gitDiffNames(base, head, "");
   const added = gitDiffNames(base, head, "A");
@@ -140,6 +169,13 @@ function main() {
     }
   }
 
+  if (newMigrationSqlFiles.length > 0 && !schemaChanged) {
+    warnings.push(
+      "WARN: New prisma/migrations/*/migration.sql was added, but prisma/schema.prisma did not change in this diff.\n" +
+        "   Often intentional (RLS/GRANT-only migration or SQL-only fix). Confirm this migration belongs in the PR and that `prisma migrate deploy` matches your intent."
+    );
+  }
+
   const supabaseChanged = changed.some((f) => RE_SUPABASE_SQL.test(f));
   if (supabaseChanged && newMigrationSqlFiles.length === 0) {
     warnings.push(
@@ -159,8 +195,8 @@ function main() {
 
   if (dbTouched && criticalTouched) {
     warnings.push(
-      "WARN: Database-related paths and ShowingHQ / open-houses API or UI changed in the same diff.\n" +
-        "   Double-check: preview deploy ran `prisma migrate deploy`; smoke-test ShowingHQ and open house workspace."
+      "WARN: DB-related changes also touched ShowingHQ / open-house critical surfaces (API or UI under showing-hq or open-houses).\n" +
+        "   Action: verify graceful fallback on command-center flows — additive DB-backed sections should use try/catch + logged errors + safe empty state so a failing subquery does not take down the whole page (see docs/platform/database-migrations.md)."
     );
   }
 

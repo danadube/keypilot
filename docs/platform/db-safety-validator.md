@@ -6,6 +6,21 @@ It does **not** parse SQL deeply and does **not** connect to a database.
 
 ---
 
+## Debug output (CI logs)
+
+Each run prints **full** base and head SHAs, then **how the range was chosen**:
+
+| Diff strategy line | Meaning |
+|--------------------|--------|
+| `env-provided SHA range (base from BASE_SHA/...` | `BASE_SHA` or `DB_SAFETY_BASE` was set and was not all zeros; head from `HEAD_SHA` / `DB_SAFETY_HEAD` or from `git rev-parse HEAD` if head env was empty. |
+| `push fallback: zero BASE_SHA → merge-base with …` | CI **push** often sends `before=000…` for a new branch; base is recomputed with `git merge-base <ref> HEAD`. |
+| `merge-base fallback: BASE_SHA unusable → …` | Env had a base value that was not usable (non-zero but invalid for this repo). |
+| `merge-base fallback: no BASE_SHA in environment → …` | Local run or missing env: base is `git merge-base origin/main|main..HEAD`. |
+
+This block appears immediately under `=== DB Safety Validator ===` so you can paste SHAs into GitHub or `git show` without guessing.
+
+---
+
 ## What it checks
 
 | Check | Description |
@@ -13,12 +28,13 @@ It does **not** parse SQL deeply and does **not** connect to a database.
 | Schema vs migration | If `prisma/schema.prisma` changed, the diff must **add** at least one `prisma/migrations/<folder>/migration.sql`. |
 | New tables + RLS | If **any new** migration file in the diff contains `CREATE TABLE`, the **combined** contents of all **new** migration SQL files in that diff must include `ENABLE ROW LEVEL SECURITY`, `CREATE POLICY`, and `GRANT` (case-insensitive). |
 | Supabase-only drift | If any `supabase/migrations/*.sql` file changed but **no** new Prisma `migration.sql` was added → **warning**. |
-| Critical surfaces | If DB-related paths changed **and** ShowingHQ / open-houses routes or UI changed → **warning** (smoke-test reminder). |
+| Migration without schema | If a **new** `prisma/migrations/*/migration.sql` is **added** but `prisma/schema.prisma` did **not** change in the diff → **warning** (often intentional for RLS/GRANT-only SQL; verify). |
+| Critical surfaces | If DB-related paths changed **and** ShowingHQ / open-houses routes or UI changed → **warning** (verify graceful fallback on command-center pages). |
 
 Compare range:
 
-- **Pull requests:** `base.sha` → `head.sha`
-- **Pushes** (`feature/**`): `before` → `after`, or merge-base fallback when `before` is all zeros
+- **Pull requests:** `base.sha` → `head.sha` (workflow sets `BASE_SHA` / `HEAD_SHA`)
+- **Pushes** (`feature/**`): `before` → `after`; when `before` is all zeros, the validator uses **merge-base** against `main` (see debug output)
 
 Locally, set `BASE_SHA` / `HEAD_SHA` (or `DB_SAFETY_BASE` / `DB_SAFETY_HEAD`), or omit them to use `git merge-base` with `main`/`origin/main` and current `HEAD`.
 
@@ -39,7 +55,8 @@ CI fails the job so the PR cannot merge without fixing the diff.
 ## What causes **warnings** (exit code 0)
 
 1. **`supabase/migrations/*.sql`** changed in the diff but **no** new Prisma `migration.sql` was **added** — runtime-critical SQL might exist only on the Supabase path; align with [database-migrations.md](./database-migrations.md).
-2. **DB-related paths** (`prisma/schema.prisma`, `prisma/migrations/`, `supabase/migrations/`) and **critical** app paths (`app/api/v1/showing-hq/`, `components/showing-hq/`, `app/api/v1/open-houses/`) both changed — manually verify preview **`prisma migrate deploy`** and smoke tests.
+2. **New Prisma migration added**, **`prisma/schema.prisma` unchanged** — often valid (RLS/GRANT-only or hand-crafted SQL). Confirm the migration belongs in the PR and matches **`prisma migrate deploy`** expectations.
+3. **DB-related paths** (`prisma/schema.prisma`, `prisma/migrations/`, `supabase/migrations/`) and **critical** app paths (`app/api/v1/showing-hq/`, `components/showing-hq/`, `app/api/v1/open-houses/`) both changed — **action:** verify **graceful fallback** on command-center flows: additive DB-backed sections should use **try/catch**, **logged errors**, and **safe empty state** so one failing subquery does not fail the entire page (see [database-migrations.md](./database-migrations.md) “Runtime safety”).
 
 Warnings are printed clearly; **do not ignore** them when the PR touches RLS or grants.
 
