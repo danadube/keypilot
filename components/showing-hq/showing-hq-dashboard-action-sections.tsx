@@ -379,10 +379,36 @@ export type NeedsFollowUpRow = {
   href: string;
 };
 
+/** Work queue scan color — left border + category pill only (no full-card fill). */
+export type QueueVisualKind = "feedback" | "awaiting" | "prep" | "report_followup";
+
+export const QUEUE_ROW_VISUAL: Record<
+  QueueVisualKind,
+  { border: string; pill: string }
+> = {
+  feedback: {
+    border: "border-l-2 border-violet-400",
+    pill: "text-violet-300 bg-violet-500/10",
+  },
+  awaiting: {
+    border: "border-l-2 border-amber-400",
+    pill: "text-amber-300 bg-amber-500/10",
+  },
+  prep: {
+    border: "border-l-2 border-blue-400",
+    pill: "text-blue-300 bg-blue-500/10",
+  },
+  report_followup: {
+    border: "border-l-2 border-emerald-400",
+    pill: "text-emerald-300 bg-emerald-500/10",
+  },
+};
+
 /** Unified operational queue row — “What needs attention”. */
 export type WorkflowAttentionRow = {
   key: string;
   sortRank: number;
+  visualKind: QueueVisualKind;
   categoryTitle: string;
   addressLine: string;
   contextLine: string;
@@ -430,39 +456,51 @@ function attentionItemToWorkflowRow(
 
   let categoryTitle: string;
   let contextLine: string;
+  let visualKind: QueueVisualKind;
+  let ctaLabel: string;
 
   if (attention.label === "Feedback needed") {
+    visualKind = "feedback";
     if (attention.action === "review") {
-      categoryTitle = "Pending form feedback";
+      categoryTitle = "Feedback needed";
       contextLine = "Visitor feedback request still waiting in your queue.";
+      ctaLabel = "Review";
     } else {
       categoryTitle = "Feedback needed";
       const hasAgent = Boolean(row.buyerAgentName?.trim() && row.buyerAgentEmail?.trim());
       contextLine = hasAgent
         ? "Draft is ready — buyer agent has not been emailed yet."
         : "Buyer agent contact is incomplete — outreach not sent yet.";
+      ctaLabel = "Request feedback";
     }
   } else if (attention.label === "Follow-up required") {
+    visualKind = "report_followup";
     categoryTitle = "Follow-up due";
     contextLine = "Feedback workflow still needs a nudge or completion.";
+    ctaLabel = attention.action === "send_feedback" ? "Request feedback" : "Review";
   } else if (attention.label === "Prep required") {
+    visualKind = "prep";
     categoryTitle = "Prep required";
     contextLine =
       row.kind === "open_house"
         ? "Sign-in, flyer, or host details are still incomplete."
         : "Buyer agent contact is missing for an upcoming showing.";
+    ctaLabel = "Open";
   } else {
-    categoryTitle = "Showing soon";
-    contextLine = "Starts within two hours — open host checklist.";
+    visualKind = "prep";
+    categoryTitle = "Prep required";
+    contextLine = "Starts within two hours — open host checklist to finish prep.";
+    ctaLabel = "Open";
   }
 
   return {
     key: row.key,
     sortRank,
+    visualKind,
     categoryTitle,
     addressLine,
     contextLine,
-    ctaLabel: actionLabel(attention.action),
+    ctaLabel,
     href: actionHref({ kind: row.kind, id: row.id, action: attention.action }),
   };
 }
@@ -479,31 +517,47 @@ function needsFollowUpToWorkflowRow(
     : null;
   const addressLine = whenPart ? `${nf.address} • ${whenPart}` : nf.address;
 
-  const categoryTitle =
-    nf.reasonLabel === "Report needed"
-      ? "Seller report ready"
-      : nf.reasonLabel === "Follow-ups due"
-        ? "Follow-up due"
-        : nf.reasonLabel === "Awaiting response"
-          ? "Awaiting response"
-          : "Feedback needed";
+  let categoryTitle: string;
+  let contextLine: string;
+  let visualKind: QueueVisualKind;
+  let ctaLabel: string;
 
-  const contextLine =
-    nf.reasonLabel === "Awaiting response"
-      ? "Feedback email sent — no reply yet."
-      : nf.reasonLabel === "Report needed"
-        ? "Open house wrapped — seller report not filed yet."
-        : nf.reasonLabel === "Follow-ups due"
-          ? "Visitor follow-up drafts still need review or send."
-          : "Buyer-agent feedback has not gone out yet.";
+  switch (nf.reasonLabel) {
+    case "Awaiting response":
+      visualKind = "awaiting";
+      categoryTitle = "Awaiting response";
+      contextLine = "Feedback email sent — no reply yet.";
+      ctaLabel = "Review";
+      break;
+    case "Report needed":
+      visualKind = "report_followup";
+      categoryTitle = "Report ready";
+      contextLine = "Open house wrapped — seller report not filed yet.";
+      ctaLabel = "Send report";
+      break;
+    case "Follow-ups due":
+      visualKind = "report_followup";
+      categoryTitle = "Follow-up due";
+      contextLine = "Visitor follow-up drafts still need review or send.";
+      ctaLabel = "Review";
+      break;
+    case "Feedback not sent":
+    default:
+      visualKind = "feedback";
+      categoryTitle = "Feedback needed";
+      contextLine = "Buyer-agent feedback has not gone out yet.";
+      ctaLabel = "Request feedback";
+      break;
+  }
 
   return {
     key: nf.key,
     sortRank,
+    visualKind,
     categoryTitle,
     addressLine,
     contextLine,
-    ctaLabel: nf.ctaLabel,
+    ctaLabel,
     href: nf.href,
   };
 }
@@ -682,8 +736,8 @@ export function WhatNeedsAttentionSection({
   return (
     <section
       className={cn(
-        "rounded-xl border border-kp-outline bg-kp-surface px-4 py-4 sm:px-5 sm:py-5",
-        "shadow-[0_6px_24px_-8px_rgba(15,23,42,0.2)] ring-1 ring-kp-on-surface/[0.04]",
+        "rounded-xl border border-kp-outline/90 bg-kp-surface px-4 py-4 sm:px-5 sm:py-5",
+        "ring-1 ring-kp-on-surface/[0.03]",
         className
       )}
       aria-labelledby="what-needs-attention-heading"
@@ -696,39 +750,49 @@ export function WhatNeedsAttentionSection({
           What needs attention
         </h2>
         <p className="mt-1 text-[11px] text-kp-on-surface-variant">
-          Action items across showings, open houses, and seller reporting — most urgent first.
+          Work items across showings, open houses, and seller reporting — most urgent first.
         </p>
       </div>
       {rows.length === 0 ? (
-        <p className="py-4 text-sm text-kp-on-surface-variant">
-          Nothing needs you right now. Use{" "}
-          <span className="font-medium text-kp-on-surface">Today</span> and{" "}
-          <span className="font-medium text-kp-on-surface">Up next</span> for schedule context.
+        <p className="py-3 text-[13px] leading-snug text-kp-on-surface-variant">
+          No active action items. Check <span className="text-kp-on-surface">Today</span> and{" "}
+          <span className="text-kp-on-surface">Up next</span> for what&apos;s on the calendar.
         </p>
       ) : (
-        <ul className="space-y-2.5">
-          {rows.map((row) => (
-            <li
-              key={row.key}
-              className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-kp-outline/80 bg-kp-surface-high/50 px-3 py-3 sm:px-3.5"
-            >
-              <div className="min-w-0 flex-1 space-y-1">
-                <p className="text-[12px] font-semibold leading-snug text-kp-on-surface">
-                  {row.categoryTitle}
-                </p>
-                <p className="text-[13px] font-bold leading-snug text-kp-on-surface">{row.addressLine}</p>
-                <p className="text-[12px] leading-snug text-kp-on-surface-variant">{row.contextLine}</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(kpBtnPrimary, "h-8 shrink-0 border-transparent px-3 text-[11px] font-semibold")}
-                asChild
+        <ul className="space-y-2">
+          {rows.map((row) => {
+            const vis = QUEUE_ROW_VISUAL[row.visualKind];
+            return (
+              <li
+                key={row.key}
+                className={cn(
+                  "flex flex-wrap items-start justify-between gap-3 rounded-lg border border-kp-outline/60 bg-kp-surface-high/35 py-3 pl-3 pr-3 sm:pl-3 sm:pr-3.5",
+                  vis.border
+                )}
               >
-                <Link href={row.href}>{row.ctaLabel}</Link>
-              </Button>
-            </li>
-          ))}
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <span
+                    className={cn(
+                      "inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold leading-none",
+                      vis.pill
+                    )}
+                  >
+                    {row.categoryTitle}
+                  </span>
+                  <p className="text-[13px] font-semibold leading-snug text-kp-on-surface">{row.addressLine}</p>
+                  <p className="text-[12px] leading-snug text-kp-on-surface-variant">{row.contextLine}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(kpBtnPrimary, "h-8 shrink-0 border-transparent px-3 text-[11px] font-semibold")}
+                  asChild
+                >
+                  <Link href={row.href}>{row.ctaLabel}</Link>
+                </Button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
@@ -771,23 +835,23 @@ export function TodayScheduleSection({
   return (
     <section
       className={cn(
-        "rounded-lg border border-kp-outline/75 bg-kp-surface-high/25 px-3.5 py-3.5 sm:px-4 sm:py-4",
+        "rounded-lg border border-kp-outline/55 bg-kp-surface/60 px-3 py-3 sm:px-3.5 sm:py-3.5",
         className
       )}
       aria-labelledby="today-schedule-heading"
     >
-      <h2 id="today-schedule-heading" className="text-sm font-semibold text-kp-on-surface">
+      <h2 id="today-schedule-heading" className="text-[13px] font-semibold text-kp-on-surface">
         Today
       </h2>
-      <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">Concrete events on this calendar day</p>
+      <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">Schedule for this calendar day (not the action queue)</p>
       {rows.length === 0 ? (
-        <p className="mt-3 text-[12px] text-kp-on-surface-variant">Nothing on the calendar today.</p>
+        <p className="mt-2.5 text-[11px] text-kp-on-surface-variant">Nothing on the calendar today.</p>
       ) : (
-        <ul className="mt-3 space-y-2">
+        <ul className="mt-2.5 space-y-1.5">
           {rows.map((row) => (
             <li
               key={`${row.kind}-${row.id}`}
-              className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-kp-outline/50 bg-kp-surface/80 px-2.5 py-2"
+              className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-kp-outline/40 bg-kp-bg/20 px-2 py-1.5"
             >
               <div className="min-w-0 flex-1">
                 <p className="text-[12px] font-medium text-kp-on-surface">
@@ -927,21 +991,21 @@ export function UpNextRailSection({
   return (
     <section
       className={cn(
-        "rounded-lg border border-kp-outline/40 bg-kp-surface/70 px-3 py-3 sm:px-3.5",
+        "rounded-lg border border-kp-outline/35 bg-kp-bg/30 px-2.5 py-2.5 sm:px-3",
         className
       )}
       aria-labelledby="up-next-heading"
     >
-      <div className="mb-2 flex items-center gap-1.5">
-        <CalendarClock className="h-3 w-3 shrink-0 text-kp-on-surface-variant/70" aria-hidden />
-        <h2 id="up-next-heading" className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+      <div className="mb-1.5 flex items-center gap-1.5">
+        <CalendarClock className="h-3 w-3 shrink-0 text-kp-on-surface-variant/60" aria-hidden />
+        <h2 id="up-next-heading" className="text-[11px] font-medium text-kp-on-surface-variant">
           Up next
         </h2>
       </div>
       {rows.length === 0 ? (
-        <p className="text-[11px] text-kp-on-surface-variant">Nothing queued after now.</p>
+        <p className="text-[10px] text-kp-on-surface-variant">Nothing after now.</p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-1.5">
           {rows.map((row) => (
             <li key={`${row.kind}-${row.id}`}>
               <Link
@@ -950,14 +1014,14 @@ export function UpNextRailSection({
                     ? `/showing-hq/open-houses/${row.id}`
                     : `/showing-hq/showings?openShowing=${encodeURIComponent(row.id)}`
                 }
-                className="block rounded py-0.5 text-left transition-colors hover:bg-kp-surface-high/30"
+                className="block rounded px-0 py-0.5 text-left transition-colors hover:bg-kp-surface-high/20"
               >
-                <p className="text-[11px] font-medium tabular-nums text-kp-on-surface">
+                <p className="text-[10px] font-medium tabular-nums leading-snug text-kp-on-surface">
                   {formatShortDate(row.at)} {formatTime(row.at)}
-                  <span className="mx-1 font-normal text-kp-outline/45">—</span>
-                  <span className="font-medium text-kp-on-surface">{row.address}</span>
+                  <span className="mx-1 font-normal text-kp-outline/40">—</span>
+                  <span className="font-normal text-kp-on-surface">{row.address}</span>
                 </p>
-                <p className="text-[10px] text-kp-on-surface-variant">
+                <p className="text-[10px] text-kp-on-surface-variant/90">
                   {row.kind === "open_house" ? "Open house" : "Showing"}
                 </p>
               </Link>
