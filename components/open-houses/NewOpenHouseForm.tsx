@@ -211,7 +211,6 @@ export function NewOpenHouseForm() {
         <Button variant="ghost" size="sm" className={cn(kpBtnTertiary)} asChild>
           <Link href="/open-houses">← Back</Link>
         </Button>
-        <h1 className="text-2xl font-semibold">New Open House</h1>
       </div>
 
       {properties.length === 0 ? (
