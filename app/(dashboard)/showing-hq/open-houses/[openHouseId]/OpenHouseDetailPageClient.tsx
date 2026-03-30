@@ -127,7 +127,7 @@ type OpenHouseData = {
   }[];
   _count: { visitors: number };
   draftStatusCounts: { DRAFT: number; REVIEWED: number; SENT_MANUAL: number; ARCHIVED: number };
-  qrCodeDataUrl: string;
+  qrCodeDataUrl: string | null;
 };
 
 type PropertyOption = {

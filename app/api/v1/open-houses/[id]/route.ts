@@ -3,8 +3,12 @@ import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
 import { UpdateOpenHouseSchema } from "@/lib/validations/open-house";
 import { generateQrCodeDataUrl } from "@/lib/qr";
-import { OpenHouseStatus } from "@prisma/client";
+import { OpenHouseStatus, type Prisma } from "@prisma/client";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+
+type OpenHouseVisitorWithContact = Prisma.OpenHouseVisitorGetPayload<{
+  include: { contact: true };
+}>;
 
 export async function GET(
   _req: NextRequest,
@@ -13,7 +17,7 @@ export async function GET(
   try {
     const user = await getCurrentUser();
     const { id } = await params;
-    const openHouse = await prismaAdmin.openHouse.findFirst({
+    const openHouseBase = await prismaAdmin.openHouse.findFirst({
       where: {
         id,
         deletedAt: null,
@@ -31,20 +35,50 @@ export async function GET(
           where: { role: { in: ["HOST_AGENT", "ASSISTANT"] } },
           select: { id: true },
         },
-        visitors: {
-          include: { contact: true },
-        },
-        drafts: {
-          where: { deletedAt: null },
-        },
       },
     });
-    if (!openHouse) {
+    if (!openHouseBase) {
       return NextResponse.json(
         { error: { message: "Open house not found" } },
         { status: 404 }
       );
     }
+
+    let visitors: OpenHouseVisitorWithContact[] = [];
+    try {
+      visitors = await prismaAdmin.openHouseVisitor.findMany({
+        where: { openHouseId: id },
+        include: { contact: true },
+      });
+    } catch (e) {
+      console.error("[open-houses GET] visitors_load_failed", e);
+    }
+
+    let drafts: Awaited<ReturnType<typeof prismaAdmin.followUpDraft.findMany>> =
+      [];
+    try {
+      drafts = await prismaAdmin.followUpDraft.findMany({
+        where: { openHouseId: id, deletedAt: null },
+      });
+    } catch (e) {
+      console.error("[open-houses GET] drafts_load_failed", e);
+    }
+
+    const openHouse = {
+      ...openHouseBase,
+      property: openHouseBase.property
+        ? {
+            ...openHouseBase.property,
+            listingPrice:
+              openHouseBase.property.listingPrice != null
+                ? Number(openHouseBase.property.listingPrice)
+                : null,
+          }
+        : openHouseBase.property,
+      visitors,
+      drafts,
+    };
+
     const total = openHouse.visitors.length;
     const hasAgentTrue = openHouse.visitors.filter(
       (v) => v.contact.hasAgent === true
@@ -83,7 +117,14 @@ export async function GET(
     } catch (e) {
       console.error("[open-houses GET] taskFollowUps_failed", e);
     }
-    const qrCodeDataUrl = await generateQrCodeDataUrl(openHouse.qrSlug);
+
+    let qrCodeDataUrl: string | null = null;
+    try {
+      qrCodeDataUrl = await generateQrCodeDataUrl(openHouse.qrSlug);
+    } catch (e) {
+      console.error("[open-houses GET] qr_failed", e);
+    }
+
     return NextResponse.json({
       data: {
         ...openHouse,

@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const openHouses = await prismaAdmin.openHouse.findMany({
+    const rows = await prismaAdmin.openHouse.findMany({
       where,
       include: {
         property: true,
@@ -81,7 +81,19 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { startAt: "desc" },
     });
-    return NextResponse.json({ data: openHouses });
+    const data = rows.map((oh) => ({
+      ...oh,
+      property: oh.property
+        ? {
+            ...oh.property,
+            listingPrice:
+              oh.property.listingPrice != null
+                ? Number(oh.property.listingPrice)
+                : null,
+          }
+        : oh.property,
+    }));
+    return NextResponse.json({ data });
   } catch (e) {
     return apiErrorFromCaught(e);
   }

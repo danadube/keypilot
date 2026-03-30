@@ -7,12 +7,16 @@ import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 export async function GET() {
   try {
     const user = await getCurrentUser();
-    const properties = await prismaAdmin.property.findMany({
+    const rows = await prismaAdmin.property.findMany({
       where: { createdByUserId: user.id, deletedAt: null },
       orderBy: { createdAt: "desc" },
       include: { _count: { select: { openHouses: true } } },
     });
-    return NextResponse.json({ data: properties });
+    const data = rows.map((p) => ({
+      ...p,
+      listingPrice: p.listingPrice != null ? Number(p.listingPrice) : null,
+    }));
+    return NextResponse.json({ data });
   } catch (e) {
     return apiErrorFromCaught(e);
   }
