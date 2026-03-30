@@ -23,5 +23,10 @@ export const UpdatePropertySchema = z.object({
   notes: z.string().optional().nullable(),
 });
 
+/** Soft-archive a property (sets deletedAt). Body must be only `{ "archive": true }`. */
+export const ArchivePropertyBodySchema = z.object({
+  archive: z.literal(true),
+});
+
 export type CreatePropertyInput = z.infer<typeof CreatePropertySchema>;
 export type UpdatePropertyInput = z.infer<typeof UpdatePropertySchema>;

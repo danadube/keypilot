@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { BrandModal } from "@/components/ui/BrandModal";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { PropertyFeedbackSummaryView } from "./property-feedback-summary";
@@ -46,6 +48,7 @@ type Property = {
   flyerEnabled?: boolean | null;
   imageUrl?: string | null;
   openHouses?: { id: string; title: string; startAt: string }[];
+  usage?: { showings: number; openHouses: number };
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -89,6 +92,7 @@ type EditForm = {
 };
 
 export function PropertyDetailView({ id }: { id: string }) {
+  const router = useRouter();
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +107,8 @@ export function PropertyDetailView({ id }: { id: string }) {
   });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [lifecycleModalOpen, setLifecycleModalOpen] = useState(false);
+  const [lifecycleBusy, setLifecycleBusy] = useState<"archive" | "delete" | null>(null);
 
   function startEditing(p: Property) {
     setEditForm({
@@ -140,7 +146,15 @@ export function PropertyDetailView({ id }: { id: string }) {
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      setProperty((p) => p ? { ...p, ...json.data } : p);
+      setProperty((p) =>
+        p
+          ? {
+              ...p,
+              ...json.data,
+              usage: p.usage,
+            }
+          : p
+      );
       setIsEditing(false);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Save failed");
@@ -163,6 +177,69 @@ export function PropertyDetailView({ id }: { id: string }) {
   }, [id]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const handleArchiveProperty = useCallback(async () => {
+    setLifecycleBusy("archive");
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/properties/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archive: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message ?? "Could not archive property");
+      router.push("/properties");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Archive failed");
+    } finally {
+      setLifecycleBusy(null);
+      setLifecycleModalOpen(false);
+    }
+  }, [id, router]);
+
+  const handleDeletePropertyForce = useCallback(async () => {
+    setLifecycleBusy("delete");
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/properties/${id}?force=1`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message ?? "Could not delete property");
+      router.push("/properties");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setLifecycleBusy(null);
+      setLifecycleModalOpen(false);
+    }
+  }, [id, router]);
+
+  const requestDeleteProperty = useCallback(() => {
+    if (!property) return;
+    const s = property.usage?.showings ?? 0;
+    const o = property.usage?.openHouses ?? 0;
+    if (s > 0 || o > 0) {
+      setLifecycleModalOpen(true);
+      return;
+    }
+    if (
+      !window.confirm(
+        "Remove this property from your vault? It will be hidden from lists. This does not delete historical ShowingHQ records by id."
+      )
+    ) {
+      return;
+    }
+    setLifecycleBusy("delete");
+    setError(null);
+    fetch(`/api/v1/properties/${id}`, { method: "DELETE" })
+      .then(async (res) => {
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error?.message ?? "Delete failed");
+        router.push("/properties");
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Delete failed"))
+      .finally(() => setLifecycleBusy(null));
+  }, [id, property, router]);
 
   const patchFlyer = useCallback((patch: Partial<PropertyFlyerFields>) => {
     setProperty((p) => (p ? { ...p, ...patch } : p));
@@ -508,6 +585,38 @@ export function PropertyDetailView({ id }: { id: string }) {
             )}
           </div>
 
+          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+            <h2 className="mb-3 text-sm font-semibold text-kp-on-surface">Property lifecycle</h2>
+            <p className="mb-4 text-[12px] leading-relaxed text-kp-on-surface-variant">
+              Archive hides the property from your vault. Delete removes it from your active list even when
+              there are linked events (use only when you accept broken links).
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnPrimary, "h-9 border-transparent px-4 text-[12px] font-semibold")}
+                disabled={lifecycleBusy !== null}
+                onClick={() => void handleArchiveProperty()}
+              >
+                {lifecycleBusy === "archive" ? "Archiving…" : "Archive property"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnDangerSecondary, "h-9 px-4 text-[12px] font-semibold")}
+                disabled={lifecycleBusy !== null}
+                onClick={requestDeleteProperty}
+              >
+                {lifecycleBusy === "delete" && !lifecycleModalOpen
+                  ? "Deleting…"
+                  : "Delete property"}
+              </Button>
+            </div>
+          </div>
+
           {/* Flyer — same panel as /properties/[id]/documents; subnav switches context */}
           <PropertyFlyerPanel
             propertyId={id}
@@ -568,6 +677,68 @@ export function PropertyDetailView({ id }: { id: string }) {
           <PropertySellerReportView propertyId={id} propertyAddress={fullAddressForReport} />
         </div>
       </div>
+
+      <BrandModal
+        open={lifecycleModalOpen}
+        onOpenChange={setLifecycleModalOpen}
+        title="Property in use"
+        description="This property still has linked showings or open-house events."
+        size="md"
+        footer={
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn(kpBtnSecondary, "h-9 text-[12px]")}
+              disabled={lifecycleBusy !== null}
+              onClick={() => setLifecycleModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn(kpBtnPrimary, "h-9 border-transparent text-[12px]")}
+              disabled={lifecycleBusy !== null}
+              onClick={() => void handleArchiveProperty()}
+            >
+              {lifecycleBusy === "archive" ? "Archiving…" : "Archive instead"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn(kpBtnDangerSecondary, "h-9 text-[12px]")}
+              disabled={lifecycleBusy !== null}
+              onClick={() => void handleDeletePropertyForce()}
+            >
+              {lifecycleBusy === "delete" ? "Deleting…" : "Delete anyway"}
+            </Button>
+          </div>
+        }
+      >
+        {property ? (
+          <div className="space-y-2 text-[12px] text-kp-on-surface">
+            <p className="font-medium text-kp-on-surface">This property is used in:</p>
+            <ul className="list-inside list-disc text-kp-on-surface-variant">
+              <li>
+                {property.usage?.showings ?? 0} showing
+                {(property.usage?.showings ?? 0) === 1 ? "" : "s"}
+              </li>
+              <li>
+                {property.usage?.openHouses ?? 0} open house
+                {(property.usage?.openHouses ?? 0) === 1 ? "" : "s"}
+              </li>
+            </ul>
+            <p className="text-kp-on-surface-variant">
+              Prefer <span className="font-medium text-kp-on-surface">Archive instead</span> unless you are
+              intentionally cleaning up test data.
+            </p>
+          </div>
+        ) : null}
+      </BrandModal>
     </div>
   );
 }

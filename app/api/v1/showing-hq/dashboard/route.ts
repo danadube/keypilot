@@ -1214,6 +1214,58 @@ export async function GET() {
       };
       visitorCount: number;
     };
+    type SupraAttentionApiRow = {
+      id: string;
+      addressLine: string;
+      receivedAt: string;
+      queueState: string;
+      proposedAction: string;
+      parsedStatus: string | null;
+    };
+    let supraAttentionItems: SupraAttentionApiRow[] = [];
+    try {
+      const supraRaw = await prismaAdmin.supraQueueItem.findMany({
+        where: {
+          hostUserId: user.id,
+          queueState: { notIn: ["APPLIED", "DISMISSED", "DUPLICATE"] },
+          NOT: { parsedStatus: "showing_ended" },
+        },
+        select: {
+          id: true,
+          receivedAt: true,
+          queueState: true,
+          proposedAction: true,
+          parsedStatus: true,
+          parsedAddress1: true,
+          parsedCity: true,
+          parsedState: true,
+          matchedProperty: { select: { address1: true, city: true, state: true } },
+        },
+        orderBy: { receivedAt: "desc" },
+        take: 12,
+      });
+      const supraLineAddr = (r: (typeof supraRaw)[number]) => {
+        if (r.matchedProperty) {
+          const m = r.matchedProperty;
+          const a = m.address1?.trim();
+          if (a) return a;
+          return [m.city, m.state].filter(Boolean).join(", ") || "Property";
+        }
+        const tail = [r.parsedCity, r.parsedState].filter(Boolean).join(", ");
+        return [r.parsedAddress1?.trim(), tail].filter(Boolean).join(", ") || "Address pending";
+      };
+      supraAttentionItems = supraRaw.map((r) => ({
+        id: r.id,
+        addressLine: supraLineAddr(r),
+        receivedAt: r.receivedAt.toISOString(),
+        queueState: r.queueState,
+        proposedAction: r.proposedAction,
+        parsedStatus: r.parsedStatus,
+      }));
+    } catch (e) {
+      console.error(DASH_TAG, "supra_attention_slice_nonfatal", errMessage(e));
+    }
+
     let recentReportsPayload: RecentReportApiRow[] = [];
     let recentReportsLoadFailed = false;
     try {
@@ -1280,6 +1332,7 @@ export async function GET() {
           property: s.property,
           pendingFeedbackFormCount: s.feedbackRequests.length,
         })),
+        supraAttentionItems,
         supraInboxSummary: {
           lastReceivedAt: lastSupraIngest?.receivedAt.toISOString() ?? null,
           queueActionCount: supraQueueActionCount,

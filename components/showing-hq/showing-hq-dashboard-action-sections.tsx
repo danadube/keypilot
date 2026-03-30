@@ -475,7 +475,7 @@ export function getNeedsFollowUpQueueCtaLabel(nf: NeedsFollowUpRow): string {
 }
 
 /** Work queue scan color — left border + category pill only (no full-card fill). */
-export type QueueVisualKind = "feedback" | "awaiting" | "prep" | "report_followup";
+export type QueueVisualKind = "feedback" | "awaiting" | "prep" | "report_followup" | "supra";
 
 export const QUEUE_ROW_VISUAL: Record<
   QueueVisualKind,
@@ -496,6 +496,10 @@ export const QUEUE_ROW_VISUAL: Record<
   report_followup: {
     border: "border-l-2 border-emerald-400",
     pill: "text-emerald-300 bg-emerald-500/10",
+  },
+  supra: {
+    border: "border-l-2 border-sky-400",
+    pill: "text-sky-200 bg-sky-500/14",
   },
 };
 
@@ -769,6 +773,103 @@ function needsFollowUpToWorkflowRow(
 }
 
 /** Merge attention + API follow-up rows; dedupe by entity id (most urgent wins). */
+function sortWorkflowAttentionRowsInPlace(rows: WorkflowAttentionRow[]): WorkflowAttentionRow[] {
+  rows.sort((a, b) => {
+    const g = QUEUE_GROUP_ORDER[a.queueGroup] - QUEUE_GROUP_ORDER[b.queueGroup];
+    if (g !== 0) return g;
+    if (a.sortRank !== b.sortRank) return a.sortRank - b.sortRank;
+    const ta = a.eventAtMs || 0;
+    const tb = b.eventAtMs || 0;
+    if (ta !== tb) return ta - tb;
+    return a.metaLine.localeCompare(b.metaLine);
+  });
+  return rows;
+}
+
+/** Compact payload from ShowingHQ dashboard API — inbox noise stays off this list. */
+export type SupraDashboardAttentionItem = {
+  id: string;
+  addressLine: string;
+  receivedAt: string;
+  queueState: string;
+  proposedAction: string;
+  parsedStatus: string | null;
+};
+
+export function supraAttentionItemsToWorkflowRows(
+  items: SupraDashboardAttentionItem[],
+  now: Date,
+  formatTime: (s: string) => string,
+  formatMediumDate: (s: string) => string
+): WorkflowAttentionRow[] {
+  const rows: WorkflowAttentionRow[] = [];
+  for (const item of items) {
+    const when = formatWhenForAddressLine(item.receivedAt, now, formatTime, formatMediumDate);
+    const metaLine = `${item.addressLine} · received ${when}`;
+    const eventAtMs = new Date(item.receivedAt).getTime();
+    const href = `/showing-hq/supra-inbox?queue=${encodeURIComponent(item.id)}`;
+
+    let sortRank = 4;
+    let primaryLine: string;
+    let contextLine: string;
+    let ctaLabel: string;
+
+    if (item.queueState === "FAILED_PARSE") {
+      sortRank = 0;
+      primaryLine = "Supra email failed to parse";
+      contextLine = "Fix the message in the inbox log — parse failures stay visible for debugging.";
+      ctaLabel = "Review";
+    } else if (item.proposedAction === "CREATE_PROPERTY_AND_SHOWING") {
+      sortRank = 1;
+      primaryLine = "Supra email needs a property link";
+      contextLine = "Match or create the listing, then apply from the inbox.";
+      ctaLabel = "Fix property";
+    } else if (item.proposedAction === "CREATE_SHOWING") {
+      sortRank = 2;
+      primaryLine = "New Supra showing ready to confirm";
+      contextLine = "Create the private showing while the details are fresh.";
+      ctaLabel = "Create showing";
+    } else if (item.proposedAction === "UPDATE_SHOWING") {
+      sortRank = 3;
+      primaryLine = "Supra wants to update an existing showing";
+      contextLine = "Confirm changes in the inbox, then apply.";
+      ctaLabel = "Review";
+    } else {
+      sortRank = 3;
+      primaryLine = "Supra inbox item needs a review";
+      contextLine = "Triage the parsed notification in the system log.";
+      ctaLabel = "Review";
+    }
+
+    rows.push({
+      key: `supra-q-${item.id}`,
+      sortRank,
+      visualKind: "supra",
+      categoryTitle: "Supra import",
+      primaryLine,
+      metaLine,
+      contextLine,
+      addressLine: metaLine,
+      ctaLabel,
+      href,
+      queueGroup: "action_now",
+      eventAtMs,
+    });
+  }
+  return rows;
+}
+
+export function mergeWorkflowAttentionRowsWithSupra(
+  baseRows: WorkflowAttentionRow[],
+  supraItems: SupraDashboardAttentionItem[],
+  now: Date,
+  formatTime: (s: string) => string,
+  formatMediumDate: (s: string) => string
+): WorkflowAttentionRow[] {
+  const supraRows = supraAttentionItemsToWorkflowRows(supraItems, now, formatTime, formatMediumDate);
+  return sortWorkflowAttentionRowsInPlace([...baseRows, ...supraRows]);
+}
+
 export function buildWorkflowAttentionRows(
   attentionItems: AttentionListItem[],
   needsFollowUp: NeedsFollowUpRow[],
@@ -794,16 +895,7 @@ export function buildWorkflowAttentionRows(
   }
 
   const out = Array.from(byDedupeKey.values());
-  out.sort((a, b) => {
-    const g = QUEUE_GROUP_ORDER[a.queueGroup] - QUEUE_GROUP_ORDER[b.queueGroup];
-    if (g !== 0) return g;
-    if (a.sortRank !== b.sortRank) return a.sortRank - b.sortRank;
-    const ta = a.eventAtMs || 0;
-    const tb = b.eventAtMs || 0;
-    if (ta !== tb) return ta - tb;
-    return a.metaLine.localeCompare(b.metaLine);
-  });
-  return out;
+  return sortWorkflowAttentionRowsInPlace(out);
 }
 
 export type UpNextRow = {
@@ -903,7 +995,7 @@ export function ShowingHQCommandStrip({
         </span>
       </p>
     ) : (
-      <p className="text-[11px] leading-snug text-kp-on-surface-variant">No upcoming event on the clock.</p>
+      <p className="text-[12px] leading-snug text-kp-on-surface-variant">No upcoming event on the clock.</p>
     );
 
   return (
@@ -912,7 +1004,7 @@ export function ShowingHQCommandStrip({
       aria-label="Next event and schedule stats"
     >
       {nextLine}
-      <p className="mt-2 text-[10px] leading-relaxed text-kp-on-surface-variant sm:text-[11px]">
+      <p className="mt-2 text-[12px] leading-relaxed text-kp-on-surface-variant">
         <span className="font-medium tabular-nums text-kp-on-surface">{upcomingCount}</span> upcoming
         <span className="mx-1 text-kp-outline/40" aria-hidden>
           •
@@ -925,7 +1017,7 @@ export function ShowingHQCommandStrip({
         response
       </p>
       {priorityLine ? (
-        <p className="mt-2 max-w-3xl text-[11px] leading-snug text-kp-on-surface sm:text-[12px]">
+        <p className="mt-2 max-w-3xl text-[12px] leading-snug text-kp-on-surface">
           {priorityLine}
         </p>
       ) : null}
@@ -959,7 +1051,7 @@ export function WhatNeedsAttentionSection({
         >
           What needs attention
         </h2>
-        <p className="mt-1 text-[11px] text-kp-on-surface-variant">
+        <p className="mt-1 text-[12px] text-kp-on-surface-variant">
           Your highest-confidence work items — sorted by urgency, then time. Start at the top.
         </p>
       </div>
@@ -975,7 +1067,7 @@ export function WhatNeedsAttentionSection({
             if (inGroup.length === 0) return null;
             return (
               <div key={group} className="space-y-2">
-                <h3 className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant/90">
+                <h3 className="text-[12px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
                   {QUEUE_GROUP_LABEL[group]}
                 </h3>
                 <ul className="space-y-2">
@@ -996,7 +1088,7 @@ export function WhatNeedsAttentionSection({
                         <div className="min-w-0 flex-1 space-y-1.5">
                           <span
                             className={cn(
-                              "inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold leading-none",
+                              "inline-flex rounded-md px-2 py-0.5 text-[12px] font-semibold leading-none",
                               vis.pill
                             )}
                           >
@@ -1008,7 +1100,7 @@ export function WhatNeedsAttentionSection({
                           <p className="text-[12px] font-medium leading-snug text-kp-on-surface-variant">
                             {row.metaLine}
                           </p>
-                          <p className="text-[11px] leading-snug text-kp-on-surface-variant/95">
+                          <p className="text-[12px] leading-snug text-kp-on-surface-variant">
                             {row.contextLine}
                           </p>
                         </div>
@@ -1017,7 +1109,7 @@ export function WhatNeedsAttentionSection({
                           size="sm"
                           className={cn(
                             kpBtnPrimary,
-                            "h-8 shrink-0 border-transparent px-3 text-[11px] font-semibold"
+                            "h-8 shrink-0 border-transparent px-3 text-[12px] font-semibold"
                           )}
                           asChild
                         >

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent } from "react";
 import type {
   SupraQueueItem,
@@ -197,7 +198,7 @@ const reviewRightAdvancedIntro =
   "text-[11px] leading-relaxed text-kp-on-surface/90";
 
 const reviewRightAdvancedLabel =
-  "text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface/95";
+  "text-[12px] font-semibold uppercase tracking-wide text-kp-on-surface/95";
 
 /** Review queue modal only — does not alter main inbox / paste sheet typography. */
 const reviewModalBannerBody = "text-sm leading-snug text-kp-on-surface/92";
@@ -379,11 +380,9 @@ function getApplyReadiness(detail: ItemWithRelations | null): { ok: boolean; rea
   if (TERMINAL_STATES.includes(detail.queueState)) {
     return { ok: false, reasons: [] };
   }
-  if (isLinkedEndOfShowingQueueRow(detail)) {
-    return {
-      ok: true,
-      reasons: [],
-    };
+  /** End-of-showing is automated — never blocks or surfaces as “apply” work. */
+  if (detail.parsedStatus === "showing_ended") {
+    return { ok: false, reasons: [] };
   }
   const reasons: string[] = [];
   if (!detail.parsedScheduledAt) {
@@ -419,6 +418,11 @@ function isTerminalInboxState(s: SupraQueueState): boolean {
   );
 }
 
+/** Default “Needs attention” hides end-of-showing traffic (handled in background). */
+function isHiddenFromNeedsAttentionFilter(row: ItemWithRelations): boolean {
+  return row.parsedStatus === "showing_ended";
+}
+
 function normalizeItem(row: ItemWithRelations): ItemWithRelations {
   return {
     ...row,
@@ -446,6 +450,7 @@ type SupraInboxSuccessInfo = {
 };
 
 export function SupraInboxView() {
+  const searchParams = useSearchParams();
   const [items, setItems] = useState<ItemWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -458,7 +463,6 @@ export function SupraInboxView() {
   const [sampleMenuOpen, setSampleMenuOpen] = useState(false);
   const [applying, setApplying] = useState(false);
   const [applyingRowId, setApplyingRowId] = useState<string | null>(null);
-  const [archivingRowId, setArchivingRowId] = useState<string | null>(null);
   const [deletingRowId, setDeletingRowId] = useState<string | null>(null);
   const [applyDuplicate, setApplyDuplicate] = useState<ApplyDuplicateBundle | null>(null);
   const [applyDuplicateAck, setApplyDuplicateAck] = useState(false);
@@ -565,6 +569,13 @@ export function SupraInboxView() {
     setLoading(true);
     load().finally(() => setLoading(false));
   }, [load]);
+
+  useEffect(() => {
+    const q = searchParams.get("queue")?.trim();
+    if (!q) return;
+    setHighlightQueueRowId(q);
+    setFilterPreset("all");
+  }, [searchParams]);
 
   useEffect(() => {
     void loadGmailAutomation();
@@ -755,7 +766,9 @@ export function SupraInboxView() {
       ) {
         closed += 1;
       }
-      if (!isTerminalInboxState(row.queueState)) active += 1;
+      if (!isTerminalInboxState(row.queueState) && !isHiddenFromNeedsAttentionFilter(row)) {
+        active += 1;
+      }
     }
     return { ingested, needsReview, ready, failed, closed, active, total: items.length };
   }, [items]);
@@ -768,7 +781,9 @@ export function SupraInboxView() {
   const displayedItems = useMemo(() => {
     switch (filterPreset) {
       case "active":
-        return items.filter((i) => !isTerminalInboxState(i.queueState));
+        return items.filter(
+          (i) => !isTerminalInboxState(i.queueState) && !isHiddenFromNeedsAttentionFilter(i)
+        );
       case "ingested":
         return items.filter((i) => i.queueState === QueueStates.INGESTED);
       case "needs_review":
@@ -827,30 +842,6 @@ export function SupraInboxView() {
     const json = await res.json();
     if (!res.ok) throw new Error(json.error?.message ?? "Update failed");
     return normalizeItem(json.data as ItemWithRelations);
-  };
-
-  const handleArchiveFromList = async (row: ItemWithRelations) => {
-    setArchivingRowId(row.id);
-    setError(null);
-    try {
-      await performPatchQueueItem(row.id, { queueState: QueueStates.DISMISSED });
-      if (detail?.id === row.id) {
-        setModalOpen(false);
-        setDetail(null);
-        setSavedModalFingerprint(null);
-        setApplyDuplicate(null);
-        setApplyDuplicateAck(false);
-        setPastedReviewBannerId(null);
-      }
-      await load();
-      setSuccessInfo({
-        message: "Archived — off the action board; queue row kept as dismissed.",
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Archive failed");
-    } finally {
-      setArchivingRowId(null);
-    }
   };
 
   const handleDeleteFromList = async (row: ItemWithRelations) => {
@@ -1489,7 +1480,7 @@ export function SupraInboxView() {
       {count !== undefined && count > 0 ? (
         <span
           className={cn(
-            "ml-1.5 rounded-full border px-1.5 text-[10px] font-bold tabular-nums",
+            "ml-1.5 rounded-full border px-1.5 text-[12px] font-bold tabular-nums",
             filterPreset === preset
               ? "border-white/30 bg-white/15 text-inherit"
               : "border-kp-outline bg-kp-bg text-kp-on-surface"
@@ -1822,14 +1813,10 @@ export function SupraInboxView() {
         ) : (
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-0.5 border-b border-kp-outline pb-3">
-              <p className="text-sm font-semibold text-kp-on-surface">Action board</p>
-              <p className="text-xs leading-relaxed text-kp-on-surface/88">
-                <span className="font-semibold text-kp-on-surface">New</span> and{" "}
-                <span className="font-semibold text-kp-on-surface">end</span> Supra emails share one
-                lifecycle: matched end notices are recorded on the showing and leave this queue
-                automatically when the parser links them. Open{" "}
-                <span className="font-semibold text-kp-on-surface">Review</span> for anything that still
-                needs a match or fix.
+              <p className="text-sm font-semibold text-kp-on-surface">System log</p>
+              <p className="text-[12px] leading-relaxed text-kp-on-surface/90">
+                ShowingHQ is where you work. This list is for parsing gaps and edge cases only — end
+                notifications complete in the background.
               </p>
             </div>
             {displayedItems.map((row) => {
@@ -1847,10 +1834,6 @@ export function SupraInboxView() {
                   }
                   onReview={() => openDetail(row)}
                   onApply={() => void handleApplyFromList(row)}
-                  onArchive={() => void handleArchiveFromList(row)}
-                  onDelete={() => void handleDeleteFromList(row)}
-                  archiveLoading={archivingRowId === row.id}
-                  deleteLoading={deletingRowId === row.id}
                 />
               );
             })}
@@ -1952,6 +1935,16 @@ export function SupraInboxView() {
                 onClick={() => applyStateWithCurrentEdits(QueueStates.DUPLICATE)}
               >
                 Mark duplicate
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(supraBtnDangerSecondary, "h-8")}
+                disabled={saving || !detail || detail.queueState === QueueStates.APPLIED}
+                onClick={() => detail && void handleDeleteFromList(detail)}
+              >
+                {deletingRowId === detail?.id ? "Deleting…" : "Delete row"}
               </Button>
             </div>
             <div className="flex flex-wrap justify-end gap-2">
@@ -2361,7 +2354,7 @@ export function SupraInboxView() {
                             <span className="font-semibold text-kp-on-surface">
                               {s.address1}, {s.city}, {s.state} {s.zip}
                             </span>
-                            <span className="ml-2 text-[10px] font-semibold uppercase text-kp-on-surface">
+                            <span className="ml-2 text-[12px] font-semibold uppercase text-kp-on-surface">
                               {propertyMatchKindLabel(s.matchKind)}
                             </span>
                           </button>
@@ -2414,7 +2407,7 @@ export function SupraInboxView() {
                             onClick={() => selectShowingSuggestion(s)}
                           >
                             {showingSuggestMultiProperty ? (
-                              <span className="mb-0.5 block truncate text-[10px] font-medium text-kp-on-surface">
+                              <span className="mb-0.5 block truncate text-[12px] font-medium text-kp-on-surface">
                                 {s.property.address1}, {s.property.city} {s.property.state}
                               </span>
                             ) : null}

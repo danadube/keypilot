@@ -17,8 +17,10 @@ import {
   buildTodayScheduleRows,
   buildUpNextRows,
   buildWorkflowAttentionRows,
+  mergeWorkflowAttentionRowsWithSupra,
   type NeedsFollowUpRow,
   type PrivateShowingAttentionRow,
+  type SupraDashboardAttentionItem,
 } from "@/components/showing-hq/showing-hq-dashboard-action-sections";
 import {
   ShowingHqAgentFollowUpsSection,
@@ -112,6 +114,8 @@ type DashboardData = {
   recentReportsLoadFailed?: boolean;
   /** null = slice failed to load (distinct from empty buckets). */
   agentFollowUps?: AgentFollowUpBuckets | null;
+  /** Actionable Supra queue rows (end notices and closed states excluded server-side). */
+  supraAttentionItems?: SupraDashboardAttentionItem[];
 };
 
 const GETTING_STARTED_DISMISSED_KEY = "showinghq-getting-started-dismissed";
@@ -272,9 +276,21 @@ export function ShowingHQDashboardView() {
     attentionNow
   );
 
-  const workflowRows = buildWorkflowAttentionRows(
-    needsAttentionItems,
-    needsFollowUp,
+  const supraAttentionItems: SupraDashboardAttentionItem[] = Array.isArray(
+    data.supraAttentionItems
+  )
+    ? data.supraAttentionItems
+    : [];
+
+  const workflowRows = mergeWorkflowAttentionRowsWithSupra(
+    buildWorkflowAttentionRows(
+      needsAttentionItems,
+      needsFollowUp,
+      attentionNow,
+      formatTime,
+      formatMediumDate
+    ),
+    supraAttentionItems,
     attentionNow,
     formatTime,
     formatMediumDate
