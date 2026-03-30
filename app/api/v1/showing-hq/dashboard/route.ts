@@ -49,6 +49,34 @@ const showingPropertyPlaceholder = (propertyId: string) => ({
   zip: null as string | null,
 });
 
+type BuyerAgentEmailDraftReviewRow = Prisma.ShowingGetPayload<{
+  select: {
+    id: true;
+    scheduledAt: true;
+    buyerAgentName: true;
+    source: true;
+    feedbackRequestStatus: true;
+    property: { select: { address1: true; city: true } };
+  };
+}>;
+
+type PrivateShowingAttentionRow = Prisma.ShowingGetPayload<{
+  select: {
+    id: true;
+    scheduledAt: true;
+    buyerAgentName: true;
+    buyerAgentEmail: true;
+    buyerName: true;
+    notes: true;
+    feedbackRequestStatus: true;
+    feedbackRequired: true;
+    feedbackDraftGeneratedAt: true;
+    prepChecklistFlags: true;
+    property: { select: { address1: true; city: true; state: true; zip: true } };
+    feedbackRequests: { where: { status: "PENDING" }; select: { id: true } };
+  };
+}>;
+
 export async function GET() {
   let stage = "init";
   try {
@@ -415,47 +443,59 @@ export async function GET() {
     const privateShowingEnd = new Date(weekEnd);
     privateShowingEnd.setDate(privateShowingEnd.getDate() + 28);
 
-    const [buyerAgentEmailDraftReviews, privateShowingsAttentionRows] =
-      await Promise.all([
-        prismaAdmin.showing.findMany({
-          where: reviewDraftWhere,
-          orderBy: { scheduledAt: "desc" },
-          take: 10,
-          select: {
-            id: true,
-            scheduledAt: true,
-            buyerAgentName: true,
-            source: true,
-            feedbackRequestStatus: true,
-            property: { select: { address1: true, city: true } },
-          },
-        }),
-        prismaAdmin.showing.findMany({
-          where: {
-            hostUserId: user.id,
-            deletedAt: null,
-            scheduledAt: { gte: privateShowingStart, lte: privateShowingEnd },
-          },
-          select: {
-            id: true,
-            scheduledAt: true,
-            buyerAgentName: true,
-            buyerAgentEmail: true,
-            buyerName: true,
-            notes: true,
-            feedbackRequestStatus: true,
-            feedbackRequired: true,
-            feedbackDraftGeneratedAt: true,
-            prepChecklistFlags: true,
-            property: { select: { address1: true, city: true, state: true, zip: true } },
-            feedbackRequests: {
-              where: { status: "PENDING" },
-              select: { id: true },
+    let buyerAgentEmailDraftReviews: BuyerAgentEmailDraftReviewRow[] = [];
+    let privateShowingsAttentionRows: PrivateShowingAttentionRow[] = [];
+    try {
+      [buyerAgentEmailDraftReviews, privateShowingsAttentionRows] =
+        await Promise.all([
+          prismaAdmin.showing.findMany({
+            where: reviewDraftWhere,
+            orderBy: { scheduledAt: "desc" },
+            take: 10,
+            select: {
+              id: true,
+              scheduledAt: true,
+              buyerAgentName: true,
+              source: true,
+              feedbackRequestStatus: true,
+              property: { select: { address1: true, city: true } },
             },
-          },
-          orderBy: { scheduledAt: "asc" },
-        }),
-      ]);
+          }),
+          prismaAdmin.showing.findMany({
+            where: {
+              hostUserId: user.id,
+              deletedAt: null,
+              scheduledAt: { gte: privateShowingStart, lte: privateShowingEnd },
+            },
+            select: {
+              id: true,
+              scheduledAt: true,
+              buyerAgentName: true,
+              buyerAgentEmail: true,
+              buyerName: true,
+              notes: true,
+              feedbackRequestStatus: true,
+              feedbackRequired: true,
+              feedbackDraftGeneratedAt: true,
+              prepChecklistFlags: true,
+              property: { select: { address1: true, city: true, state: true, zip: true } },
+              feedbackRequests: {
+                where: { status: "PENDING" },
+                select: { id: true },
+              },
+            },
+            orderBy: { scheduledAt: "asc" },
+          }),
+        ]);
+    } catch (e) {
+      console.error(
+        DASH_TAG,
+        "buyer_agent_attention_queries_nonfatal",
+        errMessage(e)
+      );
+      buyerAgentEmailDraftReviews = [];
+      privateShowingsAttentionRows = [];
+    }
 
     /** Inbox + Gmail import metadata — non-fatal when tables/columns lag migrations. */
     let lastSupraIngest: { receivedAt: Date } | null = null;

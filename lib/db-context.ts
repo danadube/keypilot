@@ -1,6 +1,49 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prismaAdmin } from "@/lib/db";
 import { rlsStore } from "@/lib/rls-guard";
+
+/** Thrown only when GUC / `SET LOCAL ROLE keypilot_app` fails (setup), not when `fn` throws. */
+class RlsTransactionSetupError extends Error {
+  constructor(cause: unknown) {
+    const msg = cause instanceof Error ? cause.message : String(cause);
+    super(msg);
+    this.name = "RlsTransactionSetupError";
+  }
+}
+
+function shouldBypassRlsWithAdminRead(e: unknown): boolean {
+  if (e instanceof RlsTransactionSetupError) return true;
+  const fromErr = (err: Error | unknown) =>
+    (err instanceof Error ? err.message : String(err)).toLowerCase();
+  const msg = fromErr(e);
+  if (
+    msg.includes("permission denied") ||
+    msg.includes("row-level security") ||
+    msg.includes("violates row-level security") ||
+    msg.includes("insufficient privilege")
+  ) {
+    return true;
+  }
+  // SET LOCAL ROLE keypilot_app when migration never created the role
+  if (
+    msg.includes("keypilot_app") &&
+    (msg.includes("does not exist") || msg.includes("invalid role"))
+  ) {
+    return true;
+  }
+  // Raw query failures sometimes surface as P2010 with details in meta
+  if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2010") {
+    const raw = fromErr(
+      typeof e.meta?.message === "string" ? new Error(e.meta.message) : e
+    );
+    return (
+      raw.includes("permission denied") ||
+      raw.includes("row-level security") ||
+      raw.includes("insufficient privilege")
+    );
+  }
+  return false;
+}
 
 /**
  * Executes `fn` inside a Prisma transaction with DB-enforced RLS context.
@@ -45,10 +88,14 @@ export async function withRLSContext<T>(
   // through as a parameter. The scope is automatically cleared on return.
   return rlsStore.run({ userId }, () =>
     prismaAdmin.$transaction(async (tx) => {
-      // Set the user context first (while still postgres, before role switch).
-      await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true)`;
-      // Switch to the constrained role — RLS policies now fire for this transaction.
-      await tx.$executeRawUnsafe(`SET LOCAL ROLE keypilot_app`);
+      try {
+        // Set the user context first (while still postgres, before role switch).
+        await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true)`;
+        // Switch to the constrained role — RLS policies now fire for this transaction.
+        await tx.$executeRawUnsafe(`SET LOCAL ROLE keypilot_app`);
+      } catch (setupErr) {
+        throw new RlsTransactionSetupError(setupErr);
+      }
       return fn(tx);
     })
   );
@@ -71,8 +118,14 @@ export async function withRLSContextOrFallbackAdmin<T>(
   try {
     return await withRLSContext(userId, fn);
   } catch (e) {
+    if (!shouldBypassRlsWithAdminRead(e)) {
+      throw e;
+    }
     const msg = e instanceof Error ? e.message : String(e);
-    console.error(RLS_FALLBACK_TAG, "rls_failed", { label, message: msg });
+    console.error(RLS_FALLBACK_TAG, "admin_bypass_after_rls_failure", {
+      label,
+      message: msg,
+    });
     return fn(prismaAdmin as unknown as Prisma.TransactionClient);
   }
 }
