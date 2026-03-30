@@ -8,6 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -23,10 +24,14 @@ import {
   Loader2,
   Layers,
   Pencil,
+  CheckCircle2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import {
+  kpBtnPrimary,
+  kpBtnSecondary,
+} from "@/components/ui/kp-dashboard-button-tiers";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 import {
@@ -51,7 +56,10 @@ import {
   addSavedShowingsView,
 } from "@/lib/showing-hq/saved-views-storage";
 import { normalizeShowingHqListSearchQ } from "@/lib/showing-hq/list-search-q";
-import { showingWorkflowTabHref } from "@/lib/showing-hq/showing-workflow-hrefs";
+import {
+  showingWorkflowTabHref,
+  type ShowingHqWorkflowTab,
+} from "@/lib/showing-hq/showing-workflow-hrefs";
 import { AF, FLASH_QUERY } from "@/lib/ui/action-feedback";
 import { DismissibleFlashBanner } from "@/components/ui/action-feedback";
 
@@ -160,6 +168,94 @@ function isEmailDraftPendingSend(s: Showing): boolean {
   if (!hasBuyerAgentEmailDraft(s)) return false;
   const st = s.feedbackRequestStatus;
   return st !== "SENT" && st !== "RECEIVED";
+}
+
+function isShowingInFuture(s: Showing): boolean {
+  return new Date(s.scheduledAt).getTime() > Date.now();
+}
+
+/** Draft exists in DB but list eligibility requires email — surface in Actions, not only as empty feedback cell */
+function hasDraftMissingBuyerEmail(s: Showing): boolean {
+  return !!s.feedbackDraftGeneratedAt && !s.buyerAgentEmail?.trim();
+}
+
+/**
+ * Actions column: exactly one navigational control + optional status line.
+ * Status copy reads as state; button label reads as the user's next step.
+ */
+function getShowingActionsUi(s: Showing): {
+  statusLabel: string | null;
+  buttonLabel: string;
+  emphasis: "primary" | "secondary";
+  tab: ShowingHqWorkflowTab;
+  Icon: LucideIcon;
+} {
+  const st = s.feedbackRequestStatus;
+
+  if (hasDraftMissingBuyerEmail(s)) {
+    return {
+      statusLabel: "Missing email",
+      buttonLabel: "Add agent email",
+      emphasis: "primary",
+      tab: "details",
+      Icon: Mail,
+    };
+  }
+
+  if (hasBuyerAgentEmailDraft(s)) {
+    if (st === "RECEIVED") {
+      return {
+        statusLabel: "Feedback complete",
+        buttonLabel: "Open workspace",
+        emphasis: "secondary",
+        tab: "feedback",
+        Icon: CheckCircle2,
+      };
+    }
+    if (st === "SENT") {
+      return {
+        statusLabel: "Awaiting reply",
+        buttonLabel: "Open workspace",
+        emphasis: "secondary",
+        tab: "feedback",
+        Icon: Mail,
+      };
+    }
+    if (isShowingInFuture(s)) {
+      return {
+        statusLabel: "Not available yet",
+        buttonLabel: "Open workspace",
+        emphasis: "secondary",
+        tab: "details",
+        Icon: Calendar,
+      };
+    }
+    return {
+      statusLabel: null,
+      buttonLabel: "Request feedback",
+      emphasis: "primary",
+      tab: "feedback",
+      Icon: Mail,
+    };
+  }
+
+  if (s.feedbackRequired) {
+    return {
+      statusLabel: null,
+      buttonLabel: "Request feedback",
+      emphasis: "primary",
+      tab: "feedback",
+      Icon: ClipboardCheck,
+    };
+  }
+
+  return {
+    statusLabel: null,
+    buttonLabel: "Open workspace",
+    emphasis: "secondary",
+    tab: "details",
+    Icon: Pencil,
+  };
 }
 
 /** Keep one-shot `openShowing` in the URL while list filters / `q` change. */
@@ -294,17 +390,26 @@ const TH_BASE =
 const TD_BASE = "px-3 py-3 text-sm align-top";
 const TH_ACTIONS = cn(
   TH_BASE,
-  "sticky right-0 z-[2] w-[148px] min-w-[148px] bg-kp-surface-high text-right shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.45)]"
+  "sticky right-0 z-[2] w-[200px] min-w-[200px] bg-kp-surface-high text-right shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.45)]"
 );
 const TD_ACTIONS = cn(
   TD_BASE,
-  "sticky right-0 z-[1] w-[148px] min-w-[148px] bg-kp-surface text-right shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.35)] group-hover:bg-kp-surface-high"
+  "sticky right-0 z-[1] w-[200px] min-w-[200px] bg-kp-surface text-right shadow-[-8px_0_12px_-8px_rgba(0,0,0,0.35)] group-hover:bg-kp-surface-high"
 );
 
-/** Passive status copy only — primary action lives in sticky Actions column. */
+/** Feedback column — readable status, not ghosted body text */
 function FeedbackStatusPill({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex max-w-full items-center rounded-full border border-kp-outline/90 bg-kp-bg/40 px-2 py-0.5 text-[10px] font-medium leading-tight text-kp-on-surface-variant">
+    <span className="inline-flex max-w-full items-center rounded-md border border-kp-outline bg-kp-surface-high px-2 py-1 text-[11px] font-medium leading-snug text-kp-on-surface">
+      {children}
+    </span>
+  );
+}
+
+/** Actions column — status line must not look like a control */
+function ActionsColumnStatus({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex max-w-[220px] justify-end rounded-md border border-kp-outline/90 bg-kp-bg/60 px-2 py-1 text-right text-[11px] font-medium leading-snug text-kp-on-surface">
       {children}
     </span>
   );
@@ -312,10 +417,10 @@ function FeedbackStatusPill({ children }: { children: ReactNode }) {
 
 function ShowingsTable({
   showings,
-  openWorkflow,
+  onOpenWorkspace,
 }: {
   showings: Showing[];
-  openWorkflow: (s: Showing) => void;
+  onOpenWorkspace: (s: Showing, tab: ShowingHqWorkflowTab) => void;
 }) {
   return (
     <div className="relative overflow-x-auto">
@@ -368,19 +473,21 @@ function ShowingsTable({
 
               <td className={cn(TD_BASE, "min-w-0")}>
                 {s.feedbackRequired ? (
-                  <FeedbackStatusPill>Form link pending</FeedbackStatusPill>
+                  <FeedbackStatusPill>Form feedback pending</FeedbackStatusPill>
+                ) : hasDraftMissingBuyerEmail(s) ? (
+                  <FeedbackStatusPill>Draft ready</FeedbackStatusPill>
                 ) : hasBuyerAgentEmailDraft(s) ? (
                   <FeedbackStatusPill>
                     {s.feedbackRequestStatus === "RECEIVED" && s.buyerAgentEmailReplyAt
-                      ? "Feedback received (email)"
+                      ? "Reply received"
                       : s.feedbackRequestStatus === "SENT"
-                        ? "Feedback email sent"
+                        ? "Already sent"
                         : s.feedbackRequestStatus === "RECEIVED"
                           ? "Feedback received"
                           : "Draft ready"}
                   </FeedbackStatusPill>
                 ) : (
-                  <span className="text-xs text-kp-on-surface-variant">—</span>
+                  <span className="text-xs font-medium text-kp-on-surface/70">—</span>
                 )}
               </td>
 
@@ -391,29 +498,35 @@ function ShowingsTable({
               </td>
 
               <td className={cn(TD_ACTIONS, "pr-4")}>
-                <div className="flex flex-col items-stretch gap-1.5 sm:items-end">
-                  <Button
-                    type="button"
-                    variant={hasBuyerAgentEmailDraft(s) ? "outline" : "ghost"}
-                    size="sm"
-                    className={cn(
-                      hasBuyerAgentEmailDraft(s)
-                        ? cn(
-                            kpBtnSecondary,
-                            "h-8 w-full gap-1 border-kp-teal/40 px-2.5 text-[11px] font-semibold text-kp-teal sm:w-auto"
-                          )
-                        : "h-8 w-full gap-1 px-2 text-xs sm:w-auto"
-                    )}
-                    onClick={() => openWorkflow(s)}
-                  >
-                    {hasBuyerAgentEmailDraft(s) ? (
-                      <Mail className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    ) : (
-                      <Pencil className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    )}
-                    Request feedback
-                  </Button>
-                </div>
+                {(() => {
+                  const ui = getShowingActionsUi(s);
+                  const Icon = ui.Icon;
+                  return (
+                    <div className="flex min-h-[44px] flex-col items-stretch gap-2 sm:items-end">
+                      {ui.statusLabel ? (
+                        <ActionsColumnStatus>{ui.statusLabel}</ActionsColumnStatus>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant={ui.emphasis === "primary" ? "default" : "outline"}
+                        size="sm"
+                        className={cn(
+                          "h-9 w-full gap-1.5 px-3 text-xs font-semibold shadow-sm sm:w-auto sm:min-w-[152px]",
+                          ui.emphasis === "primary"
+                            ? kpBtnPrimary
+                            : cn(
+                                kpBtnSecondary,
+                                "border-kp-outline text-kp-on-surface hover:text-kp-on-surface"
+                              )
+                        )}
+                        onClick={() => onOpenWorkspace(s, ui.tab)}
+                      >
+                        <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                        {ui.buttonLabel}
+                      </Button>
+                    </div>
+                  );
+                })()}
               </td>
             </tr>
           ))}
@@ -487,11 +600,9 @@ export function ShowingsListView() {
     [router, searchParams]
   );
 
-  const openShowingWorkflow = useCallback(
-    (s: Showing) => {
-      router.push(
-        showingWorkflowTabHref(s.id, hasBuyerAgentEmailDraft(s) ? "feedback" : "details")
-      );
+  const openShowingWorkspace = useCallback(
+    (s: Showing, tab: ShowingHqWorkflowTab) => {
+      router.push(showingWorkflowTabHref(s.id, tab));
     },
     [router]
   );
@@ -820,7 +931,7 @@ export function ShowingsListView() {
         ) : showings.length === 0 ? (
           <EmptyState isFiltered={isFiltered} onReset={clearListFiltersAndSearch} />
         ) : (
-          <ShowingsTable showings={showings} openWorkflow={openShowingWorkflow} />
+          <ShowingsTable showings={showings} onOpenWorkspace={openShowingWorkspace} />
         )}
 
         {showContent && showings.length > 0 && (
