@@ -8,11 +8,16 @@ import { PATCH } from "@/app/api/v1/showing-hq/showings/[id]/route";
 const mockShowingFindFirst = jest.fn();
 const mockShowingUpdate = jest.fn();
 
+const mockFeedbackRequestCount = jest.fn().mockResolvedValue(0);
+
 jest.mock("@/lib/db", () => {
   const db = {
     showing: {
       findFirst: (...args: unknown[]) => mockShowingFindFirst(...args),
       update: (...args: unknown[]) => mockShowingUpdate(...args),
+    },
+    feedbackRequest: {
+      count: (...args: unknown[]) => mockFeedbackRequestCount(...args),
     },
   };
   return { prisma: db, prismaAdmin: db };
@@ -43,7 +48,11 @@ const baseReturned = {
 beforeEach(() => {
   jest.clearAllMocks();
   mockShowingFindFirst.mockResolvedValue(baseExisting);
-  mockShowingUpdate.mockResolvedValue(baseReturned);
+  mockShowingUpdate.mockResolvedValue({
+    ...baseReturned,
+    feedbackRequests: [],
+  });
+  mockFeedbackRequestCount.mockResolvedValue(0);
 });
 
 async function patchJson(body: unknown) {
@@ -72,7 +81,10 @@ describe("PATCH /api/v1/showing-hq/showings/[id]", () => {
     expect(mockShowingUpdate).toHaveBeenCalledWith({
       where: { id: SHOWING_ID },
       data: { prepChecklistFlags: { followUpPathReady: true } },
-      include: { property: true },
+      include: {
+        property: true,
+        feedbackRequests: { orderBy: { requestedAt: "desc" }, take: 1 },
+      },
     });
   });
 
@@ -87,7 +99,10 @@ describe("PATCH /api/v1/showing-hq/showings/[id]", () => {
     expect(mockShowingUpdate).toHaveBeenCalledWith({
       where: { id: SHOWING_ID },
       data: { prepChecklistFlags: Prisma.DbNull },
-      include: { property: true },
+      include: {
+        property: true,
+        feedbackRequests: { orderBy: { requestedAt: "desc" }, take: 1 },
+      },
     });
   });
 });

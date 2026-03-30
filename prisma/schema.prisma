@@ -138,6 +138,8 @@ model Contact {
   followUpReminders FollowUpReminder[]
   followUps         FollowUp[]
   deals             Deal[]
+  /** CRM / transaction primary client on a deal-style transaction (optional). */
+  transactionsPrimary Transaction[] @relation("TransactionPrimaryContact")
   userActivities    UserActivity[]
 
   @@index([email])
@@ -891,23 +893,50 @@ model Transaction {
   /** Optional CRM deal (same user, same property). At most one transaction per deal in v1. */
   dealId         String?           @unique
   status         TransactionStatus @default(PENDING)
+  /** Commercial classification for commission engine (separate from workflow status). */
+  transactionKind TransactionKind  @default(SALE)
+  /** Optional primary client; must be a Contact visible under RLS for the owner. */
+  primaryContactId String?
+  /** Optional import/sync provenance (e.g. google_sheets, csv). */
+  externalSource   String?
+  externalSourceId String?
   salePrice      Decimal?          @db.Decimal(12, 2)
   closingDate    DateTime?
   brokerageName  String?
   notes          String?           @db.Text
+  /**
+   * Brokerage-specific and optional commission assumptions (JSON).
+   * Engine reads salePrice + brokerageName + this object.
+   */
+  commissionInputs Json?
+  /** Persisted commission engine outputs (recomputed on create/update when inputs allow). */
+  gci                Decimal? @db.Decimal(12, 2)
+  adjustedGci        Decimal? @db.Decimal(12, 2)
+  referralDollar     Decimal? @db.Decimal(12, 2)
+  totalBrokerageFees Decimal? @db.Decimal(12, 2)
+  nci                Decimal? @db.Decimal(12, 2)
+  netVolume          Decimal? @db.Decimal(12, 2)
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
-  property     Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deal         Deal?        @relation("TransactionLinkedDeal", fields: [dealId], references: [id], onDelete: SetNull)
-  commissions  Commission[]
+  property       Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deal           Deal?        @relation("TransactionLinkedDeal", fields: [dealId], references: [id], onDelete: SetNull)
+  primaryContact Contact?     @relation("TransactionPrimaryContact", fields: [primaryContactId], references: [id], onDelete: SetNull)
+  commissions    Commission[]
 
   @@index([userId])
   @@index([propertyId])
+  @@index([primaryContactId])
+  @@index([externalSource, externalSourceId])
   @@index([status])
   @@index([closingDate])
   @@map("transactions")
+}
+
+enum TransactionKind {
+  SALE
+  REFERRAL_RECEIVED
 }
 
 enum TransactionStatus {

@@ -9,6 +9,10 @@ import {
 } from "@/lib/transaction-deal-link";
 import { CreateTransactionSchema } from "@/lib/validations/transaction";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { mergeCommissionInputs } from "@/lib/transactions/commission-inputs";
+import { computeTransactionFinancials } from "@/lib/transactions/transaction-financials";
+import { assertPrimaryContactAccessible } from "@/lib/transactions/assert-primary-contact";
+import { serializeTransactionDecimals } from "@/lib/transactions/serialize-transaction";
 import { TransactionStatus } from "@prisma/client";
 
 const propertySelect = {
@@ -17,6 +21,12 @@ const propertySelect = {
   city: true,
   state: true,
   zip: true,
+} as const;
+
+const primaryContactSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
 } as const;
 
 export async function GET(req: NextRequest) {
@@ -38,12 +48,18 @@ export async function GET(req: NextRequest) {
         include: {
           property: { select: propertySelect },
           deal: { select: transactionLinkedDealSelect },
+          primaryContact: { select: primaryContactSelect },
         },
         orderBy: { createdAt: "desc" },
       })
     );
 
-    return NextResponse.json({ data: transactions });
+    return NextResponse.json({
+      data: transactions.map((t) => ({
+        ...t,
+        ...serializeTransactionDecimals(t),
+      })),
+    });
   } catch (e) {
     return apiErrorFromCaught(e);
   }
@@ -66,10 +82,15 @@ export async function POST(req: NextRequest) {
       propertyId,
       dealId,
       status: createStatus,
+      transactionKind,
+      primaryContactId,
+      externalSource,
+      externalSourceId,
       salePrice,
       closingDate,
       brokerageName,
       notes,
+      commissionInputs: commissionInputsBody,
     } = parsed.data;
 
     const transaction = await withRLSContext(user.id, async (tx) => {
@@ -93,25 +114,62 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      return tx.transaction.create({
+      if (primaryContactId) {
+        await assertPrimaryContactAccessible(tx, primaryContactId);
+      }
+
+      const kind = transactionKind ?? "SALE";
+      const mergedCi = mergeCommissionInputs({}, commissionInputsBody ?? {});
+      const fin = computeTransactionFinancials({
+        transactionKind: kind,
+        salePrice: salePrice ?? null,
+        brokerageName: brokerageName ?? null,
+        commissionInputsJson: mergedCi,
+      });
+      if (!fin.ok) {
+        throw Object.assign(new Error(fin.error), { status: 400 });
+      }
+
+      const created = await tx.transaction.create({
         data: {
           propertyId,
           userId: user.id,
           ...(dealId !== undefined && { dealId }),
           ...(createStatus !== undefined && { status: createStatus }),
+          transactionKind: kind,
+          ...(primaryContactId !== undefined ? { primaryContactId } : {}),
+          ...(externalSource !== undefined ? { externalSource } : {}),
+          ...(externalSourceId !== undefined ? { externalSourceId } : {}),
           ...(salePrice !== undefined && { salePrice }),
           ...(closingDate !== undefined && { closingDate }),
           ...(brokerageName !== undefined && { brokerageName }),
           ...(notes !== undefined && { notes }),
+          commissionInputs: fin.commissionInputs,
+          gci: fin.gci,
+          adjustedGci: fin.adjustedGci,
+          referralDollar: fin.referralDollar,
+          totalBrokerageFees: fin.totalBrokerageFees,
+          nci: fin.nci,
+          netVolume: fin.netVolume,
         },
         include: {
           property: { select: propertySelect },
           deal: { select: transactionLinkedDealSelect },
+          primaryContact: { select: primaryContactSelect },
         },
       });
+      return created;
     });
 
-    return NextResponse.json({ data: transaction }, { status: 201 });
+    return NextResponse.json(
+      {
+        data: {
+          ...transaction,
+          ...serializeTransactionDecimals(transaction),
+        },
+      },
+      { status: 201 }
+    );
   } catch (e) {
     const uniqueResp = responseIfDealIdUniqueViolation(e);
     if (uniqueResp) return uniqueResp;

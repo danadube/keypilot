@@ -9,6 +9,11 @@ const TransactionStatusEnum = z.enum([
   "FALLEN_APART",
 ]);
 
+export const TransactionKindEnum = z.enum(["SALE", "REFERRAL_RECEIVED"]);
+
+/** Loose JSON object for broker-specific commission assumptions (validated again in domain). */
+const CommissionInputsJsonSchema = z.record(z.string(), z.unknown()).optional().nullable();
+
 export const CreateTransactionSchema = z.object({
   // Accept any non-empty string — DB FK constraint handles invalid IDs.
   // z.string().uuid() would couple validation to the ID generation strategy.
@@ -16,22 +21,32 @@ export const CreateTransactionSchema = z.object({
   /** Optional CRM deal; API enforces same user and same property as this transaction. */
   dealId: z.string().uuid().optional(),
   status: TransactionStatusEnum.optional(),
+  transactionKind: TransactionKindEnum.optional(),
+  primaryContactId: z.string().uuid().optional().nullable(),
+  externalSource: z.string().max(100).optional().nullable(),
+  externalSourceId: z.string().max(500).optional().nullable(),
   closingDate: z.coerce.date().optional().nullable(),
   salePrice: z.number().positive().optional().nullable(),
   brokerageName: z.string().max(200).optional().nullable(),
   notes: z.string().max(5000).optional().nullable(),
+  commissionInputs: CommissionInputsJsonSchema,
 });
 
 export const UpdateTransactionSchema = z.object({
   /** Set to unlink; omit to leave unchanged. */
   dealId: z.string().uuid().nullable().optional(),
   status: TransactionStatusEnum.optional(),
+  transactionKind: TransactionKindEnum.optional(),
+  primaryContactId: z.string().uuid().nullable().optional(),
+  externalSource: z.string().max(100).optional().nullable(),
+  externalSourceId: z.string().max(500).optional().nullable(),
   // z.coerce.date() accepts "2026-04-15" (plain date) and ISO datetime strings,
   // normalizing both to a Date object for Prisma. nullable() allows clearing the field.
   closingDate: z.coerce.date().optional().nullable(),
   salePrice: z.number().positive().optional().nullable(),
   brokerageName: z.string().max(200).optional().nullable(),
   notes: z.string().max(5000).optional().nullable(),
+  commissionInputs: CommissionInputsJsonSchema,
 });
 
 export const CreateCommissionSchema = z.object({

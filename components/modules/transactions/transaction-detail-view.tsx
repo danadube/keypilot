@@ -15,6 +15,7 @@ import {
   X,
   Briefcase,
   ExternalLink,
+  Calculator,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -28,6 +29,8 @@ type TxStatus =
   | "PENDING"
   | "CLOSED"
   | "FALLEN_APART";
+
+type TxKind = "SALE" | "REFERRAL_RECEIVED";
 
 type CommissionRow = {
   id: string;
@@ -103,6 +106,18 @@ function dealStatusBadgeVariant(
 type TransactionDetail = {
   id: string;
   status: TxStatus;
+  transactionKind: TxKind;
+  primaryContactId: string | null;
+  primaryContact: { id: string; firstName: string; lastName: string } | null;
+  externalSource: string | null;
+  externalSourceId: string | null;
+  commissionInputs: Record<string, unknown> | null;
+  gci: number | null;
+  adjustedGci: number | null;
+  referralDollar: number | null;
+  totalBrokerageFees: number | null;
+  nci: number | null;
+  netVolume: number | null;
   salePrice: string | number | null;
   closingDate: string | null;
   brokerageName: string | null;
@@ -208,6 +223,14 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
   const [error, setError] = useState<string | null>(null);
 
   const [status, setStatus] = useState<TxStatus>("PENDING");
+  const [transactionKind, setTransactionKind] = useState<TxKind>("SALE");
+  const [primaryContactIdInput, setPrimaryContactIdInput] = useState("");
+  const [externalSourceInput, setExternalSourceInput] = useState("");
+  const [externalSourceIdInput, setExternalSourceIdInput] = useState("");
+  const [commissionPctInput, setCommissionPctInput] = useState("");
+  const [referralPctInput, setReferralPctInput] = useState("");
+  const [referralFeeReceivedInput, setReferralFeeReceivedInput] = useState("");
+  const [nciOverrideInput, setNciOverrideInput] = useState("");
   const [salePriceInput, setSalePriceInput] = useState("");
   const [closingInput, setClosingInput] = useState("");
   const [brokerageInput, setBrokerageInput] = useState("");
@@ -257,6 +280,26 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           const t: TransactionDetail = json.data;
           setTxn(t);
           setStatus(t.status);
+          setTransactionKind(t.transactionKind ?? "SALE");
+          setPrimaryContactIdInput(t.primaryContactId ?? "");
+          setExternalSourceInput(t.externalSource ?? "");
+          setExternalSourceIdInput(t.externalSourceId ?? "");
+          const ci =
+            t.commissionInputs && typeof t.commissionInputs === "object" && !Array.isArray(t.commissionInputs)
+              ? (t.commissionInputs as Record<string, unknown>)
+              : {};
+          setCommissionPctInput(
+            ci.commissionPct != null && ci.commissionPct !== "" ? String(ci.commissionPct) : ""
+          );
+          setReferralPctInput(
+            ci.referralPct != null && ci.referralPct !== "" ? String(ci.referralPct) : ""
+          );
+          setReferralFeeReceivedInput(
+            ci.referralFeeReceived != null && ci.referralFeeReceived !== ""
+              ? String(ci.referralFeeReceived)
+              : ""
+          );
+          setNciOverrideInput(ci.nci != null && ci.nci !== "" ? String(ci.nci) : "");
           setSalePriceInput(salePriceToInput(t.salePrice));
           setClosingInput(isoToDateInput(t.closingDate));
           setBrokerageInput(t.brokerageName ?? "");
@@ -301,14 +344,50 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
 
   useEffect(() => {
     if (!txn) return;
+    const ci =
+      txn.commissionInputs && typeof txn.commissionInputs === "object" && !Array.isArray(txn.commissionInputs)
+        ? (txn.commissionInputs as Record<string, unknown>)
+        : {};
+    const baselinePct =
+      ci.commissionPct != null && ci.commissionPct !== "" ? String(ci.commissionPct) : "";
+    const baselineRef =
+      ci.referralPct != null && ci.referralPct !== "" ? String(ci.referralPct) : "";
+    const baselineRefFee =
+      ci.referralFeeReceived != null && ci.referralFeeReceived !== ""
+        ? String(ci.referralFeeReceived)
+        : "";
+    const baselineNci = ci.nci != null && ci.nci !== "" ? String(ci.nci) : "";
     const changed =
       status !== txn.status ||
+      transactionKind !== (txn.transactionKind ?? "SALE") ||
+      primaryContactIdInput !== (txn.primaryContactId ?? "") ||
+      externalSourceInput !== (txn.externalSource ?? "") ||
+      externalSourceIdInput !== (txn.externalSourceId ?? "") ||
+      commissionPctInput !== baselinePct ||
+      referralPctInput !== baselineRef ||
+      referralFeeReceivedInput !== baselineRefFee ||
+      nciOverrideInput !== baselineNci ||
       salePriceInput !== salePriceToInput(txn.salePrice) ||
       closingInput !== isoToDateInput(txn.closingDate) ||
       brokerageInput !== (txn.brokerageName ?? "") ||
       notesInput !== (txn.notes ?? "");
     setDirty(changed);
-  }, [txn, status, salePriceInput, closingInput, brokerageInput, notesInput]);
+  }, [
+    txn,
+    status,
+    transactionKind,
+    primaryContactIdInput,
+    externalSourceInput,
+    externalSourceIdInput,
+    commissionPctInput,
+    referralPctInput,
+    referralFeeReceivedInput,
+    nciOverrideInput,
+    salePriceInput,
+    closingInput,
+    brokerageInput,
+    notesInput,
+  ]);
 
   const patchDealLink = async (dealId: string | null) => {
     setDealLinkBusy(true);
@@ -350,6 +429,22 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
 
     body.brokerageName = brokerageInput.trim() ? brokerageInput.trim() : null;
     body.notes = notesInput.trim() ? notesInput.trim() : null;
+    body.transactionKind = transactionKind;
+    body.externalSource = externalSourceInput.trim() ? externalSourceInput.trim() : null;
+    body.externalSourceId = externalSourceIdInput.trim() ? externalSourceIdInput.trim() : null;
+    const pc = primaryContactIdInput.trim();
+    body.primaryContactId = pc ? pc : null;
+
+    const ci: Record<string, unknown> = {};
+    const pct = commissionPctInput.trim();
+    ci.commissionPct = pct ? parseFloat(pct) : null;
+    const rp = referralPctInput.trim();
+    ci.referralPct = rp ? parseFloat(rp) : null;
+    const rf = referralFeeReceivedInput.trim();
+    ci.referralFeeReceived = rf ? parseFloat(rf) : null;
+    const nciO = nciOverrideInput.trim();
+    ci.nci = nciO ? parseFloat(nciO) : null;
+    body.commissionInputs = ci;
 
     setSaving(true);
     setSaveError(null);
@@ -361,14 +456,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      const t: TransactionDetail = json.data;
-      setTxn(t);
-      setStatus(t.status);
-      setSalePriceInput(salePriceToInput(t.salePrice));
-      setClosingInput(isoToDateInput(t.closingDate));
-      setBrokerageInput(t.brokerageName ?? "");
-      setNotesInput(t.notes ?? "");
-      setDirty(false);
+      await load();
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -701,6 +789,96 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             </div>
 
             <div className="space-y-1.5">
+              <label
+                htmlFor="detail-tx-kind"
+                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+              >
+                Transaction kind
+              </label>
+              <select
+                id="detail-tx-kind"
+                value={transactionKind}
+                onChange={(e) => setTransactionKind(e.target.value as TxKind)}
+                className={cn(
+                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface",
+                  "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                )}
+              >
+                <option value="SALE">Sale</option>
+                <option value="REFERRAL_RECEIVED">Referral received</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5 sm:col-span-2">
+              <label
+                htmlFor="detail-primary-contact"
+                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+              >
+                Primary contact ID (optional)
+              </label>
+              <input
+                id="detail-primary-contact"
+                type="text"
+                value={primaryContactIdInput}
+                onChange={(e) => setPrimaryContactIdInput(e.target.value)}
+                placeholder="UUID of a contact you can access"
+                className={cn(
+                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm font-mono",
+                  "text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                  "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                )}
+              />
+              {txn.primaryContact ? (
+                <p className="text-[11px] text-kp-on-surface-variant">
+                  Linked:{" "}
+                  <Link href={`/contacts/${txn.primaryContact.id}`} className="text-kp-teal hover:underline">
+                    {[txn.primaryContact.firstName, txn.primaryContact.lastName].filter(Boolean).join(" ")}
+                  </Link>
+                </p>
+              ) : null}
+            </div>
+
+            <div className="space-y-1.5">
+              <label
+                htmlFor="detail-ext-src"
+                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+              >
+                External source
+              </label>
+              <input
+                id="detail-ext-src"
+                type="text"
+                value={externalSourceInput}
+                onChange={(e) => setExternalSourceInput(e.target.value)}
+                placeholder="e.g. csv, google_sheets"
+                className={cn(
+                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
+                  "text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                  "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                )}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label
+                htmlFor="detail-ext-id"
+                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+              >
+                External ID
+              </label>
+              <input
+                id="detail-ext-id"
+                type="text"
+                value={externalSourceIdInput}
+                onChange={(e) => setExternalSourceIdInput(e.target.value)}
+                className={cn(
+                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
+                  "text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                )}
+              />
+            </div>
+
+            <div className="space-y-1.5">
               <label htmlFor="detail-price" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
                 Sale price
               </label>
@@ -781,6 +959,32 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
               disabled={!dirty || saving}
               onClick={() => {
                 setStatus(txn.status);
+                setTransactionKind(txn.transactionKind ?? "SALE");
+                setPrimaryContactIdInput(txn.primaryContactId ?? "");
+                setExternalSourceInput(txn.externalSource ?? "");
+                setExternalSourceIdInput(txn.externalSourceId ?? "");
+                const rci =
+                  txn.commissionInputs &&
+                  typeof txn.commissionInputs === "object" &&
+                  !Array.isArray(txn.commissionInputs)
+                    ? (txn.commissionInputs as Record<string, unknown>)
+                    : {};
+                setCommissionPctInput(
+                  rci.commissionPct != null && rci.commissionPct !== ""
+                    ? String(rci.commissionPct)
+                    : ""
+                );
+                setReferralPctInput(
+                  rci.referralPct != null && rci.referralPct !== "" ? String(rci.referralPct) : ""
+                );
+                setReferralFeeReceivedInput(
+                  rci.referralFeeReceived != null && rci.referralFeeReceived !== ""
+                    ? String(rci.referralFeeReceived)
+                    : ""
+                );
+                setNciOverrideInput(
+                  rci.nci != null && rci.nci !== "" ? String(rci.nci) : ""
+                );
                 setSalePriceInput(salePriceToInput(txn.salePrice));
                 setClosingInput(isoToDateInput(txn.closingDate));
                 setBrokerageInput(txn.brokerageName ?? "");
@@ -809,6 +1013,133 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save
             </button>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Calculator className="h-4 w-4 text-kp-on-surface-variant" />
+            <h2 className="text-sm font-semibold text-kp-on-surface">Commission breakdown</h2>
+          </div>
+          <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+            Engine outputs (GCI → NCI) update when you save. Use{" "}
+            <span className="font-medium text-kp-on-surface">KW</span>,{" "}
+            <span className="font-medium text-kp-on-surface">Keller Williams</span>,{" "}
+            <span className="font-medium text-kp-on-surface">BDH</span>, or{" "}
+            <span className="font-medium text-kp-on-surface">Bennion Deville Homes</span> in brokerage for
+            brokerage-specific fee rules.
+          </p>
+
+          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+            {(
+              [
+                ["GCI", txn.gci],
+                ["Adjusted GCI", txn.adjustedGci],
+                ["Referral paid ($)", txn.referralDollar],
+                ["Total brokerage fees", txn.totalBrokerageFees],
+                ["NCI", txn.nci],
+                ["Net volume", txn.netVolume],
+              ] as const
+            ).map(([label, val]) => (
+              <div key={label}>
+                <dt className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                  {label}
+                </dt>
+                <dd className="mt-0.5 text-sm tabular-nums text-kp-on-surface">{formatMoneyDisplay(val)}</dd>
+              </div>
+            ))}
+          </dl>
+
+          <div className="mt-6 border-t border-kp-outline pt-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+              Assumptions (saved with transaction)
+            </p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="ci-comm-pct"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                >
+                  Commission %
+                </label>
+                <input
+                  id="ci-comm-pct"
+                  type="text"
+                  inputMode="decimal"
+                  value={commissionPctInput}
+                  onChange={(e) => setCommissionPctInput(e.target.value)}
+                  placeholder="e.g. 3 or 0.03"
+                  className={cn(
+                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
+                    "text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  )}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="ci-ref-pct"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                >
+                  Referral % of GCI
+                </label>
+                <input
+                  id="ci-ref-pct"
+                  type="text"
+                  inputMode="decimal"
+                  value={referralPctInput}
+                  onChange={(e) => setReferralPctInput(e.target.value)}
+                  placeholder="Optional"
+                  className={cn(
+                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
+                    "text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  )}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="ci-ref-fee"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                >
+                  Referral fee received
+                </label>
+                <input
+                  id="ci-ref-fee"
+                  type="text"
+                  inputMode="decimal"
+                  value={referralFeeReceivedInput}
+                  onChange={(e) => setReferralFeeReceivedInput(e.target.value)}
+                  placeholder="For &quot;Referral received&quot; kind"
+                  className={cn(
+                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
+                    "text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  )}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="ci-nci-override"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                >
+                  NCI override (imports)
+                </label>
+                <input
+                  id="ci-nci-override"
+                  type="text"
+                  inputMode="decimal"
+                  value={nciOverrideInput}
+                  onChange={(e) => setNciOverrideInput(e.target.value)}
+                  placeholder="Optional; locks NCI for referral imports"
+                  className={cn(
+                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
+                    "text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  )}
+                />
+              </div>
+            </div>
           </div>
         </section>
 
