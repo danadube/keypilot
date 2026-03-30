@@ -53,3 +53,26 @@ export async function withRLSContext<T>(
     })
   );
 }
+
+const RLS_FALLBACK_TAG = "[withRLSContextOrFallbackAdmin]";
+
+/**
+ * Like {@link withRLSContext}, but if the role switch or RLS transaction fails
+ * (e.g. `keypilot_app` missing in a lagging env), re-runs `fn` with `prismaAdmin`.
+ *
+ * **Only for read paths** where every query already scopes by `userId` / `hostUserId`
+ * / ownership — same effective rows as RLS would allow for that user.
+ */
+export async function withRLSContextOrFallbackAdmin<T>(
+  userId: string,
+  label: string,
+  fn: (tx: Prisma.TransactionClient) => Promise<T>
+): Promise<T> {
+  try {
+    return await withRLSContext(userId, fn);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error(RLS_FALLBACK_TAG, "rls_failed", { label, message: msg });
+    return fn(prismaAdmin as unknown as Prisma.TransactionClient);
+  }
+}

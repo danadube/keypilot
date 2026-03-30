@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 import { type Prisma } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
-import { withRLSContext } from "@/lib/db-context";
+import { withRLSContextOrFallbackAdmin } from "@/lib/db-context";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import {
   getOpenHouseAttentionState,
@@ -85,7 +85,10 @@ export async function GET() {
         const slice = "rls_tx_profile_showings";
         dashLog(`start ${slice}`);
         try {
-          const out = await withRLSContext(user.id, async (tx) => {
+          const out = await withRLSContextOrFallbackAdmin(
+            user.id,
+            "dashboard_rls_profile_showings",
+            async (tx) => {
             dashLog("start rls_inner_profile_showings_queries");
             const [
               connections,
@@ -165,7 +168,8 @@ export async function GET() {
               privateShowingsTodayCount,
               firstShowingTomorrow,
             };
-          });
+          }
+          );
           dashLog(`ok ${slice}`);
           return out;
         } catch (sliceErr) {
@@ -180,7 +184,10 @@ export async function GET() {
         const slice = "rls_tx_open_house_batch";
         dashLog(`start ${slice}`);
         try {
-          const out = await withRLSContext(user.id, async (tx) => {
+          const out = await withRLSContextOrFallbackAdmin(
+            user.id,
+            "dashboard_rls_open_house_batch",
+            async (tx) => {
             dashLog("start rls_inner_open_house_batch_queries");
             const batch = await Promise.all([
       tx.openHouse.findMany({
@@ -344,7 +351,8 @@ export async function GET() {
             ]);
             dashLog("ok rls_inner_open_house_batch_queries");
             return batch;
-          });
+          }
+          );
           dashLog(`ok ${slice}`);
           return out;
         } catch (sliceErr) {
@@ -1064,28 +1072,31 @@ export async function GET() {
       upcoming: [] as ReturnType<typeof serializeAgentFollowUpRow>[],
     };
     try {
-      const agentFollowUpRows = await withRLSContext(user.id, (tx) =>
-        tx.followUp.findMany({
-          where: {
-            createdByUserId: user.id,
-            deletedAt: null,
-            status: { not: "CLOSED" },
-            dueAt: { lte: followUpWeekEnd },
-          },
-          include: {
-            contact: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                phone: true,
+      const agentFollowUpRows = await withRLSContextOrFallbackAdmin(
+        user.id,
+        "dashboard_rls_agent_follow_ups",
+        (tx) =>
+          tx.followUp.findMany({
+            where: {
+              createdByUserId: user.id,
+              deletedAt: null,
+              status: { not: "CLOSED" },
+              dueAt: { lte: followUpWeekEnd },
+            },
+            include: {
+              contact: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  email: true,
+                  phone: true,
+                },
               },
             },
-          },
-          orderBy: { dueAt: "asc" },
-          take: 80,
-        })
+            orderBy: { dueAt: "asc" },
+            take: 80,
+          })
       );
       const agentFollowUpsSerialized = agentFollowUpRows.map(serializeAgentFollowUpRow);
       agentFollowUps = bucketAgentFollowUpsByDue(
