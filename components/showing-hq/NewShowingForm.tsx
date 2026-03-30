@@ -14,7 +14,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
-import { BrandCard } from "@/components/ui/BrandCard";
+import {
+  EditableBlock,
+  EditableBlockContent,
+  EditableBlockHeader,
+} from "@/components/ui/editable-block";
 import {
   Select,
   SelectContent,
@@ -98,7 +102,6 @@ export function NewShowingForm() {
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      // Navigate directly to the new showing's workspace — context is self-evident there.
       router.push(showingWorkflowTabHref(json.data.id, "prep"));
     } catch (err) {
       setError(afError(err, AF.couldntCreate));
@@ -113,29 +116,43 @@ export function NewShowingForm() {
   }
 
   return (
-    <div className="min-h-0 flex flex-col gap-6 bg-transparent">
+    <div className="min-h-0 flex flex-col gap-4 bg-transparent">
       <ShowingHQPageHero
         title="Schedule Showing"
-        description="Create a single private showing (different from an open house)."
+        description="This will appear in ShowingHQ → Today. Private appointment only — not an open house."
         action={
           <Button variant="ghost" size="sm" className={cn(kpBtnTertiary)} asChild>
-            <Link href="/showing-hq/showings">← Back</Link>
+            <Link href="/showing-hq/showings" className="text-slate-200 hover:text-white">
+              ← Back to showings
+            </Link>
           </Button>
         }
       />
 
-      <BrandCard elevated padded className="max-w-xl">
-        <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-                {error}
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="propertyId">Property *</Label>
+      <form
+        onSubmit={handleSubmit}
+        className="mx-auto flex w-full max-w-2xl flex-col gap-3 pb-8"
+      >
+        {error ? (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </div>
+        ) : null}
+
+        <EditableBlock className="space-y-2.5 !p-3.5 sm:!p-4">
+          <EditableBlockHeader
+            title="Property & time"
+            description="Where and when this showing runs."
+            showEditButton={false}
+          />
+          <EditableBlockContent className="space-y-2">
+            <div className="space-y-1">
+              <Label htmlFor="propertyId" className="text-xs text-kp-on-surface-variant">
+                Property <span className="text-destructive">*</span>
+              </Label>
               <Select value={propertyId} onValueChange={setPropertyId} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select property" />
+                <SelectTrigger id="propertyId" data-editable-focus>
+                  <SelectValue placeholder="Choose a property" />
                 </SelectTrigger>
                 <SelectContent>
                   {properties.map((p) => (
@@ -146,11 +163,13 @@ export function NewShowingForm() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Date & time *</Label>
-              <DateTimeFieldGroup>
-                <div className="space-y-1.5">
-                  <Label htmlFor="scheduledDate" className="text-xs text-kp-on-surface-variant">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-kp-on-surface-variant">
+                Date & time <span className="text-destructive">*</span>
+              </Label>
+              <DateTimeFieldGroup className="gap-2 sm:gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="scheduledDate" className="text-[10px] text-kp-on-surface-variant">
                     Date
                   </Label>
                   <DateInputField
@@ -160,8 +179,8 @@ export function NewShowingForm() {
                     required
                   />
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="scheduledTime" className="text-xs text-kp-on-surface-variant">
+                <div className="space-y-1">
+                  <Label htmlFor="scheduledTime" className="text-[10px] text-kp-on-surface-variant">
                     Time
                   </Label>
                   <TimeInputField
@@ -172,39 +191,70 @@ export function NewShowingForm() {
                   />
                 </div>
               </DateTimeFieldGroup>
-              <TimeQuickChips
-                className="pt-1"
-                onSelect={(p) => {
-                  const next = applyQuickTimePreset(p, {
-                    date: scheduledDate,
-                    time: scheduledTime,
-                  });
-                  setScheduledDate(next.date);
-                  setScheduledTime(next.time);
-                }}
-              />
+              <div className="rounded-lg border border-kp-outline/90 bg-kp-surface-high/35 px-2.5 py-2 sm:px-3">
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                  Quick set
+                </p>
+                <TimeQuickChips
+                  emphasized
+                  disabled={submitting}
+                  className="gap-1.5 sm:gap-2"
+                  onSelect={(p) => {
+                    const next = applyQuickTimePreset(p, {
+                      date: scheduledDate,
+                      time: scheduledTime,
+                    });
+                    setScheduledDate(next.date);
+                    setScheduledTime(next.time);
+                  }}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="buyerAgentName">Buyer Agent Name</Label>
-              <Input
-                id="buyerAgentName"
-                value={buyerAgentName}
-                onChange={(e) => setBuyerAgentName(e.target.value)}
-                placeholder="Agent name"
-              />
+          </EditableBlockContent>
+        </EditableBlock>
+
+        <EditableBlock className="space-y-2.5 !p-3.5 sm:!p-4">
+          <EditableBlockHeader title="Buyer agent" showEditButton={false} />
+          <EditableBlockContent className="space-y-2">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label htmlFor="buyerAgentName" className="text-xs text-kp-on-surface-variant">
+                  Name
+                </Label>
+                <Input
+                  id="buyerAgentName"
+                  value={buyerAgentName}
+                  onChange={(e) => setBuyerAgentName(e.target.value)}
+                  placeholder="Agent name"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="buyerAgentEmail" className="text-xs text-kp-on-surface-variant">
+                  Email
+                </Label>
+                <Input
+                  id="buyerAgentEmail"
+                  type="email"
+                  value={buyerAgentEmail}
+                  onChange={(e) => setBuyerAgentEmail(e.target.value)}
+                  placeholder="agent@example.com"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="buyerAgentEmail">Buyer Agent Email</Label>
-              <Input
-                id="buyerAgentEmail"
-                type="email"
-                value={buyerAgentEmail}
-                onChange={(e) => setBuyerAgentEmail(e.target.value)}
-                placeholder="agent@example.com"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="buyerName">Buyer Name (optional)</Label>
+          </EditableBlockContent>
+        </EditableBlock>
+
+        <EditableBlock className="space-y-2.5 !p-3.5 sm:!p-4">
+          <EditableBlockHeader
+            title="Optional details"
+            description="Add now or later from the showing workspace."
+            showEditButton={false}
+          />
+          <EditableBlockContent className="space-y-2">
+            <div className="space-y-1">
+              <Label htmlFor="buyerName" className="text-xs text-kp-on-surface-variant">
+                Buyer name
+              </Label>
               <Input
                 id="buyerName"
                 value={buyerName}
@@ -212,43 +262,64 @@ export function NewShowingForm() {
                 placeholder="Buyer name"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
+            <div className="space-y-1">
+              <Label htmlFor="notes" className="text-xs text-kp-on-surface-variant">
+                Notes
+              </Label>
               <Textarea
                 id="notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Additional notes"
-                rows={3}
+                placeholder="Access, lockbox, buyer preferences…"
+                rows={2}
+                className="min-h-[72px] resize-y text-sm"
               />
             </div>
-            <div className="flex items-center gap-2">
+          </EditableBlockContent>
+        </EditableBlock>
+
+        <EditableBlock className="space-y-2.5 !p-3.5 sm:!p-4">
+          <EditableBlockHeader title="Feedback" showEditButton={false} />
+          <EditableBlockContent className="space-y-0">
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-transparent py-0.5 hover:border-kp-outline/60">
               <input
                 type="checkbox"
                 id="feedbackRequired"
                 checked={feedbackRequired}
                 onChange={(e) => setFeedbackRequired(e.target.checked)}
-                className="h-4 w-4 rounded border"
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-kp-outline"
               />
-              <Label htmlFor="feedbackRequired" className="cursor-pointer">
-                Feedback required (request after showing)
-              </Label>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <Button
-                type="submit"
-                variant="outline"
-                disabled={submitting}
-                className={cn(kpBtnPrimary, "border-transparent")}
-              >
-                {submitting ? AF.scheduling : "Create Showing"}
-              </Button>
-              <Button variant="outline" type="button" className={cn(kpBtnSecondary)} asChild>
-                <Link href="/showing-hq/showings">Cancel</Link>
-              </Button>
-            </div>
-          </form>
-      </BrandCard>
+              <span className="min-w-0">
+                <span className="text-sm font-medium text-kp-on-surface">
+                  Request feedback after the showing
+                </span>
+                <span className="mt-0.5 block text-xs text-kp-on-surface-variant">
+                  Sends a feedback request to the buyer agent when you are ready from the workspace.
+                </span>
+              </span>
+            </label>
+          </EditableBlockContent>
+        </EditableBlock>
+
+        <div className="flex flex-col gap-2 border-t border-kp-outline/50 pt-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <p className="order-2 text-xs leading-snug text-kp-on-surface-variant sm:order-1 sm:max-w-md">
+            This showing will appear in Today and can be managed immediately.
+          </p>
+          <div className="order-1 flex flex-wrap gap-2 sm:order-2 sm:shrink-0">
+            <Button
+              type="submit"
+              size="lg"
+              disabled={submitting}
+              className={cn(kpBtnPrimary, "min-w-[168px] border-0 shadow-md")}
+            >
+              {submitting ? AF.scheduling : "Schedule Showing"}
+            </Button>
+            <Button variant="outline" type="button" className={cn(kpBtnSecondary)} asChild>
+              <Link href="/showing-hq/showings">Cancel</Link>
+            </Button>
+          </div>
+        </div>
+      </form>
     </div>
   );
 }

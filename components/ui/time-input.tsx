@@ -60,6 +60,8 @@ type TimeQuickChipsProps = {
   disabled?: boolean;
   /** default: dashboard-style chips; compact: smaller text for inline cards */
   density?: "default" | "compact";
+  /** Larger, higher-contrast chips for scheduling flows */
+  emphasized?: boolean;
 };
 
 export function TimeQuickChips({
@@ -68,9 +70,14 @@ export function TimeQuickChips({
   className,
   disabled,
   density = "default",
+  emphasized = false,
 }: TimeQuickChipsProps) {
-  const chipClass =
-    density === "compact"
+  const chipClass = emphasized
+    ? cn(
+        kpBtnSecondary,
+        "h-9 min-h-9 border-2 border-kp-teal/50 bg-kp-surface-high px-3 text-xs font-semibold shadow-sm hover:border-kp-teal hover:bg-kp-teal/15"
+      )
+    : density === "compact"
       ? cn(kpBtnSecondary, "h-7 text-[11px] font-semibold")
       : cn(kpBtnSecondary, "h-8 text-[11px] font-semibold");
 
