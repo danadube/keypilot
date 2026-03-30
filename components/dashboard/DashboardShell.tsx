@@ -47,7 +47,8 @@ function getPageTitle(pathname: string): string {
     if (base.startsWith("/open-houses/new")) return "ShowingHQ";
     return "ShowingHQ";
   }
-  if (pathname.startsWith("/properties/new")) return "New Property";
+  // Page carries the specific title; shell stays module context (matches /open-houses/new).
+  if (pathname.startsWith("/properties/new")) return "Properties";
   if (pathname.startsWith("/properties")) return "Properties";
   if (pathname.startsWith("/property-vault")) return "PropertyVault";
   if (pathname.startsWith("/market-pilot/campaigns")) return "Campaigns";

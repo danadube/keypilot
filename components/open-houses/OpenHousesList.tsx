@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import {
   kpBtnPrimary,
   kpBtnSecondary,
-  kpBtnTertiary,
 } from "@/components/ui/kp-dashboard-button-tiers";
 import {
   Card,
@@ -225,17 +224,29 @@ export function OpenHousesList() {
                         <Badge variant={statusVariant(oh.status)}>{oh.status}</Badge>
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" className={kpBtnTertiary} asChild>
-                            <Link href={showingHqOpenHouseWorkspaceHref(oh.id)}>View</Link>
+                        <div className="flex flex-wrap gap-1.5">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn(kpBtnSecondary, "font-semibold")}
+                            asChild
+                          >
+                            <Link href={showingHqOpenHouseWorkspaceHref(oh.id)}>
+                              Open workspace
+                            </Link>
                           </Button>
                           {(oh.status === "ACTIVE" || oh.status === "SCHEDULED") && (
-                            <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
-                              <Link href={`/open-houses/${oh.id}/sign-in`}>Console</Link>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className={cn(kpBtnPrimary, "border-0 font-semibold")}
+                              asChild
+                            >
+                              <Link href={`/open-houses/${oh.id}/sign-in`}>Host console</Link>
                             </Button>
                           )}
                         </div>
-                      </TableCell>
+		      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -299,17 +310,24 @@ export function OpenHousesList() {
                 <p className="text-xs text-muted-foreground mt-1">
                   {formatDate(nextUp.startAt)} · {formatTime(nextUp.startAt)}–{formatTime(nextUp.endAt)}
                 </p>
-                <div className="mt-3 flex gap-2">
+                <div className="mt-3 flex flex-wrap gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    className={cn(kpBtnPrimary, "border-transparent")}
+                    className={cn(kpBtnPrimary, "border-0 font-semibold")}
                     asChild
                   >
                     <Link href={`/open-houses/${nextUp.id}/sign-in`}>Host console</Link>
                   </Button>
-                  <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
-                    <Link href={showingHqOpenHouseWorkspaceHref(nextUp.id)}>View</Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(kpBtnSecondary, "font-semibold")}
+                    asChild
+                  >
+                    <Link href={showingHqOpenHouseWorkspaceHref(nextUp.id)}>
+                      Open workspace
+                    </Link>
                   </Button>
                 </div>
               </CardContent>

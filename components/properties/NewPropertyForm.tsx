@@ -20,6 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AF } from "@/lib/ui/action-feedback";
 
 export function NewPropertyForm() {
   const router = useRouter();
@@ -117,9 +118,9 @@ export function NewPropertyForm() {
     <div className="max-w-2xl space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="sm" className={cn(kpBtnTertiary)} asChild>
-          <Link href="/properties">← Back</Link>
+          <Link href="/properties">← Back to properties</Link>
         </Button>
-        <h1 className="text-2xl font-semibold">Add property</h1>
+        <h1 className="text-2xl font-semibold text-kp-on-surface">New property</h1>
       </div>
 
       <Card>
@@ -261,11 +262,11 @@ export function NewPropertyForm() {
             <div className="flex gap-3">
               <Button
                 type="submit"
-                variant="outline"
+                size="lg"
                 disabled={submitting}
-                className={cn(kpBtnPrimary, "border-transparent")}
+                className={cn(kpBtnPrimary, "border-0 shadow-md")}
               >
-                {submitting ? "Creating..." : "Add property"}
+                {submitting ? AF.creating : "Create property"}
               </Button>
               <Button type="button" variant="outline" className={cn(kpBtnSecondary)} asChild>
                 <Link href="/properties">Cancel</Link>

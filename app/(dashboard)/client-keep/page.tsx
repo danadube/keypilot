@@ -45,7 +45,7 @@ export default function ClientKeepOverviewPage() {
     >
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">ClientKeep</h1>
+        <h2 className="text-2xl font-semibold text-kp-on-surface">Overview</h2>
         <Button variant="outline" className={cn(kpBtnPrimary, "border-transparent")} asChild>
           <Link href="/contacts">View all contacts</Link>
         </Button>
