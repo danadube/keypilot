@@ -269,8 +269,197 @@ export async function fetchSupraGmailMessages(
   );
 }
 
+/** @deprecated Wide inbox scan — prefer thread-based feedback import. Kept for tests / diagnostics. */
 const FEEDBACK_REPLY_GMAIL_QUERY = "newer_than:21d in:inbox -from:suprasystems.com -from:suprashowing";
 const MAX_FEEDBACK_REPLY_RESULTS = 40;
+
+/** Domains or local-parts that must never be ingested as buyer-agent feedback. */
+const FEEDBACK_SYSTEM_SENDER_BLOCKLIST: RegExp[] = [
+  /@suprasystems\.com$/i,
+  /^suprashowing@/i,
+  /@suprashowing\./i,
+  /^noreply@/i,
+  /^no-reply@/i,
+  /^mailer-daemon@/i,
+  /^postmaster@/i,
+  /^bounce@/i,
+];
+
+export function isBlockedFeedbackSystemSender(email: string | null | undefined): boolean {
+  const e = email?.trim().toLowerCase();
+  if (!e || !e.includes("@")) return true;
+  return FEEDBACK_SYSTEM_SENDER_BLOCKLIST.some((r) => r.test(e));
+}
+
+function feedbackSubjectTokenOverlap(a: string, b: string): number {
+  const norm = (s: string) =>
+    s
+      .replace(/^(re|fwd|fw)\s*:\s*/gi, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  const ta = new Set(
+    norm(a)
+      .split(/[^a-z0-9+#]+/)
+      .filter((t) => t.length > 2)
+  );
+  const tb = new Set(
+    norm(b)
+      .split(/[^a-z0-9+#]+/)
+      .filter((t) => t.length > 2)
+  );
+  let c = 0;
+  ta.forEach((t) => {
+    if (tb.has(t)) c += 1;
+  });
+  return c;
+}
+
+export type GmailFeedbackThreadMessage = {
+  gmailMessageId: string;
+  threadId: string;
+  labelIds: string[];
+  fromHeader: string | null;
+  senderEmail: string | null;
+  receivedAt: Date;
+  rawBodyText: string;
+  inReplyTo: string | null;
+  references: string | null;
+  rfcMessageId: string | null;
+};
+
+/**
+ * Find the Sent mail that kicked off the feedback thread (to buyer agent, subject matches draft).
+ * Populates thread id for ingestion without scanning the whole inbox.
+ */
+export async function discoverFeedbackThreadFromSentMail(
+  conn: GmailConnection,
+  options: { buyerEmail: string; draftSubject: string | null }
+): Promise<{ threadId: string; rfcMessageId: string | null } | null> {
+  const buyer = options.buyerEmail.trim().toLowerCase();
+  if (!buyer.includes("@")) return null;
+
+  const auth = await ensureValidGoogleOAuth2Client(conn);
+  const gmail = google.gmail({ version: "v1", auth });
+
+  const safeTo = buyer.replace(/"/g, "");
+  const q = `in:sent to:${safeTo} newer_than:120d`;
+
+  const { data: listData } = await gmail.users.messages.list({
+    userId: "me",
+    maxResults: 25,
+    q,
+  });
+
+  const refs = listData.messages ?? [];
+  const draftSub = options.draftSubject?.trim() ?? "";
+  if (draftSub.length < 3) return null;
+
+  let best: { threadId: string; rfcMessageId: string | null; score: number } | null = null;
+
+  for (const ref of refs) {
+    if (!ref.id) continue;
+    try {
+      const { data: msg } = await gmail.users.messages.get({
+        userId: "me",
+        id: ref.id,
+        format: "full",
+      });
+      const headers = msg.payload?.headers ?? [];
+      const getHeader = (name: string) =>
+        headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? "";
+
+      const subject = getHeader("Subject") || "";
+      const overlap = feedbackSubjectTokenOverlap(subject, draftSub);
+      if (overlap < 1) continue;
+
+      const from = getHeader("From");
+      const fromEmail = extractEmailAddressFromFromHeader(from);
+      if (fromEmail && conn.accountEmail) {
+        const acct = conn.accountEmail.trim().toLowerCase();
+        if (fromEmail !== acct) continue;
+      }
+
+      const tid = msg.threadId;
+      if (!tid) continue;
+
+      const mid = getHeader("Message-ID")?.trim() ?? "";
+      const rfcMessageId = mid ? mid.replace(/^<|>$/g, "") : null;
+      const score = overlap + (subject.length > 10 ? 1 : 0);
+      if (!best || score > best.score) {
+        best = { threadId: tid, rfcMessageId, score };
+      }
+    } catch (err) {
+      console.error("[gmail] discover sent feedback message failed", ref.id, err);
+    }
+  }
+
+  if (!best) return null;
+  return { threadId: best.threadId, rfcMessageId: best.rfcMessageId };
+}
+
+/**
+ * Full messages in a thread (for buyer-agent reply extraction).
+ */
+export async function fetchGmailThreadMessagesForFeedback(
+  conn: GmailConnection,
+  threadId: string
+): Promise<GmailFeedbackThreadMessage[]> {
+  const auth = await ensureValidGoogleOAuth2Client(conn);
+  const gmail = google.gmail({ version: "v1", auth });
+
+  const { data: thread } = await gmail.users.threads.get({
+    userId: "me",
+    id: threadId,
+    format: "full",
+  });
+
+  const refs = thread.messages ?? [];
+  const out: GmailFeedbackThreadMessage[] = [];
+
+  for (const msg of refs) {
+    if (!msg.id) continue;
+    try {
+      const headers = msg.payload?.headers ?? [];
+      const getHeader = (name: string) =>
+        headers.find((h) => h.name?.toLowerCase() === name.toLowerCase())?.value ?? "";
+
+      const from = getHeader("From") || null;
+      const dateHeader = getHeader("Date");
+      const receivedAt = msg.internalDate
+        ? new Date(Number(msg.internalDate))
+        : dateHeader
+          ? new Date(dateHeader)
+          : new Date();
+
+      const { plainParts, htmlParts } = gatherMailBodies(msg.payload ?? undefined);
+      let rawBodyText = pickSupraRawBodyFromChunks(plainParts, htmlParts);
+      if (!rawBodyText.trim()) {
+        rawBodyText = (msg.snippet ?? "").trim() || "(Empty body)";
+      }
+      if (rawBodyText.length > MAX_RAW_BODY_CHARS) {
+        rawBodyText = rawBodyText.slice(0, MAX_RAW_BODY_CHARS);
+      }
+
+      out.push({
+        gmailMessageId: msg.id,
+        threadId: msg.threadId ?? threadId,
+        labelIds: msg.labelIds ?? [],
+        fromHeader: from,
+        senderEmail: extractEmailAddressFromFromHeader(from),
+        receivedAt,
+        rawBodyText,
+        inReplyTo: getHeader("In-Reply-To")?.trim() || null,
+        references: getHeader("References")?.trim() || null,
+        rfcMessageId: getHeader("Message-ID")?.trim().replace(/^<|>$/g, "") || null,
+      });
+    } catch (err) {
+      console.error("[gmail] parse thread message failed", msg.id, err);
+    }
+  }
+
+  return out.sort((a, b) => a.receivedAt.getTime() - b.receivedAt.getTime());
+}
 
 export type GmailFeedbackReplyCandidate = {
   gmailMessageId: string;

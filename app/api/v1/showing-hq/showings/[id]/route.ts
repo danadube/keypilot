@@ -77,6 +77,10 @@ export async function PATCH(
       updateData.feedbackRequestStatus = parsed.data.feedbackRequestStatus;
       updateData.feedbackEmailSentAt = new Date();
     }
+    if (parsed.data.feedbackGmailThreadId !== undefined) {
+      const v = parsed.data.feedbackGmailThreadId;
+      updateData.feedbackGmailThreadId = v === null ? null : v.trim() || null;
+    }
     if (parsed.data.prepChecklistFlags !== undefined) {
       updateData.prepChecklistFlags =
         parsed.data.prepChecklistFlags === null

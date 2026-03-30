@@ -30,6 +30,8 @@ export const UpdateShowingSchema = z.object({
   buyerAgentEmail: optionalBuyerAgentEmail,
   /** Buyer-agent email draft workflow — user confirmed they sent the draft from their mail client. */
   feedbackRequestStatus: z.literal("SENT").optional(),
+  /** Gmail thread id (from Gmail URL or API) so feedback replies ingest only from this thread. */
+  feedbackGmailThreadId: z.string().trim().min(1).max(128).nullable().optional(),
   /** Omit to leave unchanged; `null` clears stored JSON (SQL NULL). */
   prepChecklistFlags: ShowingPrepChecklistFlagsSchema.nullable().optional(),
 });

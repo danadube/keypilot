@@ -340,6 +340,10 @@ model Showing {
   buyerAgentEmailReplyRaw      String?         @db.Text
   buyerAgentEmailReplyAt       DateTime?
   buyerAgentEmailReplyFrom     String?
+  /** Gmail thread id for the buyer-agent feedback email conversation (ingestion only processes this thread). */
+  feedbackGmailThreadId       String?
+  /** RFC Message-ID of the host's sent feedback email (optional; strengthens reply chain). */
+  feedbackSentRfcMessageId    String?
   /** Gmail message id for idempotent ingestion */
   buyerAgentEmailReplyGmailId  String?         @unique
   /** Optional rule-based highlights { interestHint?, concerns?, pricingComment?, followUpInterest?, confidence } — never replaces raw */
