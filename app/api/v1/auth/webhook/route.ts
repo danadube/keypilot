@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
-import { prismaAdmin } from "@/lib/db";
+import { upsertUserFromClerkPayload } from "@/lib/clerk-user-db-sync";
 
 export async function POST(req: NextRequest) {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET?.trim();
@@ -57,13 +57,12 @@ export async function POST(req: NextRequest) {
       );
     }
     const name = [first_name, last_name].filter(Boolean).join(" ") || "User";
-    const email =
-      email_addresses?.[0]?.email_address ?? `user-${id}@placeholder.local`;
+    const rawEmail = email_addresses?.[0]?.email_address;
     try {
-      await prismaAdmin.user.upsert({
-        where: { clerkId: id },
-        create: { clerkId: id, name, email },
-        update: { name, email },
+      await upsertUserFromClerkPayload({
+        clerkId: id,
+        name,
+        rawEmail,
       });
     } catch (err) {
       console.error("Webhook user.created DB error:", err);
@@ -84,12 +83,12 @@ export async function POST(req: NextRequest) {
       );
     }
     const name = [first_name, last_name].filter(Boolean).join(" ") || "User";
-    const email =
-      email_addresses?.[0]?.email_address ?? `user-${id}@placeholder.local`;
+    const rawEmail = email_addresses?.[0]?.email_address;
     try {
-      await prismaAdmin.user.update({
-        where: { clerkId: id },
-        data: { name, email },
+      await upsertUserFromClerkPayload({
+        clerkId: id,
+        name,
+        rawEmail,
       });
     } catch (err) {
       console.error("Webhook user.updated DB error:", err);
