@@ -43,7 +43,8 @@ function getPageTitle(pathname: string): string {
   if (base.startsWith("/showing-hq")) return "ShowingHQ";
   if (base.startsWith("/open-houses")) {
     if (isOpenHousesListPath(pathname)) return "All Open Houses";
-    if (base.startsWith("/open-houses/new")) return "New Open House";
+    // Page hero carries the specific title; shell stays contextual like /showing-hq/*.
+    if (base.startsWith("/open-houses/new")) return "ShowingHQ";
     return "ShowingHQ";
   }
   if (pathname.startsWith("/properties/new")) return "New Property";

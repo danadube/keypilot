@@ -14,12 +14,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  EditableBlock,
+  EditableBlockContent,
+  EditableBlockHeader,
+} from "@/components/ui/editable-block";
+import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
 import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 import { AF, afError, FLASH_QUERY } from "@/lib/ui/action-feedback";
 import {
@@ -88,19 +87,22 @@ export function NewOpenHouseForm() {
     Promise.all([
       fetch("/api/v1/properties").then((res) => res.json()),
       fetch("/api/v1/agents").then((res) => res.json()),
-    ]).then(([propsJson, agentsJson]) => {
-      if (propsJson.error) setError(propsJson.error.message);
-      else setProperties(propsJson.data || []);
-      if (!agentsJson.error) {
-        const list = agentsJson.data || [];
-        setAgents(list);
-        const me = list.find((a: Agent) => a.id === "me");
-        if (me) {
-          setAgentName(me.name);
-          setAgentEmail(me.email);
+    ])
+      .then(([propsJson, agentsJson]) => {
+        if (propsJson.error) setError(propsJson.error.message);
+        else setProperties(propsJson.data || []);
+        if (!agentsJson.error) {
+          const list = agentsJson.data || [];
+          setAgents(list);
+          const me = list.find((a: Agent) => a.id === "me");
+          if (me) {
+            setAgentName(me.name);
+            setAgentEmail(me.email);
+          }
         }
-      }
-    }).catch(() => setError("Failed to load")).finally(() => setLoading(false));
+      })
+      .catch(() => setError("Failed to load"))
+      .finally(() => setLoading(false));
   }, []);
 
   const selectedProperty = properties.find((p) => p.id === propertyId);
@@ -153,8 +155,14 @@ export function NewOpenHouseForm() {
       setError("End time must be after start time.");
       return;
     }
-    const name = agentSource === "me" ? (agents.find((a) => a.id === "me")?.name ?? agentName) : agentName;
-    const email = agentSource === "me" ? (agents.find((a) => a.id === "me")?.email ?? agentEmail) : agentEmail;
+    const name =
+      agentSource === "me"
+        ? agents.find((a) => a.id === "me")?.name ?? agentName
+        : agentName;
+    const secondEmail =
+      agentSource === "me"
+        ? agents.find((a) => a.id === "me")?.email ?? agentEmail
+        : agentEmail;
     setSubmitting(true);
     setError(null);
     try {
@@ -168,8 +176,8 @@ export function NewOpenHouseForm() {
           endAt: endIso,
           notes: notes || null,
           agentName: name?.trim() || null,
-          agentEmail: email?.trim() || null,
-          agentPhone: agentPhone?.trim() || null,
+          agentEmail: secondEmail?.trim() || null,
+          agentPhone: agentPhone.trim() || null,
         }),
       });
       const json = await res.json();
@@ -206,52 +214,57 @@ export function NewOpenHouseForm() {
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" className={cn(kpBtnTertiary)} asChild>
-          <Link href="/open-houses">← Back</Link>
-        </Button>
-      </div>
+    <div className="min-h-0 flex flex-col gap-4 bg-transparent">
+      <ShowingHQPageHero
+        title="New Open House"
+        description="Public event with visitor sign-in — not a private showing. This will appear in ShowingHQ once scheduled."
+        action={
+          <Button variant="ghost" size="sm" className={cn(kpBtnTertiary)} asChild>
+            <Link href="/open-houses" className="text-slate-200 hover:text-white">
+              ← Back to open houses
+            </Link>
+          </Button>
+        }
+      />
 
       {properties.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>No properties yet</CardTitle>
-            <CardDescription>
-              Add a property first before creating an open house.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" className={cn(kpBtnPrimary, "border-transparent")} asChild>
-              <Link href="/properties/new">Add Property</Link>
+        <EditableBlock className="mx-auto w-full max-w-2xl !p-3.5 sm:!p-4">
+          <EditableBlockHeader
+            title="Add a property first"
+            description="You need at least one property to schedule an open house."
+            showEditButton={false}
+          />
+          <EditableBlockContent>
+            <Button variant="outline" className={cn(kpBtnPrimary, "border-0")} asChild>
+              <Link href="/properties/new">Add property</Link>
             </Button>
-          </CardContent>
-        </Card>
+          </EditableBlockContent>
+        </EditableBlock>
       ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Event details</CardTitle>
-            <CardDescription>
-              Schedule an open house for one of your properties
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {error && (
-                <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                  {error}
-                </div>
-              )}
+        <form
+          onSubmit={handleSubmit}
+          className="mx-auto flex w-full max-w-2xl flex-col gap-3 pb-8"
+        >
+          {error ? (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          ) : null}
 
-              <div className="space-y-2">
-                <Label htmlFor="propertyId">Property *</Label>
-                <Select
-                  value={propertyId}
-                  onValueChange={setPropertyId}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a property" />
+          <EditableBlock className="space-y-2.5 !p-3.5 sm:!p-4">
+            <EditableBlockHeader
+              title="Event details"
+              description="Property, listing title, and optional photo."
+              showEditButton={false}
+            />
+            <EditableBlockContent className="space-y-2">
+              <div className="space-y-1">
+                <Label htmlFor="propertyId" className="text-xs text-kp-on-surface-variant">
+                  Property <span className="text-destructive">*</span>
+                </Label>
+                <Select value={propertyId} onValueChange={setPropertyId} required>
+                  <SelectTrigger id="propertyId">
+                    <SelectValue placeholder="Choose a property" />
                   </SelectTrigger>
                   <SelectContent>
                     {properties.map((p) => (
@@ -262,18 +275,17 @@ export function NewOpenHouseForm() {
                   </SelectContent>
                 </Select>
               </div>
-
-              {propertyId && (
-                <div className="space-y-2">
-                  <Label>Property photo</Label>
-                  <div className="flex items-start gap-4">
+              {propertyId ? (
+                <div className="space-y-1">
+                  <Label className="text-xs text-kp-on-surface-variant">Property photo</Label>
+                  <div className="flex flex-wrap items-start gap-3">
                     {selectedProperty?.imageUrl ? (
-                      <div className="relative">
+                      <div className="relative shrink-0">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={selectedProperty.imageUrl}
-                          alt="Property"
-                          className="h-24 w-32 rounded-lg border object-cover"
+                          alt="Property preview"
+                          className="h-20 w-28 rounded-lg border border-kp-outline object-cover"
                         />
                       </div>
                     ) : null}
@@ -293,7 +305,9 @@ export function NewOpenHouseForm() {
                         disabled={photoUploading}
                         onClick={() => fileInputRef.current?.click()}
                       >
-                        {photoUploading ? "Uploading..." : (
+                        {photoUploading ? (
+                          "Uploading…"
+                        ) : (
                           <>
                             <ImagePlus className="mr-2 h-4 w-4" />
                             Upload photo
@@ -303,21 +317,137 @@ export function NewOpenHouseForm() {
                     </div>
                   </div>
                 </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="title">Event title *</Label>
+              ) : null}
+              <div className="space-y-1">
+                <Label htmlFor="title" className="text-xs text-kp-on-surface-variant">
+                  Event title <span className="text-destructive">*</span>
+                </Label>
                 <Input
                   id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Sunday Open House"
+                  placeholder="e.g. Sunday open house"
                   required
                 />
               </div>
+            </EditableBlockContent>
+          </EditableBlock>
 
-              <div className="space-y-2">
-                <Label>Hosting agent</Label>
+          <EditableBlock
+            className={cn(
+              "space-y-2.5 !p-3.5 ring-1 ring-kp-teal/25 sm:!p-4",
+              "bg-kp-teal/[0.06]"
+            )}
+          >
+            <EditableBlockHeader
+              title="Schedule"
+              description="Start and end — quick presets apply to start time."
+              showEditButton={false}
+            />
+            <EditableBlockContent className="space-y-3">
+              <div className="space-y-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                  Start <span className="text-destructive">*</span>
+                </p>
+                <DateTimeFieldGroup className="gap-2 sm:gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="ohStartDate" className="text-[10px] text-kp-on-surface-variant">
+                      Date
+                    </Label>
+                    <DateInputField
+                      id="ohStartDate"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="ohStartTime" className="text-[10px] text-kp-on-surface-variant">
+                      Time
+                    </Label>
+                    <TimeInputField
+                      id="ohStartTime"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                </DateTimeFieldGroup>
+                <div className="rounded-lg border border-kp-outline/90 bg-kp-surface-high/35 px-2.5 py-2 sm:px-3">
+                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                    Quick set
+                  </p>
+                  <TimeQuickChips
+                    emphasized
+                    disabled={submitting}
+                    className="gap-1.5 sm:gap-2"
+                    onSelect={(p) => {
+                      const next = applyQuickTimePreset(p, {
+                        date: startDate,
+                        time: startTime,
+                      });
+                      setStartDate(next.date);
+                      setStartTime(next.time);
+                    }}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
+                  onClick={() => {
+                    const start = localDateTimeFromParts(startDate, startTime);
+                    if (Number.isNaN(start.getTime())) return;
+                    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
+                    setEndDate(dateToLocalDateInput(end));
+                    setEndTime(dateToLocalTimeInput(end));
+                  }}
+                >
+                  Set end +2 hours from start
+                </Button>
+              </div>
+              <div className="border-t border-kp-outline/50 pt-2.5">
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                  End <span className="text-destructive">*</span>
+                </p>
+                <DateTimeFieldGroup className="gap-2 sm:gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="ohEndDate" className="text-[10px] text-kp-on-surface-variant">
+                      Date
+                    </Label>
+                    <DateInputField
+                      id="ohEndDate"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="ohEndTime" className="text-[10px] text-kp-on-surface-variant">
+                      Time
+                    </Label>
+                    <TimeInputField
+                      id="ohEndTime"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      required
+                    />
+                  </div>
+                </DateTimeFieldGroup>
+              </div>
+            </EditableBlockContent>
+          </EditableBlock>
+
+          <EditableBlock className="space-y-2.5 !p-3.5 sm:!p-4">
+            <EditableBlockHeader
+              title="Listing agent"
+              description="Shown on the open house; defaults to you."
+              showEditButton={false}
+            />
+            <EditableBlockContent className="space-y-2">
+              <div className="space-y-1">
+                <Label className="text-xs text-kp-on-surface-variant">Host</Label>
                 <Select
                   value={agentSource}
                   onValueChange={(v: "me" | "custom") => {
@@ -337,149 +467,89 @@ export function NewOpenHouseForm() {
                     <SelectItem value="me">
                       Me ({agents.find((a) => a.id === "me")?.name ?? "Current user"})
                     </SelectItem>
-                    <SelectItem value="custom">Enter custom</SelectItem>
+                    <SelectItem value="custom">Someone else</SelectItem>
                   </SelectContent>
                 </Select>
-                <div className="mt-3 grid gap-4 sm:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="agentName">Agent name</Label>
-                    <Input
-                      id="agentName"
-                      value={agentName}
-                      onChange={(e) => setAgentName(e.target.value)}
-                      placeholder="Jane Smith"
-                      readOnly={agentSource === "me"}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="agentEmail">Agent email</Label>
-                    <Input
-                      id="agentEmail"
-                      type="email"
-                      value={agentEmail}
-                      onChange={(e) => setAgentEmail(e.target.value)}
-                      placeholder="jane@example.com"
-                      readOnly={agentSource === "me"}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="agentPhone">Agent phone</Label>
-                    <Input
-                      id="agentPhone"
-                      type="tel"
-                      value={agentPhone}
-                      onChange={(e) => setAgentPhone(e.target.value)}
-                      placeholder="(555) 123-4567"
-                    />
-                  </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <div className="space-y-1">
+                  <Label htmlFor="agentName" className="text-xs text-kp-on-surface-variant">
+                    Name
+                  </Label>
+                  <Input
+                    id="agentName"
+                    value={agentName}
+                    onChange={(e) => setAgentName(e.target.value)}
+                    placeholder="Name"
+                    readOnly={agentSource === "me"}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="agentEmail" className="text-xs text-kp-on-surface-variant">
+                    Email
+                  </Label>
+                  <Input
+                    id="agentEmail"
+                    type="email"
+                    value={agentEmail}
+                    onChange={(e) => setAgentEmail(e.target.value)}
+                    placeholder="Email"
+                    readOnly={agentSource === "me"}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="agentPhone" className="text-xs text-kp-on-surface-variant">
+                    Phone
+                  </Label>
+                  <Input
+                    id="agentPhone"
+                    type="tel"
+                    value={agentPhone}
+                    onChange={(e) => setAgentPhone(e.target.value)}
+                    placeholder="Optional"
+                  />
                 </div>
               </div>
+            </EditableBlockContent>
+          </EditableBlock>
 
-              <div className="space-y-3">
-                <p className="text-xs font-medium text-kp-on-surface-variant">Start *</p>
-                <DateTimeFieldGroup>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="ohStartDate" className="text-xs">
-                      Date
-                    </Label>
-                    <DateInputField
-                      id="ohStartDate"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="ohStartTime" className="text-xs">
-                      Time
-                    </Label>
-                    <TimeInputField
-                      id="ohStartTime"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                      required
-                    />
-                  </div>
-                </DateTimeFieldGroup>
-                <TimeQuickChips
-                  onSelect={(p) => {
-                    const next = applyQuickTimePreset(p, { date: startDate, time: startTime });
-                    setStartDate(next.date);
-                    setStartTime(next.time);
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className={cn(kpBtnSecondary, "h-8 text-[11px] font-semibold")}
-                  onClick={() => {
-                    const start = localDateTimeFromParts(startDate, startTime);
-                    if (Number.isNaN(start.getTime())) return;
-                    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000);
-                    setEndDate(dateToLocalDateInput(end));
-                    setEndTime(dateToLocalTimeInput(end));
-                  }}
-                >
-                  Set end +2h from start
-                </Button>
-              </div>
+          <EditableBlock className="space-y-2.5 !p-3.5 sm:!p-4">
+            <EditableBlockHeader
+              title="Notes"
+              description="Optional — parking, access, co-host, etc."
+              showEditButton={false}
+            />
+            <EditableBlockContent className="space-y-0">
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Add later from the workspace if you prefer."
+                rows={2}
+                className="min-h-[64px] resize-y text-sm text-kp-on-surface/90"
+              />
+            </EditableBlockContent>
+          </EditableBlock>
 
-              <div className="space-y-3">
-                <p className="text-xs font-medium text-kp-on-surface-variant">End *</p>
-                <DateTimeFieldGroup>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="ohEndDate" className="text-xs">
-                      Date
-                    </Label>
-                    <DateInputField
-                      id="ohEndDate"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="ohEndTime" className="text-xs">
-                      Time
-                    </Label>
-                    <TimeInputField
-                      id="ohEndTime"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                      required
-                    />
-                  </div>
-                </DateTimeFieldGroup>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Optional notes about this event"
-                  rows={3}
-                />
-              </div>
-
-              <div className="flex gap-3">
-                <Button
-                  type="submit"
-                  variant="outline"
-                  disabled={submitting}
-                  className={cn(kpBtnPrimary, "border-transparent")}
-                >
-                  {submitting ? AF.creating : "Create Open House"}
-                </Button>
-                <Button type="button" variant="outline" className={cn(kpBtnSecondary)} asChild>
-                  <Link href="/open-houses">Cancel</Link>
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+          <div className="flex flex-col gap-2 border-t border-kp-outline/50 pt-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <p className="order-2 text-xs leading-snug text-kp-on-surface-variant sm:order-1 sm:max-w-md">
+              This open house will appear in ShowingHQ and can be managed immediately.
+            </p>
+            <div className="order-1 flex flex-wrap gap-2 sm:order-2 sm:shrink-0">
+              <Button
+                type="submit"
+                size="lg"
+                disabled={submitting}
+                className={cn(kpBtnPrimary, "min-w-[188px] border-0 shadow-md")}
+              >
+                {submitting ? AF.scheduling : "Schedule Open House"}
+              </Button>
+              <Button type="button" variant="outline" className={cn(kpBtnSecondary)} asChild>
+                <Link href="/open-houses">Cancel</Link>
+              </Button>
+            </div>
+          </div>
+        </form>
       )}
     </div>
   );
