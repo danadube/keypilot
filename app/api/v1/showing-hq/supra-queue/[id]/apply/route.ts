@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
 import { ApplySupraQueueItemSchema } from "@/lib/validations/supra-queue";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { applyShowingEndedSupraQueueItem } from "@/lib/showing-hq/apply-showing-ended-supra-queue-item";
 import { persistShowingBuyerAgentFeedbackDraftAfterSupraApply } from "@/lib/showing-hq/showing-buyer-agent-feedback-draft";
 import {
   ShowingSource,
@@ -99,6 +100,49 @@ export async function POST(
         400,
         "INVALID_STATE"
       );
+    }
+
+    /** End-of-showing: record on matched appointment only (never treat end time as new scheduledAt). */
+    if (item.parsedStatus === "showing_ended") {
+      if (!item.matchedShowingId?.trim()) {
+        return apiError(
+          "Link this end notification to the existing showing first (Review → match property/showing), or wait for automatic matching.",
+          400,
+          "END_NEEDS_LINK"
+        );
+      }
+      const endResult = await applyShowingEndedSupraQueueItem({
+        hostUserId: user.id,
+        queueItemId: item.id,
+        reviewedByUserId: user.id,
+      });
+      if (!endResult.ok) {
+        const msg =
+          endResult.code === "PROPERTY_MISMATCH"
+            ? "Matched property does not match the showing's property. Adjust links in Review."
+            : endResult.code === "SHOWING_NOT_FOUND"
+              ? "Matched showing was not found."
+              : "Could not record this end notification on the showing.";
+        return apiError(msg, 400, endResult.code);
+      }
+      const endItem = await prismaAdmin.supraQueueItem.findFirst({
+        where: { id: item.id },
+        include: itemInclude,
+      });
+      const endShowing = await prismaAdmin.showing.findFirst({
+        where: { id: item.matchedShowingId.trim(), hostUserId: user.id, deletedAt: null },
+        select: { id: true, propertyId: true },
+      });
+      return NextResponse.json({
+        data: {
+          queueItem: endItem,
+          propertyId: endShowing?.propertyId ?? null,
+          showingId: endShowing?.id ?? item.matchedShowingId.trim(),
+          createdProperty: false,
+          updatedShowing: true,
+          buyerAgentFeedbackDraftReady: false,
+        },
+      });
     }
 
     const scheduledAt = item.parsedScheduledAt;

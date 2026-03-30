@@ -9,6 +9,7 @@ import {
   buildManualParseDraftFromRaw,
   type SupraManualParseDraft,
 } from "@/lib/integrations/supra/manual-parse-stub";
+import { applyShowingEndedSupraQueueItem } from "@/lib/showing-hq/apply-showing-ended-supra-queue-item";
 import { linkShowingEndedSupraQueueItem } from "@/lib/showing-hq/link-showing-ended-supra-queue-item";
 
 export const supraQueueParseDraftListInclude = {
@@ -131,10 +132,23 @@ export async function applySupraV1ParseDraftToQueueItem(args: {
   });
 
   try {
-    await linkShowingEndedSupraQueueItem({
+    const linked = await linkShowingEndedSupraQueueItem({
       hostUserId: args.hostUserId,
       queueItemId: args.queueItemId,
     });
+    if (linked) {
+      const applied = await applyShowingEndedSupraQueueItem({
+        hostUserId: args.hostUserId,
+        queueItemId: args.queueItemId,
+        reviewedByUserId: null,
+      });
+      if (!applied.ok) {
+        console.error("[supra-parse] auto-apply showing ended failed", {
+          queueItemId: args.queueItemId,
+          code: applied.code,
+        });
+      }
+    }
   } catch (e) {
     console.error("[supra-parse] link showing ended failed (non-fatal)", e);
   }

@@ -74,10 +74,10 @@ function formatEnumLabel(value: string): string {
 const PROPOSED_ACTION_LABELS: Record<SupraProposedAction, string> = {
   UNKNOWN: "Choose action",
   CREATE_SHOWING: "Create showing",
-  UPDATE_SHOWING: "Update showing",
+  UPDATE_SHOWING: "Update or complete showing",
   CREATE_PROPERTY_AND_SHOWING: "Create property + showing",
   DISMISS: "Dismiss",
-  NEEDS_MANUAL_REVIEW: "Review details",
+  NEEDS_MANUAL_REVIEW: "Needs review",
 };
 
 const CONFIDENCE_HINTS: Record<SupraParseConfidence, string> = {
@@ -381,10 +381,8 @@ function getApplyReadiness(detail: ItemWithRelations | null): { ok: boolean; rea
   }
   if (isLinkedEndOfShowingQueueRow(detail)) {
     return {
-      ok: false,
-      reasons: [
-        "This end-of-showing notice is already linked to an existing appointment. Dismiss when you are done—no apply needed.",
-      ],
+      ok: true,
+      reasons: [],
     };
   }
   const reasons: string[] = [];
@@ -405,12 +403,21 @@ function getApplyReadiness(detail: ItemWithRelations | null): { ok: boolean; rea
 }
 
 type FilterPreset =
+  | "active"
   | "all"
   | "ingested"
   | "needs_review"
   | "ready_to_apply"
   | "failed_parse"
   | "closed";
+
+function isTerminalInboxState(s: SupraQueueState): boolean {
+  return (
+    s === QueueStates.APPLIED ||
+    s === QueueStates.DISMISSED ||
+    s === QueueStates.DUPLICATE
+  );
+}
 
 function normalizeItem(row: ItemWithRelations): ItemWithRelations {
   return {
@@ -443,7 +450,7 @@ export function SupraInboxView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successInfo, setSuccessInfo] = useState<SupraInboxSuccessInfo | null>(null);
-  const [filterPreset, setFilterPreset] = useState<FilterPreset>("all");
+  const [filterPreset, setFilterPreset] = useState<FilterPreset>("active");
   const [detail, setDetail] = useState<ItemWithRelations | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -735,6 +742,7 @@ export function SupraInboxView() {
     let ready = 0;
     let failed = 0;
     let closed = 0;
+    let active = 0;
     for (const row of items) {
       if (row.queueState === QueueStates.INGESTED) ingested += 1;
       if (row.queueState === QueueStates.NEEDS_REVIEW) needsReview += 1;
@@ -747,8 +755,9 @@ export function SupraInboxView() {
       ) {
         closed += 1;
       }
+      if (!isTerminalInboxState(row.queueState)) active += 1;
     }
-    return { ingested, needsReview, ready, failed, closed, total: items.length };
+    return { ingested, needsReview, ready, failed, closed, active, total: items.length };
   }, [items]);
 
   const showingSuggestMultiProperty = useMemo(
@@ -758,6 +767,8 @@ export function SupraInboxView() {
 
   const displayedItems = useMemo(() => {
     switch (filterPreset) {
+      case "active":
+        return items.filter((i) => !isTerminalInboxState(i.queueState));
       case "ingested":
         return items.filter((i) => i.queueState === QueueStates.INGESTED);
       case "needs_review":
@@ -921,7 +932,7 @@ export function SupraInboxView() {
       };
       await load();
       await loadGmailAutomation();
-      setFilterPreset("all");
+      setFilterPreset("active");
       setSuccessInfo({
         message: `Gmail: ${imported} new, ${refreshed} refreshed, ${autoParsed} auto-parsed to NEEDS_REVIEW, ${skipped} skipped (${scanned} scanned, last ~14 days, Supra senders).`,
       });
@@ -950,7 +961,7 @@ export function SupraInboxView() {
       const deletedCount =
         typeof json.data?.deletedCount === "number" ? json.data.deletedCount : 0;
       await load();
-      setFilterPreset("all");
+      setFilterPreset("active");
       setSuccessInfo({
         message: `Removed ${deletedCount} queue row(s). Applied rows were kept. Properties and showings were not changed.`,
       });
@@ -1439,7 +1450,7 @@ export function SupraInboxView() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message ?? "Failed to add sample");
       await load();
-      setFilterPreset("all");
+      setFilterPreset("active");
       setSuccessInfo({
         message:
           kind === "typical"
@@ -1592,6 +1603,12 @@ export function SupraInboxView() {
         <div className="flex flex-col gap-1.5">
           <p className={t.section}>Filter</p>
           <div className="flex flex-wrap gap-2">
+            {filterChip(
+              "active",
+              "Needs attention",
+              counts.active,
+              "bg-kp-teal/90 font-semibold text-white shadow-md hover:bg-kp-teal hover:text-white"
+            )}
             {filterChip("all", "All", counts.total)}
             {filterChip("ingested", "Ingested (raw)", counts.ingested)}
             {filterChip(
@@ -1746,7 +1763,10 @@ export function SupraInboxView() {
                   to try the workflow.
                 </>
               ) : (
-                <>Try another filter, or clear filters to see all {items.length} item(s).</>
+                <>
+                  Everything in queue is applied or archived. Open{" "}
+                  <strong>All</strong> or <strong>Closed</strong> for history.
+                </>
               )}
             </p>
             {items.length === 0 ? (
@@ -1793,9 +1813,9 @@ export function SupraInboxView() {
                 variant="outline"
                 size="sm"
                 className={cn(supraBtnSecondary, "mt-4")}
-                onClick={() => setFilterPreset("all")}
+                onClick={() => setFilterPreset("active")}
               >
-                Show all
+                Needs attention
               </Button>
             )}
           </div>
@@ -1804,10 +1824,12 @@ export function SupraInboxView() {
             <div className="flex flex-col gap-0.5 border-b border-kp-outline pb-3">
               <p className="text-sm font-semibold text-kp-on-surface">Action board</p>
               <p className="text-xs leading-relaxed text-kp-on-surface/88">
-                <span className="font-semibold text-kp-on-surface">Apply</span> appears when schedule
-                and property resolution are ready (linked property or full parsed address), same as the
-                server. Open <span className="font-semibold text-kp-on-surface">Review</span> to match,
-                edit, or handle edge cases.
+                <span className="font-semibold text-kp-on-surface">New</span> and{" "}
+                <span className="font-semibold text-kp-on-surface">end</span> Supra emails share one
+                lifecycle: matched end notices are recorded on the showing and leave this queue
+                automatically when the parser links them. Open{" "}
+                <span className="font-semibold text-kp-on-surface">Review</span> for anything that still
+                needs a match or fix.
               </p>
             </div>
             {displayedItems.map((row) => {

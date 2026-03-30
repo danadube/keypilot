@@ -51,10 +51,10 @@ export function isLinkedEndOfShowingQueueRow(row: {
 const LIST_ACTION_LABEL: Record<SupraProposedAction, string> = {
   UNKNOWN: "Set action in review",
   CREATE_SHOWING: "Create showing",
-  UPDATE_SHOWING: "Update showing",
+  UPDATE_SHOWING: "Update or complete showing",
   CREATE_PROPERTY_AND_SHOWING: "Create property + showing",
   DISMISS: "Dismiss",
-  NEEDS_MANUAL_REVIEW: "Review details",
+  NEEDS_MANUAL_REVIEW: "Needs review",
 };
 
 function formatEnumLabel(value: string): string {
@@ -214,7 +214,7 @@ export function SupraInboxQueueRow({
       ? formatDateTime(new Date(row.matchedShowing.scheduledAt))
       : null;
   const queueChip = linkedEnd
-    ? { variant: "sold" as const, label: "Lifecycle linked" }
+    ? { variant: "sold" as const, label: "Matched to showing" }
     : listQueueBadge(row.queueState, applyReadinessOk);
 
   const showArchive =
@@ -280,7 +280,7 @@ export function SupraInboxQueueRow({
               </StatusBadge>
               {linkedEnd ? (
                 <span className="rounded border border-emerald-500/55 bg-emerald-950/50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-100">
-                  Matched end notification
+                  End notice · same lifecycle
                 </span>
               ) : null}
             </div>
