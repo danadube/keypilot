@@ -1,18 +1,31 @@
 import type { Prisma } from "@prisma/client";
 
 type TxRow = {
-  salePrice: Prisma.Decimal | null;
-  gci: Prisma.Decimal | null;
-  adjustedGci: Prisma.Decimal | null;
-  referralDollar: Prisma.Decimal | null;
-  totalBrokerageFees: Prisma.Decimal | null;
-  nci: Prisma.Decimal | null;
-  netVolume: Prisma.Decimal | null;
+  salePrice: Prisma.Decimal | null | undefined;
+  gci?: Prisma.Decimal | null;
+  adjustedGci?: Prisma.Decimal | null;
+  referralDollar?: Prisma.Decimal | null;
+  totalBrokerageFees?: Prisma.Decimal | null;
+  nci?: Prisma.Decimal | null;
+  netVolume?: Prisma.Decimal | null;
 };
 
-function n(d: Prisma.Decimal | null | undefined): number | null {
+function n(d: unknown): number | null {
   if (d == null) return null;
-  return d.toNumber();
+  if (typeof d === "number") return Number.isFinite(d) ? d : null;
+  if (typeof d === "string") {
+    const x = parseFloat(d);
+    return Number.isNaN(x) ? null : x;
+  }
+  if (typeof d === "object" && "toNumber" in d && typeof (d as { toNumber: () => number }).toNumber === "function") {
+    try {
+      const x = (d as Prisma.Decimal).toNumber();
+      return Number.isFinite(x) ? x : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 /** Serialize transaction for JSON API (decimals → numbers). */

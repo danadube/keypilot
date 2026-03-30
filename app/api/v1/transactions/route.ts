@@ -48,7 +48,6 @@ export async function GET(req: NextRequest) {
         include: {
           property: { select: propertySelect },
           deal: { select: transactionLinkedDealSelect },
-          primaryContact: { select: primaryContactSelect },
         },
         orderBy: { createdAt: "desc" },
       })

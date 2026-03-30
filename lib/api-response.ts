@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 export type ApiErrorShape = {
   error: { message: string; code?: string };
@@ -41,5 +42,28 @@ export function apiErrorFromCaught(
   if (code === "CRM_ACCESS_REQUIRED") {
     return apiError("CRM access required", 403, code);
   }
+
+  if (e instanceof Prisma.PrismaClientKnownRequestError) {
+    if (e.code === "P2022") {
+      return apiError(
+        "Database schema is out of date. Apply pending Prisma migrations to this environment (for example npx prisma migrate deploy), then retry.",
+        503,
+        "SCHEMA_DRIFT"
+      );
+    }
+  }
+
+  const lower = msg.toLowerCase();
+  if (
+    lower.includes("column") &&
+    (lower.includes("does not exist") || lower.includes("unknown column"))
+  ) {
+    return apiError(
+      "Database schema is out of date. Apply pending Prisma migrations to this environment, then retry.",
+      503,
+      "SCHEMA_DRIFT"
+    );
+  }
+
   return apiError("Internal server error", 500);
 }
