@@ -12,6 +12,31 @@ import {
   isShowingHQContext,
 } from "@/lib/showing-hq/isShowingHQContext";
 
+/**
+ * "Today" line under ShowingHQ — must not run locale formatting during SSR, or the
+ * server timezone (e.g. UTC on Vercel) and the browser timezone produce different
+ * strings and React throws hydration errors (#425 / #418 / #423).
+ */
+function WorkbenchDateLine() {
+  const [line, setLine] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    setLine(
+      new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    );
+  }, []);
+  if (!line) return null;
+  return (
+    <p className="mt-0.5 truncate text-[10px] leading-tight text-kp-on-surface-variant">
+      {line}
+    </p>
+  );
+}
+
 function getPageTitle(pathname: string): string {
   const base = (pathname.split("?")[0] ?? "").replace(/\/$/, "") || "/";
   // All routes under ShowingHQ use one shell title; entity context lives on the page.
@@ -45,16 +70,6 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   /** Open house module routes share ShowingHQ header actions. */
   const showHeaderNewMenu = isShowingHQContext(pathname);
   const isShowingHQWorkbenchHome = pathname === "/showing-hq";
-  const workbenchDateLine = React.useMemo(
-    () =>
-      new Date().toLocaleDateString("en-US", {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      }),
-    []
-  );
 
   return (
     <ProductTierProvider>
@@ -75,11 +90,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               <h1 className="truncate text-sm font-semibold leading-tight text-kp-on-surface md:text-base">
                 {getPageTitle(pathname)}
               </h1>
-              {isShowingHQWorkbenchHome ? (
-                <p className="mt-0.5 truncate text-[10px] leading-tight text-kp-on-surface-variant">
-                  {workbenchDateLine}
-                </p>
-              ) : null}
+              {isShowingHQWorkbenchHome ? <WorkbenchDateLine /> : null}
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 border-l border-kp-outline bg-kp-surface px-2.5 md:gap-2 md:px-3.5">
