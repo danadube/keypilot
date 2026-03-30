@@ -1318,18 +1318,36 @@ export type RecentReportOutputRow = {
   visitorCount: number;
 };
 
-/** Tertiary outputs — only when data exists. */
+/** Tertiary outputs — only when data exists, or a minimal unavailable state when load failed. */
 export function RecentOutputsRailSection({
   reports,
+  loadFailed,
   formatShortDate,
   formatTime,
   className,
 }: {
   reports: RecentReportOutputRow[];
+  /** When true, show a small operational message instead of hiding the section. */
+  loadFailed?: boolean;
   formatShortDate: (iso: string) => string;
   formatTime: (iso: string) => string;
   className?: string;
 }) {
+  if (loadFailed) {
+    return (
+      <section
+        className={cn("rounded-md border border-kp-outline/30 bg-kp-bg/40 px-3 py-2.5 sm:px-3.5", className)}
+        aria-labelledby="recent-outputs-heading"
+      >
+        <h2 id="recent-outputs-heading" className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+          Recent reports
+        </h2>
+        <p className="mt-2 text-[10px] leading-snug text-kp-on-surface-variant">
+          Couldn&apos;t load this section. Refresh the page or try again in a moment.
+        </p>
+      </section>
+    );
+  }
   if (reports.length === 0) return null;
   const top = reports.slice(0, 4);
   return (

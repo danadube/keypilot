@@ -109,7 +109,9 @@ type DashboardData = {
     property: { address1?: string | null; city?: string; state?: string };
     visitorCount: number;
   }[];
-  agentFollowUps?: AgentFollowUpBuckets;
+  recentReportsLoadFailed?: boolean;
+  /** null = slice failed to load (distinct from empty buckets). */
+  agentFollowUps?: AgentFollowUpBuckets | null;
 };
 
 const GETTING_STARTED_DISMISSED_KEY = "showinghq-getting-started-dismissed";
@@ -176,10 +178,21 @@ export function ShowingHQDashboardView() {
 
   const refetchDashboard = () =>
     fetch("/api/v1/showing-hq/dashboard")
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) setError(json.error.message);
-        else setData(json.data);
+      .then(async (res) => {
+        const json = (await res.json()) as {
+          error?: { message?: string };
+          data?: DashboardData;
+        };
+        if (!res.ok) {
+          setError(json.error?.message ?? `Request failed (${res.status})`);
+          return;
+        }
+        if (json.error?.message) {
+          setError(json.error.message);
+          return;
+        }
+        setError(null);
+        if (json.data) setData(json.data);
       })
       .catch(() => setError("Failed to load"));
 
@@ -343,7 +356,21 @@ export function ShowingHQDashboardView() {
       >
         <div className="flex min-w-0 flex-col gap-5">
           <WhatNeedsAttentionSection rows={workflowRows} />
-          {data.agentFollowUps ? (
+          {data.agentFollowUps === null ? (
+            <section className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3">
+              <p className="text-sm font-medium text-kp-on-surface">Person follow-ups</p>
+              <p className="mt-1 text-xs text-kp-on-surface-variant">
+                Couldn&apos;t load this section. Your schedule and workflow rows above are still up to date.
+              </p>
+              <button
+                type="button"
+                onClick={() => refetchDashboard()}
+                className="mt-2 text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
+              >
+                Retry
+              </button>
+            </section>
+          ) : data.agentFollowUps ? (
             <ShowingHqAgentFollowUpsSection buckets={data.agentFollowUps} onRefresh={refetchDashboard} />
           ) : null}
           <TodayScheduleSection rows={todayScheduleRows} formatTime={formatTime} />
@@ -363,6 +390,7 @@ export function ShowingHQDashboardView() {
           />
           <RecentOutputsRailSection
             reports={recentReportOutputs}
+            loadFailed={Boolean(data.recentReportsLoadFailed)}
             formatShortDate={formatShortDate}
             formatTime={formatTime}
           />

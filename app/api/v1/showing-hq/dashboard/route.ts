@@ -1,6 +1,11 @@
 /**
  * ShowingHQ dashboard API — module-specific stats and data.
  * Keeps ShowingHQ logic separate from global dashboard.
+ *
+ * Resilience (partial render): failures in secondary slices log `slice_nonfatal` and
+ * return partial JSON so the workbench can still load. Core slices remain strict
+ * (RLS parallel batch, schedule composition, auth); if those throw, the handler
+ * returns `request_failed` / API error.
  */
 
 import { NextResponse } from "next/server";
@@ -796,39 +801,54 @@ export async function GET() {
       sellerReports: { none: {} },
     };
 
-    const [
-      upcomingThisWeekOpenHouseCount,
-      upcomingThisWeekShowingCount,
-      completedOpenHousesWithoutReport,
-      pendingReportsCount,
-    ] = await Promise.all([
-      prismaAdmin.openHouse.count({
-        where: {
-          hostUserId: user.id,
-          deletedAt: null,
-          status: { in: ["SCHEDULED", "ACTIVE"] },
-          startAt: { gte: tomorrowStart, lt: upcomingWeekEnd },
-        },
-      }),
-      prismaAdmin.showing.count({
-        where: {
-          hostUserId: user.id,
-          deletedAt: null,
-          scheduledAt: { gte: tomorrowStart, lt: upcomingWeekEnd },
-        },
-      }),
-      prismaAdmin.openHouse.findMany({
-        where: completedOhNoReportWhere,
-        select: {
-          id: true,
-          endAt: true,
-          property: { select: { address1: true, city: true, state: true } },
-        },
-        orderBy: { endAt: "desc" },
-        take: 20,
-      }),
-      prismaAdmin.openHouse.count({ where: completedOhNoReportWhere }),
-    ]);
+    type CompletedOhNoReportRow = {
+      id: string;
+      endAt: Date;
+      property: { address1: string | null; city: string | null; state: string | null };
+    };
+    let upcomingThisWeekOpenHouseCount = 0;
+    let upcomingThisWeekShowingCount = 0;
+    let completedOpenHousesWithoutReport: CompletedOhNoReportRow[] = [];
+    let pendingReportsCount = 0;
+    try {
+      const row = await Promise.all([
+        prismaAdmin.openHouse.count({
+          where: {
+            hostUserId: user.id,
+            deletedAt: null,
+            status: { in: ["SCHEDULED", "ACTIVE"] },
+            startAt: { gte: tomorrowStart, lt: upcomingWeekEnd },
+          },
+        }),
+        prismaAdmin.showing.count({
+          where: {
+            hostUserId: user.id,
+            deletedAt: null,
+            scheduledAt: { gte: tomorrowStart, lt: upcomingWeekEnd },
+          },
+        }),
+        prismaAdmin.openHouse.findMany({
+          where: completedOhNoReportWhere,
+          select: {
+            id: true,
+            endAt: true,
+            property: { select: { address1: true, city: true, state: true } },
+          },
+          orderBy: { endAt: "desc" },
+          take: 20,
+        }),
+        prismaAdmin.openHouse.count({ where: completedOhNoReportWhere }),
+      ]);
+      upcomingThisWeekOpenHouseCount = row[0];
+      upcomingThisWeekShowingCount = row[1];
+      completedOpenHousesWithoutReport = row[2] as CompletedOhNoReportRow[];
+      pendingReportsCount = row[3];
+    } catch (e) {
+      console.error(DASH_TAG, "slice_nonfatal", {
+        slice: "upcoming_week_report_queries",
+        message: errMessage(e),
+      });
+    }
 
     const propLineAddr = (p: { address1?: string | null; city?: string | null }) => {
       const a = p.address1?.trim();
@@ -860,67 +880,75 @@ export async function GET() {
 
     const nowForAttention = new Date();
     for (const s of privateShowingsAttentionRows) {
-      const pendingForms = s.feedbackRequests.length;
-      const st = s.feedbackRequestStatus;
-      const addr = propLineAddr(s.property);
-      const atIso = s.scheduledAt.toISOString();
+      try {
+        const pendingForms = s.feedbackRequests.length;
+        const st = s.feedbackRequestStatus;
+        const addr = propLineAddr(s.property);
+        const atIso = s.scheduledAt.toISOString();
 
-      if (st === "SENT") {
-        pushNeed({
-          key: `nf-s-sent-${s.id}`,
-          kind: "showing",
-          id: s.id,
-          address: addr,
-          at: atIso,
-          reasonLabel: "Awaiting response",
-          ctaLabel: "Open",
-          href: showingWorkflowTabHref(s.id, "feedback"),
-        });
-        continue;
-      }
+        if (st === "SENT") {
+          pushNeed({
+            key: `nf-s-sent-${s.id}`,
+            kind: "showing",
+            id: s.id,
+            address: addr,
+            at: atIso,
+            reasonLabel: "Awaiting response",
+            ctaLabel: "Open",
+            href: showingWorkflowTabHref(s.id, "feedback"),
+          });
+          continue;
+        }
 
-      const state = getShowingAttentionState(
-        {
-          scheduledAt: s.scheduledAt,
-          buyerAgentName: s.buyerAgentName,
-          buyerAgentEmail: s.buyerAgentEmail,
-          buyerName: s.buyerName,
-          notes: s.notes,
-          feedbackRequestStatus: s.feedbackRequestStatus,
-          feedbackRequired: s.feedbackRequired,
-          feedbackDraftGeneratedAt: s.feedbackDraftGeneratedAt,
-          pendingFeedbackFormCount: pendingForms,
-          prepChecklistFlags: s.prepChecklistFlags as Record<string, unknown> | null,
-        },
-            nowForAttention
-          );
+        const state = getShowingAttentionState(
+          {
+            scheduledAt: s.scheduledAt,
+            buyerAgentName: s.buyerAgentName,
+            buyerAgentEmail: s.buyerAgentEmail,
+            buyerName: s.buyerName,
+            notes: s.notes,
+            feedbackRequestStatus: s.feedbackRequestStatus,
+            feedbackRequired: s.feedbackRequired,
+            feedbackDraftGeneratedAt: s.feedbackDraftGeneratedAt,
+            pendingFeedbackFormCount: pendingForms,
+            prepChecklistFlags: s.prepChecklistFlags as Record<string, unknown> | null,
+          },
+          nowForAttention
+        );
 
-      if (state?.label === "Feedback needed") {
-        const send = state.action === "send_feedback";
-        pushNeed({
-          key: `nf-s-fb-${s.id}`,
-          kind: "showing",
-          id: s.id,
-          address: addr,
-          at: atIso,
-          reasonLabel: send ? "Feedback not sent" : "Awaiting response",
-          ctaLabel: send ? "Request feedback" : "Review",
-          href: send ? showingWorkflowTabHref(s.id, "feedback") : "/showing-hq/feedback-requests",
-        });
-        continue;
-      }
+        if (state?.label === "Feedback needed") {
+          const send = state.action === "send_feedback";
+          pushNeed({
+            key: `nf-s-fb-${s.id}`,
+            kind: "showing",
+            id: s.id,
+            address: addr,
+            at: atIso,
+            reasonLabel: send ? "Feedback not sent" : "Awaiting response",
+            ctaLabel: send ? "Request feedback" : "Review",
+            href: send ? showingWorkflowTabHref(s.id, "feedback") : "/showing-hq/feedback-requests",
+          });
+          continue;
+        }
 
-      if (state?.label === "Follow-up required") {
-        const send = state.action === "send_feedback";
-        pushNeed({
-          key: `nf-s-fu-${s.id}`,
-          kind: "showing",
-          id: s.id,
-          address: addr,
-          at: atIso,
-          reasonLabel: "Feedback not sent",
-          ctaLabel: send ? "Request feedback" : "Open",
-          href: showingWorkflowTabHref(s.id, "feedback"),
+        if (state?.label === "Follow-up required") {
+          const send = state.action === "send_feedback";
+          pushNeed({
+            key: `nf-s-fu-${s.id}`,
+            kind: "showing",
+            id: s.id,
+            address: addr,
+            at: atIso,
+            reasonLabel: "Feedback not sent",
+            ctaLabel: send ? "Request feedback" : "Open",
+            href: showingWorkflowTabHref(s.id, "feedback"),
+          });
+        }
+      } catch (e) {
+        console.error(DASH_TAG, "slice_nonfatal", {
+          slice: "needs_followup_private_showing_row",
+          showingId: s.id,
+          message: errMessage(e),
         });
       }
     }
@@ -944,21 +972,28 @@ export async function GET() {
       const oid = d.openHouseId;
       followUpsByOh.set(oid, (followUpsByOh.get(oid) ?? 0) + 1);
     }
-    for (const [openHouseId, n] of Array.from(followUpsByOh.entries())) {
-      if (n < 1) continue;
-      const ohRow = openHouseEnrichMap.get(openHouseId);
-      const addr = ohRow?.property
-        ? propLineAddr(ohRow.property)
-        : "Open house";
-      pushNeed({
-        key: `nf-oh-fu-${openHouseId}`,
-        kind: "open_house",
-        id: openHouseId,
-        address: addr,
-        at: null,
-        reasonLabel: "Follow-ups due",
-        ctaLabel: "Review",
-        href: `/open-houses/${openHouseId}/follow-ups`,
+    try {
+      for (const [openHouseId, n] of Array.from(followUpsByOh.entries())) {
+        if (n < 1) continue;
+        const ohRow = openHouseEnrichMap.get(openHouseId);
+        const addr = ohRow?.property
+          ? propLineAddr(ohRow.property)
+          : "Open house";
+        pushNeed({
+          key: `nf-oh-fu-${openHouseId}`,
+          kind: "open_house",
+          id: openHouseId,
+          address: addr,
+          at: null,
+          reasonLabel: "Follow-ups due",
+          ctaLabel: "Review",
+          href: `/open-houses/${openHouseId}/follow-ups`,
+        });
+      }
+    } catch (e) {
+      console.error(DASH_TAG, "slice_nonfatal", {
+        slice: "needs_followup_draft_buckets",
+        message: errMessage(e),
       });
     }
 
@@ -1026,75 +1061,83 @@ export async function GET() {
       }
     }
 
-    const privateTomorrow = privateShowingsAttentionRows.filter(
-      (s) => s.scheduledAt >= tomorrowStart && s.scheduledAt < tomorrowEnd
-    );
-    const ohTomorrow = upcomingOpenHouses.filter(
-      (oh) => oh.startAt >= tomorrowStart && oh.startAt < tomorrowEnd
-    );
-    const tomorrowAttentionItems: { attention: ShowingAttentionState }[] = [];
-    for (const s of privateTomorrow) {
-      const att = getShowingAttentionState(
-        {
-          scheduledAt: s.scheduledAt,
-          buyerAgentName: s.buyerAgentName,
-          buyerAgentEmail: s.buyerAgentEmail,
-          buyerName: s.buyerName,
-          notes: s.notes,
-          feedbackRequestStatus: s.feedbackRequestStatus,
-          feedbackRequired: s.feedbackRequired,
-          feedbackDraftGeneratedAt: s.feedbackDraftGeneratedAt,
-          pendingFeedbackFormCount: s.feedbackRequests.length,
-          prepChecklistFlags: s.prepChecklistFlags as Record<string, unknown> | null,
-        },
-        nowForAttention
-      );
-      if (att) tomorrowAttentionItems.push({ attention: att });
-    }
-    for (const oh of ohTomorrow) {
-      const r = oh as {
-        agentName?: string | null;
-        agentEmail?: string | null;
-        flyerUrl?: string | null;
-        flyerOverrideUrl?: string | null;
-        qrSlug?: string | null;
-        hostAgentId?: string | null;
-        notes?: string | null;
-        hostNotes?: string | null;
-        prepChecklistFlags?: unknown;
-        hosts?: { id: string }[];
-      };
-      const e = openHouseEnrichMap.get(oh.id);
-      const pFlyer = e?.property
-        ? (e.property as { flyerUrl?: string | null }).flyerUrl
-        : null;
-      const att = getOpenHouseAttentionState(
-        {
-          startAt: oh.startAt,
-          endAt: oh.endAt,
-          status: oh.status,
-          agentName: r.agentName ?? e?.agentName,
-          agentEmail: r.agentEmail ?? e?.agentEmail,
-          flyerUrl: r.flyerUrl ?? e?.flyerUrl,
-          flyerOverrideUrl: r.flyerOverrideUrl ?? e?.flyerOverrideUrl,
-          propertyFlyerUrl: pFlyer,
-          qrSlug: r.qrSlug ?? e?.qrSlug,
-          notes: r.notes ?? e?.notes,
-          hostNotes: r.hostNotes ?? e?.hostNotes,
-          hostAgentId: r.hostAgentId ?? e?.hostAgentId,
-          nonListingHostCount: r.hosts?.length ?? e?.hosts?.length ?? 0,
-          prepChecklistFlags: (r.prepChecklistFlags ?? e?.prepChecklistFlags) as Record<
-            string,
-            unknown
-          > | null,
-        },
-        nowForAttention
-      );
-      if (att) tomorrowAttentionItems.push({ attention: att });
-    }
     let prepTomorrowCount = 0;
-    for (const t of tomorrowAttentionItems) {
-      if (mapAttentionToOperatingStatus(t.attention) === "Needs prep") prepTomorrowCount += 1;
+    try {
+      const privateTomorrow = privateShowingsAttentionRows.filter(
+        (s) => s.scheduledAt >= tomorrowStart && s.scheduledAt < tomorrowEnd
+      );
+      const ohTomorrow = upcomingOpenHouses.filter(
+        (oh) => oh.startAt >= tomorrowStart && oh.startAt < tomorrowEnd
+      );
+      const tomorrowAttentionItems: { attention: ShowingAttentionState }[] = [];
+      for (const s of privateTomorrow) {
+        const att = getShowingAttentionState(
+          {
+            scheduledAt: s.scheduledAt,
+            buyerAgentName: s.buyerAgentName,
+            buyerAgentEmail: s.buyerAgentEmail,
+            buyerName: s.buyerName,
+            notes: s.notes,
+            feedbackRequestStatus: s.feedbackRequestStatus,
+            feedbackRequired: s.feedbackRequired,
+            feedbackDraftGeneratedAt: s.feedbackDraftGeneratedAt,
+            pendingFeedbackFormCount: s.feedbackRequests.length,
+            prepChecklistFlags: s.prepChecklistFlags as Record<string, unknown> | null,
+          },
+          nowForAttention
+        );
+        if (att) tomorrowAttentionItems.push({ attention: att });
+      }
+      for (const oh of ohTomorrow) {
+        const r = oh as {
+          agentName?: string | null;
+          agentEmail?: string | null;
+          flyerUrl?: string | null;
+          flyerOverrideUrl?: string | null;
+          qrSlug?: string | null;
+          hostAgentId?: string | null;
+          notes?: string | null;
+          hostNotes?: string | null;
+          prepChecklistFlags?: unknown;
+          hosts?: { id: string }[];
+        };
+        const e = openHouseEnrichMap.get(oh.id);
+        const pFlyer = e?.property
+          ? (e.property as { flyerUrl?: string | null }).flyerUrl
+          : null;
+        const att = getOpenHouseAttentionState(
+          {
+            startAt: oh.startAt,
+            endAt: oh.endAt,
+            status: oh.status,
+            agentName: r.agentName ?? e?.agentName,
+            agentEmail: r.agentEmail ?? e?.agentEmail,
+            flyerUrl: r.flyerUrl ?? e?.flyerUrl,
+            flyerOverrideUrl: r.flyerOverrideUrl ?? e?.flyerOverrideUrl,
+            propertyFlyerUrl: pFlyer,
+            qrSlug: r.qrSlug ?? e?.qrSlug,
+            notes: r.notes ?? e?.notes,
+            hostNotes: r.hostNotes ?? e?.hostNotes,
+            hostAgentId: r.hostAgentId ?? e?.hostAgentId,
+            nonListingHostCount: r.hosts?.length ?? e?.hosts?.length ?? 0,
+            prepChecklistFlags: (r.prepChecklistFlags ?? e?.prepChecklistFlags) as Record<
+              string,
+              unknown
+            > | null,
+          },
+          nowForAttention
+        );
+        if (att) tomorrowAttentionItems.push({ attention: att });
+      }
+      for (const t of tomorrowAttentionItems) {
+        if (mapAttentionToOperatingStatus(t.attention) === "Needs prep")
+          prepTomorrowCount += 1;
+      }
+    } catch (e) {
+      console.error(DASH_TAG, "slice_nonfatal", {
+        slice: "tomorrow_prep_attention",
+        message: errMessage(e),
+      });
     }
 
     const pendingFeedbackCount =
@@ -1106,11 +1149,12 @@ export async function GET() {
     dashLog(`start ${stage}`);
     const followUpWeekEnd = new Date(todayStart);
     followUpWeekEnd.setDate(followUpWeekEnd.getDate() + 8);
-    let agentFollowUps = {
-      overdue: [] as ReturnType<typeof serializeAgentFollowUpRow>[],
-      dueToday: [] as ReturnType<typeof serializeAgentFollowUpRow>[],
-      upcoming: [] as ReturnType<typeof serializeAgentFollowUpRow>[],
+    type AgentFollowUpBucketsApi = {
+      overdue: ReturnType<typeof serializeAgentFollowUpRow>[];
+      dueToday: ReturnType<typeof serializeAgentFollowUpRow>[];
+      upcoming: ReturnType<typeof serializeAgentFollowUpRow>[];
     };
+    let agentFollowUps: AgentFollowUpBucketsApi | null = null;
     try {
       const agentFollowUpRows = await withRLSContextOrFallbackAdmin(
         user.id,
@@ -1146,12 +1190,48 @@ export async function GET() {
       );
       dashLog(`ok ${stage}`);
     } catch (e) {
-      console.error(DASH_TAG, "agent_follow_ups_failed", errMessage(e));
-      dashLog(`skip ${stage} (empty buckets)`);
+      console.error(DASH_TAG, "slice_nonfatal", {
+        slice: "agent_follow_ups_buckets",
+        message: errMessage(e),
+      });
+      agentFollowUps = null;
+      dashLog(`skip ${stage} (unavailable)`);
     }
 
     stage = "serialize_json_response";
     dashLog(`start ${stage}`);
+    type RecentReportApiRow = {
+      id: string;
+      title: string;
+      endAt: string;
+      property: {
+        address1?: string | null;
+        city?: string | null;
+        state?: string | null;
+        zip?: string | null;
+        id?: string;
+        flyerUrl?: string | null;
+      };
+      visitorCount: number;
+    };
+    let recentReportsPayload: RecentReportApiRow[] = [];
+    let recentReportsLoadFailed = false;
+    try {
+      recentReportsPayload = recentReportsOpenHouses.map((oh) => ({
+        id: oh.id,
+        title: oh.title,
+        endAt: oh.endAt.toISOString(),
+        property: oh.property,
+        visitorCount: (oh as { _count?: { visitors: number } })._count?.visitors ?? 0,
+      }));
+    } catch (e) {
+      recentReportsLoadFailed = true;
+      console.error(DASH_TAG, "slice_nonfatal", {
+        slice: "recent_reports_serialize",
+        message: errMessage(e),
+      });
+    }
+
     const body = {
       data: {
         todaysShowings: todaysOpenHouses,
@@ -1213,13 +1293,8 @@ export async function GET() {
             lastRunError: supraGmailImportSettings?.lastRunError ?? null,
           },
         },
-        recentReports: recentReportsOpenHouses.map((oh) => ({
-          id: oh.id,
-          title: oh.title,
-          endAt: oh.endAt.toISOString(),
-          property: oh.property,
-          visitorCount: (oh as { _count?: { visitors: number } })._count?.visitors ?? 0,
-        })),
+        recentReports: recentReportsPayload,
+        recentReportsLoadFailed,
         workbenchKpis: {
           upcomingOpenHouses: {
             count: upcomingOpenHousesFromTodayCount,
@@ -1244,7 +1319,7 @@ export async function GET() {
             overdue: followUpsOverdueCount,
           },
           reports: {
-            ready: recentReportsOpenHouses.length,
+            ready: recentReportsLoadFailed ? 0 : recentReportsPayload.length,
           },
         },
         stats: {
@@ -1267,11 +1342,7 @@ export async function GET() {
         pendingReportsCount,
         prepTomorrowCount,
         connections: { hasCalendar, hasGmail, hasBranding },
-        agentFollowUps: {
-          overdue: agentFollowUps.overdue,
-          dueToday: agentFollowUps.dueToday,
-          upcoming: agentFollowUps.upcoming,
-        },
+        agentFollowUps,
       },
     };
     dashLog(`ok ${stage}`);
