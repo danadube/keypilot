@@ -79,6 +79,15 @@ export const UpdateOpenHouseSchema = z
     { message: "End time must be after start time", path: ["endAt"] }
   );
 
+/** Soft-archive (sets deletedAt). Body must be exactly `{ "archive": true }` on PUT. */
+export const ArchiveOpenHouseBodySchema = z.object({
+  archive: z.literal(true),
+});
+
+export const RestoreOpenHouseBodySchema = z.object({
+  restore: z.literal(true),
+});
+
 export type CreateOpenHouseInput = z.infer<typeof CreateOpenHouseSchema>;
 export type UpdateOpenHouseInput = z.infer<typeof UpdateOpenHouseSchema>;
 export type HostFeedbackInput = z.infer<typeof HostFeedbackSchema>;

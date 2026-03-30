@@ -36,6 +36,15 @@ export const UpdateShowingSchema = z.object({
   prepChecklistFlags: ShowingPrepChecklistFlagsSchema.nullable().optional(),
 });
 
+/** Soft-archive (sets deletedAt). Body must be exactly `{ "archive": true }` on PATCH. */
+export const ArchiveShowingBodySchema = z.object({
+  archive: z.literal(true),
+});
+
+export const RestoreShowingBodySchema = z.object({
+  restore: z.literal(true),
+});
+
 export type CreateShowingInput = z.infer<typeof CreateShowingSchema>;
 export type RescheduleShowingInput = z.infer<typeof RescheduleShowingSchema>;
 export type UpdateShowingInput = z.infer<typeof UpdateShowingSchema>;

@@ -7,10 +7,12 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
+  kpBtnDangerSecondary,
   kpBtnPrimary,
   kpBtnSecondary,
   kpBtnTertiary,
 } from "@/components/ui/kp-dashboard-button-tiers";
+import { BrandModal } from "@/components/ui/BrandModal";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { ShowingPrepWorkspace } from "@/components/showing-hq/showing-prep-workspace";
@@ -55,6 +57,7 @@ type ShowingDetail = {
   buyerAgentEmailReplyRaw?: string | null;
   buyerAgentEmailReplyParsed?: unknown;
   property: { address1: string; city: string; state: string; zip?: string | null };
+  usage?: { feedbackRequests: number; feedbackRequestsPending: number };
 };
 
 function hasBuyerAgentEmailDraft(s: ShowingDetail): boolean {
@@ -99,6 +102,8 @@ export function ShowingDetailWorkflow() {
     buyerAgentEmail?: string;
   }>({});
   const { visible: detailsSavedVisible, flash: flashDetailsSaved } = useFlashSuccess();
+  const [lifecycleModalOpen, setLifecycleModalOpen] = useState(false);
+  const [lifecycleBusy, setLifecycleBusy] = useState<"archive" | "delete" | null>(null);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -140,11 +145,83 @@ export function ShowingDetailWorkflow() {
   }, [dateStr, timeStr, data?.scheduledAt]);
 
   const onPrepWorkspaceUpdated = useCallback((json: { data: ShowingDetail }) => {
-    setData(json.data);
-    setBuyerAgentName(json.data.buyerAgentName?.trim() ?? "");
-    setBuyerAgentEmail(json.data.buyerAgentEmail?.trim() ?? "");
-    setNotes(json.data.notes ?? "");
+    setData((prev) =>
+      json.data
+        ? {
+            ...json.data,
+            usage: json.data.usage ?? prev?.usage,
+          }
+        : prev
+    );
+    if (json.data) {
+      setBuyerAgentName(json.data.buyerAgentName?.trim() ?? "");
+      setBuyerAgentEmail(json.data.buyerAgentEmail?.trim() ?? "");
+      setNotes(json.data.notes ?? "");
+    }
   }, []);
+
+  const handleArchiveShowing = useCallback(async () => {
+    if (!id) return;
+    setLifecycleBusy("archive");
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/showing-hq/showings/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archive: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message ?? "Could not archive showing");
+      router.push("/showing-hq/showings");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Archive failed");
+    } finally {
+      setLifecycleBusy(null);
+      setLifecycleModalOpen(false);
+    }
+  }, [id, router]);
+
+  const handleDeleteShowingForce = useCallback(async () => {
+    if (!id) return;
+    setLifecycleBusy("delete");
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/showing-hq/showings/${id}?force=1`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message ?? "Could not delete showing");
+      router.push("/showing-hq/showings");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setLifecycleBusy(null);
+      setLifecycleModalOpen(false);
+    }
+  }, [id, router]);
+
+  const requestDeleteShowing = useCallback(() => {
+    if (!data) return;
+    const n = data.usage?.feedbackRequests ?? 0;
+    if (n > 0) {
+      setLifecycleModalOpen(true);
+      return;
+    }
+    if (
+      !window.confirm(
+        "Remove this showing from your active list? Feedback history stays on related records."
+      )
+    )
+      return;
+    setLifecycleBusy("delete");
+    setError(null);
+    fetch(`/api/v1/showing-hq/showings/${id}`, { method: "DELETE" })
+      .then(async (res) => {
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error?.message ?? "Delete failed");
+        router.push("/showing-hq/showings");
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : "Delete failed"))
+      .finally(() => setLifecycleBusy(null));
+  }, [data, id, router]);
 
   async function saveDetails() {
     if (!data || !dateStr || !timeStr) {
@@ -169,7 +246,11 @@ export function ShowingDetailWorkflow() {
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      setData(json.data);
+      setData((prev) =>
+        json.data
+          ? { ...json.data, usage: json.data.usage ?? prev?.usage }
+          : prev
+      );
       flashDetailsSaved();
     } catch (e) {
       setError(afError(e, AF.couldntSave));
@@ -220,7 +301,11 @@ export function ShowingDetailWorkflow() {
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      setData(json.data);
+      setData((prev) =>
+        json.data
+          ? { ...json.data, usage: json.data.usage ?? prev?.usage }
+          : prev
+      );
       setFieldErrors({});
     } catch (e) {
       setError(afError(e, AF.couldntSave));
@@ -550,6 +635,37 @@ export function ShowingDetailWorkflow() {
               />
             </div>
           </div>
+
+          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+            <h2 className="mb-3 text-sm font-semibold text-kp-on-surface">Showing lifecycle</h2>
+            <p className="mb-4 text-[12px] leading-relaxed text-kp-on-surface-variant">
+              Archive hides this appointment from lists. Delete is only needed when you want it gone from the
+              active vault and accept losing the default feedback-request linkage (archive is safer).
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnPrimary, "h-9 border-transparent px-4 text-[12px] font-semibold")}
+                disabled={lifecycleBusy !== null}
+                onClick={() => void handleArchiveShowing()}
+              >
+                {lifecycleBusy === "archive" ? "Archiving…" : "Archive showing"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnDangerSecondary, "h-9 px-4 text-[12px] font-semibold")}
+                disabled={lifecycleBusy !== null}
+                onClick={requestDeleteShowing}
+              >
+                {lifecycleBusy === "delete" && !lifecycleModalOpen ? "Deleting…" : "Delete showing"}
+              </Button>
+            </div>
+          </div>
+
           <div
             className={cn(
               "sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3 rounded-lg border border-kp-outline/70 bg-kp-surface/95 px-3 py-2 shadow-lg backdrop-blur-sm"
@@ -568,6 +684,59 @@ export function ShowingDetailWorkflow() {
           </div>
         </div>
       )}
+
+      <BrandModal
+        open={lifecycleModalOpen}
+        onOpenChange={setLifecycleModalOpen}
+        title="Showing has feedback data"
+        description="This showing has one or more feedback-request rows. Prefer archive unless you are cleaning up test data."
+        size="md"
+        footer={
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn(kpBtnSecondary, "h-9 text-[12px]")}
+              disabled={lifecycleBusy !== null}
+              onClick={() => setLifecycleModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn(kpBtnPrimary, "h-9 border-transparent text-[12px]")}
+              disabled={lifecycleBusy !== null}
+              onClick={() => void handleArchiveShowing()}
+            >
+              {lifecycleBusy === "archive" ? "Archiving…" : "Archive instead"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn(kpBtnDangerSecondary, "h-9 text-[12px]")}
+              disabled={lifecycleBusy !== null}
+              onClick={() => void handleDeleteShowingForce()}
+            >
+              {lifecycleBusy === "delete" ? "Deleting…" : "Delete anyway"}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-2 text-[12px] text-kp-on-surface">
+          <p className="font-medium text-kp-on-surface">Linked records:</p>
+          <ul className="list-inside list-disc text-kp-on-surface-variant">
+            <li>
+              {data?.usage?.feedbackRequests ?? 0} feedback request
+              {(data?.usage?.feedbackRequests ?? 0) === 1 ? "" : "s"} (
+              {data?.usage?.feedbackRequestsPending ?? 0} pending)
+            </li>
+          </ul>
+        </div>
+      </BrandModal>
     </div>
   );
 }

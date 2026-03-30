@@ -258,11 +258,20 @@ export function EditEventModal({
 
   const handleDelete = async () => {
     if (!eventId || !isOpenHouse || !onDeleted) return;
-    if (!confirm("Cancel this open house? You can undo from the open house page.")) return;
+    if (
+      !confirm(
+        "Archive this open house? It will be hidden from your active lists. You can still open it by link if needed."
+      )
+    )
+      return;
     setDeleting(true);
     setError(null);
     try {
-      const res = await fetch(`/api/v1/open-houses/${eventId}`, { method: "DELETE" });
+      const res = await fetch(`/api/v1/open-houses/${eventId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archive: true }),
+      });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
       onDeleted();
@@ -314,7 +323,7 @@ export function EditEventModal({
                 disabled={deleting || submitting || markingFeedbackSent}
                 onClick={handleDelete}
               >
-                {deleting ? "Deleting…" : "Delete"}
+                {deleting ? "Archiving…" : "Archive"}
               </Button>
             )}
           </div>

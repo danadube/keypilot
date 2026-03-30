@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
-import { UpdateOpenHouseSchema } from "@/lib/validations/open-house";
+import {
+  ArchiveOpenHouseBodySchema,
+  RestoreOpenHouseBodySchema,
+  UpdateOpenHouseSchema,
+} from "@/lib/validations/open-house";
 import { generateQrCodeDataUrl } from "@/lib/qr";
-import { OpenHouseStatus, type Prisma } from "@prisma/client";
+import { type Prisma } from "@prisma/client";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
 type OpenHouseVisitorWithContact = Prisma.OpenHouseVisitorGetPayload<{
@@ -125,6 +129,13 @@ export async function GET(
       console.error("[open-houses GET] qr_failed", e);
     }
 
+    const [draftRowCount, sellerReportCount] = await Promise.all([
+      prismaAdmin.followUpDraft.count({
+        where: { openHouseId: id, deletedAt: null },
+      }),
+      prismaAdmin.sellerReport.count({ where: { openHouseId: id } }),
+    ]);
+
     return NextResponse.json({
       data: {
         ...openHouse,
@@ -138,6 +149,11 @@ export async function GET(
         },
         draftStatusCounts,
         qrCodeDataUrl,
+        usage: {
+          visitors: total,
+          followUpDrafts: draftRowCount,
+          sellerReports: sellerReportCount,
+        },
       },
     });
   } catch (e) {
@@ -152,24 +168,70 @@ export async function PUT(
   try {
     const user = await getCurrentUser();
     const { id } = await params;
-    const existing = await prismaAdmin.openHouse.findFirst({
-      where: {
-        id,
-        deletedAt: null,
-        OR: [
-          { hostUserId: user.id },
-          { listingAgentId: user.id },
-          { hostAgentId: user.id },
-        ],
-      },
+    const body = await req.json();
+
+    const openHouseAccessWhere = {
+      id,
+      deletedAt: null,
+      OR: [
+        { hostUserId: user.id },
+        { listingAgentId: user.id },
+        { hostAgentId: user.id },
+      ],
+    };
+
+    if (ArchiveOpenHouseBodySchema.safeParse(body).success) {
+      const row = await prismaAdmin.openHouse.findFirst({
+        where: openHouseAccessWhere,
+      });
+      if (!row) {
+        return NextResponse.json(
+          { error: { message: "Open house not found" } },
+          { status: 404 }
+        );
+      }
+      await prismaAdmin.openHouse.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
+      return NextResponse.json({ data: { archived: true, id } });
+    }
+
+    if (RestoreOpenHouseBodySchema.safeParse(body).success) {
+      const archived = await prismaAdmin.openHouse.findFirst({
+        where: {
+          id,
+          deletedAt: { not: null },
+          OR: [
+            { hostUserId: user.id },
+            { listingAgentId: user.id },
+            { hostAgentId: user.id },
+          ],
+        },
+      });
+      if (!archived) {
+        return NextResponse.json(
+          { error: { message: "Open house not found or not archived" } },
+          { status: 404 }
+        );
+      }
+      await prismaAdmin.openHouse.update({
+        where: { id },
+        data: { deletedAt: null },
+      });
+      return NextResponse.json({ data: { restored: true, id } });
+    }
+
+    const active = await prismaAdmin.openHouse.findFirst({
+      where: openHouseAccessWhere,
     });
-    if (!existing) {
+    if (!active) {
       return NextResponse.json(
         { error: { message: "Open house not found" } },
         { status: 404 }
       );
     }
-    const body = await req.json();
+
     const parsed = UpdateOpenHouseSchema.parse(body);
     const {
       propertyId,
@@ -250,12 +312,13 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser();
     const { id } = await params;
+    const force = req.nextUrl.searchParams.get("force") === "1";
     const openHouse = await prismaAdmin.openHouse.findFirst({
       where: {
         id,
@@ -273,20 +336,32 @@ export async function DELETE(
         { status: 404 }
       );
     }
-    if (
-      openHouse.status === OpenHouseStatus.SCHEDULED ||
-      openHouse.status === OpenHouseStatus.ACTIVE
-    ) {
-      await prismaAdmin.openHouse.update({
-        where: { id },
-        data: { status: OpenHouseStatus.CANCELLED },
-      });
-    } else {
-      await prismaAdmin.openHouse.update({
-        where: { id },
-        data: { deletedAt: new Date() },
-      });
+    const [visitorCount, draftCount, sellerReportCount] = await Promise.all([
+      prismaAdmin.openHouseVisitor.count({ where: { openHouseId: id } }),
+      prismaAdmin.followUpDraft.count({
+        where: { openHouseId: id, deletedAt: null },
+      }),
+      prismaAdmin.sellerReport.count({ where: { openHouseId: id } }),
+    ]);
+    if (!force && (visitorCount > 0 || draftCount > 0 || sellerReportCount > 0)) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "HAS_DEPENDENCIES",
+            message:
+              "This open house has visitors, drafts, or seller reports. Archive it instead, or delete with confirmation.",
+            visitors: visitorCount,
+            followUpDrafts: draftCount,
+            sellerReports: sellerReportCount,
+          },
+        },
+        { status: 409 }
+      );
     }
+    await prismaAdmin.openHouse.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
     return NextResponse.json({ data: { deleted: true } });
   } catch (e) {
     return apiErrorFromCaught(e);

@@ -8,10 +8,12 @@ import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
+  kpBtnDangerSecondary,
   kpBtnPrimary,
   kpBtnSecondary,
   kpBtnTertiary,
 } from "@/components/ui/kp-dashboard-button-tiers";
+import { BrandModal } from "@/components/ui/BrandModal";
 import { InviteHostDialog } from "@/components/open-houses/InviteHostDialog";
 import {
   Select,
@@ -128,6 +130,7 @@ type OpenHouseData = {
   _count: { visitors: number };
   draftStatusCounts: { DRAFT: number; REVIEWED: number; SENT_MANUAL: number; ARCHIVED: number };
   qrCodeDataUrl: string | null;
+  usage?: { visitors: number; followUpDrafts: number; sellerReports: number };
 };
 
 type PropertyOption = {
@@ -189,6 +192,8 @@ export function OpenHouseDetailPageClient() {
   const [showOhCreatedBanner, setShowOhCreatedBanner] = useState(false);
   const { flash: flashStatusOk, visible: statusOkVisible } = useFlashSuccess();
   const { flash: flashScheduleOk, visible: scheduleOkVisible } = useFlashSuccess();
+  const [lifecycleModalOpen, setLifecycleModalOpen] = useState(false);
+  const [lifecycleBusy, setLifecycleBusy] = useState<"archive" | "delete" | null>(null);
 
   const loadData = useCallback(() => {
     setError(null);
@@ -403,6 +408,82 @@ export function OpenHouseDetailPageClient() {
     setDetailEndDate(dateToLocalDateInput(end));
     setDetailEndTime(dateToLocalTimeInput(end));
   };
+
+  const openHouseUsage = useCallback((row: OpenHouseData) => {
+    const drafts =
+      (row.draftStatusCounts?.DRAFT ?? 0) +
+      (row.draftStatusCounts?.REVIEWED ?? 0) +
+      (row.draftStatusCounts?.SENT_MANUAL ?? 0) +
+      (row.draftStatusCounts?.ARCHIVED ?? 0);
+    return (
+      row.usage ?? {
+        visitors: row._count?.visitors ?? row.visitors?.length ?? 0,
+        followUpDrafts: drafts,
+        sellerReports: 0,
+      }
+    );
+  }, []);
+
+  const handleArchiveOpenHouse = useCallback(async () => {
+    setLifecycleBusy("archive");
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/open-houses/${openHouseId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archive: true }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message ?? "Could not archive open house");
+      router.push("/showing-hq");
+    } catch (e) {
+      setError(afError(e, AF.couldntSave));
+    } finally {
+      setLifecycleBusy(null);
+      setLifecycleModalOpen(false);
+    }
+  }, [openHouseId, router]);
+
+  const handleDeleteOpenHouseForce = useCallback(async () => {
+    setLifecycleBusy("delete");
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/open-houses/${openHouseId}?force=1`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error?.message ?? "Could not delete open house");
+      router.push("/showing-hq");
+    } catch (e) {
+      setError(afError(e, AF.couldntSave));
+    } finally {
+      setLifecycleBusy(null);
+      setLifecycleModalOpen(false);
+    }
+  }, [openHouseId, router]);
+
+  const requestDeleteOpenHouse = useCallback(() => {
+    if (!data) return;
+    const u = openHouseUsage(data);
+    if (u.visitors > 0 || u.followUpDrafts > 0 || u.sellerReports > 0) {
+      setLifecycleModalOpen(true);
+      return;
+    }
+    if (
+      !window.confirm(
+        "Remove this open house from your active lists? Sign-in history and drafts stay in the database but the event is hidden."
+      )
+    )
+      return;
+    setLifecycleBusy("delete");
+    setError(null);
+    fetch(`/api/v1/open-houses/${openHouseId}`, { method: "DELETE" })
+      .then(async (res) => {
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error?.message ?? "Delete failed");
+        router.push("/showing-hq");
+      })
+      .catch((e) => setError(afError(e, AF.couldntSave)))
+      .finally(() => setLifecycleBusy(null));
+  }, [data, openHouseId, openHouseUsage, router]);
 
   const saveEventDetails = useCallback(async () => {
     if (!openHouseId || !data) return;
@@ -1078,6 +1159,36 @@ export function OpenHouseDetailPageClient() {
         </div>
       </div>
 
+          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+            <h2 className="mb-3 text-sm font-semibold text-kp-on-surface">Open house lifecycle</h2>
+            <p className="mb-4 text-[12px] leading-relaxed text-kp-on-surface-variant">
+              Archive hides the event from ShowingHQ lists (status controls like &quot;Cancelled&quot; are separate).
+              Delete with dependencies requires confirmation below.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnPrimary, "h-9 border-transparent px-4 text-[12px] font-semibold")}
+                disabled={lifecycleBusy !== null}
+                onClick={() => void handleArchiveOpenHouse()}
+              >
+                {lifecycleBusy === "archive" ? "Archiving…" : "Archive open house"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnDangerSecondary, "h-9 px-4 text-[12px] font-semibold")}
+                disabled={lifecycleBusy !== null}
+                onClick={requestDeleteOpenHouse}
+              >
+                {lifecycleBusy === "delete" && !lifecycleModalOpen ? "Deleting…" : "Delete open house"}
+              </Button>
+            </div>
+          </div>
+
           <div
             className={cn(
               "sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3 rounded-lg border border-kp-outline/70 bg-kp-surface/95 px-3 py-2 shadow-lg backdrop-blur-sm"
@@ -1096,6 +1207,68 @@ export function OpenHouseDetailPageClient() {
           </div>
         </div>
       )}
+
+      <BrandModal
+        open={lifecycleModalOpen}
+        onOpenChange={setLifecycleModalOpen}
+        title="Open house has visitor or output data"
+        description="Archive keeps history safe; delete anyway only if you accept losing default links from this surface."
+        size="md"
+        footer={
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn(kpBtnSecondary, "h-9 text-[12px]")}
+              disabled={lifecycleBusy !== null}
+              onClick={() => setLifecycleModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn(kpBtnPrimary, "h-9 border-transparent text-[12px]")}
+              disabled={lifecycleBusy !== null}
+              onClick={() => void handleArchiveOpenHouse()}
+            >
+              {lifecycleBusy === "archive" ? "Archiving…" : "Archive instead"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn(kpBtnDangerSecondary, "h-9 text-[12px]")}
+              disabled={lifecycleBusy !== null}
+              onClick={() => void handleDeleteOpenHouseForce()}
+            >
+              {lifecycleBusy === "delete" ? "Deleting…" : "Delete anyway"}
+            </Button>
+          </div>
+        }
+      >
+        {data ? (
+          <div className="space-y-2 text-[12px] text-kp-on-surface">
+            <p className="font-medium text-kp-on-surface">This event has:</p>
+            <ul className="list-inside list-disc text-kp-on-surface-variant">
+              <li>
+                {openHouseUsage(data).visitors} visitor sign-in
+                {openHouseUsage(data).visitors === 1 ? "" : "s"}
+              </li>
+              <li>
+                {openHouseUsage(data).followUpDrafts} follow-up draft
+                {openHouseUsage(data).followUpDrafts === 1 ? "" : "s"}
+              </li>
+              <li>
+                {openHouseUsage(data).sellerReports} seller report
+                {openHouseUsage(data).sellerReports === 1 ? "" : "s"}
+              </li>
+            </ul>
+          </div>
+        ) : null}
+      </BrandModal>
     </div>
   );
 }

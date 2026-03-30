@@ -7,8 +7,34 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
 import { Prisma } from "@prisma/client";
-import { UpdateShowingSchema } from "@/lib/validations/showing";
+import {
+  ArchiveShowingBodySchema,
+  RestoreShowingBodySchema,
+  UpdateShowingSchema,
+} from "@/lib/validations/showing";
 import { apiErrorFromCaught } from "@/lib/api-response";
+
+async function showingWithUsage<
+  T extends {
+    id: string;
+    property?: unknown;
+    feedbackRequests?: unknown;
+  },
+>(row: T, showingId: string) {
+  const [feedbackRequests, feedbackRequestsPending] = await Promise.all([
+    prismaAdmin.feedbackRequest.count({ where: { showingId } }),
+    prismaAdmin.feedbackRequest.count({
+      where: { showingId, status: "PENDING" },
+    }),
+  ]);
+  return {
+    ...row,
+    usage: {
+      feedbackRequests,
+      feedbackRequestsPending,
+    },
+  };
+}
 
 export async function GET(
   _req: NextRequest,
@@ -30,7 +56,7 @@ export async function GET(
         { status: 404 }
       );
     }
-    return NextResponse.json({ data: showing });
+    return NextResponse.json({ data: await showingWithUsage(showing, id) });
   } catch (e) {
     return apiErrorFromCaught(e);
   }
@@ -44,6 +70,54 @@ export async function PATCH(
     const user = await getCurrentUser();
     const { id } = await params;
     const body = await req.json();
+
+    if (ArchiveShowingBodySchema.safeParse(body).success) {
+      const existing = await prismaAdmin.showing.findFirst({
+        where: { id, hostUserId: user.id, deletedAt: null },
+      });
+      if (!existing) {
+        return NextResponse.json(
+          { error: { message: "Showing not found" } },
+          { status: 404 }
+        );
+      }
+      await prismaAdmin.showing.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
+      return NextResponse.json({ data: { archived: true, id } });
+    }
+
+    if (RestoreShowingBodySchema.safeParse(body).success) {
+      const existing = await prismaAdmin.showing.findFirst({
+        where: { id, hostUserId: user.id, deletedAt: { not: null } },
+      });
+      if (!existing) {
+        return NextResponse.json(
+          { error: { message: "Showing not found or not archived" } },
+          { status: 404 }
+        );
+      }
+      await prismaAdmin.showing.update({
+        where: { id },
+        data: { deletedAt: null },
+      });
+      const showing = await prismaAdmin.showing.findFirst({
+        where: { id, hostUserId: user.id, deletedAt: null },
+        include: {
+          property: true,
+          feedbackRequests: { orderBy: { requestedAt: "desc" }, take: 1 },
+        },
+      });
+      if (!showing) {
+        return NextResponse.json(
+          { error: { message: "Showing not found" } },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json({ data: await showingWithUsage(showing, id) });
+    }
+
     const parsed = UpdateShowingSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -91,7 +165,10 @@ export async function PATCH(
     if (Object.keys(updateData).length === 0) {
       const showing = await prismaAdmin.showing.findFirst({
         where: { id, hostUserId: user.id, deletedAt: null },
-        include: { property: true },
+        include: {
+          property: true,
+          feedbackRequests: { orderBy: { requestedAt: "desc" }, take: 1 },
+        },
       });
       if (!showing) {
         return NextResponse.json(
@@ -99,16 +176,62 @@ export async function PATCH(
           { status: 404 }
         );
       }
-      return NextResponse.json({ data: showing });
+      return NextResponse.json({ data: await showingWithUsage(showing, id) });
     }
 
     const showing = await prismaAdmin.showing.update({
       where: { id },
       data: updateData,
-      include: { property: true },
+      include: {
+        property: true,
+        feedbackRequests: { orderBy: { requestedAt: "desc" }, take: 1 },
+      },
     });
 
-    return NextResponse.json({ data: showing });
+    return NextResponse.json({ data: await showingWithUsage(showing, id) });
+  } catch (e) {
+    return apiErrorFromCaught(e);
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const user = await getCurrentUser();
+    const { id } = await params;
+    const force = req.nextUrl.searchParams.get("force") === "1";
+    const row = await prismaAdmin.showing.findFirst({
+      where: { id, hostUserId: user.id, deletedAt: null },
+    });
+    if (!row) {
+      return NextResponse.json(
+        { error: { message: "Showing not found" } },
+        { status: 404 }
+      );
+    }
+    const feedbackRequests = await prismaAdmin.feedbackRequest.count({
+      where: { showingId: id },
+    });
+    if (!force && feedbackRequests > 0) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "HAS_DEPENDENCIES",
+            message:
+              "This showing has feedback-request records. Archive it instead, or delete with confirmation.",
+            feedbackRequests,
+          },
+        },
+        { status: 409 }
+      );
+    }
+    await prismaAdmin.showing.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+    return NextResponse.json({ data: { deleted: true } });
   } catch (e) {
     return apiErrorFromCaught(e);
   }
