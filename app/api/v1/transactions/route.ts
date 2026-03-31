@@ -7,12 +7,16 @@ import {
   responseIfDealIdUniqueViolation,
   transactionLinkedDealSelect,
 } from "@/lib/transaction-deal-link";
-import { CreateTransactionSchema } from "@/lib/validations/transaction";
+import {
+  CreateTransactionSchema,
+  TransactionsListQuerySchema,
+} from "@/lib/validations/transaction";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { mergeCommissionInputs } from "@/lib/transactions/commission-inputs";
 import { computeTransactionFinancials } from "@/lib/transactions/transaction-financials";
 import { assertPrimaryContactAccessible } from "@/lib/transactions/assert-primary-contact";
 import { serializeTransactionDecimals } from "@/lib/transactions/serialize-transaction";
+import type { Prisma } from "@prisma/client";
 import { TransactionStatus } from "@prisma/client";
 
 const propertySelect = {
@@ -37,17 +41,58 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get("status") as TransactionStatus | null;
+    const listParsed = TransactionsListQuerySchema.safeParse({
+      status: searchParams.get("status") || undefined,
+      transactionKind: searchParams.get("transactionKind") || undefined,
+      brokerage: (() => {
+        const b = searchParams.get("brokerage");
+        return b && b.trim() ? b.trim() : undefined;
+      })(),
+      q: (() => {
+        const s = searchParams.get("q");
+        return s && s.trim() ? s.trim() : undefined;
+      })(),
+      closingYear: searchParams.get("closingYear") || undefined,
+    });
+    if (!listParsed.success) {
+      return apiError(listParsed.error.issues[0]?.message ?? "Invalid query", 400);
+    }
+    const { status, transactionKind, brokerage, q, closingYear } = listParsed.data;
+
+    const filters: Prisma.TransactionWhereInput[] = [{ userId: user.id }];
+    if (status) filters.push({ status: status as TransactionStatus });
+    if (transactionKind) filters.push({ transactionKind });
+    if (brokerage) {
+      filters.push({
+        brokerageName: { contains: brokerage, mode: "insensitive" },
+      });
+    }
+    if (closingYear != null) {
+      filters.push({
+        closingDate: {
+          gte: new Date(Date.UTC(closingYear, 0, 1)),
+          lt: new Date(Date.UTC(closingYear + 1, 0, 1)),
+        },
+      });
+    }
+    if (q) {
+      filters.push({
+        OR: [
+          { property: { address1: { contains: q, mode: "insensitive" } } },
+          { property: { city: { contains: q, mode: "insensitive" } } },
+          { primaryContact: { firstName: { contains: q, mode: "insensitive" } } },
+          { primaryContact: { lastName: { contains: q, mode: "insensitive" } } },
+        ],
+      });
+    }
 
     const transactions = await withRLSContext(user.id, (tx) =>
       tx.transaction.findMany({
-        where: {
-          userId: user.id,
-          ...(status ? { status } : {}),
-        },
+        where: { AND: filters },
         include: {
           property: { select: propertySelect },
           deal: { select: transactionLinkedDealSelect },
+          primaryContact: { select: primaryContactSelect },
         },
         orderBy: { createdAt: "desc" },
       })

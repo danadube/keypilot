@@ -11,6 +11,15 @@ const TransactionStatusEnum = z.enum([
 
 export const TransactionKindEnum = z.enum(["SALE", "REFERRAL_RECEIVED"]);
 
+/** GET /api/v1/transactions list filters (all optional). */
+export const TransactionsListQuerySchema = z.object({
+  status: TransactionStatusEnum.optional(),
+  transactionKind: TransactionKindEnum.optional(),
+  brokerage: z.string().max(200).optional(),
+  q: z.string().max(200).optional(),
+  closingYear: z.coerce.number().int().min(1990).max(2100).optional(),
+});
+
 /** Loose JSON object for broker-specific commission assumptions (validated again in domain). */
 const CommissionInputsJsonSchema = z.record(z.string(), z.unknown()).optional().nullable();
 
@@ -60,6 +69,8 @@ export const CreateCommissionSchema = z.object({
 });
 
 export const UpdateCommissionSchema = CreateCommissionSchema.partial();
+
+export type TransactionsListQuery = z.infer<typeof TransactionsListQuerySchema>;
 
 export type CreateTransactionInput = z.infer<typeof CreateTransactionSchema>;
 export type UpdateTransactionInput = z.infer<typeof UpdateTransactionSchema>;

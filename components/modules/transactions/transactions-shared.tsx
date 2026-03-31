@@ -5,6 +5,10 @@ import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import {
+  getProductionValueDisplay,
+  TRANSACTION_KIND_LABELS,
+} from "@/lib/transactions/production-list-value";
 
 // ── Types & labels ────────────────────────────────────────────────────────────
 
@@ -16,14 +20,29 @@ export type TxStatus =
   | "CLOSED"
   | "FALLEN_APART";
 
+export type TxKind = "SALE" | "REFERRAL_RECEIVED";
+
 export type TransactionRow = {
   id: string;
   status: TxStatus;
+  transactionKind?: TxKind;
   salePrice: string | number | null;
   closingDate: string | null;
   brokerageName: string | null;
   notes: string | null;
   createdAt: string;
+  gci?: number | null;
+  adjustedGci?: number | null;
+  referralDollar?: number | null;
+  totalBrokerageFees?: number | null;
+  nci?: number | null;
+  netVolume?: number | null;
+  commissionInputs?: Record<string, unknown> | null;
+  primaryContact?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  } | null;
   property: {
     id: string;
     address1: string;
@@ -96,6 +115,172 @@ export function formatDate(iso: string | null) {
 export const TH =
   "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
 export const TD = "px-4 py-3.5 text-sm";
+
+function salePriceToNumber(v: string | number | null | undefined): number | null {
+  if (v == null || v === "") return null;
+  const n = typeof v === "string" ? parseFloat(v) : v;
+  return Number.isFinite(n) ? n : null;
+}
+
+function formatProductionMoney(n: number) {
+  return n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+}
+
+/** Scan-first production row: address and context left, money right. */
+export function TransactionsProductionRow({
+  row: t,
+  onDeleted,
+}: {
+  row: TransactionRow;
+  onDeleted?: () => void;
+}) {
+  const kind = t.transactionKind ?? "SALE";
+  const money = getProductionValueDisplay({
+    transactionKind: kind,
+    salePrice: salePriceToNumber(t.salePrice),
+    gci: t.gci ?? null,
+    nci: t.nci ?? null,
+    commissionInputs: t.commissionInputs,
+  });
+
+  const pc = t.primaryContact;
+  const contactLine =
+    pc && [pc.firstName, pc.lastName].filter(Boolean).join(" ").trim();
+
+  const listPrice = salePriceToNumber(t.salePrice);
+
+  async function handleDelete() {
+    if (!onDeleted) return;
+    if (
+      !window.confirm(
+        "Delete this transaction permanently? This cannot be undone."
+      )
+    ) {
+      return;
+    }
+    const res = await fetch(`/api/v1/transactions/${t.id}`, { method: "DELETE" });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      window.alert(
+        json?.error?.message ?? "Could not delete transaction."
+      );
+      return;
+    }
+    onDeleted();
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6",
+        "bg-kp-surface transition-colors hover:bg-kp-surface-high/80"
+      )}
+    >
+      <div className="min-w-0 flex-1 space-y-2">
+        <div>
+          <Link
+            href={`/transactions/${t.id}`}
+            className="font-semibold text-kp-on-surface hover:text-kp-teal hover:underline"
+          >
+            {t.property.address1}
+          </Link>
+          <p className="text-xs text-kp-on-surface-variant">
+            {t.property.city}, {t.property.state} {t.property.zip}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge variant={statusBadgeVariant(t.status)}>
+            {STATUS_LABELS[t.status]}
+          </StatusBadge>
+          <span className="rounded-md border border-kp-outline-variant bg-kp-surface-high px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+            {TRANSACTION_KIND_LABELS[kind]}
+          </span>
+          {t.brokerageName ? (
+            <span
+              className="max-w-[200px] truncate text-[11px] text-kp-on-surface-variant"
+              title={t.brokerageName}
+            >
+              {t.brokerageName}
+            </span>
+          ) : null}
+        </div>
+        {contactLine && pc ? (
+          <p className="text-xs text-kp-on-surface-variant">
+            Contact:{" "}
+            <Link href={`/contacts/${pc.id}`} className="text-kp-teal hover:underline">
+              {contactLine}
+            </Link>
+          </p>
+        ) : null}
+        <p className="text-[11px] text-kp-on-surface-variant">
+          Close {formatDate(t.closingDate)}
+          {listPrice != null && listPrice > 0 ? ` · List ${formatMoney(t.salePrice)}` : null}
+        </p>
+      </div>
+
+      <div className="flex shrink-0 flex-col items-stretch gap-3 sm:items-end sm:text-right">
+        <div>
+          {money.type === "incomplete" ? (
+            <>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600/90 dark:text-amber-400/90">
+                Needs setup
+              </p>
+              <p className="mt-1 text-sm font-medium text-kp-on-surface">{money.message}</p>
+            </>
+          ) : money.type === "nci" ? (
+            <>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                Net (NCI)
+              </p>
+              <p className="mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-kp-on-surface">
+                {formatProductionMoney(money.amount)}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                Gross (GCI)
+              </p>
+              <p className="mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-kp-on-surface">
+                {formatProductionMoney(money.amount)}
+              </p>
+              <p className="mt-1 max-w-[220px] text-[11px] leading-snug text-amber-700/90 dark:text-amber-400/85 sm:ml-auto">
+                {money.hint}
+              </p>
+            </>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(kpBtnSecondary, "h-8 border px-3 text-xs")}
+            asChild
+          >
+            <Link href={`/transactions/${t.id}`} className="inline-flex items-center gap-1.5">
+              Open details
+              <ExternalLink className="h-3 w-3 opacity-70" />
+            </Link>
+          </Button>
+          {onDeleted ? (
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              className="h-8 rounded-lg px-2 text-xs text-kp-on-surface-variant underline-offset-2 hover:text-red-500 hover:underline"
+            >
+              Delete
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /** Full-width list table row (overview list). */
 export function TransactionsListTableRow({ row: t, index: i }: { row: TransactionRow; index: number }) {
