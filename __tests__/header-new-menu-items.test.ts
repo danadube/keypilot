@@ -9,7 +9,7 @@ const EXPECTED = [
   { label: "New Transaction", href: "/transactions?new=1" },
   { label: "New Deal", href: "/deals?new=1" },
   { label: "New Property", href: "/properties/new" },
-  { label: "New Contact", href: "/contacts" },
+  { label: "New Contact", href: "/contacts?new=1" },
 ] as const;
 
 describe("header + New menu (global)", () => {

@@ -19,6 +19,7 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { SectionTabs } from "@/components/ui/section-tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { BrandModal } from "@/components/ui/BrandModal";
+import { CreateContactModal } from "./create-contact-modal";
 import { useProductTier } from "@/components/ProductTierProvider";
 import {
   STATUS_TAB_VALUES,
@@ -446,6 +447,7 @@ export function ContactsListView() {
   const [saveSegmentOpen, setSaveSegmentOpen] = useState(false);
   const [saveSegmentName, setSaveSegmentName] = useState("");
   const [saveSegmentError, setSaveSegmentError] = useState<string | null>(null);
+  const [createContactOpen, setCreateContactOpen] = useState(false);
   const { hasCrm } = useProductTier();
   const { contacts, loading, error, reload } = useContacts(statusFilter, tagIdFilter);
 
@@ -454,6 +456,15 @@ export function ContactsListView() {
     setStatusFilter(status);
     setTagIdFilter(tagId);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (searchParams.get("new") !== "1") return;
+    setCreateContactOpen(true);
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("new");
+    const q = next.toString();
+    router.replace(q ? `/contacts?${q}` : "/contacts", { scroll: false });
+  }, [searchParams, router]);
 
   // Client-side search on top of server-filtered results
   const visibleContacts = useMemo(() => {
@@ -537,7 +548,8 @@ export function ContactsListView() {
             Contacts
           </h1>
           <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-            Leads from open house sign-ins
+            Leads from open house sign-ins. Use{" "}
+            <span className="font-medium text-kp-on-surface">+ New</span> in the header to add a contact.
           </p>
         </div>
         {canSaveSegment && (
@@ -670,6 +682,12 @@ export function ContactsListView() {
           </div>
         )}
       </div>
+
+      <CreateContactModal
+        open={createContactOpen}
+        onOpenChange={setCreateContactOpen}
+        onCreated={() => reload()}
+      />
 
       <BrandModal
         open={saveSegmentOpen}

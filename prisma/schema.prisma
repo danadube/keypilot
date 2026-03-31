@@ -49,6 +49,7 @@ model User {
   supraGmailImportSettings SupraGmailImportSettings?
   userActivities           UserActivity[]
   activityTemplates   ActivityTemplate[]
+  contactsCreated     Contact[]         @relation("ContactCreatedBy")
 
   @@index([clerkId])
   @@map("users")
@@ -126,11 +127,14 @@ model Contact {
   googleEtag         String?
   externalSource     String?
   externalSourceId   String?
+  /** Agent who created this contact from the dashboard (+ New → Contact). Distinct from open-house visitor capture. */
+  createdByUserId    String?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   deletedAt          DateTime?
 
   assignedToUser    User?              @relation(fields: [assignedToUserId], references: [id])
+  createdByUser     User?              @relation("ContactCreatedBy", fields: [createdByUserId], references: [id])
   openHouseVisits   OpenHouseVisitor[]
   activities        Activity[]
   followUpDrafts    FollowUpDraft[]
@@ -147,6 +151,7 @@ model Contact {
   @@index([source, createdAt, deletedAt])
   @@index([status])
   @@index([assignedToUserId])
+  @@index([createdByUserId])
   @@map("contacts")
 }
 

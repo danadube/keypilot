@@ -4,29 +4,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { requireCrmAccess } from "@/lib/product-tier";
 import { AddNoteSchema } from "@/lib/validations/note";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { canAccessContact } from "@/lib/contacts/contact-access";
 
 export const dynamic = "force-dynamic";
-
-async function getContactIfOwned(contactId: string, userId: string) {
-  const openHouses = await prismaAdmin.openHouse.findMany({
-    where: { hostUserId: userId, deletedAt: null },
-    select: { id: true },
-  });
-  const openHouseIds = openHouses.map((oh) => oh.id);
-
-  const visitor = await prismaAdmin.openHouseVisitor.findFirst({
-    where: {
-      contactId,
-      openHouseId: { in: openHouseIds },
-    },
-  });
-
-  if (!visitor) return null;
-
-  return prismaAdmin.contact.findFirst({
-    where: { id: contactId, deletedAt: null },
-  });
-}
 
 export async function POST(
   req: NextRequest,
@@ -37,8 +17,7 @@ export async function POST(
     requireCrmAccess(user.productTier);
     const { id: contactId } = await params;
 
-    const contact = await getContactIfOwned(contactId, user.id);
-    if (!contact) {
+    if (!(await canAccessContact(contactId, user.id))) {
       return apiError("Contact not found", 404);
     }
 

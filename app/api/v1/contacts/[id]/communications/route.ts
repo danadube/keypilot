@@ -4,21 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { LogCommunicationSchema } from "@/lib/validations/communication";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
-
-async function canAccessContact(contactId: string, userId: string) {
-  const openHouses = await prismaAdmin.openHouse.findMany({
-    where: { hostUserId: userId, deletedAt: null },
-    select: { id: true },
-  });
-  const openHouseIds = openHouses.map((oh) => oh.id);
-  const visitor = await prismaAdmin.openHouseVisitor.findFirst({
-    where: {
-      contactId,
-      openHouseId: { in: openHouseIds },
-    },
-  });
-  return !!visitor;
-}
+import { canAccessContact } from "@/lib/contacts/contact-access";
 
 export async function POST(
   req: NextRequest,
