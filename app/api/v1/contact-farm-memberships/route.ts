@@ -42,12 +42,11 @@ export async function POST(req: NextRequest) {
       });
       if (!area) return { outcome: "no_area" };
 
-      const existing = await tx.contactFarmMembership.findUnique({
+      const existing = await tx.contactFarmMembership.findFirst({
         where: {
-          contactId_farmAreaId: {
-            contactId: parsed.data.contactId,
-            farmAreaId: parsed.data.farmAreaId,
-          },
+          contactId: parsed.data.contactId,
+          farmAreaId: parsed.data.farmAreaId,
+          userId: user.id,
         },
       });
 
