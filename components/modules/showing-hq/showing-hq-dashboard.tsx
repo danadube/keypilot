@@ -366,25 +366,30 @@ export function ShowingHQDashboardView() {
       key: "upcoming-events",
       label: "Upcoming events",
       value: String(upcomingCount),
-      hint: "Scheduled this week",
+      hint:
+        upcomingCount === 0
+          ? "No events scheduled this week"
+          : upcomingCount === 1
+            ? "1 event coming up this week"
+            : "Events on deck this week",
     },
     {
       key: "drafts-waiting",
       label: "Drafts waiting",
       value: String(draftsWaitingCount),
-      hint: "Need review/send",
+      hint: draftsWaitingCount === 0 ? "All clear" : "Need review/send",
     },
     {
       key: "last-oh-visitors",
       label: "Last open house",
       value: String(visitorsLastOpenHouse),
-      hint: "Visitors captured",
+      hint: "Visitors captured (most recent)",
     },
     {
       key: "awaiting-response",
       label: "Awaiting response",
       value: String(awaitingCount),
-      hint: "Pending replies",
+      hint: awaitingCount === 0 ? "All clear" : "Pending replies",
     },
   ];
   const nextUpPrimary = upNextRows[0] ?? null;

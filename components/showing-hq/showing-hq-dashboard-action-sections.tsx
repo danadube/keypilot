@@ -1054,6 +1054,7 @@ export function ShowingHQCommandStrip({
 }) {
   const eventDelta = nextEvent ? formatRelativeEventDelta(nextEvent.at) : null;
   const eventKindLabel = nextEvent?.kind === "open_house" ? "Open house" : "Private showing";
+  const eventStartsLabel = eventDelta ? `Starts ${eventDelta}` : null;
   const eventHref =
     nextEvent == null
       ? null
@@ -1064,7 +1065,7 @@ export function ShowingHQCommandStrip({
 
   return (
     <header
-      className="mb-4 w-full rounded-xl border border-kp-outline/70 bg-kp-surface-high/25 px-4 py-3.5 sm:mb-5 sm:px-5"
+      className="mb-4 w-full rounded-xl border border-kp-teal/30 bg-kp-surface-high/35 px-4 py-3.5 shadow-[0_0_0_1px_rgba(75,174,216,0.12)] sm:mb-5 sm:px-5"
       aria-label="Next event and schedule stats"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1074,17 +1075,19 @@ export function ShowingHQCommandStrip({
           </p>
           {nextEvent ? (
             <>
-              <h2 className="mt-0.5 truncate text-base font-semibold text-kp-on-surface sm:text-lg">
+              <h2 className="mt-0.5 truncate text-base font-bold text-kp-on-surface sm:text-lg">
                 {nextEvent.address}
               </h2>
-              <p className="mt-0.5 text-[12px] text-kp-on-surface-muted">
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] text-kp-on-surface-muted">
                 <span className="font-medium text-kp-on-surface/95">{eventKindLabel}</span>
-                <span className="mx-1 text-kp-outline/45">·</span>
-                {formatShortDayAndTime(nextEvent.at, formatTime)}
-                {eventDelta ? (
+                <span className="text-kp-outline/45">·</span>
+                <span>{formatShortDayAndTime(nextEvent.at, formatTime)}</span>
+                {eventStartsLabel ? (
                   <>
-                    <span className="mx-1 text-kp-outline/45">·</span>
-                    <span className="font-medium text-kp-gold">{eventDelta}</span>
+                    <span className="text-kp-outline/45">·</span>
+                    <span className="inline-flex rounded-md border border-kp-gold/40 bg-kp-gold/10 px-1.5 py-0.5 font-semibold text-kp-gold">
+                      {eventStartsLabel}
+                    </span>
                   </>
                 ) : null}
               </p>
@@ -1097,7 +1100,7 @@ export function ShowingHQCommandStrip({
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           {signInHref ? (
-            <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-8 px-3 text-[12px]")} asChild>
+            <Button variant="outline" size="sm" className={cn(kpBtnPrimary, "h-8 px-3 text-[12px]")} asChild>
               <Link href={signInHref}>
                 <QrCode className="mr-1 h-3.5 w-3.5" />
                 Launch sign-in
@@ -1105,7 +1108,12 @@ export function ShowingHQCommandStrip({
             </Button>
           ) : null}
           {eventHref ? (
-            <Button variant="outline" size="sm" className={cn(kpBtnPrimary, "h-8 px-3 text-[12px]")} asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(signInHref ? kpBtnSecondary : kpBtnPrimary, "h-8 px-3 text-[12px]")}
+              asChild
+            >
               <Link href={eventHref}>
                 Finish prep
                 <ArrowRight className="ml-1 h-3.5 w-3.5" />
@@ -1178,16 +1186,25 @@ export function WhatNeedsAttentionSection({
             if (inGroup.length === 0) return null;
             return (
               <div key={group} className="space-y-2">
-                <h3 className="text-[12px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                <h3
+                  className={cn(
+                    "text-[12px] font-semibold uppercase tracking-wider",
+                    group === "action_now"
+                      ? "text-amber-300"
+                      : group === "upcoming"
+                        ? "text-sky-300"
+                        : "text-kp-on-surface-muted"
+                  )}
+                >
                   {QUEUE_GROUP_LABEL[group]}
                 </h3>
                 <ul
                   className={cn(
                     "space-y-2 rounded-lg p-2",
                     group === "action_now"
-                      ? "border border-amber-500/25 bg-amber-500/[0.04]"
+                      ? "border border-amber-400/45 bg-amber-500/[0.08] shadow-[0_0_0_1px_rgba(245,158,11,0.18)]"
                       : group === "upcoming"
-                        ? "border border-sky-500/20 bg-sky-500/[0.035]"
+                        ? "border border-sky-500/28 bg-sky-500/[0.045]"
                         : "border border-kp-outline/45 bg-kp-bg/20"
                   )}
                 >
@@ -1228,7 +1245,7 @@ export function WhatNeedsAttentionSection({
                           variant="outline"
                           size="sm"
                           className={cn(
-                            kpBtnPrimary,
+                            group === "action_now" ? kpBtnPrimary : kpBtnSecondary,
                             "h-8 shrink-0 border-transparent px-3 text-[12px] font-semibold"
                           )}
                           asChild
@@ -1303,8 +1320,9 @@ export function TodayScheduleSection({
       <p className="mt-0.5 text-[11px] text-kp-on-surface-muted">
         Quick timeline: all-day posture, draft queue status, and scheduled event slots.
       </p>
-      <ul className="mt-2.5 space-y-2.5">
-        <li className="rounded-md border border-kp-outline/45 bg-kp-bg/20 px-2.5 py-2">
+      <ul className="mt-2.5 border-l border-kp-outline/45 pl-3.5">
+        <li className="relative pb-2.5">
+          <span className="absolute -left-[15px] top-1.5 h-2 w-2 rounded-full bg-kp-teal/75" aria-hidden />
           <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">All day</p>
           <p className="mt-0.5 text-[12px] text-kp-on-surface">
             {rows.length === 0
@@ -1312,7 +1330,8 @@ export function TodayScheduleSection({
               : `${rows.length} scheduled event${rows.length === 1 ? "" : "s"} on deck today.`}
           </p>
         </li>
-        <li className="rounded-md border border-kp-outline/45 bg-kp-bg/20 px-2.5 py-2">
+        <li className="relative border-t border-kp-outline/35 py-2.5">
+          <span className="absolute -left-[15px] top-3 h-2 w-2 rounded-full bg-amber-400/80" aria-hidden />
           <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
             Draft queue
           </p>
@@ -1324,7 +1343,8 @@ export function TodayScheduleSection({
             response
           </p>
         </li>
-        <li className="rounded-md border border-kp-outline/45 bg-kp-bg/20 px-2.5 py-2">
+        <li className="relative border-t border-kp-outline/35 pt-2.5">
+          <span className="absolute -left-[15px] top-3 h-2 w-2 rounded-full bg-sky-400/80" aria-hidden />
           <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
             Upcoming after today
           </p>
@@ -1676,6 +1696,11 @@ export function QuickActionsRailSection({
 }) {
   const signInHref =
     nextEvent?.kind === "open_house" ? `/open-houses/${nextEvent.id}/sign-in` : null;
+  const primaryAction: "drafts" | "sign-in" | "new-open-house" = hasDrafts
+    ? "drafts"
+    : signInHref
+      ? "sign-in"
+      : "new-open-house";
   return (
     <section className="rounded-lg border border-kp-outline/35 bg-kp-bg/[0.22] px-3 py-3 sm:px-3.5">
       <div className="mb-2 flex items-center gap-1.5">
@@ -1683,14 +1708,30 @@ export function QuickActionsRailSection({
         <h2 className="text-[12px] font-semibold text-kp-on-surface-muted">Quick actions</h2>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 px-2.5 text-[11px]")} asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(
+            primaryAction === "new-open-house" ? kpBtnPrimary : kpBtnSecondary,
+            "h-7 px-2.5 text-[11px]"
+          )}
+          asChild
+        >
           <Link href="/open-houses/new">
             <PlusSquare className="mr-1 h-3.5 w-3.5" />
             New open house
           </Link>
         </Button>
         {signInHref ? (
-          <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 px-2.5 text-[11px]")} asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(
+              primaryAction === "sign-in" ? kpBtnPrimary : kpBtnSecondary,
+              "h-7 px-2.5 text-[11px]"
+            )}
+            asChild
+          >
             <Link href={signInHref}>
               <QrCode className="mr-1 h-3.5 w-3.5" />
               Launch sign-in
@@ -1700,7 +1741,10 @@ export function QuickActionsRailSection({
         <Button
           variant="outline"
           size="sm"
-          className={cn(hasDrafts ? kpBtnPrimary : kpBtnSecondary, "h-7 px-2.5 text-[11px]")}
+          className={cn(
+            primaryAction === "drafts" ? kpBtnPrimary : kpBtnSecondary,
+            "h-7 px-2.5 text-[11px]"
+          )}
           asChild
         >
           <Link href="/showing-hq/follow-ups/drafts">Review drafts</Link>
