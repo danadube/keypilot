@@ -1,5 +1,6 @@
 import {
   getProductionValueDisplay,
+  moneyPreviewBlockingMessage,
   type ProductionListRowInput,
 } from "@/lib/transactions/production-list-value";
 
@@ -12,6 +13,38 @@ function row(p: Partial<ProductionListRowInput> & Pick<ProductionListRowInput, "
     ...p,
   };
 }
+
+describe("moneyPreviewBlockingMessage", () => {
+  it("blocks sale without price", () => {
+    expect(
+      moneyPreviewBlockingMessage({
+        transactionKind: "SALE",
+        salePrice: null,
+        commissionInputs: { commissionPct: 0.03 },
+      })
+    ).toBe("Needs sale price");
+  });
+
+  it("blocks sale without commission pct", () => {
+    expect(
+      moneyPreviewBlockingMessage({
+        transactionKind: "SALE",
+        salePrice: 400_000,
+        commissionInputs: {},
+      })
+    ).toBe("Needs commission %");
+  });
+
+  it("allows sale when price and pct present", () => {
+    expect(
+      moneyPreviewBlockingMessage({
+        transactionKind: "SALE",
+        salePrice: 400_000,
+        commissionInputs: { commissionPct: 0.03 },
+      })
+    ).toBeNull();
+  });
+});
 
 describe("getProductionValueDisplay", () => {
   it("sale: missing price → incomplete", () => {

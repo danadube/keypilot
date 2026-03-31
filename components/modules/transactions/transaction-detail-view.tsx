@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { computeDetailLivePreview } from "@/lib/transactions/detail-financial-preview";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -178,6 +179,18 @@ function formatMoneyDisplay(v: string | number | null | undefined) {
   const n = typeof v === "string" ? parseFloat(v) : v;
   if (Number.isNaN(n)) return "—";
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+}
+
+function formatMoneyHero(n: number) {
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+}
+
+/** Actionable copy for the workspace; list still uses "Needs …" from the shared gate. */
+function detailPreviewHint(listMessage: string): string {
+  if (listMessage === "Needs sale price") return "Add sale price to preview breakdown";
+  if (listMessage === "Needs commission %") return "Add commission % to preview breakdown";
+  if (listMessage === "Needs referral fee") return "Add referral fee to preview breakdown";
+  return "Financial inputs incomplete";
 }
 
 function isoToDateInput(iso: string | null) {
@@ -388,6 +401,37 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     brokerageInput,
     notesInput,
   ]);
+
+  const draftCommissionInputs = useMemo((): Record<string, unknown> => {
+    const ci: Record<string, unknown> = {};
+    const pct = commissionPctInput.trim();
+    ci.commissionPct = pct ? parseFloat(pct) : null;
+    const rp = referralPctInput.trim();
+    ci.referralPct = rp ? parseFloat(rp) : null;
+    const rf = referralFeeReceivedInput.trim();
+    ci.referralFeeReceived = rf ? parseFloat(rf) : null;
+    const nciO = nciOverrideInput.trim();
+    ci.nci = nciO ? parseFloat(nciO) : null;
+    return ci;
+  }, [commissionPctInput, referralPctInput, referralFeeReceivedInput, nciOverrideInput]);
+
+  const previewSalePrice = useMemo(() => {
+    const t = salePriceInput.trim().replace(/,/g, "");
+    if (!t) return null;
+    const n = parseFloat(t);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, [salePriceInput]);
+
+  const livePreview = useMemo(
+    () =>
+      computeDetailLivePreview({
+        transactionKind,
+        salePrice: previewSalePrice,
+        brokerageName: brokerageInput.trim() ? brokerageInput.trim() : null,
+        commissionInputsJson: draftCommissionInputs,
+      }),
+    [transactionKind, previewSalePrice, brokerageInput, draftCommissionInputs]
+  );
 
   const patchDealLink = async (dealId: string | null) => {
     setDealLinkBusy(true);
@@ -643,6 +687,367 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       </div>
 
       <div className="mx-6 mt-6 space-y-6 sm:mx-8">
+        <section className="rounded-xl border border-kp-outline bg-kp-surface p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-start gap-2">
+              <Calculator className="mt-0.5 h-5 w-5 shrink-0 text-kp-teal" />
+              <div>
+                <h2 className="text-sm font-semibold text-kp-on-surface">Financial workspace</h2>
+                <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+                  Enter the core deal economics — preview updates live. Save to persist what Production and
+                  reports use.
+                </p>
+              </div>
+            </div>
+            {dirty ? (
+              <span className="shrink-0 rounded-full border border-amber-500/35 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-900 dark:text-amber-200">
+                Unsaved
+              </span>
+            ) : (
+              <span className="shrink-0 rounded-full border border-kp-outline bg-kp-surface-high px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                In sync
+              </span>
+            )}
+          </div>
+
+          <div className="mt-5 rounded-lg border border-kp-teal/25 bg-kp-teal/[0.04] p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-teal">Primary inputs</p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-1.5 lg:col-span-1">
+                <label
+                  htmlFor="ws-tx-kind"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                >
+                  Transaction kind
+                </label>
+                <select
+                  id="ws-tx-kind"
+                  value={transactionKind}
+                  onChange={(e) => setTransactionKind(e.target.value as TxKind)}
+                  className={cn(
+                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface px-3 text-sm text-kp-on-surface",
+                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  )}
+                >
+                  <option value="SALE">Sale</option>
+                  <option value="REFERRAL_RECEIVED">Referral received</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="ws-price"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                >
+                  Sale price
+                </label>
+                <input
+                  id="ws-price"
+                  type="text"
+                  inputMode="decimal"
+                  value={salePriceInput}
+                  onChange={(e) => setSalePriceInput(e.target.value)}
+                  placeholder={transactionKind === "REFERRAL_RECEIVED" ? "Optional for referral" : "e.g. 500000"}
+                  className={cn(
+                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface px-3 text-sm tabular-nums",
+                    "text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  )}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="ws-comm-pct"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                >
+                  Commission %
+                </label>
+                <input
+                  id="ws-comm-pct"
+                  type="text"
+                  inputMode="decimal"
+                  value={commissionPctInput}
+                  onChange={(e) => setCommissionPctInput(e.target.value)}
+                  placeholder="e.g. 3 or 0.03"
+                  className={cn(
+                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface px-3 text-sm",
+                    "text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  )}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2 lg:col-span-2">
+                <label
+                  htmlFor="ws-brokerage"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                >
+                  Brokerage
+                </label>
+                <input
+                  id="ws-brokerage"
+                  type="text"
+                  value={brokerageInput}
+                  onChange={(e) => setBrokerageInput(e.target.value)}
+                  placeholder="e.g. KW, BDH — drives fee rules"
+                  className={cn(
+                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface px-3 text-sm",
+                    "text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  )}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="ws-close"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                >
+                  Closing date
+                </label>
+                <input
+                  id="ws-close"
+                  type="date"
+                  value={closingInput}
+                  onChange={(e) => setClosingInput(e.target.value)}
+                  className={cn(
+                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface px-3 text-sm text-kp-on-surface",
+                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  )}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div
+            className={cn(
+              "mt-5 rounded-xl border p-4",
+              dirty && livePreview.status === "ok"
+                ? "border-kp-teal/40 bg-kp-teal/[0.07]"
+                : "border-kp-outline bg-kp-surface-high/40"
+            )}
+          >
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface">
+                Live preview
+              </span>
+              {dirty ? (
+                <span className="text-[11px] text-kp-on-surface-variant">
+                  Estimates — save to update stored outputs
+                </span>
+              ) : (
+                <span className="text-[11px] text-kp-on-surface-variant">Matches saved calculation</span>
+              )}
+            </div>
+
+            {livePreview.status === "incomplete" || livePreview.status === "invalid" ? (
+              <div className="mt-3 rounded-lg border border-amber-500/35 bg-amber-500/[0.08] px-3 py-3 text-sm text-kp-on-surface">
+                {livePreview.status === "incomplete"
+                  ? detailPreviewHint(livePreview.message)
+                  : livePreview.message}
+              </div>
+            ) : (
+              <>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-lg border border-kp-outline bg-kp-surface p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                      Gross (GCI)
+                    </p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums text-kp-on-surface">
+                      {formatMoneyHero(livePreview.values.gci)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-kp-outline bg-kp-surface p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                      After referrals
+                    </p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums text-kp-on-surface">
+                      {formatMoneyHero(livePreview.values.adjustedGci)}
+                    </p>
+                    {livePreview.values.referralDollar > 0 ? (
+                      <p className="mt-1 text-[10px] text-kp-on-surface-variant">
+                        Referral paid −{formatMoneyDisplay(livePreview.values.referralDollar)}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="rounded-lg border border-kp-outline bg-kp-surface p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                      Total fees
+                    </p>
+                    <p className="mt-1 text-lg font-semibold tabular-nums text-kp-on-surface">
+                      {formatMoneyHero(livePreview.values.totalBrokerageFees)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border-2 border-kp-teal/45 bg-kp-surface p-3 shadow-sm">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-teal">NCI</p>
+                    <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-kp-on-surface">
+                      {formatMoneyHero(livePreview.values.nci)}
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">Net commission income</p>
+                  </div>
+                </div>
+                <p className="mt-3 text-[11px] text-kp-on-surface-variant">
+                  Net volume: <span className="font-medium text-kp-on-surface">{formatMoneyHero(livePreview.values.netVolume)}</span>
+                </p>
+              </>
+            )}
+
+            <div className="mt-4 border-t border-kp-outline pt-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                Saved on server
+              </p>
+              <p className="mt-1 text-xs text-kp-on-surface-variant">
+                {txn.nci != null || txn.gci != null ? (
+                  <>
+                    NCI {formatMoneyDisplay(txn.nci)} · After referrals {formatMoneyDisplay(txn.adjustedGci)} · Fees{" "}
+                    {formatMoneyDisplay(txn.totalBrokerageFees)} · GCI {formatMoneyDisplay(txn.gci)}
+                  </>
+                ) : (
+                  <>No saved commission outputs yet — complete primary inputs and save.</>
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 border-t border-kp-outline pt-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+              Advanced adjustments
+            </p>
+            <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+              Referral economics and import overrides. These feed the same preview above.
+            </p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="adv-ref-pct"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                >
+                  Referral % of GCI
+                </label>
+                <input
+                  id="adv-ref-pct"
+                  type="text"
+                  inputMode="decimal"
+                  value={referralPctInput}
+                  onChange={(e) => setReferralPctInput(e.target.value)}
+                  placeholder="Optional"
+                  className={cn(
+                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
+                    "text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  )}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="adv-ref-fee"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                >
+                  Referral fee received
+                </label>
+                <input
+                  id="adv-ref-fee"
+                  type="text"
+                  inputMode="decimal"
+                  value={referralFeeReceivedInput}
+                  onChange={(e) => setReferralFeeReceivedInput(e.target.value)}
+                  placeholder="Referral received kind"
+                  className={cn(
+                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
+                    "text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  )}
+                />
+              </div>
+              <div className="space-y-1.5 sm:col-span-2">
+                <label
+                  htmlFor="adv-nci"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                >
+                  NCI override (imports)
+                </label>
+                <input
+                  id="adv-nci"
+                  type="text"
+                  inputMode="decimal"
+                  value={nciOverrideInput}
+                  onChange={(e) => setNciOverrideInput(e.target.value)}
+                  placeholder="Optional; locks net for referral imports"
+                  className={cn(
+                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
+                    "text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  )}
+                />
+              </div>
+            </div>
+          </div>
+
+          {saveError && (
+            <div className="mt-4 flex items-center gap-2 text-sm text-red-400">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {saveError}
+            </div>
+          )}
+
+          <div className="mt-4 flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              disabled={!dirty || saving}
+              onClick={() => {
+                setStatus(txn.status);
+                setTransactionKind(txn.transactionKind ?? "SALE");
+                setPrimaryContactIdInput(txn.primaryContactId ?? "");
+                setExternalSourceInput(txn.externalSource ?? "");
+                setExternalSourceIdInput(txn.externalSourceId ?? "");
+                const rci =
+                  txn.commissionInputs &&
+                  typeof txn.commissionInputs === "object" &&
+                  !Array.isArray(txn.commissionInputs)
+                    ? (txn.commissionInputs as Record<string, unknown>)
+                    : {};
+                setCommissionPctInput(
+                  rci.commissionPct != null && rci.commissionPct !== ""
+                    ? String(rci.commissionPct)
+                    : ""
+                );
+                setReferralPctInput(
+                  rci.referralPct != null && rci.referralPct !== "" ? String(rci.referralPct) : ""
+                );
+                setReferralFeeReceivedInput(
+                  rci.referralFeeReceived != null && rci.referralFeeReceived !== ""
+                    ? String(rci.referralFeeReceived)
+                    : ""
+                );
+                setNciOverrideInput(rci.nci != null && rci.nci !== "" ? String(rci.nci) : "");
+                setSalePriceInput(salePriceToInput(txn.salePrice));
+                setClosingInput(isoToDateInput(txn.closingDate));
+                setBrokerageInput(txn.brokerageName ?? "");
+                setNotesInput(txn.notes ?? "");
+                setSaveError(null);
+              }}
+              className={cn(
+                "rounded-lg px-4 py-2 text-sm text-kp-on-surface-variant",
+                "hover:bg-kp-surface-high hover:text-kp-on-surface",
+                "disabled:pointer-events-none disabled:opacity-40"
+              )}
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              disabled={!dirty || saving}
+              onClick={handleSaveTransaction}
+              className={cn(
+                "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
+                dirty && !saving
+                  ? "bg-kp-gold text-kp-bg hover:bg-kp-gold-bright"
+                  : "cursor-not-allowed bg-kp-surface-high text-kp-on-surface-variant"
+              )}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save financials
+            </button>
+          </div>
+        </section>
+
         <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
           <div className="flex flex-wrap items-center gap-2">
             <Briefcase className="h-4 w-4 text-kp-on-surface-variant" />
@@ -761,9 +1166,11 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
         </section>
 
         <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-          <h2 className="text-sm font-semibold text-kp-on-surface">Transaction details</h2>
+          <h2 className="text-sm font-semibold text-kp-on-surface">Record &amp; context</h2>
           <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-            Changes save to this closing record only.
+            Pipeline status, client link, and notes.{" "}
+            <span className="font-medium text-kp-on-surface">Save changes</span> persists everything on this
+            page, including fields in the financial workspace above.
           </p>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -785,27 +1192,6 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
                     {o.label}
                   </option>
                 ))}
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label
-                htmlFor="detail-tx-kind"
-                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
-              >
-                Transaction kind
-              </label>
-              <select
-                id="detail-tx-kind"
-                value={transactionKind}
-                onChange={(e) => setTransactionKind(e.target.value as TxKind)}
-                className={cn(
-                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface",
-                  "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
-              >
-                <option value="SALE">Sale</option>
-                <option value="REFERRAL_RECEIVED">Referral received</option>
               </select>
             </div>
 
@@ -878,57 +1264,6 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="detail-price" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-                Sale price
-              </label>
-              <input
-                id="detail-price"
-                type="text"
-                inputMode="decimal"
-                value={salePriceInput}
-                onChange={(e) => setSalePriceInput(e.target.value)}
-                placeholder="Optional"
-                className={cn(
-                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
-                  "text-kp-on-surface placeholder:text-kp-on-surface-variant",
-                  "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="detail-close" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-                Closing date
-              </label>
-              <input
-                id="detail-close"
-                type="date"
-                value={closingInput}
-                onChange={(e) => setClosingInput(e.target.value)}
-                className={cn(
-                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface",
-                  "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
-              />
-            </div>
-
-            <div className="space-y-1.5 sm:col-span-2">
-              <label htmlFor="detail-brokerage" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-                Brokerage
-              </label>
-              <input
-                id="detail-brokerage"
-                type="text"
-                value={brokerageInput}
-                onChange={(e) => setBrokerageInput(e.target.value)}
-                className={cn(
-                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
-                  "text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
-              />
-            </div>
-
             <div className="space-y-1.5 sm:col-span-2">
               <label htmlFor="detail-notes" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
                 Notes
@@ -946,59 +1281,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             </div>
           </div>
 
-          {saveError && (
-            <div className="mt-3 flex items-center gap-2 text-sm text-red-400">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              {saveError}
-            </div>
-          )}
-
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              type="button"
-              disabled={!dirty || saving}
-              onClick={() => {
-                setStatus(txn.status);
-                setTransactionKind(txn.transactionKind ?? "SALE");
-                setPrimaryContactIdInput(txn.primaryContactId ?? "");
-                setExternalSourceInput(txn.externalSource ?? "");
-                setExternalSourceIdInput(txn.externalSourceId ?? "");
-                const rci =
-                  txn.commissionInputs &&
-                  typeof txn.commissionInputs === "object" &&
-                  !Array.isArray(txn.commissionInputs)
-                    ? (txn.commissionInputs as Record<string, unknown>)
-                    : {};
-                setCommissionPctInput(
-                  rci.commissionPct != null && rci.commissionPct !== ""
-                    ? String(rci.commissionPct)
-                    : ""
-                );
-                setReferralPctInput(
-                  rci.referralPct != null && rci.referralPct !== "" ? String(rci.referralPct) : ""
-                );
-                setReferralFeeReceivedInput(
-                  rci.referralFeeReceived != null && rci.referralFeeReceived !== ""
-                    ? String(rci.referralFeeReceived)
-                    : ""
-                );
-                setNciOverrideInput(
-                  rci.nci != null && rci.nci !== "" ? String(rci.nci) : ""
-                );
-                setSalePriceInput(salePriceToInput(txn.salePrice));
-                setClosingInput(isoToDateInput(txn.closingDate));
-                setBrokerageInput(txn.brokerageName ?? "");
-                setNotesInput(txn.notes ?? "");
-                setSaveError(null);
-              }}
-              className={cn(
-                "rounded-lg px-4 py-2 text-sm text-kp-on-surface-variant",
-                "hover:bg-kp-surface-high hover:text-kp-on-surface",
-                "disabled:pointer-events-none disabled:opacity-40"
-              )}
-            >
-              Reset
-            </button>
+          <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-kp-outline pt-4">
             <button
               type="button"
               disabled={!dirty || saving}
@@ -1011,142 +1294,16 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
               )}
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save
+              Save changes
             </button>
           </div>
         </section>
 
         <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <Calculator className="h-4 w-4 text-kp-on-surface-variant" />
-            <h2 className="text-sm font-semibold text-kp-on-surface">Commission breakdown</h2>
-          </div>
+          <h2 className="text-sm font-semibold text-kp-on-surface">Commission splits</h2>
           <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-            Engine outputs (GCI → NCI) update when you save. Use{" "}
-            <span className="font-medium text-kp-on-surface">KW</span>,{" "}
-            <span className="font-medium text-kp-on-surface">Keller Williams</span>,{" "}
-            <span className="font-medium text-kp-on-surface">BDH</span>, or{" "}
-            <span className="font-medium text-kp-on-surface">Bennion Deville Homes</span> in brokerage for
-            brokerage-specific fee rules.
-          </p>
-
-          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-            {(
-              [
-                ["GCI", txn.gci],
-                ["Adjusted GCI", txn.adjustedGci],
-                ["Referral paid ($)", txn.referralDollar],
-                ["Total brokerage fees", txn.totalBrokerageFees],
-                ["NCI", txn.nci],
-                ["Net volume", txn.netVolume],
-              ] as const
-            ).map(([label, val]) => (
-              <div key={label}>
-                <dt className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-                  {label}
-                </dt>
-                <dd className="mt-0.5 text-sm tabular-nums text-kp-on-surface">{formatMoneyDisplay(val)}</dd>
-              </div>
-            ))}
-          </dl>
-
-          <div className="mt-6 border-t border-kp-outline pt-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-              Assumptions (saved with transaction)
-            </p>
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="ci-comm-pct"
-                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
-                >
-                  Commission %
-                </label>
-                <input
-                  id="ci-comm-pct"
-                  type="text"
-                  inputMode="decimal"
-                  value={commissionPctInput}
-                  onChange={(e) => setCommissionPctInput(e.target.value)}
-                  placeholder="e.g. 3 or 0.03"
-                  className={cn(
-                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
-                    "text-kp-on-surface placeholder:text-kp-on-surface-variant",
-                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                  )}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="ci-ref-pct"
-                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
-                >
-                  Referral % of GCI
-                </label>
-                <input
-                  id="ci-ref-pct"
-                  type="text"
-                  inputMode="decimal"
-                  value={referralPctInput}
-                  onChange={(e) => setReferralPctInput(e.target.value)}
-                  placeholder="Optional"
-                  className={cn(
-                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
-                    "text-kp-on-surface placeholder:text-kp-on-surface-variant",
-                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                  )}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="ci-ref-fee"
-                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
-                >
-                  Referral fee received
-                </label>
-                <input
-                  id="ci-ref-fee"
-                  type="text"
-                  inputMode="decimal"
-                  value={referralFeeReceivedInput}
-                  onChange={(e) => setReferralFeeReceivedInput(e.target.value)}
-                  placeholder="For &quot;Referral received&quot; kind"
-                  className={cn(
-                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
-                    "text-kp-on-surface placeholder:text-kp-on-surface-variant",
-                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                  )}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="ci-nci-override"
-                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
-                >
-                  NCI override (imports)
-                </label>
-                <input
-                  id="ci-nci-override"
-                  type="text"
-                  inputMode="decimal"
-                  value={nciOverrideInput}
-                  onChange={(e) => setNciOverrideInput(e.target.value)}
-                  placeholder="Optional; locks NCI for referral imports"
-                  className={cn(
-                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
-                    "text-kp-on-surface placeholder:text-kp-on-surface-variant",
-                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                  )}
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-          <h2 className="text-sm font-semibold text-kp-on-surface">Commissions</h2>
-          <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-            Splits on this transaction. Co-agent visibility is handled when their user is set on a line.
+            Allocation lines for this transaction. Totals here are separate from the workspace NCI estimate
+            until you align splits with net.
           </p>
 
           {commissionError && (

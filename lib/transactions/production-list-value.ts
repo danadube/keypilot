@@ -54,6 +54,28 @@ export type ProductionListRowInput = {
   commissionInputs: unknown;
 };
 
+/** Same rules as production list "Needs setup"; used to gate client-side live preview. */
+export type MoneyPreviewGateInput = {
+  transactionKind: TxKind;
+  salePrice: number | null;
+  commissionInputs: unknown;
+};
+
+export function moneyPreviewBlockingMessage(input: MoneyPreviewGateInput): string | null {
+  const kind = input.transactionKind ?? "SALE";
+  const ci = asRecord(input.commissionInputs);
+  if (kind === "REFERRAL_RECEIVED") {
+    return referralFeeReceived(ci) <= 0 ? "Needs referral fee" : null;
+  }
+  if (effectivePrice(input.salePrice, ci) <= 0) {
+    return "Needs sale price";
+  }
+  if (!hasPositiveCommissionPct(ci)) {
+    return "Needs commission %";
+  }
+  return null;
+}
+
 /**
  * NCI is primary when inputs are sufficient and the persisted net is meaningful,
  * or when the user set an explicit NCI override (e.g. imports).

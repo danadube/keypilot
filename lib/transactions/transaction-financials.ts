@@ -1,18 +1,22 @@
 import { Prisma } from "@prisma/client";
 import type { TransactionKind } from "@prisma/client";
-import { calculateCommission, type TransactionInput } from "./commission-calculations";
-import { CommissionInputsSchema, type CommissionInputs } from "./commission-inputs";
+import { computeTransactionFinancialsCore } from "./transaction-financials-core";
 
-function toDecimalString(s: string): Prisma.Decimal {
-  return new Prisma.Decimal(s);
+function toDecimalString(n: number): Prisma.Decimal {
+  return new Prisma.Decimal(n);
 }
 
 function salePriceToNumber(
   salePrice: Prisma.Decimal | number | null | undefined
-): number {
-  if (salePrice == null) return 0;
-  if (typeof salePrice === "number") return salePrice;
-  return salePrice.toNumber();
+): number | null {
+  if (salePrice == null) return null;
+  if (typeof salePrice === "number") return Number.isFinite(salePrice) ? salePrice : null;
+  try {
+    const x = salePrice.toNumber();
+    return Number.isFinite(x) ? x : null;
+  } catch {
+    return null;
+  }
 }
 
 export type FinancialComputeOk = {
@@ -37,55 +41,22 @@ export function computeTransactionFinancials(params: {
   brokerageName: string | null | undefined;
   commissionInputsJson: unknown;
 }): FinancialComputeOk | FinancialComputeErr {
-  const raw =
-    params.commissionInputsJson && typeof params.commissionInputsJson === "object"
-      ? params.commissionInputsJson
-      : {};
-  const parsed = CommissionInputsSchema.safeParse(raw);
-  if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid commission inputs",
-    };
-  }
-
-  const data = parsed.data as CommissionInputs;
-  const saleNum = salePriceToNumber(params.salePrice);
-  const closedFromInputs =
-    data.closedPrice !== undefined && data.closedPrice !== null && data.closedPrice !== ""
-      ? parseFloat(String(data.closedPrice)) || 0
-      : null;
-  const closedPrice = closedFromInputs !== null ? closedFromInputs : saleNum;
-
-  const brokerage =
-    data.brokerage != null && String(data.brokerage).trim() !== ""
-      ? String(data.brokerage).trim()
-      : params.brokerageName?.trim() ?? "";
-
-  const transactionType =
-    params.transactionKind === "REFERRAL_RECEIVED"
-      ? "Referral $ Received"
-      : data.transactionType != null && String(data.transactionType).trim() !== ""
-        ? String(data.transactionType)
-        : "Sale";
-
-  const input: TransactionInput = {
-    ...data,
-    brokerage,
-    closedPrice,
-    transactionType,
-  };
-
-  const result = calculateCommission(input);
+  const core = computeTransactionFinancialsCore({
+    transactionKind: params.transactionKind,
+    salePrice: salePriceToNumber(params.salePrice),
+    brokerageName: params.brokerageName,
+    commissionInputsJson: params.commissionInputsJson,
+  });
+  if (!core.ok) return core;
 
   return {
     ok: true,
-    commissionInputs: parsed.data as Prisma.InputJsonValue,
-    gci: toDecimalString(result.gci),
-    adjustedGci: toDecimalString(result.adjustedGci),
-    referralDollar: toDecimalString(result.referralDollar),
-    totalBrokerageFees: toDecimalString(result.totalBrokerageFees),
-    nci: toDecimalString(result.nci),
-    netVolume: toDecimalString(result.netVolume),
+    commissionInputs: core.commissionInputs as Prisma.InputJsonValue,
+    gci: toDecimalString(core.gci),
+    adjustedGci: toDecimalString(core.adjustedGci),
+    referralDollar: toDecimalString(core.referralDollar),
+    totalBrokerageFees: toDecimalString(core.totalBrokerageFees),
+    nci: toDecimalString(core.nci),
+    netVolume: toDecimalString(core.netVolume),
   };
 }
