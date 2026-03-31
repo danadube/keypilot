@@ -1,6 +1,7 @@
 "use client";
 
 import { ModuleGate } from "@/components/shared/ModuleGate";
+import { FarmSegmentationPanel } from "@/components/modules/farm-trackr/farm-segmentation-panel";
 
 export default function FarmTrackrPage() {
   return (
@@ -14,12 +15,13 @@ export default function FarmTrackrPage() {
         <div>
           <h1 className="text-xl font-bold text-kp-on-surface">FarmTrackr</h1>
           <p className="mt-1 text-sm text-kp-on-surface-variant">
-            Geographic farming intelligence and territory management.
+            Canonical farm segmentation: territories, areas, and contact membership (foundation).
           </p>
         </div>
+        <FarmSegmentationPanel />
         <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
           <p className="text-sm text-kp-on-surface-variant">
-            Coming soon: farms, farm lists, routes, mailing plans, and campaign history.
+            Next: mailing, labels, imports, and analytics build on this model — not on free-text farm fields.
           </p>
         </div>
       </div>
