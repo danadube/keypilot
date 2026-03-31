@@ -268,7 +268,7 @@ export function VisitorsListView() {
                 placeholder="Search name, email, phone..."
                 value={qInput}
                 onChange={(e) => setQInput(e.target.value)}
-                className="h-9 border-kp-outline bg-kp-surface-high pl-9 text-kp-on-surface placeholder:text-kp-on-surface-variant focus:ring-kp-teal"
+                className="h-9 border-kp-outline bg-kp-surface-high pl-9 text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:ring-kp-teal"
               />
             </div>
             <Select
@@ -400,7 +400,7 @@ export function VisitorsListView() {
                 <thead>
                   <tr className="border-b-2 border-kp-outline">
                     {["Name","Email","Phone","Interest","Open House","Property","Sign-in","Lead status","Conversion","Notes",""].map((h) => (
-                      <th key={h} className={`pb-2.5 pt-0.5 text-xs font-semibold uppercase tracking-wider text-kp-on-surface-variant ${h === "" ? "w-[1%] whitespace-nowrap text-right" : "text-left"}`}>
+                      <th key={h} className={`pb-2.5 pt-0.5 text-xs font-semibold uppercase tracking-wider text-kp-on-surface-muted ${h === "" ? "w-[1%] whitespace-nowrap text-right" : "text-left"}`}>
                         {h}
                       </th>
                     ))}
@@ -558,7 +558,7 @@ export function VisitorsListView() {
         }
       >
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-kp-on-surface-variant">
+          <label className="block text-xs font-medium text-kp-on-surface-muted">
             Name
           </label>
           <input
@@ -572,7 +572,7 @@ export function VisitorsListView() {
             maxLength={MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH}
             className={cn(
               "w-full rounded-lg border border-kp-outline bg-kp-bg px-3 py-2 text-sm text-kp-on-surface",
-              "placeholder:text-kp-on-surface-variant focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+              "placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
             )}
             autoFocus
           />

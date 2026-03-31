@@ -285,7 +285,7 @@ function KpiCard({
       )}
     >
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
           {label}
         </span>
         <Icon className="h-3.5 w-3.5 text-kp-on-surface-variant group-hover:text-kp-teal transition-colors" />
@@ -579,7 +579,7 @@ export function HomePageView() {
                       "text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
                   )}
                 >
-                  <span className="text-[10px] uppercase opacity-70">{dayLabels[i]}</span>
+                  <span className="text-[11px] uppercase opacity-70">{dayLabels[i]}</span>
                   <span>{d.getDate()}</span>
                   {hasEvents && (
                     <span

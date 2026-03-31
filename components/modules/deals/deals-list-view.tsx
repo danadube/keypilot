@@ -229,7 +229,7 @@ function SearchInput({
         onChange={(e) => onChange(e.target.value)}
         className={cn(
           "h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high pl-8 pr-8",
-          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
           "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
         )}
       />
@@ -249,7 +249,7 @@ function SearchInput({
 // ── Table ─────────────────────────────────────────────────────────────────────
 
 const TH =
-  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
+  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted";
 const TD = "px-4 py-3.5 text-sm";
 
 function DealsTable({ deals }: { deals: Deal[] }) {

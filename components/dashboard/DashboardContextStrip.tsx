@@ -36,7 +36,7 @@ export function DashboardContextStrip({
       aria-label={regionLabel}
     >
       {label ? (
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface/60">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface/60">
           {label}
         </p>
       ) : null}

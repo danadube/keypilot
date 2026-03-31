@@ -35,6 +35,7 @@ import {
   MAX_SAVED_SEGMENTS,
   addSavedSegment,
 } from "@/lib/client-keep/saved-segments-storage";
+import { CreateContactModal } from "@/components/modules/contacts/create-contact-modal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -243,8 +244,8 @@ function SearchInput({
         onChange={(e) => onChange(e.target.value)}
         className={cn(
           "h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high pl-8 pr-8",
-          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
-          "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
+          "transition-colors focus:border-kp-teal focus:outline-none focus:ring-2 focus:ring-kp-teal/35"
         )}
       />
       {value && (
@@ -270,13 +271,13 @@ function TagChips({ tags }: { tags: { tag: { id: string; name: string } }[] }) {
       {visible.map((ct) => (
         <span
           key={ct.tag.id}
-          className="rounded-full bg-kp-teal/10 px-1.5 py-0.5 text-[10px] font-medium text-kp-teal"
+          className="rounded-full bg-kp-teal/10 px-1.5 py-0.5 text-[11px] font-medium text-kp-teal"
         >
           {ct.tag.name}
         </span>
       ))}
       {overflow > 0 && (
-        <span className="text-[10px] text-kp-on-surface-variant">+{overflow}</span>
+        <span className="text-[11px] text-kp-on-surface-muted">+{overflow}</span>
       )}
     </div>
   );
@@ -284,7 +285,7 @@ function TagChips({ tags }: { tags: { tag: { id: string; name: string } }[] }) {
 
 // ── Table ─────────────────────────────────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
+const TH = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted";
 const TD = "px-4 py-3.5 text-sm";
 
 function ContactsTable({
@@ -448,6 +449,7 @@ export function ContactsListView() {
   const [saveSegmentError, setSaveSegmentError] = useState<string | null>(null);
   const { hasCrm } = useProductTier();
   const { contacts, loading, error, reload } = useContacts(statusFilter, tagIdFilter);
+  const createContactOpen = searchParams.get("new") === "1";
 
   useEffect(() => {
     const { status, tagId } = parseSegmentFromSearchParams(searchParams);
@@ -671,6 +673,19 @@ export function ContactsListView() {
         )}
       </div>
 
+      <CreateContactModal
+        open={createContactOpen}
+        onDismiss={() =>
+          router.replace(segmentToHref(statusFilter, tagIdFilter), {
+            scroll: false,
+          })
+        }
+        onCreated={(id) => {
+          reload();
+          router.push(`/contacts/${id}`);
+        }}
+      />
+
       <BrandModal
         open={saveSegmentOpen}
         onOpenChange={(open) => {
@@ -706,7 +721,7 @@ export function ContactsListView() {
         }
       >
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-kp-on-surface-variant">
+          <label className="block text-xs font-medium text-kp-on-surface-muted">
             Name
           </label>
           <input
@@ -719,8 +734,8 @@ export function ContactsListView() {
             placeholder="e.g. Open house nurtures"
             maxLength={MAX_SAVED_SEGMENT_NAME_LENGTH}
             className={cn(
-              "w-full rounded-lg border border-kp-outline bg-kp-bg px-3 py-2 text-sm text-kp-on-surface",
-              "placeholder:text-kp-on-surface-variant focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+              "w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface",
+              "placeholder:text-kp-on-surface-placeholder focus:border-kp-teal focus:outline-none focus:ring-2 focus:ring-kp-teal/35"
             )}
             autoFocus
           />

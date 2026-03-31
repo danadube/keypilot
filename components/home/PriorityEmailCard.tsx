@@ -76,7 +76,7 @@ export function PriorityEmailCard({ email, className }: PriorityEmailCardProps) 
               </p>
             )}
             {email.date && (
-              <p className="text-[10px] text-[var(--brand-text-muted)] mt-1">
+              <p className="text-[11px] text-[var(--brand-text-muted)] mt-1">
                 {email.date}
               </p>
             )}
@@ -101,7 +101,7 @@ export function PriorityEmailCard({ email, className }: PriorityEmailCardProps) 
               </p>
             )}
             {email.date && (
-              <p className="text-[10px] text-[var(--brand-text-muted)] mt-1">
+              <p className="text-[11px] text-[var(--brand-text-muted)] mt-1">
                 {email.date}
               </p>
             )}

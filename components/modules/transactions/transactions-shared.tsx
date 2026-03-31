@@ -94,7 +94,7 @@ export function formatDate(iso: string | null) {
 }
 
 export const TH =
-  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
+  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted";
 export const TD = "px-4 py-3.5 text-sm";
 
 /** Full-width list table row (overview list). */

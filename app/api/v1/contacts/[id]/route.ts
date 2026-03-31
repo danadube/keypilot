@@ -1,25 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prismaAdmin } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { canAccessContact } from "@/lib/contacts/contact-access";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { UpdateContactSchema } from "@/lib/validations/contact";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
-async function getContactIfOwned(contactId: string, userId: string) {
-  const openHouses = await prismaAdmin.openHouse.findMany({
-    where: { hostUserId: userId, deletedAt: null },
-    select: { id: true },
-  });
-  const openHouseIds = openHouses.map((oh) => oh.id);
-
-  const visitor = await prismaAdmin.openHouseVisitor.findFirst({
-    where: {
-      contactId,
-      openHouseId: { in: openHouseIds },
-    },
-  });
-
-  if (!visitor) return null;
+async function getContactForDashboard(contactId: string, userId: string) {
+  const allowed = await canAccessContact(contactId, userId);
+  if (!allowed) return null;
 
   return prismaAdmin.contact.findFirst({
     where: { id: contactId, deletedAt: null },
@@ -40,7 +29,7 @@ export async function GET(
 ) {
   try {
     const user = await getCurrentUser();
-    const contact = await getContactIfOwned(params.id, user.id);
+    const contact = await getContactForDashboard(params.id, user.id);
 
     if (!contact) {
       return NextResponse.json(
@@ -61,7 +50,7 @@ export async function PUT(
 ) {
   try {
     const user = await getCurrentUser();
-    const contact = await getContactIfOwned(params.id, user.id);
+    const contact = await getContactForDashboard(params.id, user.id);
 
     if (!contact) {
       return NextResponse.json(

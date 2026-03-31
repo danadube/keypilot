@@ -101,7 +101,7 @@ function SearchPicker<T extends { id: string }>({
   if (selected) {
     return (
       <div className="space-y-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
           {label}
         </p>
         <div className="flex items-start justify-between gap-3 rounded-lg border border-kp-teal/30 bg-kp-teal/5 px-4 py-3">
@@ -135,7 +135,7 @@ function SearchPicker<T extends { id: string }>({
 
   return (
     <div className="space-y-1.5">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
         {label}
       </p>
 
@@ -150,7 +150,7 @@ function SearchPicker<T extends { id: string }>({
           placeholder={placeholder}
           className={cn(
             "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high pl-8 pr-8",
-            "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+            "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
             "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
           )}
         />

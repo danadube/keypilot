@@ -109,7 +109,7 @@ function EmptyState() {
 
 // ── Table ─────────────────────────────────────────────────────────────────────
 
-const COL_HEAD = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
+const COL_HEAD = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted";
 const COL_CELL = "px-4 py-3.5 text-sm";
 
 function PropertiesTable({ properties }: { properties: Property[] }) {

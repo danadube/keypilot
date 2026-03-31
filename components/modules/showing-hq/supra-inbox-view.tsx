@@ -138,10 +138,10 @@ function confidenceBadgeVariant(
 
 /** Inputs/selects: obvious editable fields (review + paste modals). */
 const fieldInput =
-  "h-9 w-full rounded-md border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal focus-visible:border-kp-teal disabled:cursor-not-allowed disabled:opacity-60";
+  "h-9 w-full rounded-md border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal focus-visible:border-kp-teal disabled:cursor-not-allowed disabled:opacity-60";
 
 const fieldTextarea =
-  "min-h-[72px] w-full rounded-md border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal focus-visible:border-kp-teal";
+  "min-h-[72px] w-full rounded-md border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal focus-visible:border-kp-teal";
 
 const reviewFormLabel = "text-xs font-medium text-kp-on-surface uppercase tracking-wide";
 
@@ -153,7 +153,7 @@ const reviewRawBodyChrome =
 
 const reviewRawBodyTextarea = cn(
   reviewRawBodyChrome,
-  "min-h-[160px] placeholder:text-kp-on-surface/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal focus-visible:border-kp-teal"
+  "min-h-[160px] placeholder:text-kp-on-surface-placeholder focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal focus-visible:border-kp-teal"
 );
 
 /** Left column workflow rail (review modal). */
@@ -2912,7 +2912,7 @@ export function SupraInboxView() {
               id="supra-paste-body"
               className={cn(
                 "mt-2 min-h-[min(360px,42vh)] w-full resize-y rounded-md border border-kp-outline/90 bg-kp-bg px-3 py-2.5 font-mono text-[13px] leading-relaxed text-kp-on-surface shadow-inner",
-                "placeholder:text-kp-on-surface/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal/40"
+                "placeholder:text-kp-on-surface-placeholder focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal/40"
               )}
               spellCheck={false}
               value={pasteBody}

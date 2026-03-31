@@ -232,7 +232,7 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
           <div className="space-y-3">
             {followUps.filter((f) => f.status !== "CLOSED").length > 0 ? (
               <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
                   Open ({followUps.filter((f) => f.status !== "CLOSED").length})
                 </p>
                 {followUps
@@ -251,7 +251,7 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
             )}
             {followUps.some((f) => f.status === "CLOSED") ? (
               <div className="space-y-2 border-t border-kp-outline/40 pt-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
                   Completed
                 </p>
                 {followUps

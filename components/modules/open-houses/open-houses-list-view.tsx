@@ -236,7 +236,7 @@ function SearchInput({
         onChange={(e) => onChange(e.target.value)}
         className={cn(
           "h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high pl-8 pr-8",
-          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
           "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
         )}
       />
@@ -297,7 +297,7 @@ function NextUpBanner({ event }: { event: OpenHouse }) {
               {event.title}
             </p>
             {isLive && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-kp-teal/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-kp-teal">
+              <span className="inline-flex items-center gap-1 rounded-full bg-kp-teal/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-kp-teal">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-kp-teal" />
                 Live
               </span>
@@ -336,7 +336,7 @@ function NextUpBanner({ event }: { event: OpenHouse }) {
 
 // ── Table ─────────────────────────────────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
+const TH = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted";
 const TD = "px-4 py-3.5 text-sm";
 
 function OpenHousesTable({ rows }: { rows: OpenHouse[] }) {
@@ -833,7 +833,7 @@ export function OpenHousesListView() {
         }
       >
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-kp-on-surface-variant">
+          <label className="block text-xs font-medium text-kp-on-surface-muted">
             Name
           </label>
           <input
@@ -847,7 +847,7 @@ export function OpenHousesListView() {
             maxLength={MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH}
             className={cn(
               "w-full rounded-lg border border-kp-outline bg-kp-bg px-3 py-2 text-sm text-kp-on-surface",
-              "placeholder:text-kp-on-surface-variant focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+              "placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
             )}
             autoFocus
           />

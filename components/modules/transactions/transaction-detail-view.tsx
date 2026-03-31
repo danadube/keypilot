@@ -624,7 +624,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
                   <div className="min-w-0 flex-1 space-y-1.5">
                     <label
                       htmlFor="txn-link-deal"
-                      className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                      className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
                     >
                       Deal to link
                     </label>
@@ -680,7 +680,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label htmlFor="detail-status" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+              <label htmlFor="detail-status" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
                 Status
               </label>
               <select
@@ -701,7 +701,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="detail-price" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+              <label htmlFor="detail-price" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
                 Sale price
               </label>
               <input
@@ -713,14 +713,14 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
                 placeholder="Optional"
                 className={cn(
                   "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
-                  "text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                  "text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
                   "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
                 )}
               />
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="detail-close" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+              <label htmlFor="detail-close" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
                 Closing date
               </label>
               <input
@@ -736,7 +736,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             </div>
 
             <div className="space-y-1.5 sm:col-span-2">
-              <label htmlFor="detail-brokerage" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+              <label htmlFor="detail-brokerage" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
                 Brokerage
               </label>
               <input
@@ -752,7 +752,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             </div>
 
             <div className="space-y-1.5 sm:col-span-2">
-              <label htmlFor="detail-notes" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+              <label htmlFor="detail-notes" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
                 Notes
               </label>
               <textarea
@@ -921,7 +921,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           )}
 
           <form onSubmit={handleAddCommission} className="mt-4 border-t border-kp-outline pt-4">
-            <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+            <p className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-kp-on-surface-muted">
               <Plus className="h-3.5 w-3.5" />
               Add line
             </p>

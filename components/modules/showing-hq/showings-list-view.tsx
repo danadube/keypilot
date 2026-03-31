@@ -366,7 +366,7 @@ function SearchInput({
         onChange={(e) => onChange(e.target.value)}
         className={cn(
           "h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high pl-8 pr-8",
-          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
           "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
         )}
       />
@@ -386,7 +386,7 @@ function SearchInput({
 // ── Table ─────────────────────────────────────────────────────────────────────
 
 const TH_BASE =
-  "px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
+  "px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted";
 const TD_BASE = "px-3 py-3 text-sm align-top";
 const TH_ACTIONS = cn(
   TH_BASE,
@@ -492,7 +492,7 @@ function ShowingsTable({
               </td>
 
               <td className={cn(TD_BASE, "hidden md:table-cell")}>
-                <span className="inline-flex rounded-md border border-kp-outline/80 bg-kp-surface-high px-2 py-0.5 text-[11px] font-medium text-kp-on-surface-variant">
+                <span className="inline-flex rounded-md border border-kp-outline/80 bg-kp-surface-high px-2 py-0.5 text-[11px] font-medium text-kp-on-surface-muted">
                   {showingSourceLabel(s.source)}
                 </span>
               </td>
@@ -779,14 +779,14 @@ export function ShowingsListView() {
       {/* ── Action-first workflow strip (replaces dominant KPI cards) ───── */}
       <div className="mx-6 mb-3 rounded-lg border border-kp-outline/80 bg-kp-surface-high/50 px-3 py-2.5 sm:mx-8 sm:px-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
             Review focus
           </p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
             {!loading && (
               <>
                 <span className="inline-flex items-center gap-1.5 text-kp-on-surface">
-                  <span className="text-kp-on-surface-variant">Drafts ready</span>
+                  <span className="text-kp-on-surface-muted">Drafts ready</span>
                   <span className="tabular-nums font-semibold text-kp-gold">{emailDraftsReadyCount}</span>
                   {emailDraftsReadyCount > 0 && (
                     <button
@@ -808,20 +808,20 @@ export function ShowingsListView() {
                   href="/showing-hq/feedback-requests"
                   className="inline-flex items-center gap-1.5 text-kp-on-surface hover:text-kp-teal"
                 >
-                  <span className="text-kp-on-surface-variant">Form feedback</span>
+                  <span className="text-kp-on-surface-muted">Form feedback</span>
                   <span className="font-semibold tabular-nums text-kp-gold">{feedbackCount}</span>
                 </Link>
                 <span className="hidden h-3 w-px bg-kp-outline sm:block" aria-hidden />
                 <span className="inline-flex items-center gap-1.5 text-kp-on-surface">
-                  <span className="text-kp-on-surface-variant">Email sent</span>
-                  <span className="tabular-nums font-medium text-kp-on-surface-variant">
+                  <span className="text-kp-on-surface-muted">Email sent</span>
+                  <span className="tabular-nums font-medium text-kp-on-surface-muted">
                     {emailMarkedSentCount}
                   </span>
-                  <span className="text-kp-on-surface-variant">(awaiting reply)</span>
+                  <span className="text-kp-on-surface-muted">(awaiting reply)</span>
                 </span>
               </>
             )}
-            {loading && <span className="text-kp-on-surface-variant">Loading…</span>}
+            {loading && <span className="text-kp-on-surface-muted">Loading…</span>}
           </div>
         </div>
       </div>
@@ -832,7 +832,7 @@ export function ShowingsListView() {
         <div className="space-y-3 border-b border-kp-outline px-5 py-4">
           <div>
             <p className="text-sm font-semibold text-kp-on-surface">Showings</p>
-            <p className="text-xs text-kp-on-surface-variant">
+            <p className="text-xs text-kp-on-surface-muted">
               When it ran · what needs feedback · actions on the right
             </p>
           </div>
@@ -880,7 +880,7 @@ export function ShowingsListView() {
                   "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
                   listView.feedbackOnly
                     ? "border-kp-teal/60 bg-kp-teal/10 text-kp-teal"
-                    : "border-kp-outline text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+                    : "border-kp-outline text-kp-on-surface-muted hover:bg-kp-surface-high hover:text-kp-on-surface"
                 )}
               >
                 Form feedback only
@@ -898,7 +898,7 @@ export function ShowingsListView() {
                   "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
                   listView.buyerAgentDraftReview
                     ? "border-kp-teal/60 bg-kp-teal/10 text-kp-teal"
-                    : "border-kp-outline text-kp-on-surface-variant hover:bg-kp-surface-high hover:text-kp-on-surface"
+                    : "border-kp-outline text-kp-on-surface-muted hover:bg-kp-surface-high hover:text-kp-on-surface"
                 )}
               >
                 Drafts ready only
@@ -936,7 +936,7 @@ export function ShowingsListView() {
 
         {showContent && showings.length > 0 && (
           <div className="flex flex-col gap-3 border-t border-kp-outline-variant px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-[11px] text-kp-on-surface-variant">
+            <p className="text-[11px] text-kp-on-surface-muted">
               <span className="tabular-nums font-medium text-kp-on-surface">{showings.length}</span>{" "}
               {showings.length === 1 ? "showing" : "showings"} in this list
               {hasListFilters ? " · filtered" : ""}
@@ -944,21 +944,21 @@ export function ShowingsListView() {
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
               <Link
                 href="/showing-hq/supra-inbox"
-                className="inline-flex items-center gap-1 text-kp-on-surface-variant hover:text-kp-teal"
+                className="inline-flex items-center gap-1 text-kp-on-surface-muted hover:text-kp-teal"
               >
                 <Inbox className="h-3 w-3" />
                 Supra inbox
               </Link>
               <Link
                 href="/showing-hq/feedback-requests"
-                className="inline-flex items-center gap-1 text-kp-on-surface-variant hover:text-kp-teal"
+                className="inline-flex items-center gap-1 text-kp-on-surface-muted hover:text-kp-teal"
               >
                 <ClipboardCheck className="h-3 w-3" />
                 Feedback hub
               </Link>
               <Link
                 href="/showing-hq/saved-views"
-                className="inline-flex items-center gap-1 text-kp-on-surface-variant hover:text-kp-teal"
+                className="inline-flex items-center gap-1 text-kp-on-surface-muted hover:text-kp-teal"
               >
                 <Layers className="h-3 w-3" />
                 Saved views
@@ -1003,7 +1003,7 @@ export function ShowingsListView() {
         }
       >
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-kp-on-surface-variant">
+          <label className="block text-xs font-medium text-kp-on-surface-muted">
             Name
           </label>
           <input
@@ -1017,7 +1017,7 @@ export function ShowingsListView() {
             maxLength={MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH}
             className={cn(
               "w-full rounded-lg border border-kp-outline bg-kp-bg px-3 py-2 text-sm text-kp-on-surface",
-              "placeholder:text-kp-on-surface-variant focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+              "placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
             )}
             autoFocus
           />

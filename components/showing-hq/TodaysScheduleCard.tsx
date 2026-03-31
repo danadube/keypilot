@@ -73,12 +73,12 @@ export function TodaysScheduleCard({
                   )}
                   <Badge
                     variant={item.type === "open_house" ? "default" : "secondary"}
-                    className="text-[10px]"
+                    className="text-[11px]"
                   >
                     {item.type === "open_house" ? "Open house" : "Showing"}
                   </Badge>
                   {isLive && (
-                    <Badge className="bg-emerald-600 text-[10px] hover:bg-emerald-600">LIVE</Badge>
+                    <Badge className="bg-emerald-600 text-[11px] hover:bg-emerald-600">LIVE</Badge>
                   )}
                 </div>
                 <p className="mt-0.5 truncate font-medium text-kp-on-surface">
@@ -118,7 +118,7 @@ export function TodaysScheduleCard({
                   ) : (
                     <Building2 className="h-3.5 w-3.5 shrink-0 text-amber-600" />
                   )}
-                  <Badge variant="outline" className="text-[10px] border-kp-outline text-kp-on-surface-variant">
+                  <Badge variant="outline" className="text-[11px] border-kp-outline text-kp-on-surface-variant">
                     Tomorrow
                   </Badge>
                 </div>

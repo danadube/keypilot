@@ -488,7 +488,7 @@ export function ContactDetailView({ id }: { id: string }) {
                   value={tagName}
                   onChange={(e) => setTagName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addTag()}
-                  className="h-8 flex-1 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
+                  className="h-8 flex-1 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus-visible:ring-kp-teal"
                 />
                 <Button
                   variant="outline"
@@ -550,7 +550,7 @@ export function ContactDetailView({ id }: { id: string }) {
 
               {/* Add reminder form */}
               <div className="space-y-2 border-t border-kp-outline pt-3">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-kp-on-surface-variant">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-kp-on-surface-muted">
                   Schedule reminder
                 </p>
                 <Input
@@ -564,7 +564,7 @@ export function ContactDetailView({ id }: { id: string }) {
                   value={reminderBody}
                   onChange={(e) => setReminderBody(e.target.value)}
                   rows={2}
-                  className="resize-none border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
+                  className="resize-none border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus-visible:ring-kp-teal"
                 />
                 <Button
                   variant="outline"
@@ -596,7 +596,7 @@ export function ContactDetailView({ id }: { id: string }) {
                 value={noteBody}
                 onChange={(e) => setNoteBody(e.target.value)}
                 rows={2}
-                className="resize-none border-kp-outline bg-kp-surface text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
+                className="resize-none border-kp-outline bg-kp-surface text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus-visible:ring-kp-teal"
               />
               <Button
                 variant="outline"
@@ -631,7 +631,7 @@ export function ContactDetailView({ id }: { id: string }) {
                 value={commBody}
                 onChange={(e) => setCommBody(e.target.value)}
                 rows={2}
-                className="resize-none border-kp-outline bg-kp-surface text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
+                className="resize-none border-kp-outline bg-kp-surface text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus-visible:ring-kp-teal"
               />
               <Button
                 size="sm"
@@ -666,7 +666,7 @@ export function ContactDetailView({ id }: { id: string }) {
                       {formatDate(a.occurredAt)}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <span className={cn("mb-0.5 block text-[10px] font-bold uppercase tracking-wide", colorClass)}>
+                      <span className={cn("mb-0.5 block text-[11px] font-bold uppercase tracking-wide", colorClass)}>
                         {label}
                       </span>
                       <p className="text-sm text-kp-on-surface">{a.body}</p>

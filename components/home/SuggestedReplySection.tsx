@@ -118,7 +118,7 @@ export function SuggestedReplySection({ email, className }: SuggestedReplySectio
                   className="rounded-[var(--radius-sm)] border border-[var(--brand-border)] bg-[var(--brand-surface)] p-3"
                 >
                   <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className="text-[10px] font-medium uppercase text-[var(--brand-text-muted)]">
+                    <span className="text-[11px] font-medium uppercase text-[var(--brand-text-muted)]">
                       {draft.draftType}
                     </span>
                     <BrandButton
@@ -132,7 +132,7 @@ export function SuggestedReplySection({ email, className }: SuggestedReplySectio
                     </BrandButton>
                   </div>
                   {draft.rationale && (
-                    <p className="text-[10px] text-[var(--brand-text-muted)] mb-1.5 italic">
+                    <p className="text-[11px] text-[var(--brand-text-muted)] mb-1.5 italic">
                       {draft.rationale}
                     </p>
                   )}

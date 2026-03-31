@@ -141,7 +141,7 @@ export function AgentFollowUpTaskCard({
             <p className="text-sm font-medium text-kp-on-surface">{task.title}</p>
             <span
               className={cn(
-                "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                "rounded px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide",
                 isClosed
                   ? "bg-kp-surface-high text-kp-on-surface-variant"
                   : task.status === "NEW"
@@ -242,7 +242,7 @@ export function AgentFollowUpTaskCard({
       {editing && !isClosed ? (
         <div className="mt-3 space-y-2 border-t border-kp-outline/40 pt-3">
           <div>
-            <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-kp-on-surface-variant">
+            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-kp-on-surface-variant">
               Due date
             </p>
             <Input
@@ -262,7 +262,7 @@ export function AgentFollowUpTaskCard({
             />
           </div>
           <div>
-            <p className="mb-1 text-[10px] font-medium uppercase tracking-wide text-kp-on-surface-variant">
+            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-kp-on-surface-variant">
               Notes
             </p>
             <Textarea

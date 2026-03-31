@@ -34,7 +34,7 @@ function TaskItem({ task }: { task: Task }) {
       <li className="flex items-center justify-between gap-4 rounded-lg border border-kp-outline p-3.5 transition-colors hover:bg-kp-surface-high">
         <div className="min-w-0 flex-1">
           <p className="font-medium text-kp-on-surface">{task.subject}</p>
-          <p className="mt-0.5 text-sm text-kp-on-surface-variant">
+          <p className="mt-0.5 text-sm text-kp-on-surface-muted">
             {fullName(task.contact)} · {addr}
           </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -43,7 +43,7 @@ function TaskItem({ task }: { task: Task }) {
               <LeadStatusBadge status={task.leadStatus} />
             )}
             {"flyerSent" in task && (task.flyerSent || task.flyerOpened) && (
-              <span className="text-xs text-kp-on-surface-variant">
+              <span className="text-xs text-kp-on-surface-muted">
                 {task.flyerSent && "Flyer sent ✓"}
                 {task.flyerSent && task.flyerOpened && " · "}
                 {task.flyerOpened && "Flyer opened ✓"}
@@ -66,7 +66,7 @@ function TaskItem({ task }: { task: Task }) {
     <li className="flex items-center justify-between gap-4 rounded-lg border border-kp-outline p-3.5 transition-colors hover:bg-kp-surface-high">
       <div className="min-w-0 flex-1">
         <p className="font-medium text-kp-on-surface">{task.body}</p>
-        <p className="mt-0.5 text-sm text-kp-on-surface-variant">
+        <p className="mt-0.5 text-sm text-kp-on-surface-muted">
           {fullName(task.contact)} · Due {formatDateTime(task.dueAt)}
         </p>
       </div>
@@ -110,18 +110,18 @@ function SectionCard({
   const shown = limit ? tasks.slice(0, limit) : tasks;
   return (
     <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-      <p className="mb-0.5 text-[10px] font-bold uppercase tracking-widest text-kp-on-surface-variant">{eyebrow}</p>
+      <p className="mb-0.5 text-[11px] font-bold uppercase tracking-widest text-kp-on-surface-muted">{eyebrow}</p>
       <h3 className="text-sm font-semibold text-kp-on-surface">{title}</h3>
-      <p className="mt-0.5 text-xs text-kp-on-surface-variant">{description}</p>
+      <p className="mt-0.5 text-xs text-kp-on-surface-muted">{description}</p>
       <div className="mt-4">
         {tasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             {emptyExtra}
-            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-kp-surface-high text-kp-on-surface-variant">
+            <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-kp-surface-high text-kp-on-surface-muted">
               {icon}
             </div>
             <p className="text-sm font-medium text-kp-on-surface">{emptyTitle}</p>
-            <p className="mt-1 max-w-xs text-xs text-kp-on-surface-variant">{emptyDescription}</p>
+            <p className="mt-1 max-w-xs text-xs text-kp-on-surface-muted">{emptyDescription}</p>
             {emptyAction && <div className="mt-3">{emptyAction}</div>}
           </div>
         ) : (
@@ -132,7 +132,7 @@ function SectionCard({
               ))}
             </ul>
             {overflow && overflow > 0 && (
-              <p className="mt-3 text-xs text-kp-on-surface-variant">
+              <p className="mt-3 text-xs text-kp-on-surface-muted">
                 Showing {limit} of {tasks.length}
               </p>
             )}
@@ -178,10 +178,10 @@ export function FollowUpsView() {
           emptyDescription="After visitors sign in at your open house, we'll generate follow-up drafts here for you to review and send."
           emptyExtra={
             <div className="mb-4 w-full rounded-lg border border-dashed border-kp-outline bg-kp-surface-high/50 p-4 text-left">
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-variant">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-kp-on-surface-muted">
                 How it works
               </p>
-              <ol className="list-inside list-decimal space-y-1 text-xs text-kp-on-surface-variant">
+              <ol className="list-inside list-decimal space-y-1 text-xs text-kp-on-surface-muted">
                 <li>Visitors sign in at your open house</li>
                 <li>We generate personalized follow-up drafts</li>
                 <li>Review, edit, and send with one click</li>

@@ -17,7 +17,7 @@ import {
 import { UserPlus, type LucideIcon } from "lucide-react";
 
 const KP_FIELD =
-  "h-10 rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface shadow-none placeholder:text-kp-on-surface-variant/75 focus-visible:border-kp-outline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-400 focus-visible:ring-offset-0 disabled:opacity-50";
+  "h-10 rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface shadow-none placeholder:text-kp-on-surface-placeholder focus-visible:border-kp-outline focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-400 focus-visible:ring-offset-0 disabled:opacity-50";
 
 const KP_SELECT_TRIGGER = cn(
   KP_FIELD,

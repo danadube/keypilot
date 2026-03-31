@@ -567,7 +567,7 @@ export default function VisitorProfilePage() {
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Add notes about this visitor..."
-              className="min-h-[100px] resize-y border-kp-outline bg-kp-surface-high text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal/30"
+              className="min-h-[100px] resize-y border-kp-outline bg-kp-surface-high text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus-visible:ring-kp-teal/30"
             />
             <Button
               size="sm"

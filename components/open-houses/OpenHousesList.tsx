@@ -106,7 +106,7 @@ export function OpenHousesList() {
       >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div className="min-w-0 flex-1">
-            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#7DD3F5]">
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[#7DD3F5]">
               Open House Ops
             </p>
             <h1

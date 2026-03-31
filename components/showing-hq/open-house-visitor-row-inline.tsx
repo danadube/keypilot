@@ -147,7 +147,7 @@ export function OpenHouseVisitorRowInline({
             <InlineSuccessText show={savedFlash}>{AF.saved}</InlineSuccessText>
             <div className="grid gap-2 sm:grid-cols-2">
               <div>
-                <label className="text-[10px] font-medium text-kp-on-surface-variant">First name</label>
+                <label className="text-[11px] font-medium text-kp-on-surface-variant">First name</label>
                 <Input
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
@@ -155,7 +155,7 @@ export function OpenHouseVisitorRowInline({
                 />
               </div>
               <div>
-                <label className="text-[10px] font-medium text-kp-on-surface-variant">Last name</label>
+                <label className="text-[11px] font-medium text-kp-on-surface-variant">Last name</label>
                 <Input
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
@@ -163,7 +163,7 @@ export function OpenHouseVisitorRowInline({
                 />
               </div>
               <div>
-                <label className="text-[10px] font-medium text-kp-on-surface-variant">Email</label>
+                <label className="text-[11px] font-medium text-kp-on-surface-variant">Email</label>
                 <Input
                   type="email"
                   value={email}
@@ -172,7 +172,7 @@ export function OpenHouseVisitorRowInline({
                 />
               </div>
               <div>
-                <label className="text-[10px] font-medium text-kp-on-surface-variant">Phone</label>
+                <label className="text-[11px] font-medium text-kp-on-surface-variant">Phone</label>
                 <Input
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
@@ -182,7 +182,7 @@ export function OpenHouseVisitorRowInline({
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
               <div>
-                <label className="text-[10px] font-medium text-kp-on-surface-variant">Interest</label>
+                <label className="text-[11px] font-medium text-kp-on-surface-variant">Interest</label>
                 <Select
                   value={interestLevel || "__none__"}
                   onValueChange={(x) => setInterestLevel(x === "__none__" ? "" : x)}
@@ -201,7 +201,7 @@ export function OpenHouseVisitorRowInline({
                 </Select>
               </div>
               <div>
-                <label className="text-[10px] font-medium text-kp-on-surface-variant">Lead status</label>
+                <label className="text-[11px] font-medium text-kp-on-surface-variant">Lead status</label>
                 <Select value={leadStatus} onValueChange={setLeadStatus}>
                   <SelectTrigger className="mt-0.5 h-8 text-sm">
                     <SelectValue />

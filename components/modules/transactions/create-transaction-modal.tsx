@@ -73,7 +73,7 @@ function PropertySearchPicker({
   if (selected) {
     return (
       <div className="space-y-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
           Property
         </p>
         <div className="flex items-start justify-between gap-3 rounded-lg border border-kp-teal/30 bg-kp-teal/5 px-4 py-3">
@@ -105,7 +105,7 @@ function PropertySearchPicker({
 
   return (
     <div className="space-y-1.5">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
         Property
       </p>
       <div className="relative">
@@ -118,7 +118,7 @@ function PropertySearchPicker({
           placeholder="Search properties by address…"
           className={cn(
             "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high pl-8 pr-8",
-            "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+            "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
             "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
           )}
         />
@@ -330,7 +330,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
             <div className="space-y-1.5">
               <label
                 htmlFor="txn-status"
-                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
               >
                 Status
               </label>
@@ -356,9 +356,9 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
               <div className="space-y-1.5">
                 <label
                   htmlFor="txn-price"
-                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
                 >
-                  Sale price <span className="font-normal normal-case text-kp-on-surface-variant">(optional)</span>
+                  Sale price <span className="font-normal normal-case text-kp-on-surface-muted">(optional)</span>
                 </label>
                 <input
                   id="txn-price"
@@ -369,7 +369,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                   onChange={(e) => setSalePrice(e.target.value)}
                   className={cn(
                     "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3",
-                    "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                    "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
                     "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
                   )}
                 />
@@ -377,9 +377,9 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
               <div className="space-y-1.5">
                 <label
                   htmlFor="txn-close"
-                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
                 >
-                  Closing date <span className="font-normal normal-case text-kp-on-surface-variant">(optional)</span>
+                  Closing date <span className="font-normal normal-case text-kp-on-surface-muted">(optional)</span>
                 </label>
                 <input
                   id="txn-close"
@@ -398,9 +398,9 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
             <div className="space-y-1.5">
               <label
                 htmlFor="txn-brokerage"
-                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
               >
-                Brokerage <span className="font-normal normal-case text-kp-on-surface-variant">(optional)</span>
+                Brokerage <span className="font-normal normal-case text-kp-on-surface-muted">(optional)</span>
               </label>
               <input
                 id="txn-brokerage"
@@ -410,7 +410,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                 placeholder="Company or team name"
                 className={cn(
                   "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3",
-                  "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                  "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
                   "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
                 )}
               />
@@ -419,9 +419,9 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
             <div className="space-y-1.5">
               <label
                 htmlFor="txn-notes"
-                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
               >
-                Notes <span className="font-normal normal-case text-kp-on-surface-variant">(optional)</span>
+                Notes <span className="font-normal normal-case text-kp-on-surface-muted">(optional)</span>
               </label>
               <textarea
                 id="txn-notes"
@@ -431,7 +431,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                 placeholder="Internal notes"
                 className={cn(
                   "w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2",
-                  "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                  "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
                   "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
                 )}
               />

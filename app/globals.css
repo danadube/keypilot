@@ -59,13 +59,14 @@ body {
 /* Authenticated app shell: align shadcn Card/Popover with KeyPilot dark surfaces */
 .kp-dashboard-app {
   --card: 215 37% 13%;
-  --card-foreground: 213 31% 91%;
+  --card-foreground: 213 31% 93%;
   --popover: 215 37% 13%;
-  --popover-foreground: 213 31% 91%;
-  --border: 215 28% 24%;
+  --popover-foreground: 213 31% 93%;
+  --border: 215 26% 28%;
   --muted: 215 28% 18%;
-  --muted-foreground: 215 18% 58%;
-  --input: 215 28% 22%;
+  /* Brighter than before: secondary copy + placeholders via shadcn Input were too dim */
+  --muted-foreground: 213 22% 72%;
+  --input: 215 28% 24%;
 }
 
 /* ── KeyPilot design system font fallbacks ───────────────────────────────────

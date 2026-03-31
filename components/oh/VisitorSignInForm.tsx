@@ -247,7 +247,7 @@ export function VisitorSignInForm({ slug }: { slug: string }) {
             )}
           </div>
 
-          <p className="mt-8 text-center text-[10px] text-slate-400">
+          <p className="mt-8 text-center text-[11px] text-slate-400">
             Powered by KeyPilot
           </p>
         </div>

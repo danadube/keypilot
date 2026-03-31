@@ -106,7 +106,7 @@ export function BrandModal({
                 <p
                   id="brand-modal-desc"
                   className={cn(
-                    "mt-1 text-sm leading-snug text-kp-on-surface/88",
+                    "mt-1 text-sm leading-snug text-kp-on-surface-muted",
                     descriptionClassName
                   )}
                 >

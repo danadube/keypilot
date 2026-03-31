@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { AlertCircle, CalendarClock, Inbox } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowRight,
+  CalendarClock,
+  ClipboardList,
+  Inbox,
+  PlusSquare,
+  QrCode,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
@@ -272,7 +280,7 @@ export function NeedsAttentionSection({
             Needs attention
           </h2>
         </div>
-        <p className="text-[10px] font-medium text-kp-on-surface-variant">Most urgent first</p>
+        <p className="text-[11px] font-medium text-kp-on-surface-variant">Most urgent first</p>
       </div>
       {items.length === 0 ? (
         <p className="text-xs text-kp-on-surface-variant">You&apos;re all caught up — nothing urgent right now.</p>
@@ -297,7 +305,7 @@ export function NeedsAttentionSection({
                   </p>
                   <span
                     className={cn(
-                      "mt-1 inline-flex w-fit rounded-md border text-[10px] font-medium leading-none",
+                      "mt-1 inline-flex w-fit rounded-md border text-[11px] font-medium leading-none",
                       isUrgent
                         ? "border-amber-500/35 bg-amber-500/10 px-2 py-1 text-amber-400"
                         : "border-kp-outline/70 bg-kp-bg/25 px-2 py-1 text-kp-on-surface-variant"
@@ -306,7 +314,7 @@ export function NeedsAttentionSection({
                     {row.attention.label}
                   </span>
                   {row.missingPrepSummary ? (
-                    <p className="mt-1 text-[10px] leading-snug text-amber-200/90">
+                    <p className="mt-1 text-[11px] leading-snug text-amber-200/90">
                       {row.missingPrepSummary}
                     </p>
                   ) : null}
@@ -603,6 +611,59 @@ export function buildCommandStripPriorityLine(args: {
 
   const sentence = first.primaryLine.replace(/\.*\s*$/, "");
   return `Next priority: ${sentence}`;
+}
+
+function formatRelativeEventDelta(iso: string): string {
+  const diffMs = new Date(iso).getTime() - Date.now();
+  const absMins = Math.round(Math.abs(diffMs) / 60000);
+  const hours = Math.floor(absMins / 60);
+  const days = Math.floor(hours / 24);
+  if (absMins < 60) {
+    return diffMs >= 0 ? `in ${absMins}m` : `${absMins}m ago`;
+  }
+  if (hours < 24) {
+    return diffMs >= 0 ? `in ${hours}h` : `${hours}h ago`;
+  }
+  return diffMs >= 0 ? `in ${days}d` : `${days}d ago`;
+}
+
+export type DashboardMetricTile = {
+  key: string;
+  label: string;
+  value: string;
+  hint?: string;
+};
+
+export function ShowingHQMetricsStrip({
+  items,
+  className,
+}: {
+  items: DashboardMetricTile[];
+  className?: string;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <section
+      className={cn(
+        "mb-4 grid grid-cols-2 gap-2.5 rounded-lg border border-kp-outline/55 bg-kp-surface-high/20 p-2.5 sm:grid-cols-4",
+        className
+      )}
+      aria-label="ShowingHQ quick metrics"
+    >
+      {items.map((item) => (
+        <div
+          key={item.key}
+          className="rounded-md border border-kp-outline/45 bg-kp-surface/70 px-2.5 py-2"
+        >
+          <p className="text-[11px] font-medium text-kp-on-surface-muted">{item.label}</p>
+          <p className="mt-0.5 text-lg font-bold tabular-nums text-kp-on-surface">{item.value}</p>
+          {item.hint ? (
+            <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-muted">{item.hint}</p>
+          ) : null}
+        </div>
+      ))}
+    </section>
+  );
 }
 
 function formatWhenForAddressLine(
@@ -974,47 +1035,105 @@ export function ShowingHQCommandStrip({
   upcomingCount,
   needPrepCount,
   awaitingCount,
+  actionNowCount,
   formatTime,
   priorityLine,
 }: {
-  nextEvent: { address: string; at: string; kind?: "showing" | "open_house" } | null;
+  nextEvent: {
+    id: string;
+    address: string;
+    at: string;
+    kind: "showing" | "open_house";
+  } | null;
   upcomingCount: number;
   needPrepCount: number;
   awaitingCount: number;
+  actionNowCount: number;
   formatTime: (iso: string) => string;
   priorityLine?: string | null;
 }) {
-  const nextLine =
-    nextEvent != null ? (
-      <p className="text-[12px] font-medium leading-snug text-kp-on-surface">
-        Next:{" "}
-        <span className="text-kp-on-surface">{nextEvent.address}</span>
-        <span className="text-kp-on-surface-variant"> · </span>
-        <span className="tabular-nums text-kp-on-surface-variant">
-          {formatShortDayAndTime(nextEvent.at, formatTime)}
-        </span>
-      </p>
-    ) : (
-      <p className="text-[12px] leading-snug text-kp-on-surface-variant">No upcoming event on the clock.</p>
-    );
+  const eventDelta = nextEvent ? formatRelativeEventDelta(nextEvent.at) : null;
+  const eventKindLabel = nextEvent?.kind === "open_house" ? "Open house" : "Private showing";
+  const eventStartsLabel = eventDelta ? `Starts ${eventDelta}` : null;
+  const eventHref =
+    nextEvent == null
+      ? null
+      : nextEvent.kind === "open_house"
+        ? openHouseWorkflowTabHref(nextEvent.id, "prep")
+        : showingWorkflowTabHref(nextEvent.id, "prep");
+  const signInHref = nextEvent?.kind === "open_house" ? `/open-houses/${nextEvent.id}/sign-in` : null;
 
   return (
     <header
-      className="mb-5 w-full border-b border-kp-outline/70 pb-4 sm:mb-6"
+      className="mb-4 w-full rounded-xl border border-kp-teal/30 bg-kp-surface-high/35 px-4 py-3.5 shadow-[0_0_0_1px_rgba(75,174,216,0.12)] sm:mb-5 sm:px-5"
       aria-label="Next event and schedule stats"
     >
-      {nextLine}
-      <p className="mt-2 text-[12px] leading-relaxed text-kp-on-surface-variant">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+            Next event on deck
+          </p>
+          {nextEvent ? (
+            <>
+              <h2 className="mt-0.5 truncate text-base font-bold text-kp-on-surface sm:text-lg">
+                {nextEvent.address}
+              </h2>
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] text-kp-on-surface-muted">
+                <span className="font-medium text-kp-on-surface/95">{eventKindLabel}</span>
+                <span className="text-kp-outline/45">·</span>
+                <span>{formatShortDayAndTime(nextEvent.at, formatTime)}</span>
+                {eventStartsLabel ? (
+                  <>
+                    <span className="text-kp-outline/45">·</span>
+                    <span className="inline-flex rounded-md border border-kp-gold/40 bg-kp-gold/10 px-1.5 py-0.5 font-semibold text-kp-gold">
+                      {eventStartsLabel}
+                    </span>
+                  </>
+                ) : null}
+              </p>
+            </>
+          ) : (
+            <p className="mt-1 text-[12px] leading-snug text-kp-on-surface-muted">
+              No upcoming event on the clock. Add a showing or open house to start today&apos;s flow.
+            </p>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {signInHref ? (
+            <Button variant="outline" size="sm" className={cn(kpBtnPrimary, "h-8 px-3 text-[12px]")} asChild>
+              <Link href={signInHref}>
+                <QrCode className="mr-1 h-3.5 w-3.5" />
+                Launch sign-in
+              </Link>
+            </Button>
+          ) : null}
+          {eventHref ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(signInHref ? kpBtnSecondary : kpBtnPrimary, "h-8 px-3 text-[12px]")}
+              asChild
+            >
+              <Link href={eventHref}>
+                Finish prep
+                <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" className={cn(kpBtnPrimary, "h-8 px-3 text-[12px]")} asChild>
+              <Link href="/showing-hq/showings/new">Add showing</Link>
+            </Button>
+          )}
+        </div>
+      </div>
+      <p className="mt-2.5 text-[12px] leading-relaxed text-kp-on-surface-muted">
+        <span className="font-medium tabular-nums text-kp-on-surface">{actionNowCount}</span> action now
+        <span className="mx-1 text-kp-outline/40">•</span>
         <span className="font-medium tabular-nums text-kp-on-surface">{upcomingCount}</span> upcoming
-        <span className="mx-1 text-kp-outline/40" aria-hidden>
-          •
-        </span>
-        <span className="font-medium tabular-nums text-kp-on-surface">{needPrepCount}</span> need prep
-        <span className="mx-1 text-kp-outline/40" aria-hidden>
-          •
-        </span>
-        <span className="font-medium tabular-nums text-kp-on-surface">{awaitingCount}</span> awaiting
-        response
+        <span className="mx-1 text-kp-outline/40">•</span>
+        <span className="font-medium tabular-nums text-kp-on-surface">{needPrepCount}</span> prep needed
+        <span className="mx-1 text-kp-outline/40">•</span>
+        <span className="font-medium tabular-nums text-kp-on-surface">{awaitingCount}</span> awaiting response
       </p>
       {priorityLine ? (
         <p className="mt-2 max-w-3xl text-[12px] leading-snug text-kp-on-surface">
@@ -1067,10 +1186,28 @@ export function WhatNeedsAttentionSection({
             if (inGroup.length === 0) return null;
             return (
               <div key={group} className="space-y-2">
-                <h3 className="text-[12px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                <h3
+                  className={cn(
+                    "text-[12px] font-semibold uppercase tracking-wider",
+                    group === "action_now"
+                      ? "text-amber-300"
+                      : group === "upcoming"
+                        ? "text-sky-300"
+                        : "text-kp-on-surface-muted"
+                  )}
+                >
                   {QUEUE_GROUP_LABEL[group]}
                 </h3>
-                <ul className="space-y-2">
+                <ul
+                  className={cn(
+                    "space-y-2 rounded-lg p-2",
+                    group === "action_now"
+                      ? "border border-amber-400/45 bg-amber-500/[0.08] shadow-[0_0_0_1px_rgba(245,158,11,0.18)]"
+                      : group === "upcoming"
+                        ? "border border-sky-500/28 bg-sky-500/[0.045]"
+                        : "border border-kp-outline/45 bg-kp-bg/20"
+                  )}
+                >
                   {inGroup.map((row, indexInGroup) => {
                     const vis = QUEUE_ROW_VISUAL[row.visualKind];
                     const spotlight =
@@ -1108,7 +1245,7 @@ export function WhatNeedsAttentionSection({
                           variant="outline"
                           size="sm"
                           className={cn(
-                            kpBtnPrimary,
+                            group === "action_now" ? kpBtnPrimary : kpBtnSecondary,
                             "h-8 shrink-0 border-transparent px-3 text-[12px] font-semibold"
                           )}
                           asChild
@@ -1156,10 +1293,16 @@ function todayStatusFromAttention(
 /** Today’s events only — schedule context (secondary to What needs attention). */
 export function TodayScheduleSection({
   rows,
+  draftQueueCount,
+  awaitingCount,
+  nextUp,
   formatTime,
   className,
 }: {
   rows: TodayScheduleRow[];
+  draftQueueCount: number;
+  awaitingCount: number;
+  nextUp: UpNextRow | null;
   formatTime: (iso: string) => string;
   className?: string;
 }) {
@@ -1174,12 +1317,51 @@ export function TodayScheduleSection({
       <h2 id="today-schedule-heading" className="text-[13px] font-semibold text-kp-on-surface">
         Today
       </h2>
-      <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">
-        What&apos;s on the calendar, when it runs, and whether anything still blocks it — not a second
-        copy of the queue.
+      <p className="mt-0.5 text-[11px] text-kp-on-surface-muted">
+        Quick timeline: all-day posture, draft queue status, and scheduled event slots.
       </p>
+      <ul className="mt-2.5 border-l border-kp-outline/45 pl-3.5">
+        <li className="relative pb-2.5">
+          <span className="absolute -left-[15px] top-1.5 h-2 w-2 rounded-full bg-kp-teal/75" aria-hidden />
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">All day</p>
+          <p className="mt-0.5 text-[12px] text-kp-on-surface">
+            {rows.length === 0
+              ? "No calendar events scheduled today."
+              : `${rows.length} scheduled event${rows.length === 1 ? "" : "s"} on deck today.`}
+          </p>
+        </li>
+        <li className="relative border-t border-kp-outline/35 py-2.5">
+          <span className="absolute -left-[15px] top-3 h-2 w-2 rounded-full bg-amber-400/80" aria-hidden />
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+            Draft queue
+          </p>
+          <p className="mt-0.5 text-[12px] text-kp-on-surface">
+            <span className="tabular-nums font-semibold text-kp-on-surface">{draftQueueCount}</span> draft
+            {draftQueueCount === 1 ? "" : "s"} waiting review
+            <span className="mx-1 text-kp-outline/45">·</span>
+            <span className="tabular-nums font-semibold text-kp-on-surface">{awaitingCount}</span> awaiting
+            response
+          </p>
+        </li>
+        <li className="relative border-t border-kp-outline/35 pt-2.5">
+          <span className="absolute -left-[15px] top-3 h-2 w-2 rounded-full bg-sky-400/80" aria-hidden />
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+            Upcoming after today
+          </p>
+          {nextUp ? (
+            <p className="mt-0.5 text-[12px] text-kp-on-surface">
+              {nextUp.kind === "open_house" ? "Open house" : "Private showing"} · {formatTime(nextUp.at)} ·{" "}
+              {nextUp.address}
+            </p>
+          ) : (
+            <p className="mt-0.5 text-[12px] text-kp-on-surface-muted">
+              Nothing queued after today yet.
+            </p>
+          )}
+        </li>
+      </ul>
       {rows.length === 0 ? (
-        <p className="mt-2.5 text-[11px] text-kp-on-surface-variant">Nothing on the calendar today.</p>
+        <p className="mt-2.5 text-[11px] text-kp-on-surface-muted">No timed slots today.</p>
       ) : (
         <ul className="mt-2.5 space-y-2">
           {rows.map((row) => (
@@ -1209,7 +1391,7 @@ export function TodayScheduleSection({
                   </span>
                 </p>
                 {row.readinessLine ? (
-                  <p className="mt-1 text-[10px] leading-snug text-kp-on-surface-variant/95">
+                  <p className="mt-1 text-[11px] leading-snug text-kp-on-surface-variant/95">
                     {row.readinessLine}
                   </p>
                 ) : null}
@@ -1217,7 +1399,7 @@ export function TodayScheduleSection({
               <Button
                 variant="outline"
                 size="sm"
-                className={cn(kpBtnSecondary, "h-7 px-2.5 text-[10px] font-semibold")}
+                className={cn(kpBtnSecondary, "h-7 px-2.5 text-[11px] font-semibold")}
                 asChild
               >
                 <Link href={row.href}>Workspace</Link>
@@ -1333,7 +1515,7 @@ export function UpcomingSection({
                 className="block rounded py-0.5 text-left transition-colors hover:bg-kp-surface-high/25"
               >
                 <p className="truncate text-[11px] font-medium text-kp-on-surface">{row.address}</p>
-                <p className="mt-0.5 text-[10px] text-kp-on-surface-variant/90">
+                <p className="mt-0.5 text-[11px] text-kp-on-surface-variant/90">
                   {formatDate(row.at)} · {formatTime(row.at)}
                 </p>
               </Link>
@@ -1360,20 +1542,19 @@ export function UpNextRailSection({
   return (
     <section
       className={cn(
-        "rounded-md border border-kp-outline/25 bg-kp-bg/[0.12] px-2 py-2 sm:px-2.5 sm:py-2",
-        "opacity-[0.92]",
+        "rounded-lg border border-kp-outline/35 bg-kp-bg/[0.22] px-3 py-3 sm:px-3.5 sm:py-3",
         className
       )}
       aria-labelledby="up-next-heading"
     >
       <div className="mb-1 flex items-center gap-1">
-        <CalendarClock className="h-2.5 w-2.5 shrink-0 text-kp-on-surface-variant/50" aria-hidden />
-        <h2 id="up-next-heading" className="text-[10px] font-medium text-kp-on-surface-variant/80">
+        <CalendarClock className="h-3.5 w-3.5 shrink-0 text-kp-on-surface-muted" aria-hidden />
+        <h2 id="up-next-heading" className="text-[12px] font-semibold text-kp-on-surface-muted">
           Up next
         </h2>
       </div>
       {rows.length === 0 ? (
-        <p className="text-[9px] text-kp-on-surface-variant/85">Nothing after now.</p>
+        <p className="text-[11px] text-kp-on-surface-muted">Nothing after now.</p>
       ) : (
         <ul className="space-y-1">
           {rows.map((row) => (
@@ -1386,12 +1567,12 @@ export function UpNextRailSection({
                 }
                 className="block rounded px-0 py-0.5 text-left transition-colors hover:bg-kp-surface-high/15"
               >
-                <p className="text-[9px] font-medium tabular-nums leading-snug text-kp-on-surface/90">
+                <p className="text-[12px] font-medium tabular-nums leading-snug text-kp-on-surface/90">
                   {formatShortDate(row.at)} {formatTime(row.at)}
                   <span className="mx-1 font-normal text-kp-outline/35">—</span>
                   <span className="font-normal">{row.address}</span>
                 </p>
-                <p className="text-[9px] text-kp-on-surface-variant/75">
+                <p className="text-[11px] text-kp-on-surface-muted">
                   {row.kind === "open_house" ? "Open house" : "Showing"}
                 </p>
               </Link>
@@ -1413,12 +1594,14 @@ export type RecentReportOutputRow = {
 /** Tertiary outputs — only when data exists, or a minimal unavailable state when load failed. */
 export function RecentOutputsRailSection({
   reports,
+  latestSummary,
   loadFailed,
   formatShortDate,
   formatTime,
   className,
 }: {
   reports: RecentReportOutputRow[];
+  latestSummary?: { represented: number | null; unrepresented: number | null; draftsPending: number };
   /** When true, show a small operational message instead of hiding the section. */
   loadFailed?: boolean;
   formatShortDate: (iso: string) => string;
@@ -1431,10 +1614,10 @@ export function RecentOutputsRailSection({
         className={cn("rounded-md border border-kp-outline/30 bg-kp-bg/40 px-3 py-2.5 sm:px-3.5", className)}
         aria-labelledby="recent-outputs-heading"
       >
-        <h2 id="recent-outputs-heading" className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+        <h2 id="recent-outputs-heading" className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
           Recent reports
         </h2>
-        <p className="mt-2 text-[10px] leading-snug text-kp-on-surface-variant">
+        <p className="mt-2 text-[11px] leading-snug text-kp-on-surface-variant">
           Couldn&apos;t load this section. Refresh the page or try again in a moment.
         </p>
       </section>
@@ -1442,20 +1625,56 @@ export function RecentOutputsRailSection({
   }
   if (reports.length === 0) return null;
   const top = reports.slice(0, 4);
+  const latest = top[0] ?? null;
   return (
     <section
       className={cn("rounded-md border border-kp-outline/30 bg-kp-bg/40 px-3 py-2.5 sm:px-3.5", className)}
       aria-labelledby="recent-outputs-heading"
     >
-      <h2 id="recent-outputs-heading" className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+      <h2 id="recent-outputs-heading" className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
         Recent reports
       </h2>
+      {latest ? (
+        <div className="mt-2 rounded-md border border-kp-outline/50 bg-kp-surface-high/20 px-2.5 py-2">
+          <p className="text-[12px] font-medium text-kp-on-surface">Last open house</p>
+          <p className="mt-0.5 text-[12px] text-kp-on-surface-muted">{latest.address}</p>
+          <p className="mt-1 text-[11px] text-kp-on-surface-muted">
+            <span className="font-medium tabular-nums text-kp-on-surface">{latest.visitorCount}</span> visitors
+            <span className="mx-1 text-kp-outline/40">•</span>
+            <span className="font-medium tabular-nums text-kp-on-surface">
+              {latestSummary?.draftsPending ?? 0}
+            </span>{" "}
+            drafts pending
+            {latestSummary?.represented != null && latestSummary?.unrepresented != null ? (
+              <>
+                <span className="mx-1 text-kp-outline/40">•</span>
+                <span className="font-medium tabular-nums text-kp-on-surface">
+                  {latestSummary.represented}
+                </span>{" "}
+                represented /{" "}
+                <span className="font-medium tabular-nums text-kp-on-surface">
+                  {latestSummary.unrepresented}
+                </span>{" "}
+                unrepresented
+              </>
+            ) : null}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(kpBtnSecondary, "mt-2 h-7 px-2.5 text-[11px] font-semibold")}
+            asChild
+          >
+            <Link href={`/open-houses/${latest.id}/report`}>View seller report</Link>
+          </Button>
+        </div>
+      ) : null}
       <ul className="mt-2 space-y-1.5">
         {top.map((r) => (
           <li key={r.id}>
             <Link
               href={`/open-houses/${r.id}/report`}
-              className="block text-[10px] leading-snug text-kp-on-surface-variant hover:text-kp-on-surface"
+              className="block text-[11px] leading-snug text-kp-on-surface-variant hover:text-kp-on-surface"
             >
               <span className="font-medium text-kp-on-surface">{r.address}</span>
               <span className="text-kp-outline/50"> · </span>
@@ -1464,6 +1683,73 @@ export function RecentOutputsRailSection({
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+export function QuickActionsRailSection({
+  nextEvent,
+  hasDrafts,
+}: {
+  nextEvent: { id: string; kind: "showing" | "open_house" } | null;
+  hasDrafts: boolean;
+}) {
+  const signInHref =
+    nextEvent?.kind === "open_house" ? `/open-houses/${nextEvent.id}/sign-in` : null;
+  const primaryAction: "drafts" | "sign-in" | "new-open-house" = hasDrafts
+    ? "drafts"
+    : signInHref
+      ? "sign-in"
+      : "new-open-house";
+  return (
+    <section className="rounded-lg border border-kp-outline/35 bg-kp-bg/[0.22] px-3 py-3 sm:px-3.5">
+      <div className="mb-2 flex items-center gap-1.5">
+        <ClipboardList className="h-3.5 w-3.5 text-kp-on-surface-muted" />
+        <h2 className="text-[12px] font-semibold text-kp-on-surface-muted">Quick actions</h2>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(
+            primaryAction === "new-open-house" ? kpBtnPrimary : kpBtnSecondary,
+            "h-7 px-2.5 text-[11px]"
+          )}
+          asChild
+        >
+          <Link href="/open-houses/new">
+            <PlusSquare className="mr-1 h-3.5 w-3.5" />
+            New open house
+          </Link>
+        </Button>
+        {signInHref ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(
+              primaryAction === "sign-in" ? kpBtnPrimary : kpBtnSecondary,
+              "h-7 px-2.5 text-[11px]"
+            )}
+            asChild
+          >
+            <Link href={signInHref}>
+              <QrCode className="mr-1 h-3.5 w-3.5" />
+              Launch sign-in
+            </Link>
+          </Button>
+        ) : null}
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(
+            primaryAction === "drafts" ? kpBtnPrimary : kpBtnSecondary,
+            "h-7 px-2.5 text-[11px]"
+          )}
+          asChild
+        >
+          <Link href="/showing-hq/follow-ups/drafts">Review drafts</Link>
+        </Button>
+      </div>
     </section>
   );
 }

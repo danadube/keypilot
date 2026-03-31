@@ -147,7 +147,7 @@ function InfoRow({
     <div className="flex items-start gap-3">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-kp-on-surface-variant" />
       <div className="min-w-0">
-        <p className="text-[11px] uppercase tracking-wider text-kp-on-surface-variant">{label}</p>
+        <p className="text-[11px] uppercase tracking-wider text-kp-on-surface-muted">{label}</p>
         <div className="mt-0.5 text-sm text-kp-on-surface">{children}</div>
       </div>
     </div>
@@ -524,7 +524,7 @@ export function DealDetailView({ dealId }: { dealId: string }) {
                 rows={6}
                 className={cn(
                   "w-full resize-y rounded-lg border border-kp-outline bg-kp-surface-high",
-                  "px-3 py-2.5 text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                  "px-3 py-2.5 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
                   "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
                 )}
               />
