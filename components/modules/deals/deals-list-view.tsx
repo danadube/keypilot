@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Briefcase,
   Search,
@@ -356,6 +357,8 @@ function DealsTable({ deals }: { deals: Deal[] }) {
  * Route: app/(dashboard)/deals/page.tsx
  */
 export function DealsListView() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<StatusTabValue>("__all__");
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
@@ -365,6 +368,12 @@ export function DealsListView() {
   void viewMode; // suppress unused warning until Kanban branch is added
 
   const { deals, loading, error, reload } = useDeals(statusFilter);
+
+  useEffect(() => {
+    if (searchParams.get("new") !== "1") return;
+    setCreateOpen(true);
+    router.replace("/deals", { scroll: false });
+  }, [searchParams, router]);
 
   // Client-side search on top of server-filtered results
   const visibleDeals = useMemo(() => {
@@ -397,24 +406,16 @@ export function DealsListView() {
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
       {/* ── Page header ─────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-3 sm:px-8">
+      <div className="px-6 pb-4 pt-3 sm:px-8">
         <div>
           <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
             Deals
           </h1>
           <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-            Transaction pipeline — contacts linked to properties
+            Transaction pipeline — contacts linked to properties. Use{" "}
+            <span className="font-medium text-kp-on-surface">+ New</span> in the header to add a deal.
           </p>
         </div>
-        <button
-          onClick={() => setCreateOpen(true)}
-          className={cn(
-            "mt-0.5 shrink-0 rounded-lg bg-kp-gold px-3 py-1.5 text-xs font-semibold text-kp-bg",
-            "transition-colors hover:bg-kp-gold-bright"
-          )}
-        >
-          + New Deal
-        </button>
       </div>
 
       {/* ── Metric cards ─────────────────────────────────────────────────── */}

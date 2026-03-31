@@ -7,10 +7,7 @@ import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
 import { ShowingHQWorkbenchHeaderActions } from "@/components/dashboard/ShowingHQWorkbenchHeaderActions";
 import { cn } from "@/lib/utils";
 import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
-import {
-  isOpenHousesListPath,
-  isShowingHQContext,
-} from "@/lib/showing-hq/isShowingHQContext";
+import { isOpenHousesListPath } from "@/lib/showing-hq/isShowingHQContext";
 
 /**
  * "Today" line under ShowingHQ — must not run locale formatting during SSR, or the
@@ -69,8 +66,6 @@ function getPageTitle(pathname: string): string {
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
-  /** Open house module routes share ShowingHQ header actions. */
-  const showHeaderNewMenu = isShowingHQContext(pathname);
   const isShowingHQWorkbenchHome = pathname === "/showing-hq";
 
   return (
@@ -96,7 +91,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 border-l border-kp-outline bg-kp-surface px-2.5 md:gap-2 md:px-3.5">
-            <ShowingHQWorkbenchHeaderActions showNewMenu={showHeaderNewMenu} />
+            <ShowingHQWorkbenchHeaderActions />
           </div>
         </header>
 

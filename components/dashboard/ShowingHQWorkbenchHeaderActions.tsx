@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { ChevronDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import { getHeaderNewMenuItems } from "@/lib/dashboard/header-new-menu-items";
 
 const menuItemClass =
   "block w-full px-3 py-2 text-left text-xs text-kp-on-surface transition-colors hover:bg-kp-surface-high";
@@ -32,14 +34,9 @@ function buildAvatarCandidates(profile: BrandingProfile | null, clerkImageUrl: s
   return out;
 }
 
-type ShowingHQWorkbenchHeaderActionsProps = {
-  /** When false, only account avatar/name/menu render (e.g. non–ShowingHQ dashboard routes). */
-  showNewMenu?: boolean;
-};
-
-export function ShowingHQWorkbenchHeaderActions({
-  showNewMenu = true,
-}: ShowingHQWorkbenchHeaderActionsProps) {
+export function ShowingHQWorkbenchHeaderActions() {
+  const pathname = usePathname() ?? "";
+  const newMenuItems = getHeaderNewMenuItems(pathname);
   const [newOpen, setNewOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [brandingProfile, setBrandingProfile] = useState<BrandingProfile | null>(null);
@@ -97,62 +94,39 @@ export function ShowingHQWorkbenchHeaderActions({
 
   return (
     <div className="flex shrink-0 items-center gap-2 md:gap-2">
-      {showNewMenu ? (
-        <div className="relative" ref={newRef}>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={cn(kpBtnSecondary, "h-7 gap-1 px-2.5 text-[11px] [&_svg]:h-3 [&_svg]:w-3")}
-            onClick={() => setNewOpen((o) => !o)}
-            aria-expanded={newOpen}
-            aria-haspopup="menu"
+      <div className="relative" ref={newRef}>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={cn(kpBtnSecondary, "h-7 gap-1 px-2.5 text-[11px] [&_svg]:h-3 [&_svg]:w-3")}
+          onClick={() => setNewOpen((o) => !o)}
+          aria-expanded={newOpen}
+          aria-haspopup="menu"
+        >
+          <Plus className="shrink-0" />
+          New
+          <ChevronDown className="shrink-0 opacity-70" />
+        </Button>
+        {newOpen ? (
+          <div
+            className="absolute right-0 top-full z-50 mt-1 min-w-[11rem] rounded-lg border border-kp-outline bg-kp-surface py-1 shadow-lg"
+            role="menu"
           >
-            <Plus className="shrink-0" />
-            New
-            <ChevronDown className="shrink-0 opacity-70" />
-          </Button>
-          {newOpen ? (
-            <div
-              className="absolute right-0 top-full z-50 mt-1 min-w-[11rem] rounded-lg border border-kp-outline bg-kp-surface py-1 shadow-lg"
-              role="menu"
-            >
+            {newMenuItems.map((item) => (
               <Link
-                href="/showing-hq/showings/new"
+                key={`${item.label}-${item.href}`}
+                href={item.href}
                 className={menuItemClass}
                 role="menuitem"
                 onClick={() => setNewOpen(false)}
               >
-                Showing
+                {item.label}
               </Link>
-              <Link
-                href="/open-houses/new"
-                className={menuItemClass}
-                role="menuitem"
-                onClick={() => setNewOpen(false)}
-              >
-                Open house
-              </Link>
-              <Link
-                href="/properties/new"
-                className={menuItemClass}
-                role="menuitem"
-                onClick={() => setNewOpen(false)}
-              >
-                Property
-              </Link>
-              <Link
-                href="/contacts"
-                className={menuItemClass}
-                role="menuitem"
-                onClick={() => setNewOpen(false)}
-              >
-                Contact
-              </Link>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+            ))}
+          </div>
+        ) : null}
+      </div>
 
       <div className="relative" ref={accountRef}>
         <button

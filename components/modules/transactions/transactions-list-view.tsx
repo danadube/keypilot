@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Banknote,
   Search,
@@ -11,8 +12,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SectionTabs } from "@/components/ui/section-tabs";
-import { Button } from "@/components/ui/button";
-import { kpBtnSave } from "@/components/ui/kp-dashboard-button-tiers";
 import { CreateTransactionModal } from "./create-transaction-modal";
 import {
   type TransactionRow,
@@ -135,6 +134,8 @@ function EmptyState({ isFiltered, onReset }: { isFiltered: boolean; onReset: () 
  * API: GET /api/v1/transactions?status=&transactionKind=&brokerage=&q=&closingYear=
  */
 export function TransactionsListView() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<StatusTabValue>("__all__");
   const [kindFilter, setKindFilter] = useState<KindFilter>("__all__");
   const [brokerageFilter, setBrokerageFilter] = useState("");
@@ -146,6 +147,12 @@ export function TransactionsListView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("new") !== "1") return;
+    setCreateOpen(true);
+    router.replace("/transactions", { scroll: false });
+  }, [searchParams, router]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedQ(searchInput.trim()), 320);
@@ -230,23 +237,16 @@ export function TransactionsListView() {
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
-      <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-3 sm:px-8">
+      <div className="px-6 pb-4 pt-3 sm:px-8">
         <div>
           <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
             Production
           </h1>
           <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-            Scan net commission, spot gaps, open a deal when you need the breakdown
+            Scan net commission, spot gaps, open a deal when you need the breakdown. Use{" "}
+            <span className="font-medium text-kp-on-surface">+ New</span> in the header to add a transaction.
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setCreateOpen(true)}
-          className={cn(kpBtnSave, "mt-0.5 h-9 shrink-0 border-transparent px-3 text-xs")}
-        >
-          + Add transaction
-        </Button>
       </div>
 
       <div className="mx-6 mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
