@@ -400,7 +400,7 @@ export function VisitorsListView() {
                 <thead>
                   <tr className="border-b-2 border-kp-outline">
                     {["Name","Email","Phone","Interest","Open House","Property","Sign-in","Lead status","Conversion","Notes",""].map((h) => (
-                      <th key={h} className={`pb-2.5 pt-0.5 text-xs font-semibold uppercase tracking-wider text-kp-on-surface-variant ${h === "" ? "w-[1%] whitespace-nowrap text-right" : "text-left"}`}>
+                      <th key={h} className={`pb-2.5 pt-0.5 text-xs font-semibold uppercase tracking-wider text-kp-on-surface-muted ${h === "" ? "w-[1%] whitespace-nowrap text-right" : "text-left"}`}>
                         {h}
                       </th>
                     ))}
@@ -558,7 +558,7 @@ export function VisitorsListView() {
         }
       >
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-kp-on-surface-variant">
+          <label className="block text-xs font-medium text-kp-on-surface-muted">
             Name
           </label>
           <input

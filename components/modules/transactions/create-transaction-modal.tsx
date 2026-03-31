@@ -73,7 +73,7 @@ function PropertySearchPicker({
   if (selected) {
     return (
       <div className="space-y-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
           Property
         </p>
         <div className="flex items-start justify-between gap-3 rounded-lg border border-kp-teal/30 bg-kp-teal/5 px-4 py-3">
@@ -105,7 +105,7 @@ function PropertySearchPicker({
 
   return (
     <div className="space-y-1.5">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
         Property
       </p>
       <div className="relative">
@@ -330,7 +330,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
             <div className="space-y-1.5">
               <label
                 htmlFor="txn-status"
-                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
               >
                 Status
               </label>
@@ -356,9 +356,9 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
               <div className="space-y-1.5">
                 <label
                   htmlFor="txn-price"
-                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
                 >
-                  Sale price <span className="font-normal normal-case text-kp-on-surface-variant">(optional)</span>
+                  Sale price <span className="font-normal normal-case text-kp-on-surface-muted">(optional)</span>
                 </label>
                 <input
                   id="txn-price"
@@ -377,9 +377,9 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
               <div className="space-y-1.5">
                 <label
                   htmlFor="txn-close"
-                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
                 >
-                  Closing date <span className="font-normal normal-case text-kp-on-surface-variant">(optional)</span>
+                  Closing date <span className="font-normal normal-case text-kp-on-surface-muted">(optional)</span>
                 </label>
                 <input
                   id="txn-close"
@@ -398,9 +398,9 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
             <div className="space-y-1.5">
               <label
                 htmlFor="txn-brokerage"
-                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
               >
-                Brokerage <span className="font-normal normal-case text-kp-on-surface-variant">(optional)</span>
+                Brokerage <span className="font-normal normal-case text-kp-on-surface-muted">(optional)</span>
               </label>
               <input
                 id="txn-brokerage"
@@ -419,9 +419,9 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
             <div className="space-y-1.5">
               <label
                 htmlFor="txn-notes"
-                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
               >
-                Notes <span className="font-normal normal-case text-kp-on-surface-variant">(optional)</span>
+                Notes <span className="font-normal normal-case text-kp-on-surface-muted">(optional)</span>
               </label>
               <textarea
                 id="txn-notes"

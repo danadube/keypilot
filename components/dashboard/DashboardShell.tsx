@@ -28,7 +28,7 @@ function WorkbenchDateLine() {
   }, []);
   if (!line) return null;
   return (
-    <p className="mt-0.5 truncate text-[10px] leading-tight text-kp-on-surface-muted">
+    <p className="mt-0.5 truncate text-[11px] leading-tight text-kp-on-surface-muted">
       {line}
     </p>
   );

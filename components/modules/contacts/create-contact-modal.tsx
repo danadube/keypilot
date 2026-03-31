@@ -128,7 +128,7 @@ export function CreateContactModal({
       <form id="create-contact-form" className="space-y-3" onSubmit={handleSubmit}>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-kp-on-surface-variant">
+            <label className="block text-xs font-medium text-kp-on-surface-muted">
               First name
             </label>
             <input
@@ -140,7 +140,7 @@ export function CreateContactModal({
             />
           </div>
           <div className="space-y-1">
-            <label className="block text-xs font-medium text-kp-on-surface-variant">
+            <label className="block text-xs font-medium text-kp-on-surface-muted">
               Last name
             </label>
             <input
@@ -153,7 +153,7 @@ export function CreateContactModal({
           </div>
         </div>
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-kp-on-surface-variant">
+          <label className="block text-xs font-medium text-kp-on-surface-muted">
             Email <span className="font-normal">(optional)</span>
           </label>
           <input
@@ -165,7 +165,7 @@ export function CreateContactModal({
           />
         </div>
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-kp-on-surface-variant">
+          <label className="block text-xs font-medium text-kp-on-surface-muted">
             Phone <span className="font-normal">(optional)</span>
           </label>
           <input
@@ -177,7 +177,7 @@ export function CreateContactModal({
           />
         </div>
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-kp-on-surface-variant">
+          <label className="block text-xs font-medium text-kp-on-surface-muted">
             Notes <span className="font-normal">(optional)</span>
           </label>
           <textarea

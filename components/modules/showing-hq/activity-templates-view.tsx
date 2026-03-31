@@ -203,7 +203,7 @@ export function ActivityTemplatesView() {
               <p className="text-[11px] leading-snug text-kp-on-surface-variant">
                 Optional placeholders (only filled when you link a contact/property on the new-activity
                 form):{" "}
-                <span className="font-mono text-[10px] text-kp-on-surface/80">
+                <span className="font-mono text-[11px] text-kp-on-surface/80">
                   {"{{contact.firstName}} {{contact.lastName}} {{contact.fullName}} {{contact.email}}"}{" "}
                   {"{{property.address1}} {{property.city}} {{property.state}} {{property.zip}}"}{" "}
                   {"{{property.fullAddress}}"}

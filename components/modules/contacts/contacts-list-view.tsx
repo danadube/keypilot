@@ -271,13 +271,13 @@ function TagChips({ tags }: { tags: { tag: { id: string; name: string } }[] }) {
       {visible.map((ct) => (
         <span
           key={ct.tag.id}
-          className="rounded-full bg-kp-teal/10 px-1.5 py-0.5 text-[10px] font-medium text-kp-teal"
+          className="rounded-full bg-kp-teal/10 px-1.5 py-0.5 text-[11px] font-medium text-kp-teal"
         >
           {ct.tag.name}
         </span>
       ))}
       {overflow > 0 && (
-        <span className="text-[10px] text-kp-on-surface-variant">+{overflow}</span>
+        <span className="text-[11px] text-kp-on-surface-muted">+{overflow}</span>
       )}
     </div>
   );
@@ -721,7 +721,7 @@ export function ContactsListView() {
         }
       >
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-kp-on-surface-variant">
+          <label className="block text-xs font-medium text-kp-on-surface-muted">
             Name
           </label>
           <input

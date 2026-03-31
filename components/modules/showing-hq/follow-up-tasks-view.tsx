@@ -114,7 +114,7 @@ export function FollowUpTasksView() {
 
           {upcoming.length > 0 && (
             <section>
-              <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+              <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
                 Coming up ({upcoming.length})
               </p>
               <div className="flex flex-col gap-2">
@@ -125,7 +125,7 @@ export function FollowUpTasksView() {
               {upcoming.length > 8 && (
                 <div className="mt-3 flex items-center gap-2">
                   <CalendarClock className="h-3.5 w-3.5 text-kp-on-surface-variant" />
-                  <p className="text-[10px] text-kp-on-surface-variant">
+                  <p className="text-[11px] text-kp-on-surface-muted">
                     Showing {upcoming.length} tasks. Snooze or reschedule with Edit on any card.
                   </p>
                 </div>

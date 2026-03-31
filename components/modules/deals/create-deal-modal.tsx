@@ -101,7 +101,7 @@ function SearchPicker<T extends { id: string }>({
   if (selected) {
     return (
       <div className="space-y-1.5">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
           {label}
         </p>
         <div className="flex items-start justify-between gap-3 rounded-lg border border-kp-teal/30 bg-kp-teal/5 px-4 py-3">
@@ -135,7 +135,7 @@ function SearchPicker<T extends { id: string }>({
 
   return (
     <div className="space-y-1.5">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
         {label}
       </p>
 

@@ -188,7 +188,7 @@ export function ModuleSidebar() {
 
       <nav className="flex-1 overflow-auto py-3" aria-label="Module navigation">
         <div className="mb-1 px-2">
-          <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-widest text-kp-on-surface-muted">
             Platform
           </p>
           <ul className="space-y-0.5">
@@ -308,7 +308,7 @@ export function ModuleSidebar() {
         </div>
 
         <div className="mt-4 border-t border-white/10 px-2 pt-3">
-          <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-widest text-kp-on-surface-muted">
             Tools
           </p>
           <ul className="space-y-0.5">
@@ -345,7 +345,7 @@ export function ModuleSidebar() {
       </nav>
 
       <div className="shrink-0 border-t border-white/10 px-2 py-2">
-        <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+        <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-widest text-kp-on-surface-muted">
           System
         </p>
         <ul className="space-y-0.5">

@@ -249,7 +249,7 @@ function SearchInput({
 // ── Table ─────────────────────────────────────────────────────────────────────
 
 const TH =
-  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
+  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted";
 const TD = "px-4 py-3.5 text-sm";
 
 function DealsTable({ deals }: { deals: Deal[] }) {

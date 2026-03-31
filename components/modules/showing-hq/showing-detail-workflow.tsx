@@ -359,11 +359,11 @@ export function ShowingDetailWorkflow() {
           <span className="text-kp-outline">/</span>
           <div>
             <h1 className="text-xl font-bold text-kp-on-surface">Private showing</h1>
-            <p className="text-sm text-kp-on-surface-variant">{addressLine}</p>
-            <p className="text-sm text-kp-on-surface-variant">
+            <p className="text-sm text-kp-on-surface-muted">{addressLine}</p>
+            <p className="text-sm text-kp-on-surface-muted">
               {scheduledLabel} · {buyerLine}
             </p>
-            <p className="mt-0.5 text-[11px] text-kp-on-surface-variant/80">
+            <p className="mt-0.5 text-[11px] text-kp-on-surface-muted">
               Workspace — Prep, Feedback, and Details share one flow; save from Details or feedback actions when needed.
             </p>
           </div>
@@ -380,7 +380,7 @@ export function ShowingDetailWorkflow() {
 
       {tab === "prep" && (
         <div className="space-y-6">
-          <p className="text-xs text-kp-on-surface-variant">
+          <p className="text-xs text-kp-on-surface-muted">
             Checklist and buyer agent fields — same workspace as Feedback and Details.
           </p>
           <ShowingPrepWorkspace
@@ -400,7 +400,7 @@ export function ShowingDetailWorkflow() {
             <h2 className="text-sm font-semibold text-kp-on-surface">Next steps</h2>
             {showNextSendCta ? (
               <div className="mt-2 space-y-2">
-                <p className="text-xs text-kp-on-surface-variant">
+                <p className="text-xs text-kp-on-surface-muted">
                   Buyer agent draft is ready — send the feedback request from the Feedback tab.
                 </p>
                 <Button
@@ -418,7 +418,7 @@ export function ShowingDetailWorkflow() {
             ) : feedbackReceived ? (
               <p className="mt-2 text-xs text-emerald-400/90">Feedback received — review the Feedback tab for details.</p>
             ) : (
-              <p className="mt-2 text-xs text-kp-on-surface-variant">
+              <p className="mt-2 text-xs text-kp-on-surface-muted">
                 Finish prep above, then move to Feedback when your draft is ready.
               </p>
             )}
@@ -426,7 +426,7 @@ export function ShowingDetailWorkflow() {
 
           <div className="rounded-xl border border-kp-outline/60 bg-kp-bg/20 p-4">
             <h2 className="text-sm font-semibold text-kp-on-surface">Activity</h2>
-            <ul className="mt-2 space-y-2 text-xs text-kp-on-surface-variant">
+            <ul className="mt-2 space-y-2 text-xs text-kp-on-surface-muted">
               <li className="flex gap-2">
                 <span className="font-medium text-kp-on-surface">Scheduled</span>
                 <span>
@@ -459,7 +459,7 @@ export function ShowingDetailWorkflow() {
               <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-300/90">
                 Buyer agent reply (email)
               </p>
-              <p className="mt-1 text-[11px] text-kp-on-surface-variant">
+              <p className="mt-1 text-[11px] text-kp-on-surface-muted">
                 Received{" "}
                 {new Date(data.buyerAgentEmailReplyAt).toLocaleString(undefined, {
                   dateStyle: "medium",
@@ -475,10 +475,10 @@ export function ShowingDetailWorkflow() {
 
           <section className="space-y-2">
             <h2 className="text-sm font-semibold text-kp-on-surface">Buyer agent info</h2>
-            <p className="text-[11px] text-kp-on-surface-variant">Editable — saved with Mark as sent or from Prep.</p>
+            <p className="text-[11px] text-kp-on-surface-muted">Editable — saved with Mark as sent or from Prep.</p>
             <div className="space-y-3 rounded-lg border border-kp-outline/80 bg-kp-surface-high/25 p-3">
               <div>
-                <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant" htmlFor="wf-ba-name">
+                <label className="mb-1 block text-xs font-medium text-kp-on-surface-muted" htmlFor="wf-ba-name">
                   Name
                 </label>
                 <input
@@ -499,7 +499,7 @@ export function ShowingDetailWorkflow() {
                 ) : null}
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant" htmlFor="wf-ba-email">
+                <label className="mb-1 block text-xs font-medium text-kp-on-surface-muted" htmlFor="wf-ba-email">
                   Email
                 </label>
                 <input
@@ -520,7 +520,7 @@ export function ShowingDetailWorkflow() {
                 ) : null}
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant" htmlFor="wf-notes">
+                <label className="mb-1 block text-xs font-medium text-kp-on-surface-muted" htmlFor="wf-notes">
                   Notes
                 </label>
                 <textarea
@@ -556,7 +556,7 @@ export function ShowingDetailWorkflow() {
           {hasDraft && data.feedbackRequestStatus !== "SENT" && data.feedbackRequestStatus !== "RECEIVED" ? (
             <section className="rounded-lg border border-kp-outline/80 bg-kp-surface-high/20 p-4">
               <h2 className="text-sm font-semibold text-kp-on-surface">Actions</h2>
-              <p className="mt-1 text-[11px] text-kp-on-surface-variant">
+              <p className="mt-1 text-[11px] text-kp-on-surface-muted">
                 Use Open mail or Copy body from the preview above, then confirm below.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -573,13 +573,13 @@ export function ShowingDetailWorkflow() {
           ) : null}
 
           {data.feedbackRequestStatus === "SENT" || data.feedbackRequestStatus === "RECEIVED" ? (
-            <p className="text-xs text-kp-on-surface-variant">
+            <p className="text-xs text-kp-on-surface-muted">
               Feedback request already marked as sent or received. Use Prep or Details for other edits.
             </p>
           ) : null}
 
           {!data.feedbackDraftGeneratedAt ? (
-            <p className="text-xs text-kp-on-surface-variant">
+            <p className="text-xs text-kp-on-surface-muted">
               A draft is generated after the visit is logged — if you do not see a preview yet, check Supra inbox or add
               the showing manually.
             </p>
@@ -589,14 +589,14 @@ export function ShowingDetailWorkflow() {
 
       {tab === "details" && (
         <div className="space-y-4">
-          <p className="text-xs text-kp-on-surface-variant">
+          <p className="text-xs text-kp-on-surface-muted">
             Schedule and notes — use Save when you&apos;re done editing this tab.
           </p>
           <div className="space-y-3 rounded-lg border border-kp-outline/80 bg-kp-surface-high/25 p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">Schedule</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">Schedule</p>
             <DateTimeFieldGroup className="max-w-md">
               <div className="space-y-1">
-                <label htmlFor="showing-detail-date" className="block text-xs font-medium text-kp-on-surface-variant">
+                <label htmlFor="showing-detail-date" className="block text-xs font-medium text-kp-on-surface-muted">
                   Date
                 </label>
                 <DateInputField
@@ -607,7 +607,7 @@ export function ShowingDetailWorkflow() {
                 />
               </div>
               <div className="space-y-1">
-                <label htmlFor="showing-detail-time" className="block text-xs font-medium text-kp-on-surface-variant">
+                <label htmlFor="showing-detail-time" className="block text-xs font-medium text-kp-on-surface-muted">
                   Time
                 </label>
                 <TimeInputField
@@ -626,7 +626,7 @@ export function ShowingDetailWorkflow() {
               }}
             />
             <div>
-              <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Notes</label>
+              <label className="mb-1 block text-xs font-medium text-kp-on-surface-muted">Notes</label>
               <textarea
                 rows={3}
                 value={notes}
@@ -638,7 +638,7 @@ export function ShowingDetailWorkflow() {
 
           <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
             <h2 className="mb-3 text-sm font-semibold text-kp-on-surface">Showing lifecycle</h2>
-            <p className="mb-4 text-[12px] leading-relaxed text-kp-on-surface-variant">
+            <p className="mb-4 text-[12px] leading-relaxed text-kp-on-surface-muted">
               Archive hides this appointment from lists. Delete is only needed when you want it gone from the
               active vault and accept losing the default feedback-request linkage (archive is safer).
             </p>
@@ -728,7 +728,7 @@ export function ShowingDetailWorkflow() {
       >
         <div className="space-y-2 text-[12px] text-kp-on-surface">
           <p className="font-medium text-kp-on-surface">Linked records:</p>
-          <ul className="list-inside list-disc text-kp-on-surface-variant">
+          <ul className="list-inside list-disc text-kp-on-surface-muted">
             <li>
               {data?.usage?.feedbackRequests ?? 0} feedback request
               {(data?.usage?.feedbackRequests ?? 0) === 1 ? "" : "s"} (

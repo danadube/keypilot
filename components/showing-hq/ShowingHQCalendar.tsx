@@ -184,7 +184,7 @@ export function ShowingHQCalendar({
           <button
             type="button"
             onClick={() => nav("today")}
-            className="shrink-0 rounded border border-kp-outline bg-kp-surface-high px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface hover:bg-kp-surface-higher"
+            className="shrink-0 rounded border border-kp-outline bg-kp-surface-high px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface hover:bg-kp-surface-higher"
           >
             Today
           </button>

@@ -58,7 +58,7 @@ function ParsedEmailHighlights({ parsed }: { parsed: unknown }) {
   }
   if (bits.length === 0) return null;
   return (
-    <div className="mt-1.5 rounded-md border border-kp-outline/60 bg-kp-bg/20 px-2 py-1.5 text-[11px] text-kp-on-surface-variant">
+    <div className="mt-1.5 rounded-md border border-kp-outline/60 bg-kp-bg/20 px-2 py-1.5 text-[11px] text-kp-on-surface-muted">
       <span className="font-medium text-kp-on-surface">Extracted summary</span>
       {p.confidence ? ` (${p.confidence} confidence)` : ""}: {bits.join(" ")}
     </div>
@@ -247,7 +247,7 @@ export function PropertyFeedbackSummaryView({ propertyId }: { propertyId: string
                       className="rounded-lg border border-kp-outline bg-kp-surface-high p-3 text-sm"
                     >
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded border border-kp-outline/80 bg-kp-bg/30 px-1.5 py-0.5 text-[10px] font-medium text-kp-on-surface-variant">
+                        <span className="rounded border border-kp-outline/80 bg-kp-bg/30 px-1.5 py-0.5 text-[11px] font-medium text-kp-on-surface-muted">
                           Web form
                         </span>
                         <span className="text-xs text-kp-on-surface-variant">

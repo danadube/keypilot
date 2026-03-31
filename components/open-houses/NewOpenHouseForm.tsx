@@ -346,12 +346,12 @@ export function NewOpenHouseForm() {
             />
             <EditableBlockContent className="space-y-3">
               <div className="space-y-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
                   Start <span className="text-destructive">*</span>
                 </p>
                 <DateTimeFieldGroup className="gap-2 sm:gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="ohStartDate" className="text-[10px] text-kp-on-surface-variant">
+                    <Label htmlFor="ohStartDate" className="text-[11px] text-kp-on-surface-variant">
                       Date
                     </Label>
                     <DateInputField
@@ -362,7 +362,7 @@ export function NewOpenHouseForm() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="ohStartTime" className="text-[10px] text-kp-on-surface-variant">
+                    <Label htmlFor="ohStartTime" className="text-[11px] text-kp-on-surface-variant">
                       Time
                     </Label>
                     <TimeInputField
@@ -374,7 +374,7 @@ export function NewOpenHouseForm() {
                   </div>
                 </DateTimeFieldGroup>
                 <div className="rounded-lg border border-kp-outline/90 bg-kp-surface-high/35 px-2.5 py-2 sm:px-3">
-                  <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
                     Quick set
                   </p>
                   <TimeQuickChips
@@ -408,12 +408,12 @@ export function NewOpenHouseForm() {
                 </Button>
               </div>
               <div className="border-t border-kp-outline/50 pt-2.5">
-                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
                   End <span className="text-destructive">*</span>
                 </p>
                 <DateTimeFieldGroup className="gap-2 sm:gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="ohEndDate" className="text-[10px] text-kp-on-surface-variant">
+                    <Label htmlFor="ohEndDate" className="text-[11px] text-kp-on-surface-variant">
                       Date
                     </Label>
                     <DateInputField
@@ -424,7 +424,7 @@ export function NewOpenHouseForm() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="ohEndTime" className="text-[10px] text-kp-on-surface-variant">
+                    <Label htmlFor="ohEndTime" className="text-[11px] text-kp-on-surface-variant">
                       Time
                     </Label>
                     <TimeInputField

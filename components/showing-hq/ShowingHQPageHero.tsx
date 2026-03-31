@@ -25,7 +25,7 @@ export function ShowingHQPageHero({
     >
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
-          <span className="rounded-full bg-[#4BAED8]/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-[#7DD3F5] ring-1 ring-[#4BAED8]/40">
+          <span className="rounded-full bg-[#4BAED8]/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-widest text-[#7DD3F5] ring-1 ring-[#4BAED8]/40">
             ShowingHQ
           </span>
         </div>

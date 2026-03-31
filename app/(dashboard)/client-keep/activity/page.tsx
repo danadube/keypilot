@@ -251,7 +251,7 @@ export default function ClientKeepRecentActivityPage() {
                       >
                         <span
                           className={cn(
-                            "inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                            "inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide",
                             row.type === "follow_up"
                               ? "bg-kp-teal/15 text-kp-teal"
                               : "bg-kp-surface-high text-kp-on-surface-variant"

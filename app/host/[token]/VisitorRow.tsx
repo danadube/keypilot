@@ -90,7 +90,7 @@ export function VisitorRow({
                 key={tag}
                 type="button"
                 onClick={() => toggleTag(tag)}
-                className={`rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                className={`rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors ${
                   tags.includes(tag)
                     ? "bg-blue-100 text-blue-800"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -100,7 +100,7 @@ export function VisitorRow({
               </button>
             ))}
           </div>
-          {saving && <span className="text-[10px] text-slate-400">Saving...</span>}
+          {saving && <span className="text-[11px] text-slate-400">Saving...</span>}
         </div>
       </td>
     </tr>

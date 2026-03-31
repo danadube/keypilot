@@ -147,7 +147,7 @@ function InfoRow({
     <div className="flex items-start gap-3">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-kp-on-surface-variant" />
       <div className="min-w-0">
-        <p className="text-[11px] uppercase tracking-wider text-kp-on-surface-variant">{label}</p>
+        <p className="text-[11px] uppercase tracking-wider text-kp-on-surface-muted">{label}</p>
         <div className="mt-0.5 text-sm text-kp-on-surface">{children}</div>
       </div>
     </div>

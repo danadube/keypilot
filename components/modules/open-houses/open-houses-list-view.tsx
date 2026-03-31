@@ -297,7 +297,7 @@ function NextUpBanner({ event }: { event: OpenHouse }) {
               {event.title}
             </p>
             {isLive && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-kp-teal/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-kp-teal">
+              <span className="inline-flex items-center gap-1 rounded-full bg-kp-teal/15 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-kp-teal">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-kp-teal" />
                 Live
               </span>
@@ -336,7 +336,7 @@ function NextUpBanner({ event }: { event: OpenHouse }) {
 
 // ── Table ─────────────────────────────────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
+const TH = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted";
 const TD = "px-4 py-3.5 text-sm";
 
 function OpenHousesTable({ rows }: { rows: OpenHouse[] }) {
@@ -833,7 +833,7 @@ export function OpenHousesListView() {
         }
       >
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-kp-on-surface-variant">
+          <label className="block text-xs font-medium text-kp-on-surface-muted">
             Name
           </label>
           <input

@@ -272,7 +272,7 @@ export function NeedsAttentionSection({
             Needs attention
           </h2>
         </div>
-        <p className="text-[10px] font-medium text-kp-on-surface-variant">Most urgent first</p>
+        <p className="text-[11px] font-medium text-kp-on-surface-variant">Most urgent first</p>
       </div>
       {items.length === 0 ? (
         <p className="text-xs text-kp-on-surface-variant">You&apos;re all caught up — nothing urgent right now.</p>
@@ -297,7 +297,7 @@ export function NeedsAttentionSection({
                   </p>
                   <span
                     className={cn(
-                      "mt-1 inline-flex w-fit rounded-md border text-[10px] font-medium leading-none",
+                      "mt-1 inline-flex w-fit rounded-md border text-[11px] font-medium leading-none",
                       isUrgent
                         ? "border-amber-500/35 bg-amber-500/10 px-2 py-1 text-amber-400"
                         : "border-kp-outline/70 bg-kp-bg/25 px-2 py-1 text-kp-on-surface-variant"
@@ -306,7 +306,7 @@ export function NeedsAttentionSection({
                     {row.attention.label}
                   </span>
                   {row.missingPrepSummary ? (
-                    <p className="mt-1 text-[10px] leading-snug text-amber-200/90">
+                    <p className="mt-1 text-[11px] leading-snug text-amber-200/90">
                       {row.missingPrepSummary}
                     </p>
                   ) : null}
@@ -1174,7 +1174,7 @@ export function TodayScheduleSection({
       <h2 id="today-schedule-heading" className="text-[13px] font-semibold text-kp-on-surface">
         Today
       </h2>
-      <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">
+      <p className="mt-0.5 text-[11px] text-kp-on-surface-variant">
         What&apos;s on the calendar, when it runs, and whether anything still blocks it — not a second
         copy of the queue.
       </p>
@@ -1209,7 +1209,7 @@ export function TodayScheduleSection({
                   </span>
                 </p>
                 {row.readinessLine ? (
-                  <p className="mt-1 text-[10px] leading-snug text-kp-on-surface-variant/95">
+                  <p className="mt-1 text-[11px] leading-snug text-kp-on-surface-variant/95">
                     {row.readinessLine}
                   </p>
                 ) : null}
@@ -1217,7 +1217,7 @@ export function TodayScheduleSection({
               <Button
                 variant="outline"
                 size="sm"
-                className={cn(kpBtnSecondary, "h-7 px-2.5 text-[10px] font-semibold")}
+                className={cn(kpBtnSecondary, "h-7 px-2.5 text-[11px] font-semibold")}
                 asChild
               >
                 <Link href={row.href}>Workspace</Link>
@@ -1333,7 +1333,7 @@ export function UpcomingSection({
                 className="block rounded py-0.5 text-left transition-colors hover:bg-kp-surface-high/25"
               >
                 <p className="truncate text-[11px] font-medium text-kp-on-surface">{row.address}</p>
-                <p className="mt-0.5 text-[10px] text-kp-on-surface-variant/90">
+                <p className="mt-0.5 text-[11px] text-kp-on-surface-variant/90">
                   {formatDate(row.at)} · {formatTime(row.at)}
                 </p>
               </Link>
@@ -1368,7 +1368,7 @@ export function UpNextRailSection({
     >
       <div className="mb-1 flex items-center gap-1">
         <CalendarClock className="h-2.5 w-2.5 shrink-0 text-kp-on-surface-variant/50" aria-hidden />
-        <h2 id="up-next-heading" className="text-[10px] font-medium text-kp-on-surface-variant/80">
+        <h2 id="up-next-heading" className="text-[11px] font-medium text-kp-on-surface-variant/80">
           Up next
         </h2>
       </div>
@@ -1431,10 +1431,10 @@ export function RecentOutputsRailSection({
         className={cn("rounded-md border border-kp-outline/30 bg-kp-bg/40 px-3 py-2.5 sm:px-3.5", className)}
         aria-labelledby="recent-outputs-heading"
       >
-        <h2 id="recent-outputs-heading" className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+        <h2 id="recent-outputs-heading" className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
           Recent reports
         </h2>
-        <p className="mt-2 text-[10px] leading-snug text-kp-on-surface-variant">
+        <p className="mt-2 text-[11px] leading-snug text-kp-on-surface-variant">
           Couldn&apos;t load this section. Refresh the page or try again in a moment.
         </p>
       </section>
@@ -1447,7 +1447,7 @@ export function RecentOutputsRailSection({
       className={cn("rounded-md border border-kp-outline/30 bg-kp-bg/40 px-3 py-2.5 sm:px-3.5", className)}
       aria-labelledby="recent-outputs-heading"
     >
-      <h2 id="recent-outputs-heading" className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+      <h2 id="recent-outputs-heading" className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
         Recent reports
       </h2>
       <ul className="mt-2 space-y-1.5">
@@ -1455,7 +1455,7 @@ export function RecentOutputsRailSection({
           <li key={r.id}>
             <Link
               href={`/open-houses/${r.id}/report`}
-              className="block text-[10px] leading-snug text-kp-on-surface-variant hover:text-kp-on-surface"
+              className="block text-[11px] leading-snug text-kp-on-surface-variant hover:text-kp-on-surface"
             >
               <span className="font-medium text-kp-on-surface">{r.address}</span>
               <span className="text-kp-outline/50"> · </span>

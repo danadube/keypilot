@@ -155,7 +155,7 @@ export function TodayCommandCenter({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="min-w-0 flex-1">
           <p
-            className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+            className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
             style={{ letterSpacing: "0.08em" }}
           >
             Now

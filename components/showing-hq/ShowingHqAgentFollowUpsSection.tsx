@@ -123,7 +123,7 @@ export function ShowingHqAgentFollowUpsSection({
             ))}
           </div>
           {upcoming.length > 8 ? (
-            <p className="mt-2 text-[10px] text-kp-on-surface-variant">
+            <p className="mt-2 text-[11px] text-kp-on-surface-variant">
               Showing 8 soonest. Snooze or reschedule with <strong>Edit</strong> on a card.
             </p>
           ) : null}

@@ -198,11 +198,11 @@ export default function ClientKeepSegmentsPage() {
               Stored on this browser only — not synced across devices or
               browsers. Open, rename, or delete shortcuts to your contact filters
               (
-              <code className="rounded bg-kp-surface-high px-1 text-[10px]">
+              <code className="rounded bg-kp-surface-high px-1 text-[11px]">
                 ?status=
               </code>{" "}
               and{" "}
-              <code className="rounded bg-kp-surface-high px-1 text-[10px]">
+              <code className="rounded bg-kp-surface-high px-1 text-[11px]">
                 ?tagId=
               </code>
               ).
@@ -347,7 +347,7 @@ export default function ClientKeepSegmentsPage() {
             </p>
             <p className="text-xs text-kp-on-surface-variant">
               Opens Contacts with a status filter (
-              <code className="rounded bg-kp-surface-high px-1 text-[10px]">
+              <code className="rounded bg-kp-surface-high px-1 text-[11px]">
                 ?status=
               </code>
               ).
@@ -386,7 +386,7 @@ export default function ClientKeepSegmentsPage() {
             <p className="text-sm font-semibold text-kp-on-surface">By tag</p>
             <p className="text-xs text-kp-on-surface-variant">
               Opens Contacts filtered to one tag (
-              <code className="rounded bg-kp-surface-high px-1 text-[10px]">
+              <code className="rounded bg-kp-surface-high px-1 text-[11px]">
                 ?tagId=
               </code>
               ).
@@ -466,11 +466,11 @@ export default function ClientKeepSegmentsPage() {
           <p className="mt-1 text-xs text-kp-on-surface-variant">
             Open a segment here, then switch the status tab or adjust the tag on
             the Contacts page — the URL updates (
-            <code className="rounded bg-kp-surface-high px-1 text-[10px]">
+            <code className="rounded bg-kp-surface-high px-1 text-[11px]">
               ?status=
             </code>{" "}
             and{" "}
-            <code className="rounded bg-kp-surface-high px-1 text-[10px]">
+            <code className="rounded bg-kp-surface-high px-1 text-[11px]">
               ?tagId=
             </code>
             ). Bookmark any URL, or save a named shortcut in{" "}

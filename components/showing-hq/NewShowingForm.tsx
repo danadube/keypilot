@@ -169,7 +169,7 @@ export function NewShowingForm() {
               </Label>
               <DateTimeFieldGroup className="gap-2 sm:gap-3">
                 <div className="space-y-1">
-                  <Label htmlFor="scheduledDate" className="text-[10px] text-kp-on-surface-variant">
+                  <Label htmlFor="scheduledDate" className="text-[11px] text-kp-on-surface-variant">
                     Date
                   </Label>
                   <DateInputField
@@ -180,7 +180,7 @@ export function NewShowingForm() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="scheduledTime" className="text-[10px] text-kp-on-surface-variant">
+                  <Label htmlFor="scheduledTime" className="text-[11px] text-kp-on-surface-variant">
                     Time
                   </Label>
                   <TimeInputField
@@ -192,7 +192,7 @@ export function NewShowingForm() {
                 </div>
               </DateTimeFieldGroup>
               <div className="rounded-lg border border-kp-outline/90 bg-kp-surface-high/35 px-2.5 py-2 sm:px-3">
-                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
                   Quick set
                 </p>
                 <TimeQuickChips

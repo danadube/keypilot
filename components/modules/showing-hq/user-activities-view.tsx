@@ -801,8 +801,8 @@ export function UserActivitiesView() {
               )}
               <p className="text-xs text-kp-on-surface-variant">
                 Links the activity to PropertyVault / visitor contacts. Template text can use placeholders
-                like <span className="font-mono text-[10px]">{"{{contact.fullName}}"}</span> or{" "}
-                <span className="font-mono text-[10px]">{"{{property.fullAddress}}"}</span> when a row is
+                like <span className="font-mono text-[11px]">{"{{contact.fullName}}"}</span> or{" "}
+                <span className="font-mono text-[11px]">{"{{property.fullAddress}}"}</span> when a row is
                 selected here.
               </p>
             </div>
