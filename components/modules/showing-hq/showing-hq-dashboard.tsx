@@ -7,7 +7,9 @@ import {
   buildGettingStartedSteps,
 } from "@/components/showing-hq/GettingStartedCard";
 import {
+  QuickActionsRailSection,
   RecentOutputsRailSection,
+  ShowingHQMetricsStrip,
   ShowingHQCommandStrip,
   TodayScheduleSection,
   UpNextRailSection,
@@ -328,10 +330,14 @@ export function ShowingHQDashboardView() {
   const awaitingCount = needsFollowUp.filter((r) => r.reasonLabel === "Awaiting response").length;
 
   const upcomingCount = stats.upcomingThisWeekCount ?? 0;
+  const draftsWaitingCount = stats.buyerAgentEmailDraftsPending ?? followUpTasks.length;
+  const visitorsLastOpenHouse = recentReports[0]?.visitorCount ?? 0;
+  const actionNowCount = workflowRows.filter((r) => r.queueGroup === "action_now").length;
 
   const nextEvent =
     data.nextShowing != null
       ? {
+          id: data.nextShowing.id,
           kind: data.nextShowing.kind,
           address: data.nextShowing.address,
           at: data.nextShowing.at,
@@ -351,6 +357,37 @@ export function ShowingHQDashboardView() {
     endAt: r.endAt,
     visitorCount: r.visitorCount,
   }));
+  const latestReport = recentReports[0] ?? null;
+  const latestReportDraftsPending = latestReport
+    ? followUpTasks.filter((t) => t.openHouse.id === latestReport.id).length
+    : 0;
+  const metricTiles = [
+    {
+      key: "upcoming-events",
+      label: "Upcoming events",
+      value: String(upcomingCount),
+      hint: "Scheduled this week",
+    },
+    {
+      key: "drafts-waiting",
+      label: "Drafts waiting",
+      value: String(draftsWaitingCount),
+      hint: "Need review/send",
+    },
+    {
+      key: "last-oh-visitors",
+      label: "Last open house",
+      value: String(visitorsLastOpenHouse),
+      hint: "Visitors captured",
+    },
+    {
+      key: "awaiting-response",
+      label: "Awaiting response",
+      value: String(awaitingCount),
+      hint: "Pending replies",
+    },
+  ];
+  const nextUpPrimary = upNextRows[0] ?? null;
 
   return (
     <div className="flex min-h-0 w-full flex-col bg-transparent">
@@ -359,9 +396,11 @@ export function ShowingHQDashboardView() {
         upcomingCount={upcomingCount}
         needPrepCount={needPrepCount}
         awaitingCount={awaitingCount}
+        actionNowCount={actionNowCount}
         formatTime={formatTime}
         priorityLine={priorityLine}
       />
+      <ShowingHQMetricsStrip items={metricTiles} />
 
       <div
         className={cn(
@@ -389,7 +428,13 @@ export function ShowingHQDashboardView() {
           ) : data.agentFollowUps ? (
             <ShowingHqAgentFollowUpsSection buckets={data.agentFollowUps} onRefresh={refetchDashboard} />
           ) : null}
-          <TodayScheduleSection rows={todayScheduleRows} formatTime={formatTime} />
+          <TodayScheduleSection
+            rows={todayScheduleRows}
+            draftQueueCount={draftsWaitingCount}
+            awaitingCount={awaitingCount}
+            nextUp={nextUpPrimary}
+            formatTime={formatTime}
+          />
           {showGettingStarted && !gettingStartedDismissed ? (
             <GettingStartedCard
               steps={gettingStartedSteps}
@@ -399,6 +444,7 @@ export function ShowingHQDashboardView() {
         </div>
 
         <aside className="flex min-w-0 flex-col gap-4">
+          <QuickActionsRailSection nextEvent={nextEvent} hasDrafts={draftsWaitingCount > 0} />
           <UpNextRailSection
             rows={upNextRows}
             formatTime={formatTime}
@@ -406,6 +452,11 @@ export function ShowingHQDashboardView() {
           />
           <RecentOutputsRailSection
             reports={recentReportOutputs}
+            latestSummary={{
+              represented: null,
+              unrepresented: null,
+              draftsPending: latestReportDraftsPending,
+            }}
             loadFailed={Boolean(data.recentReportsLoadFailed)}
             formatShortDate={formatShortDate}
             formatTime={formatTime}
