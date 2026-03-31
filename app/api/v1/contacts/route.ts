@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
       const allowed = await canAccessContact(contact.id, user.id);
       if (!allowed) {
         return apiError(
-          "A contact with this email or phone already exists in KeyPilot. Use a different address or phone, or open the existing record if you have access.",
+          "This email or phone is already on a contact you can't access. Use a different email or phone number.",
           409
         );
       }
