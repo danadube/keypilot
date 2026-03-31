@@ -1,16 +1,36 @@
 import { prismaAdmin } from "@/lib/db";
 
-/** Whether the user may reference this contact (e.g. farm membership): open-house visitor link for their events. */
+/**
+ * Whether this user may attach farm segmentation (or similar) to the contact.
+ * Includes open-house visitors plus CRM-style links so farm prospecting is not
+ * limited to people who have already attended an open house.
+ */
 export async function canAccessContact(contactId: string, userId: string): Promise<boolean> {
-  const openHouses = await prismaAdmin.openHouse.findMany({
-    where: { hostUserId: userId, deletedAt: null },
+  const row = await prismaAdmin.contact.findFirst({
+    where: {
+      id: contactId,
+      deletedAt: null,
+      OR: [
+        { assignedToUserId: userId },
+        {
+          openHouseVisits: {
+            some: {
+              openHouse: { hostUserId: userId, deletedAt: null },
+            },
+          },
+        },
+        { deals: { some: { userId } } },
+        {
+          followUps: {
+            some: { createdByUserId: userId, deletedAt: null },
+          },
+        },
+        { followUpReminders: { some: { userId } } },
+        { userActivities: { some: { userId } } },
+        { contactTags: { some: { tag: { userId } } } },
+      ],
+    },
     select: { id: true },
   });
-  const openHouseIds = openHouses.map((oh) => oh.id);
-  if (openHouseIds.length === 0) return false;
-
-  const visitor = await prismaAdmin.openHouseVisitor.findFirst({
-    where: { contactId, openHouseId: { in: openHouseIds } },
-  });
-  return !!visitor;
+  return !!row;
 }
