@@ -3,16 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  X,
-  Search,
-  MapPin,
-  Loader2,
   AlertCircle,
   CheckCircle2,
+  Loader2,
+  MapPin,
+  Search,
+  Upload,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// ── Types ─────────────────────────────────────────────────────────────────────
 
 type PropertyOption = {
   id: string;
@@ -30,16 +29,52 @@ type TxStatus =
   | "CLOSED"
   | "FALLEN_APART";
 
-type CreatePath = "manual" | "import";
+type CreateMode = "manual" | "import";
 
-function propertyLabel(p: PropertyOption) {
-  return `${p.address1}, ${p.city}, ${p.state} ${p.zip}`;
-}
+type ParsedParty = {
+  raw: string;
+  normalized?: string;
+};
 
-function matchProperty(p: PropertyOption, q: string) {
-  const lq = q.toLowerCase();
-  return propertyLabel(p).toLowerCase().includes(lq);
-}
+type ParsedCommissionLine = {
+  label: string;
+  amount: number;
+  category: "GCI" | "BROKER_FEE" | "DEDUCTION" | "REFERRAL" | "NET" | "OTHER";
+  confidence: number;
+};
+
+type ParsedPayload = {
+  source: {
+    fileName: string;
+    mimeType: "application/pdf";
+    pageCount: number;
+    parserVersion: string;
+  };
+  extracted: {
+    propertyAddress?: string;
+    transactionType: "SALE" | "LEASE" | "REFERRAL_IN" | "REFERRAL_OUT" | "UNKNOWN";
+    contractDate?: string;
+    closeDate?: string;
+    expirationDate?: string;
+    buyers: ParsedParty[];
+    sellers: ParsedParty[];
+    salePrice?: number;
+    grossCommission?: number;
+    brokerageFeesTotal?: number;
+    deductionsTotal?: number;
+    netToAgent?: number;
+    transactionExternalId?: string;
+    brokerageName?: string;
+    officeName?: string;
+    lineItems: ParsedCommissionLine[];
+  };
+  scoring: {
+    overallConfidence: number;
+    fieldConfidence: Record<string, number>;
+    warnings: string[];
+    missingRequired: string[];
+  };
+};
 
 const STATUS_OPTIONS: { value: TxStatus; label: string }[] = [
   { value: "LEAD", label: "Lead" },
@@ -49,6 +84,37 @@ const STATUS_OPTIONS: { value: TxStatus; label: string }[] = [
   { value: "CLOSED", label: "Closed" },
   { value: "FALLEN_APART", label: "Fallen apart" },
 ];
+
+function propertyLabel(p: PropertyOption) {
+  return `${p.address1}, ${p.city}, ${p.state} ${p.zip}`;
+}
+
+function matchProperty(p: PropertyOption, q: string) {
+  return propertyLabel(p).toLowerCase().includes(q.toLowerCase());
+}
+
+function parseNumberInput(value: string): number | undefined {
+  const cleaned = value.trim().replace(/,/g, "");
+  if (!cleaned) return undefined;
+  const n = Number.parseFloat(cleaned);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function formatNumberInput(value?: number) {
+  return value === undefined || Number.isNaN(value) ? "" : String(value);
+}
+
+function partiesToInput(items: ParsedParty[]) {
+  return items.map((p) => p.raw).filter(Boolean).join(", ");
+}
+
+function inputToParties(value: string): ParsedParty[] {
+  return value
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean)
+    .map((raw) => ({ raw }));
+}
 
 function PropertySearchPicker({
   items,
@@ -63,10 +129,7 @@ function PropertySearchPicker({
 }) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const filtered = query.trim()
-    ? items.filter((item) => matchProperty(item, query))
-    : items;
+  const filtered = query.trim() ? items.filter((item) => matchProperty(item, query)) : items;
 
   useEffect(() => {
     if (selected) setQuery("");
@@ -117,7 +180,7 @@ function PropertySearchPicker({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search properties by address…"
+          placeholder="Search properties by address..."
           className={cn(
             "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high pl-8 pr-8",
             "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
@@ -160,9 +223,7 @@ function PropertySearchPicker({
                 >
                   <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-kp-on-surface-variant" />
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-kp-on-surface">
-                      {item.address1}
-                    </p>
+                    <p className="truncate text-sm font-medium text-kp-on-surface">{item.address1}</p>
                     <p className="truncate text-xs text-kp-on-surface-variant">
                       {item.city}, {item.state} {item.zip}
                     </p>
@@ -177,8 +238,6 @@ function PropertySearchPicker({
   );
 }
 
-// ── Modal ─────────────────────────────────────────────────────────────────────
-
 interface CreateTransactionModalProps {
   open: boolean;
   onClose: () => void;
@@ -186,11 +245,13 @@ interface CreateTransactionModalProps {
 
 export function CreateTransactionModal({ open, onClose }: CreateTransactionModalProps) {
   const router = useRouter();
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [loadingProperties, setLoadingProperties] = useState(false);
-
   const [selectedProperty, setSelectedProperty] = useState<PropertyOption | null>(null);
+  const [mode, setMode] = useState<CreateMode>("manual");
+
   const [status, setStatus] = useState<TxStatus>("PENDING");
   const [salePrice, setSalePrice] = useState("");
   const [closingDate, setClosingDate] = useState("");
@@ -199,11 +260,17 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [createPath, setCreatePath] = useState<CreatePath>("manual");
+
+  const [parsing, setParsing] = useState(false);
+  const [committing, setCommitting] = useState(false);
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [importSessionId, setImportSessionId] = useState<string | null>(null);
+  const [parsedPayload, setParsedPayload] = useState<ParsedPayload | null>(null);
+  const [editedPayload, setEditedPayload] = useState<ParsedPayload | null>(null);
 
   useEffect(() => {
     if (!open) return;
-
+    setMode("manual");
     setSelectedProperty(null);
     setStatus("PENDING");
     setSalePrice("");
@@ -211,7 +278,12 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
     setBrokerageName("");
     setNotes("");
     setError(null);
-    setCreatePath("manual");
+    setParsing(false);
+    setCommitting(false);
+    setParseError(null);
+    setImportSessionId(null);
+    setParsedPayload(null);
+    setEditedPayload(null);
 
     setLoadingProperties(true);
     fetch("/api/v1/properties")
@@ -224,13 +296,60 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !submitting) onClose();
+      if (e.key === "Escape" && !submitting && !committing) onClose();
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [open, submitting, onClose]);
+  }, [open, submitting, committing, onClose]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  function updateExtracted<K extends keyof ParsedPayload["extracted"]>(
+    key: K,
+    value: ParsedPayload["extracted"][K]
+  ) {
+    setEditedPayload((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        extracted: {
+          ...prev.extracted,
+          [key]: value,
+        },
+      };
+    });
+  }
+
+  async function handleParse(file: File) {
+    setParsing(true);
+    setParseError(null);
+    setImportSessionId(null);
+    setParsedPayload(null);
+    setEditedPayload(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/v1/transactions/imports/parse", {
+        method: "POST",
+        body: formData,
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message ?? "Failed to parse statement");
+
+      const payload = json.parsedPayload as ParsedPayload;
+      setImportSessionId(json.importSessionId as string);
+      setParsedPayload(payload);
+      setEditedPayload(payload);
+      setSalePrice(formatNumberInput(payload.extracted.salePrice));
+      setClosingDate(payload.extracted.closeDate ?? "");
+      setBrokerageName(payload.extracted.brokerageName ?? "");
+    } catch (err) {
+      setParseError(err instanceof Error ? err.message : "Failed to parse statement");
+    } finally {
+      setParsing(false);
+      if (importInputRef.current) importInputRef.current.value = "";
+    }
+  }
+
+  async function handleManualCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedProperty) return;
 
@@ -238,24 +357,11 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
       propertyId: selectedProperty.id,
       status,
     };
-
-    const priceTrim = salePrice.trim().replace(/,/g, "");
-    if (priceTrim) {
-      const n = parseFloat(priceTrim);
-      if (!Number.isNaN(n) && n > 0) body.salePrice = n;
-    }
-
-    if (closingDate.trim()) {
-      body.closingDate = closingDate.trim();
-    }
-
-    if (brokerageName.trim()) {
-      body.brokerageName = brokerageName.trim();
-    }
-
-    if (notes.trim()) {
-      body.notes = notes.trim();
-    }
+    const parsedSalePrice = parseNumberInput(salePrice);
+    if (parsedSalePrice !== undefined && parsedSalePrice > 0) body.salePrice = parsedSalePrice;
+    if (closingDate.trim()) body.closingDate = closingDate.trim();
+    if (brokerageName.trim()) body.brokerageName = brokerageName.trim();
+    if (notes.trim()) body.notes = notes.trim();
 
     setSubmitting(true);
     setError(null);
@@ -275,9 +381,44 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
       setError(err instanceof Error ? err.message : "Failed to create transaction");
       setSubmitting(false);
     }
-  };
+  }
 
-  const canSubmit = !!selectedProperty && !submitting;
+  async function handleCommitImport() {
+    if (!selectedProperty || !importSessionId || !editedPayload) return;
+    setCommitting(true);
+    setParseError(null);
+    try {
+      const res = await fetch(`/api/v1/transactions/imports/${importSessionId}/commit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          editedPayload,
+          transaction: {
+            propertyId: selectedProperty.id,
+            status,
+            salePrice: parseNumberInput(salePrice) ?? null,
+            closingDate: closingDate || null,
+            brokerageName: brokerageName.trim() || null,
+            notes: notes.trim() || null,
+          },
+        }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message ?? "Failed to commit import");
+      const transactionId = json.transactionId as string | null;
+      if (!transactionId) throw new Error("Invalid response from server");
+      onClose();
+      router.push(`/transactions/${transactionId}`);
+    } catch (err) {
+      setParseError(err instanceof Error ? err.message : "Failed to commit import");
+    } finally {
+      setCommitting(false);
+    }
+  }
+
+  const canManualSubmit = !!selectedProperty && !submitting;
+  const canCommitImport =
+    !!selectedProperty && !!importSessionId && !!editedPayload && !parsing && !committing;
 
   if (!open) return null;
 
@@ -286,7 +427,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
       <div
         className="absolute inset-0 bg-kp-bg/70 backdrop-blur-sm"
         onClick={() => {
-          if (!submitting) onClose();
+          if (!submitting && !committing) onClose();
         }}
         aria-hidden
       />
@@ -295,26 +436,23 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
         role="dialog"
         aria-modal="true"
         aria-labelledby="create-transaction-title"
-        className="relative z-10 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-kp-outline bg-kp-surface shadow-2xl"
+        className="relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-kp-outline bg-kp-surface shadow-2xl"
       >
         <div className="flex items-start justify-between border-b border-kp-outline px-6 py-5">
           <div>
-            <h2
-              id="create-transaction-title"
-              className="font-headline text-lg font-semibold text-kp-on-surface"
-            >
+            <h2 id="create-transaction-title" className="font-headline text-lg font-semibold text-kp-on-surface">
               New transaction
             </h2>
             <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-              Choose manual entry or statement import, then continue.
+              Manual entry or statement import. Everything stays editable.
             </p>
           </div>
           <button
             type="button"
             onClick={() => {
-              if (!submitting) onClose();
+              if (!submitting && !committing) onClose();
             }}
-            disabled={submitting}
+            disabled={submitting || committing}
             className="ml-4 shrink-0 rounded-lg p-1.5 text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high hover:text-kp-on-surface"
             aria-label="Close"
           >
@@ -326,213 +464,444 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
           <div className="inline-flex rounded-lg border border-kp-outline bg-kp-surface-high p-1">
             <button
               type="button"
-              onClick={() => setCreatePath("manual")}
+              onClick={() => setMode("manual")}
               className={cn(
                 "rounded-md px-3 py-1.5 text-sm transition-colors",
-                createPath === "manual"
+                mode === "manual"
                   ? "bg-kp-gold text-kp-bg"
                   : "text-kp-on-surface-variant hover:text-kp-on-surface"
               )}
             >
-              Manual entry
+              Manual
             </button>
             <button
               type="button"
-              onClick={() => setCreatePath("import")}
+              onClick={() => setMode("import")}
               className={cn(
                 "rounded-md px-3 py-1.5 text-sm transition-colors",
-                createPath === "import"
+                mode === "import"
                   ? "bg-kp-gold text-kp-bg"
                   : "text-kp-on-surface-variant hover:text-kp-on-surface"
               )}
             >
-              Import statement
+              Import commission statement
             </button>
           </div>
         </div>
 
-        {createPath === "import" ? (
-          <div className="space-y-4 px-6 py-5">
-            <div className="rounded-lg border border-kp-outline bg-kp-surface-high p-4">
-              <p className="text-sm font-semibold text-kp-on-surface">Statement import path</p>
-              <p className="mt-1 text-sm text-kp-on-surface-variant">
-                Use this path when you have a commission statement PDF and want parsed fields
-                before creating the transaction.
-              </p>
-              <p className="mt-2 text-xs text-kp-on-surface-muted">
-                If your workspace import endpoint is unavailable, continue with manual entry for now.
-              </p>
+        {mode === "manual" ? (
+          <form onSubmit={handleManualCreate}>
+            <div className="space-y-5 px-6 py-5">
+              <PropertySearchPicker
+                items={properties}
+                loading={loadingProperties}
+                selected={selectedProperty}
+                onSelect={setSelectedProperty}
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                    Status
+                  </label>
+                  <select
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as TxStatus)}
+                    className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  >
+                    {STATUS_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                    Closing date (optional)
+                  </label>
+                  <input
+                    type="date"
+                    value={closingDate}
+                    onChange={(e) => setClosingDate(e.target.value)}
+                    className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  />
+                </div>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                    Sale price (optional)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={salePrice}
+                    onChange={(e) => setSalePrice(e.target.value)}
+                    className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                    Brokerage (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={brokerageName}
+                    onChange={(e) => setBrokerageName(e.target.value)}
+                    className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                  Notes (optional)
+                </label>
+                <textarea
+                  rows={3}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                />
+              </div>
+              {error && (
+                <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+                  <p className="text-sm text-red-400">{error}</p>
+                </div>
+              )}
             </div>
-
-            <div className="flex items-center justify-end gap-2 border-t border-kp-outline pt-4">
-              <button
-                type="button"
-                onClick={() => setCreatePath("manual")}
-                className="rounded-lg px-4 py-2 text-sm font-semibold text-kp-teal hover:bg-kp-teal/10"
-              >
-                Continue with manual
-              </button>
+            <div className="flex items-center justify-between gap-3 border-t border-kp-outline px-6 py-4">
+              <p className="text-xs text-kp-on-surface-variant">
+                {selectedProperty ? "Ready to create." : "Select a property to continue."}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={submitting}
+                  className="rounded-lg px-4 py-2 text-sm text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high hover:text-kp-on-surface disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!canManualSubmit}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold transition-colors",
+                    canManualSubmit
+                      ? "bg-kp-gold text-kp-bg hover:bg-kp-gold-bright"
+                      : "cursor-not-allowed bg-kp-surface-high text-kp-on-surface-variant"
+                  )}
+                >
+                  {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {submitting ? "Creating..." : "Create"}
+                </button>
+              </div>
             </div>
-          </div>
+          </form>
         ) : (
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-5 px-6 py-5">
-            <PropertySearchPicker
-              items={properties}
-              loading={loadingProperties}
-              selected={selectedProperty}
-              onSelect={setSelectedProperty}
-            />
-
-            <div className="space-y-1.5">
-              <label
-                htmlFor="txn-status"
-                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
-              >
-                Status
-              </label>
-              <select
-                id="txn-status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as TxStatus)}
-                className={cn(
-                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3",
-                  "text-sm text-kp-on-surface",
-                  "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
-              >
-                {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="txn-price"
-                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
-                >
-                  Sale price <span className="font-normal normal-case text-kp-on-surface-muted">(optional)</span>
-                </label>
-                <input
-                  id="txn-price"
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="e.g. 450000"
-                  value={salePrice}
-                  onChange={(e) => setSalePrice(e.target.value)}
-                  className={cn(
-                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3",
-                    "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
-                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                  )}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label
-                  htmlFor="txn-close"
-                  className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
-                >
-                  Closing date <span className="font-normal normal-case text-kp-on-surface-muted">(optional)</span>
-                </label>
-                <input
-                  id="txn-close"
-                  type="date"
-                  value={closingDate}
-                  onChange={(e) => setClosingDate(e.target.value)}
-                  className={cn(
-                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3",
-                    "text-sm text-kp-on-surface",
-                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                  )}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label
-                htmlFor="txn-brokerage"
-                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
-              >
-                Brokerage <span className="font-normal normal-case text-kp-on-surface-muted">(optional)</span>
-              </label>
-              <input
-                id="txn-brokerage"
-                type="text"
-                value={brokerageName}
-                onChange={(e) => setBrokerageName(e.target.value)}
-                placeholder="Company or team name"
-                className={cn(
-                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3",
-                  "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
-                  "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
+          <>
+            <div className="space-y-5 px-6 py-5">
+              <PropertySearchPicker
+                items={properties}
+                loading={loadingProperties}
+                selected={selectedProperty}
+                onSelect={setSelectedProperty}
               />
-            </div>
 
-            <div className="space-y-1.5">
-              <label
-                htmlFor="txn-notes"
-                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
-              >
-                Notes <span className="font-normal normal-case text-kp-on-surface-muted">(optional)</span>
-              </label>
-              <textarea
-                id="txn-notes"
-                rows={3}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Internal notes"
-                className={cn(
-                  "w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2",
-                  "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
-                  "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+              <div className="space-y-2 rounded-lg border border-kp-outline bg-kp-surface-high p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                  Statement PDF
+                </p>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void handleParse(file);
+                  }}
+                  disabled={parsing || committing}
+                />
+                <button
+                  type="button"
+                  onClick={() => importInputRef.current?.click()}
+                  disabled={parsing || committing}
+                  className={cn(
+                    "flex h-10 w-full items-center justify-center gap-2 rounded-lg px-3 text-sm font-semibold transition-colors",
+                    parsing || committing
+                      ? "cursor-not-allowed bg-kp-surface-higher text-kp-on-surface-variant"
+                      : "bg-kp-gold text-kp-bg hover:bg-kp-gold-bright"
+                  )}
+                >
+                  {parsing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                  {parsing ? "Parsing statement..." : "Upload and parse PDF"}
+                </button>
+                {parsedPayload && (
+                  <p className="text-xs text-kp-on-surface-variant">
+                    Parsed {parsedPayload.source.fileName} · {parsedPayload.source.pageCount} page(s)
+                  </p>
                 )}
-              />
-            </div>
-
-            {error && (
-              <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3">
-                <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-                <p className="text-sm text-red-400">{error}</p>
               </div>
-            )}
-          </div>
 
-          <div className="flex items-center justify-between gap-3 border-t border-kp-outline px-6 py-4">
-            <p className="text-xs text-kp-on-surface-variant">
-              {selectedProperty ? "Ready to create." : "Select a property to continue."}
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!submitting) onClose();
-                }}
-                disabled={submitting}
-                className="rounded-lg px-4 py-2 text-sm text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high hover:text-kp-on-surface disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={!canSubmit}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold transition-colors",
-                  canSubmit
-                    ? "bg-kp-gold text-kp-bg hover:bg-kp-gold-bright"
-                    : "cursor-not-allowed bg-kp-surface-high text-kp-on-surface-variant"
-                )}
-              >
-                {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {submitting ? "Creating…" : "Create"}
-              </button>
+              {editedPayload && (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                        Property address
+                      </label>
+                      <input
+                        type="text"
+                        value={editedPayload.extracted.propertyAddress ?? ""}
+                        onChange={(e) => updateExtracted("propertyAddress", e.target.value || undefined)}
+                        className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                        Brokerage
+                      </label>
+                      <input
+                        type="text"
+                        value={brokerageName}
+                        onChange={(e) => {
+                          setBrokerageName(e.target.value);
+                          updateExtracted("brokerageName", e.target.value || undefined);
+                        }}
+                        className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                        Contract date
+                      </label>
+                      <input
+                        type="date"
+                        value={editedPayload.extracted.contractDate ?? ""}
+                        onChange={(e) => updateExtracted("contractDate", e.target.value || undefined)}
+                        className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                        Close date
+                      </label>
+                      <input
+                        type="date"
+                        value={closingDate}
+                        onChange={(e) => {
+                          setClosingDate(e.target.value);
+                          updateExtracted("closeDate", e.target.value || undefined);
+                        }}
+                        className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                        Expiration date
+                      </label>
+                      <input
+                        type="date"
+                        value={editedPayload.extracted.expirationDate ?? ""}
+                        onChange={(e) => updateExtracted("expirationDate", e.target.value || undefined)}
+                        className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                        Buyers
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={partiesToInput(editedPayload.extracted.buyers)}
+                        onChange={(e) => updateExtracted("buyers", inputToParties(e.target.value))}
+                        className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                        Sellers
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={partiesToInput(editedPayload.extracted.sellers)}
+                        onChange={(e) => updateExtracted("sellers", inputToParties(e.target.value))}
+                        className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                        Sale price
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={salePrice}
+                        onChange={(e) => {
+                          setSalePrice(e.target.value);
+                          updateExtracted("salePrice", parseNumberInput(e.target.value));
+                        }}
+                        className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                        Gross commission
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={formatNumberInput(editedPayload.extracted.grossCommission)}
+                        onChange={(e) => updateExtracted("grossCommission", parseNumberInput(e.target.value))}
+                        className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                        Brokerage fees
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={formatNumberInput(editedPayload.extracted.brokerageFeesTotal)}
+                        onChange={(e) =>
+                          updateExtracted("brokerageFeesTotal", parseNumberInput(e.target.value))
+                        }
+                        className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                        Deductions
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={formatNumberInput(editedPayload.extracted.deductionsTotal)}
+                        onChange={(e) => updateExtracted("deductionsTotal", parseNumberInput(e.target.value))}
+                        className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                        Net to agent
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={formatNumberInput(editedPayload.extracted.netToAgent)}
+                        onChange={(e) => updateExtracted("netToAgent", parseNumberInput(e.target.value))}
+                        className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                      Notes (optional)
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                    />
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                        Confidence
+                      </p>
+                      <p className="mt-1 text-sm text-kp-on-surface">
+                        {Math.round(editedPayload.scoring.overallConfidence * 100)}%
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                        Missing required
+                      </p>
+                      <p className="mt-1 text-sm text-kp-on-surface">
+                        {editedPayload.scoring.missingRequired.length > 0
+                          ? editedPayload.scoring.missingRequired.join(", ")
+                          : "None"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {editedPayload.scoring.warnings.length > 0 && (
+                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-300">
+                        Warnings
+                      </p>
+                      <ul className="mt-1 space-y-1">
+                        {editedPayload.scoring.warnings.map((warning, idx) => (
+                          <li key={`${warning}-${idx}`} className="text-sm text-amber-200">
+                            {warning}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {parseError && (
+                <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+                  <p className="text-sm text-red-400">{parseError}</p>
+                </div>
+              )}
             </div>
-          </div>
-        </form>
+
+            <div className="flex items-center justify-between gap-3 border-t border-kp-outline px-6 py-4">
+              <p className="text-xs text-kp-on-surface-variant">
+                {!selectedProperty
+                  ? "Select a property to continue."
+                  : !editedPayload
+                  ? "Upload a PDF to generate preview."
+                  : "Review edits, then commit import."}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  disabled={committing}
+                  className="rounded-lg px-4 py-2 text-sm text-kp-on-surface-variant transition-colors hover:bg-kp-surface-high hover:text-kp-on-surface disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleCommitImport()}
+                  disabled={!canCommitImport}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold transition-colors",
+                    canCommitImport
+                      ? "bg-kp-gold text-kp-bg hover:bg-kp-gold-bright"
+                      : "cursor-not-allowed bg-kp-surface-high text-kp-on-surface-variant"
+                  )}
+                >
+                  {committing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                  {committing ? "Committing..." : "Commit import"}
+                </button>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

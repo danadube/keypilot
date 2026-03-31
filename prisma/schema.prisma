@@ -20,57 +20,62 @@ model User {
   email        String      @unique
   role         String      @default("agent")
   productTier  ProductTier @default(OPEN_HOUSE)
-  /** Per-module access: { "showing-hq": true, "client-keep": false }. Null = defaults (showing-hq enabled). */
+  /**
+   * Per-module access: { "showing-hq": true, "client-keep": false }. Null = defaults (showing-hq enabled).
+   */
   moduleAccess Json?
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 
-  properties              Property[]
-  openHouses              OpenHouse[]
-  openHousesAsListingAgent OpenHouse[] @relation("OpenHouseListingAgent")
-  openHousesAsHostAgent   OpenHouse[] @relation("OpenHouseHostAgent")
-  showings          Showing[]
-  feedbackRequests  FeedbackRequest[]
-  sellerReports     SellerReport[]
-  assignedContacts  Contact[]
-  tags              Tag[]
-  followUpReminders FollowUpReminder[]
-  followUps         FollowUp[]
-  deals             Deal[]
-  connections       Connection[]
-  usageEvents       UsageEvent[]
-  profile             UserProfile?
-  openHouseHostRoles  OpenHouseHost[]
-  hostInvitesSent     OpenHouseHostInvite[]
-  transactions        Transaction[]
-  commissions         Commission[]
-  supraQueueItems          SupraQueueItem[]
-  supraQueueReviewed       SupraQueueItem[] @relation("SupraQueueReviewedBy")
-  supraGmailImportSettings SupraGmailImportSettings?
-  userActivities           UserActivity[]
-  activityTemplates   ActivityTemplate[]
-  farmTerritories     FarmTerritory[]
-  farmAreas           FarmArea[]
-  contactFarmMemberships ContactFarmMembership[]
+  properties                Property[]
+  openHouses                OpenHouse[]
+  openHousesAsListingAgent  OpenHouse[]                @relation("OpenHouseListingAgent")
+  openHousesAsHostAgent     OpenHouse[]                @relation("OpenHouseHostAgent")
+  showings                  Showing[]
+  feedbackRequests          FeedbackRequest[]
+  sellerReports             SellerReport[]
+  assignedContacts          Contact[]
+  tags                      Tag[]
+  followUpReminders         FollowUpReminder[]
+  followUps                 FollowUp[]
+  deals                     Deal[]
+  connections               Connection[]
+  usageEvents               UsageEvent[]
+  profile                   UserProfile?
+  openHouseHostRoles        OpenHouseHost[]
+  hostInvitesSent           OpenHouseHostInvite[]
+  transactions              Transaction[]
+  transactionImportSessions TransactionImportSession[]
+  commissions               Commission[]
+  supraQueueItems           SupraQueueItem[]
+  supraQueueReviewed        SupraQueueItem[]           @relation("SupraQueueReviewedBy")
+  supraGmailImportSettings  SupraGmailImportSettings?
+  userActivities            UserActivity[]
+  activityTemplates         ActivityTemplate[]
+  farmTerritories           FarmTerritory[]
+  farmAreas                 FarmArea[]
+  contactFarmMemberships    ContactFarmMembership[]
 
   @@index([clerkId])
   @@map("users")
 }
 
-/** Optional agent branding for sign-in pages, follow-ups, reports. Reusable across modules. */
+/**
+ * Optional agent branding for sign-in pages, follow-ups, reports. Reusable across modules.
+ */
 model UserProfile {
-  id                 String   @id @default(uuid())
-  userId             String   @unique
-  displayName        String?
-  brokerageName      String?
-  headshotUrl        String?
-  logoUrl            String?
-  phone              String?
-  email              String?
-  brandPrimaryColor  String?
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  displayName         String?
+  brokerageName       String?
+  headshotUrl         String?
+  logoUrl             String?
+  phone               String?
+  email               String?
+  brandPrimaryColor   String?
   brandSecondaryColor String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -78,33 +83,33 @@ model UserProfile {
 }
 
 model Property {
-  id                String    @id @default(uuid())
-  mlsNumber         String?   @unique
-  address1          String
-  address2          String?
-  city              String
-  state             String
-  zip               String
-  listingPrice      Decimal?  @db.Decimal(12, 2)
-  imageUrl          String?
-  notes             String?
-  flyerUrl          String?
-  flyerFilename     String?
-  flyerUploadedAt   DateTime?
-  flyerEnabled      Boolean   @default(true)
-  createdByUserId  String
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-  deletedAt         DateTime?
+  id              String    @id @default(uuid())
+  mlsNumber       String?   @unique
+  address1        String
+  address2        String?
+  city            String
+  state           String
+  zip             String
+  listingPrice    Decimal?  @db.Decimal(12, 2)
+  imageUrl        String?
+  notes           String?
+  flyerUrl        String?
+  flyerFilename   String?
+  flyerUploadedAt DateTime?
+  flyerEnabled    Boolean   @default(true)
+  createdByUserId String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
 
-  createdByUser User        @relation(fields: [createdByUserId], references: [id])
-  openHouses    OpenHouse[]
-  showings      Showing[]
-  feedbackRequests FeedbackRequest[]
-  activities    Activity[]
-  deals         Deal[]
-  transactions  Transaction[]
-  supraQueueMatches SupraQueueItem[] @relation("SupraQueueMatchedProperty")
+  createdByUser     User              @relation(fields: [createdByUserId], references: [id])
+  openHouses        OpenHouse[]
+  showings          Showing[]
+  feedbackRequests  FeedbackRequest[]
+  activities        Activity[]
+  deals             Deal[]
+  transactions      Transaction[]
+  supraQueueMatches SupraQueueItem[]  @relation("SupraQueueMatchedProperty")
   userActivities    UserActivity[]
 
   @@index([createdByUserId, deletedAt])
@@ -223,44 +228,50 @@ model ContactFarmMembership {
 }
 
 model OpenHouse {
-  id              String          @id @default(uuid())
-  propertyId      String
-  hostUserId      String
-  /** Listing agent (property owner). Null = use hostUserId for backward compat. */
-  listingAgentId  String?
-  /** Host agent (sitting the OH). Null = same as listing agent. */
-  hostAgentId     String?
-  title           String
-  startAt         DateTime
-  endAt           DateTime
-  agentName       String?
-  agentEmail      String?
-  agentPhone      String?
+  id                    String          @id @default(uuid())
+  propertyId            String
+  hostUserId            String
+  /**
+   * Listing agent (property owner). Null = use hostUserId for backward compat.
+   */
+  listingAgentId        String?
+  /**
+   * Host agent (sitting the OH). Null = same as listing agent.
+   */
+  hostAgentId           String?
+  title                 String
+  startAt               DateTime
+  endAt                 DateTime
+  agentName             String?
+  agentEmail            String?
+  agentPhone            String?
   notes                 String?
-  flyerUrl              String?   // legacy / direct OH flyer
-  flyerOverrideUrl      String?   // event-specific override (broker open, price reduction)
+  flyerUrl              String? // legacy / direct OH flyer
+  flyerOverrideUrl      String? // event-specific override (broker open, price reduction)
   flyerOverrideFilename String?
   qrSlug                String          @unique
   status                OpenHouseStatus @default(SCHEDULED)
-  trafficLevel    String?
-  feedbackTags    Json?
-  hostNotes       String?         @db.Text
-  /** User-confirmed prep items not inferrable from other columns, e.g. { "hostConfirmed": true, "signsMaterialsReady": true } */
-  prepChecklistFlags Json?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  deletedAt       DateTime?
+  trafficLevel          String?
+  feedbackTags          Json?
+  hostNotes             String?         @db.Text
+  /**
+   * User-confirmed prep items not inferrable from other columns, e.g. { "hostConfirmed": true, "signsMaterialsReady": true }
+   */
+  prepChecklistFlags    Json?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  deletedAt             DateTime?
 
-  property       Property           @relation(fields: [propertyId], references: [id])
-  hostUser       User               @relation(fields: [hostUserId], references: [id])
-  listingAgent   User?              @relation("OpenHouseListingAgent", fields: [listingAgentId], references: [id])
-  hostAgent      User?              @relation("OpenHouseHostAgent", fields: [hostAgentId], references: [id])
-  hosts          OpenHouseHost[]
-  hostInvites    OpenHouseHostInvite[]
-  visitors       OpenHouseVisitor[]
-  activities     Activity[]
-  drafts         FollowUpDraft[]
-  sellerReports  SellerReport[]
+  property      Property              @relation(fields: [propertyId], references: [id])
+  hostUser      User                  @relation(fields: [hostUserId], references: [id])
+  listingAgent  User?                 @relation("OpenHouseListingAgent", fields: [listingAgentId], references: [id])
+  hostAgent     User?                 @relation("OpenHouseHostAgent", fields: [hostAgentId], references: [id])
+  hosts         OpenHouseHost[]
+  hostInvites   OpenHouseHostInvite[]
+  visitors      OpenHouseVisitor[]
+  activities    Activity[]
+  drafts        FollowUpDraft[]
+  sellerReports SellerReport[]
 
   @@index([hostUserId, status, startAt])
   @@index([listingAgentId])
@@ -269,7 +280,9 @@ model OpenHouse {
   @@map("open_houses")
 }
 
-/** Multi-host support: listing agent (canonical owner), host agents, assistants. */
+/**
+ * Multi-host support: listing agent (canonical owner), host agents, assistants.
+ */
 model OpenHouseHost {
   id          String            @id @default(uuid())
   openHouseId String
@@ -277,7 +290,7 @@ model OpenHouseHost {
   role        OpenHouseHostRole
 
   openHouse OpenHouse @relation(fields: [openHouseId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([openHouseId, userId])
   @@index([openHouseId])
@@ -291,22 +304,26 @@ enum OpenHouseHostRole {
   ASSISTANT
 }
 
-/** Invite sent by listing agent to add a host. Email with secure token link. */
+/**
+ * Invite sent by listing agent to add a host. Email with secure token link.
+ */
 model OpenHouseHostInvite {
-  id             String   @id @default(uuid())
+  id             String            @id @default(uuid())
   openHouseId    String
   email          String
   role           OpenHouseHostRole @default(HOST_AGENT)
-  token          String   @unique
+  token          String            @unique
   expiresAt      DateTime
-  /** When the token link stops working. Falls back to expiresAt if null (legacy). */
+  /**
+   * When the token link stops working. Falls back to expiresAt if null (legacy).
+   */
   tokenExpiresAt DateTime?
   acceptedAt     DateTime?
   invitedById    String
-  createdAt      DateTime @default(now())
+  createdAt      DateTime          @default(now())
 
-  openHouse  OpenHouse @relation(fields: [openHouseId], references: [id], onDelete: Cascade)
-  invitedBy  User      @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+  openHouse OpenHouse @relation(fields: [openHouseId], references: [id], onDelete: Cascade)
+  invitedBy User      @relation(fields: [invitedById], references: [id], onDelete: Cascade)
 
   @@index([openHouseId])
   @@index([email])
@@ -325,26 +342,26 @@ enum OpenHouseStatus {
 }
 
 model OpenHouseVisitor {
-  id                   String               @id @default(uuid())
-  openHouseId          String
-  contactId            String
-  signInMethod         SignInMethod
-  submittedAt          DateTime
-  rawResponseJson      Json?
-  leadStatus           VisitorLeadStatus    @default(NEW)
-  interestLevel        VisitorInterestLevel?
-  visitorNotes         String?              @db.Text
-  visitorTags          Json?
-  flyerEmailSentAt     DateTime?
-  flyerEmailStatus     FlyerEmailStatus?
-  flyerLinkToken       String?              @unique
-  flyerLinkClickedAt   DateTime?
-  flyerRedirectUrl     String?              // PDF URL for /flyer/[token] redirect
-  createdAt            DateTime             @default(now())
-  updatedAt            DateTime             @default(now()) @updatedAt
+  id                 String                @id @default(uuid())
+  openHouseId        String
+  contactId          String
+  signInMethod       SignInMethod
+  submittedAt        DateTime
+  rawResponseJson    Json?
+  leadStatus         VisitorLeadStatus     @default(NEW)
+  interestLevel      VisitorInterestLevel?
+  visitorNotes       String?               @db.Text
+  visitorTags        Json?
+  flyerEmailSentAt   DateTime?
+  flyerEmailStatus   FlyerEmailStatus?
+  flyerLinkToken     String?               @unique
+  flyerLinkClickedAt DateTime?
+  flyerRedirectUrl   String? // PDF URL for /flyer/[token] redirect
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @default(now()) @updatedAt
 
-  openHouse OpenHouse      @relation(fields: [openHouseId], references: [id])
-  contact   Contact        @relation(fields: [contactId], references: [id])
+  openHouse      OpenHouse       @relation(fields: [openHouseId], references: [id])
+  contact        Contact         @relation(fields: [contactId], references: [id])
   followUpDrafts FollowUpDraft[]
 
   @@index([openHouseId])
@@ -380,48 +397,66 @@ enum SignInMethod {
   MANUAL
 }
 
-/** Single scheduled private showing (distinct from OpenHouse). Source: manual entry or Supra scrape. */
+/**
+ * Single scheduled private showing (distinct from OpenHouse). Source: manual entry or Supra scrape.
+ */
 model Showing {
-  id                 String          @id @default(uuid())
-  propertyId         String
-  hostUserId         String
-  scheduledAt        DateTime
-  buyerAgentName     String?
-  buyerAgentEmail    String?
-  buyerName          String?
-  notes              String?         @db.Text
-  feedbackRequired   Boolean         @default(false)
-  source             ShowingSource   @default(MANUAL)
-  scrapeStatus       String?         // e.g. PARSED, MATCHED, UNMATCHED
-  feedbackRequestStatus String?      // e.g. PENDING, SENT, RECEIVED
-  /** Buyer-agent follow-up email draft (e.g. after Supra apply). Gmail/API send is not wired in v1. */
-  feedbackDraftSubject   String?
-  feedbackDraftBody      String?         @db.Text
-  feedbackDraftGeneratedAt DateTime?
-  /** When the host marked the buyer-agent feedback email as sent from their mail client. */
-  feedbackEmailSentAt    DateTime?
-  /** User-confirmed prep when feedback workflow needs explicit confirmation, e.g. { "followUpPathReady": true } */
-  prepChecklistFlags    Json?
-  /** Raw plain-text body of buyer-agent email reply (source of truth). */
-  buyerAgentEmailReplyRaw      String?         @db.Text
-  buyerAgentEmailReplyAt       DateTime?
-  buyerAgentEmailReplyFrom     String?
-  /** Gmail thread id for the buyer-agent feedback email conversation (ingestion only processes this thread). */
+  id                          String        @id @default(uuid())
+  propertyId                  String
+  hostUserId                  String
+  scheduledAt                 DateTime
+  buyerAgentName              String?
+  buyerAgentEmail             String?
+  buyerName                   String?
+  notes                       String?       @db.Text
+  feedbackRequired            Boolean       @default(false)
+  source                      ShowingSource @default(MANUAL)
+  scrapeStatus                String? // e.g. PARSED, MATCHED, UNMATCHED
+  feedbackRequestStatus       String? // e.g. PENDING, SENT, RECEIVED
+  /**
+   * Buyer-agent follow-up email draft (e.g. after Supra apply). Gmail/API send is not wired in v1.
+   */
+  feedbackDraftSubject        String?
+  feedbackDraftBody           String?       @db.Text
+  feedbackDraftGeneratedAt    DateTime?
+  /**
+   * When the host marked the buyer-agent feedback email as sent from their mail client.
+   */
+  feedbackEmailSentAt         DateTime?
+  /**
+   * User-confirmed prep when feedback workflow needs explicit confirmation, e.g. { "followUpPathReady": true }
+   */
+  prepChecklistFlags          Json?
+  /**
+   * Raw plain-text body of buyer-agent email reply (source of truth).
+   */
+  buyerAgentEmailReplyRaw     String?       @db.Text
+  buyerAgentEmailReplyAt      DateTime?
+  buyerAgentEmailReplyFrom    String?
+  /**
+   * Gmail thread id for the buyer-agent feedback email conversation (ingestion only processes this thread).
+   */
   feedbackGmailThreadId       String?
-  /** RFC Message-ID of the host's sent feedback email (optional; strengthens reply chain). */
+  /**
+   * RFC Message-ID of the host's sent feedback email (optional; strengthens reply chain).
+   */
   feedbackSentRfcMessageId    String?
-  /** Gmail message id for idempotent ingestion */
-  buyerAgentEmailReplyGmailId  String?         @unique
-  /** Optional rule-based highlights { interestHint?, concerns?, pricingComment?, followUpInterest?, confidence } — never replaces raw */
-  buyerAgentEmailReplyParsed   Json?
-  createdAt          DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  deletedAt         DateTime?
+  /**
+   * Gmail message id for idempotent ingestion
+   */
+  buyerAgentEmailReplyGmailId String?       @unique
+  /**
+   * Optional rule-based highlights { interestHint?, concerns?, pricingComment?, followUpInterest?, confidence } — never replaces raw
+   */
+  buyerAgentEmailReplyParsed  Json?
+  createdAt                   DateTime      @default(now())
+  updatedAt                   DateTime      @updatedAt
+  deletedAt                   DateTime?
 
-  property   Property          @relation(fields: [propertyId], references: [id])
-  hostUser   User              @relation(fields: [hostUserId], references: [id])
-  feedbackRequests FeedbackRequest[]
-  supraQueueMatches SupraQueueItem[] @relation("SupraQueueMatchedShowing")
+  property          Property          @relation(fields: [propertyId], references: [id])
+  hostUser          User              @relation(fields: [hostUserId], references: [id])
+  feedbackRequests  FeedbackRequest[]
+  supraQueueMatches SupraQueueItem[]  @relation("SupraQueueMatchedShowing")
 
   @@index([hostUserId])
   @@index([propertyId])
@@ -430,26 +465,32 @@ model Showing {
   @@map("showings")
 }
 
-/** One per showing when feedback is requested. Public form submits to this. */
+/**
+ * One per showing when feedback is requested. Public form submits to this.
+ */
 model FeedbackRequest {
-  id           String                @id @default(uuid())
-  showingId    String
-  propertyId   String
-  hostUserId   String
-  token        String                @unique
-  status       FeedbackRequestStatus @default(PENDING)
-  requestedAt  DateTime               @default(now())
-  expiresAt   DateTime?
-  /** Response: LOVED_IT | LIKED_IT | NEUTRAL | NOT_A_FIT */
+  id            String                @id @default(uuid())
+  showingId     String
+  propertyId    String
+  hostUserId    String
+  token         String                @unique
+  status        FeedbackRequestStatus @default(PENDING)
+  requestedAt   DateTime              @default(now())
+  expiresAt     DateTime?
+  /**
+   * Response: LOVED_IT | LIKED_IT | NEUTRAL | NOT_A_FIT
+   */
   interestLevel String?
-  /** Response: array of reason keys e.g. ["PRICE", "LAYOUT"] */
-  reasons      Json?
-  note         String?               @db.Text
-  respondedAt  DateTime?
-  createdAt    DateTime              @default(now())
-  updatedAt    DateTime              @updatedAt
+  /**
+   * Response: array of reason keys e.g. ["PRICE", "LAYOUT"]
+   */
+  reasons       Json?
+  note          String?               @db.Text
+  respondedAt   DateTime?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
 
-  showing Showing  @relation(fields: [showingId], references: [id], onDelete: Cascade)
+  showing  Showing  @relation(fields: [showingId], references: [id], onDelete: Cascade)
   property Property @relation(fields: [propertyId], references: [id])
   hostUser User     @relation(fields: [hostUserId], references: [id])
 
@@ -472,7 +513,9 @@ enum ShowingSource {
   SUPRA_SCRAPE
 }
 
-/** Review queue for Supra (and future) email ingests — human confirm before showings/properties change. */
+/**
+ * Review queue for Supra (and future) email ingests — human confirm before showings/properties change.
+ */
 enum SupraQueueState {
   INGESTED
   PARSED
@@ -516,8 +559,8 @@ enum SupraProposedAction {
 }
 
 model SupraQueueItem {
-  id           String @id @default(uuid())
-  hostUserId   String
+  id         String @id @default(uuid())
+  hostUserId String
 
   source            String   @default("supra")
   externalMessageId String
@@ -526,22 +569,24 @@ model SupraQueueItem {
   rawBodyText       String   @db.Text
   sender            String?
 
-  parsedAddress1    String?
-  parsedCity        String?
-  parsedState       String?
-  parsedZip         String?
-  parsedScheduledAt DateTime?
-  /** Supra end-of-showing: \"that began …\" time — aligns with Showing.scheduledAt for linking */
+  parsedAddress1       String?
+  parsedCity           String?
+  parsedState          String?
+  parsedZip            String?
+  parsedScheduledAt    DateTime?
+  /**
+   * Supra end-of-showing: \"that began …\" time — aligns with Showing.scheduledAt for linking
+   */
   parsedShowingBeganAt DateTime?
-  parsedEventKind   String?
-  parsedStatus      String?
-  parsedAgentName   String?
-  parsedAgentEmail  String?
-  parseConfidence   SupraParseConfidence   @default(LOW)
-  proposedAction    SupraProposedAction     @default(UNKNOWN)
+  parsedEventKind      String?
+  parsedStatus         String?
+  parsedAgentName      String?
+  parsedAgentEmail     String?
+  parseConfidence      SupraParseConfidence @default(LOW)
+  proposedAction       SupraProposedAction  @default(UNKNOWN)
 
-  matchedPropertyId String?
-  matchedShowingId  String?
+  matchedPropertyId   String?
+  matchedShowingId    String?
   propertyMatchStatus SupraPropertyMatchStatus @default(UNSET)
   showingMatchStatus  SupraShowingMatchStatus  @default(UNSET)
 
@@ -553,10 +598,10 @@ model SupraQueueItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  hostUser         User      @relation(fields: [hostUserId], references: [id], onDelete: Cascade)
-  matchedProperty  Property? @relation("SupraQueueMatchedProperty", fields: [matchedPropertyId], references: [id], onDelete: SetNull)
-  matchedShowing   Showing?  @relation("SupraQueueMatchedShowing", fields: [matchedShowingId], references: [id], onDelete: SetNull)
-  reviewedBy       User?     @relation("SupraQueueReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  hostUser        User      @relation(fields: [hostUserId], references: [id], onDelete: Cascade)
+  matchedProperty Property? @relation("SupraQueueMatchedProperty", fields: [matchedPropertyId], references: [id], onDelete: SetNull)
+  matchedShowing  Showing?  @relation("SupraQueueMatchedShowing", fields: [matchedShowingId], references: [id], onDelete: SetNull)
+  reviewedBy      User?     @relation("SupraQueueReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
 
   @@unique([hostUserId, externalMessageId])
   @@index([hostUserId, queueState])
@@ -564,26 +609,34 @@ model SupraQueueItem {
   @@map("supra_queue_items")
 }
 
-/** Per-user Supra Gmail import automation metadata (scheduled + manual runs). */
+/**
+ * Per-user Supra Gmail import automation metadata (scheduled + manual runs).
+ */
 model SupraGmailImportSettings {
-  id                String    @id @default(uuid())
-  userId            String    @unique
-  /** When false, scheduled cron skips this user; manual runs still work. */
-  automationEnabled Boolean   @default(true)
-  lastRunAt         DateTime?
-  lastRunSuccess    Boolean?
-  /** "manual" | "scheduled" */
-  lastRunSource     String?
-  lastRunImported   Int?
-  lastRunRefreshed  Int?
-  lastRunSkipped    Int?
-  lastRunScanned    Int?
-  lastRunAutoParsed Int?
-  lastRunError      String?   @db.VarChar(1000)
-  /** Set while Gmail import is running; cleared when the run finishes. Stale locks are overridden after ~12 minutes if a worker crashes. */
+  id                 String    @id @default(uuid())
+  userId             String    @unique
+  /**
+   * When false, scheduled cron skips this user; manual runs still work.
+   */
+  automationEnabled  Boolean   @default(true)
+  lastRunAt          DateTime?
+  lastRunSuccess     Boolean?
+  /**
+   * "manual" | "scheduled"
+   */
+  lastRunSource      String?
+  lastRunImported    Int?
+  lastRunRefreshed   Int?
+  lastRunSkipped     Int?
+  lastRunScanned     Int?
+  lastRunAutoParsed  Int?
+  lastRunError       String?   @db.VarChar(1000)
+  /**
+   * Set while Gmail import is running; cleared when the run finishes. Stale locks are overridden after ~12 minutes if a worker crashes.
+   */
   importRunStartedAt DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -611,23 +664,25 @@ model Activity {
   @@map("activities")
 }
 
-/** User-owned CRM activities (calls, tasks, follow-ups). Distinct from `Activity` (open-house timeline events). */
+/**
+ * User-owned CRM activities (calls, tasks, follow-ups). Distinct from `Activity` (open-house timeline events).
+ */
 model UserActivity {
-  id          String            @id @default(uuid())
+  id          String           @id @default(uuid())
   userId      String
   propertyId  String?
   contactId   String?
   type        UserActivityType
   title       String
-  description String?           @db.Text
+  description String?          @db.Text
   dueAt       DateTime?
   completedAt DateTime?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  contact  Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  property Property?     @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  contact  Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
   logs     ActivityLog[]
 
   @@index([userId])
@@ -648,15 +703,15 @@ enum UserActivityType {
 }
 
 model ActivityTemplate {
-  id                  String         @id @default(uuid())
+  id                  String           @id @default(uuid())
   userId              String
   name                String
   type                UserActivityType
   titleTemplate       String
-  descriptionTemplate String?        @db.Text
+  descriptionTemplate String?          @db.Text
   offsetDays          Int?
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -699,7 +754,7 @@ model FollowUpDraft {
   id                 String         @id @default(uuid())
   contactId          String
   openHouseId        String
-  openHouseVisitorId String?        // optional link to the sign-in that generated this draft
+  openHouseVisitorId String? // optional link to the sign-in that generated this draft
   subject            String
   body               String         @db.Text
   status             FollowUpStatus @default(DRAFT)
@@ -707,8 +762,8 @@ model FollowUpDraft {
   updatedAt          DateTime       @updatedAt
   deletedAt          DateTime?
 
-  contact          Contact          @relation(fields: [contactId], references: [id])
-  openHouse        OpenHouse        @relation(fields: [openHouseId], references: [id])
+  contact          Contact           @relation(fields: [contactId], references: [id])
+  openHouse        OpenHouse         @relation(fields: [openHouseId], references: [id])
   openHouseVisitor OpenHouseVisitor? @relation(fields: [openHouseVisitorId], references: [id])
 
   @@index([contactId])
@@ -779,13 +834,17 @@ enum ReminderStatus {
   DISMISSED
 }
 
-/** Agent-owned follow-up tasks (people-centric). `sourceType` + `sourceId` link to OH visitor, event, showing, etc. */
+/**
+ * Agent-owned follow-up tasks (people-centric). `sourceType` + `sourceId` link to OH visitor, event, showing, etc.
+ */
 model FollowUp {
   id              String               @id @default(uuid())
   createdByUserId String
   contactId       String
   sourceType      FollowUpSourceType
-  /** Visitor id, open house id, showing id, feedback request id, or `manual` for MANUAL source. */
+  /**
+   * Visitor id, open house id, showing id, feedback request id, or `manual` for MANUAL source.
+   */
   sourceId        String
   status          FollowUpTaskStatus   @default(NEW)
   priority        FollowUpTaskPriority @default(MEDIUM)
@@ -842,7 +901,9 @@ model Deal {
   property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id])
 
-  /** At most one transaction may reference a deal in v1 (see Transaction.dealId @unique). */
+  /**
+   * At most one transaction may reference a deal in v1 (see Transaction.dealId @unique).
+   */
   linkedTransaction Transaction? @relation("TransactionLinkedDeal")
 
   @@index([userId])
@@ -933,7 +994,9 @@ enum ConnectionStatus {
   ERROR
 }
 
-/** Lightweight usage events for ShowingHQ beta analytics. */
+/**
+ * Lightweight usage events for ShowingHQ beta analytics.
+ */
 model UsageEvent {
   id        String   @id @default(uuid())
   userId    String
@@ -951,24 +1014,27 @@ model UsageEvent {
 
 // ─── Transactions module (DealForge / FarmTrackr-inspired) ──────────────────
 model Transaction {
-  id             String            @id @default(uuid())
-  propertyId     String
-  userId         String
-  /** Optional CRM deal (same user, same property). At most one transaction per deal in v1. */
-  dealId         String?           @unique
-  status         TransactionStatus @default(PENDING)
-  salePrice      Decimal?          @db.Decimal(12, 2)
-  closingDate    DateTime?
-  brokerageName  String?
-  notes          String?           @db.Text
-  deletedAt      DateTime?
-  createdAt      DateTime          @default(now())
-  updatedAt      DateTime          @updatedAt
+  id            String            @id @default(uuid())
+  propertyId    String
+  userId        String
+  /**
+   * Optional CRM deal (same user, same property). At most one transaction per deal in v1.
+   */
+  dealId        String?           @unique
+  status        TransactionStatus @default(PENDING)
+  salePrice     Decimal?          @db.Decimal(12, 2)
+  closingDate   DateTime?
+  brokerageName String?
+  notes         String?           @db.Text
+  deletedAt     DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
-  property     Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deal         Deal?        @relation("TransactionLinkedDeal", fields: [dealId], references: [id], onDelete: SetNull)
-  commissions  Commission[]
+  property                Property                   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  user                    User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deal                    Deal?                      @relation("TransactionLinkedDeal", fields: [dealId], references: [id], onDelete: SetNull)
+  commissions             Commission[]
+  committedImportSessions TransactionImportSession[]
 
   @@index([userId])
   @@index([propertyId])
@@ -987,12 +1053,21 @@ enum TransactionStatus {
   FALLEN_APART
 }
 
-/** Commission split per transaction. */
+enum TransactionImportStatus {
+  PARSED
+  REVIEWED
+  COMMITTED
+  FAILED
+}
+
+/**
+ * Commission split per transaction.
+ */
 model Commission {
   id            String   @id @default(uuid())
   transactionId String
   agentId       String?
-  role          String   // e.g. LISTING_AGENT, BUYER_AGENT, REFERRAL
+  role          String // e.g. LISTING_AGENT, BUYER_AGENT, REFERRAL
   amount        Decimal  @db.Decimal(12, 2)
   percent       Decimal? @db.Decimal(5, 2)
   notes         String?  @db.Text
@@ -1004,4 +1079,29 @@ model Commission {
   @@index([transactionId])
   @@index([agentId])
   @@map("commissions")
+}
+
+model TransactionImportSession {
+  id                     String                  @id @default(uuid())
+  userId                 String
+  status                 TransactionImportStatus @default(PARSED)
+  fileName               String
+  mimeType               String
+  parsedPayload          Json
+  editedPayload          Json?
+  brokerageProfile       String?
+  parserVersion          String
+  confidence             Float
+  warnings               Json
+  committedTransactionId String?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+
+  user                 User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  committedTransaction Transaction? @relation(fields: [committedTransactionId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("transaction_import_sessions")
 }
