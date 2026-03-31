@@ -33,7 +33,7 @@ function buildAvatarCandidates(profile: BrandingProfile | null, clerkImageUrl: s
 }
 
 type ShowingHQWorkbenchHeaderActionsProps = {
-  /** When false, only account avatar/name/menu render (e.g. non–ShowingHQ dashboard routes). */
+  /** When false, only account avatar/name/menu render (hides + New). Defaults to true everywhere. */
   showNewMenu?: boolean;
 };
 
@@ -142,7 +142,7 @@ export function ShowingHQWorkbenchHeaderActions({
                 Property
               </Link>
               <Link
-                href="/contacts"
+                href="/contacts?new=1"
                 className={menuItemClass}
                 role="menuitem"
                 onClick={() => setNewOpen(false)}

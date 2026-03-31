@@ -1,28 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prismaAdmin } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
+import { canAccessContact } from "@/lib/contacts/contact-access";
 import { requireCrmAccess } from "@/lib/product-tier";
 import { AddNoteSchema } from "@/lib/validations/note";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
 
-async function getContactIfOwned(contactId: string, userId: string) {
-  const openHouses = await prismaAdmin.openHouse.findMany({
-    where: { hostUserId: userId, deletedAt: null },
-    select: { id: true },
-  });
-  const openHouseIds = openHouses.map((oh) => oh.id);
-
-  const visitor = await prismaAdmin.openHouseVisitor.findFirst({
-    where: {
-      contactId,
-      openHouseId: { in: openHouseIds },
-    },
-  });
-
-  if (!visitor) return null;
-
+async function getContactIfAccessible(contactId: string, userId: string) {
+  const allowed = await canAccessContact(contactId, userId);
+  if (!allowed) return null;
   return prismaAdmin.contact.findFirst({
     where: { id: contactId, deletedAt: null },
   });
@@ -37,7 +25,7 @@ export async function POST(
     requireCrmAccess(user.productTier);
     const { id: contactId } = await params;
 
-    const contact = await getContactIfOwned(contactId, user.id);
+    const contact = await getContactIfAccessible(contactId, user.id);
     if (!contact) {
       return apiError("Contact not found", 404);
     }
