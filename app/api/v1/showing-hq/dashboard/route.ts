@@ -54,6 +54,15 @@ const showingPropertyPlaceholder = (propertyId: string) => ({
   zip: null as string | null,
 });
 
+/** Avoid selecting all Contact scalars (keeps dashboard working if a column lags migrate deploy). */
+const dashboardContactSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+  phone: true,
+} satisfies Prisma.ContactSelect;
+
 type BuyerAgentEmailDraftReviewRow = Prisma.ShowingGetPayload<{
   select: {
     id: true;
@@ -279,7 +288,7 @@ export async function GET() {
           },
         },
         include: {
-          contact: true,
+          contact: { select: dashboardContactSelect },
           openHouse: true,
         },
         orderBy: { submittedAt: "desc" },
@@ -292,7 +301,7 @@ export async function GET() {
           status: { in: ["DRAFT", "REVIEWED"] },
         },
         include: {
-          contact: true,
+          contact: { select: dashboardContactSelect },
           openHouse: true,
         },
         orderBy: { updatedAt: "desc" },
