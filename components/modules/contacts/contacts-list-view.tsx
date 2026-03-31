@@ -35,6 +35,7 @@ import {
   MAX_SAVED_SEGMENTS,
   addSavedSegment,
 } from "@/lib/client-keep/saved-segments-storage";
+import { CreateContactModal } from "@/components/modules/contacts/create-contact-modal";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -448,6 +449,7 @@ export function ContactsListView() {
   const [saveSegmentError, setSaveSegmentError] = useState<string | null>(null);
   const { hasCrm } = useProductTier();
   const { contacts, loading, error, reload } = useContacts(statusFilter, tagIdFilter);
+  const createContactOpen = searchParams.get("new") === "1";
 
   useEffect(() => {
     const { status, tagId } = parseSegmentFromSearchParams(searchParams);
@@ -670,6 +672,19 @@ export function ContactsListView() {
           </div>
         )}
       </div>
+
+      <CreateContactModal
+        open={createContactOpen}
+        onDismiss={() =>
+          router.replace(segmentToHref(statusFilter, tagIdFilter), {
+            scroll: false,
+          })
+        }
+        onCreated={(id) => {
+          reload();
+          router.push(`/contacts/${id}`);
+        }}
+      />
 
       <BrandModal
         open={saveSegmentOpen}

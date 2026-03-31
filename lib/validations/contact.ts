@@ -8,6 +8,41 @@ const ContactStatusEnum = z.enum([
   "LOST",
 ]);
 
+/** Dashboard/manual create (POST /api/v1/contacts). Email and phone optional; dedupe on server. */
+export const CreateContactSchema = z.object({
+  firstName: z.string().trim().min(1, "First name is required"),
+  lastName: z.string().trim().min(1, "Last name is required"),
+  email: z.preprocess(
+    (v) => {
+      if (v === undefined || v === null) return null;
+      if (typeof v !== "string") return v;
+      const t = v.trim();
+      return t === "" ? null : t;
+    },
+    z.union([z.null(), z.string().email("Enter a valid email")])
+  ),
+  phone: z.preprocess(
+    (v) => {
+      if (v === undefined || v === null) return null;
+      if (typeof v !== "string") return v;
+      const t = v.trim();
+      return t === "" ? null : t;
+    },
+    z.union([z.null(), z.string()])
+  ),
+  notes: z.preprocess(
+    (v) => {
+      if (v === undefined || v === null) return null;
+      if (typeof v !== "string") return v;
+      const t = v.trim();
+      return t === "" ? null : t;
+    },
+    z.union([z.null(), z.string()])
+  ),
+});
+
+export type CreateContactInput = z.infer<typeof CreateContactSchema>;
+
 export const UpdateContactSchema = z.object({
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).optional(),
