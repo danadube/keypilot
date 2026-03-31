@@ -20,12 +20,12 @@ export const kpCalendarModalField = {
     "cursor-pointer text-kp-on-surface focus:bg-kp-teal/20 focus:text-kp-on-surface data-[disabled]:cursor-not-allowed data-[disabled]:text-kp-on-surface/55 data-[disabled]:opacity-90",
   /** Text fields (title, etc.) */
   input:
-    "h-10 border-kp-outline bg-kp-surface-higher text-kp-on-surface shadow-none placeholder:text-kp-on-surface/55 scheme-dark focus-visible:ring-1 focus-visible:ring-kp-teal/50 focus-visible:ring-offset-0",
+    "h-10 border-kp-outline bg-kp-surface-higher text-kp-on-surface shadow-none placeholder:text-kp-on-surface-placeholder scheme-dark focus-visible:ring-1 focus-visible:ring-kp-teal/50 focus-visible:ring-offset-0",
   /** Native date / time inputs — slightly taller, tabular value text */
   inputNativePicker:
     "h-11 min-h-[2.75rem] border-kp-outline bg-kp-surface-higher px-3 py-2 text-sm font-medium tabular-nums tracking-tight text-kp-on-surface shadow-none scheme-dark focus-visible:ring-1 focus-visible:ring-kp-teal/50 focus-visible:ring-offset-0",
   textarea:
-    "border-kp-outline bg-kp-surface-higher text-kp-on-surface placeholder:text-kp-on-surface/55 focus-visible:ring-1 focus-visible:ring-kp-teal/50 focus-visible:ring-offset-0",
+    "border-kp-outline bg-kp-surface-higher text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus-visible:ring-1 focus-visible:ring-kp-teal/50 focus-visible:ring-offset-0",
   mutedHelp: "text-sm text-kp-on-surface/75",
   error:
     "rounded-md border border-red-500/40 bg-red-950/35 px-3 py-2 text-sm text-red-200",

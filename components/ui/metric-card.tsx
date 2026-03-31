@@ -38,7 +38,7 @@ export function MetricCard({
       )}
     >
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-kp-on-surface-variant">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-kp-on-surface-muted">
           {label}
         </p>
         <p

@@ -885,7 +885,7 @@ export function OpenHouseDetailPageClient() {
                   value={detailNotes}
                   onChange={(e) => setDetailNotes(e.target.value)}
                   rows={3}
-                  className="w-full rounded-lg border border-kp-outline/80 bg-kp-surface-high/80 px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant/70"
+                  className="w-full rounded-lg border border-kp-outline/80 bg-kp-surface-high/80 px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder"
                   placeholder="Parking, access, staging notes…"
                   data-editable-focus
                 />

@@ -236,7 +236,7 @@ function SearchInput({
         onChange={(e) => onChange(e.target.value)}
         className={cn(
           "h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high pl-8 pr-8",
-          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
           "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
         )}
       />
@@ -847,7 +847,7 @@ export function OpenHousesListView() {
             maxLength={MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH}
             className={cn(
               "w-full rounded-lg border border-kp-outline bg-kp-bg px-3 py-2 text-sm text-kp-on-surface",
-              "placeholder:text-kp-on-surface-variant focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+              "placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
             )}
             autoFocus
           />

@@ -54,7 +54,7 @@ export function SectionTabs({ tabs, active, onChange, className }: SectionTabsPr
               "-mb-px border-b-2 transition-colors",
               isActive
                 ? "border-kp-gold text-kp-gold"
-                : "border-transparent text-kp-on-surface-variant hover:text-kp-on-surface hover:border-kp-outline"
+                : "border-transparent text-kp-on-surface-muted hover:text-kp-on-surface hover:border-kp-outline"
             )}
           >
             {tab.label}
@@ -64,7 +64,7 @@ export function SectionTabs({ tabs, active, onChange, className }: SectionTabsPr
                   "rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums leading-none",
                   isActive
                     ? "bg-kp-gold/15 text-kp-gold"
-                    : "bg-kp-surface-high text-kp-on-surface-variant"
+                    : "bg-kp-surface-high text-kp-on-surface-muted"
                 )}
               >
                 {tab.count}

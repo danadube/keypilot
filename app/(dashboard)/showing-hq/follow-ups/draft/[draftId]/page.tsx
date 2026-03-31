@@ -199,7 +199,7 @@ export default function DraftReviewPage() {
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="Email subject"
-              className="border-kp-outline bg-kp-surface-high font-medium text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal/30"
+              className="border-kp-outline bg-kp-surface-high font-medium text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus-visible:ring-kp-teal/30"
             />
           </div>
           <div className="space-y-2">
@@ -211,7 +211,7 @@ export default function DraftReviewPage() {
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Email body"
-              className="min-h-[240px] resize-y border-kp-outline bg-kp-surface-high font-mono text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal/30"
+              className="min-h-[240px] resize-y border-kp-outline bg-kp-surface-high font-mono text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus-visible:ring-kp-teal/30"
             />
           </div>
 

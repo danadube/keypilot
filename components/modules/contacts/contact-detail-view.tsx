@@ -488,7 +488,7 @@ export function ContactDetailView({ id }: { id: string }) {
                   value={tagName}
                   onChange={(e) => setTagName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addTag()}
-                  className="h-8 flex-1 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
+                  className="h-8 flex-1 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus-visible:ring-kp-teal"
                 />
                 <Button
                   variant="outline"
@@ -564,7 +564,7 @@ export function ContactDetailView({ id }: { id: string }) {
                   value={reminderBody}
                   onChange={(e) => setReminderBody(e.target.value)}
                   rows={2}
-                  className="resize-none border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
+                  className="resize-none border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus-visible:ring-kp-teal"
                 />
                 <Button
                   variant="outline"
@@ -596,7 +596,7 @@ export function ContactDetailView({ id }: { id: string }) {
                 value={noteBody}
                 onChange={(e) => setNoteBody(e.target.value)}
                 rows={2}
-                className="resize-none border-kp-outline bg-kp-surface text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
+                className="resize-none border-kp-outline bg-kp-surface text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus-visible:ring-kp-teal"
               />
               <Button
                 variant="outline"
@@ -631,7 +631,7 @@ export function ContactDetailView({ id }: { id: string }) {
                 value={commBody}
                 onChange={(e) => setCommBody(e.target.value)}
                 rows={2}
-                className="resize-none border-kp-outline bg-kp-surface text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
+                className="resize-none border-kp-outline bg-kp-surface text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus-visible:ring-kp-teal"
               />
               <Button
                 size="sm"

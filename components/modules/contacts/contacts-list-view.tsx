@@ -244,8 +244,8 @@ function SearchInput({
         onChange={(e) => onChange(e.target.value)}
         className={cn(
           "h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high pl-8 pr-8",
-          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
-          "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
+          "transition-colors focus:border-kp-teal focus:outline-none focus:ring-2 focus:ring-kp-teal/35"
         )}
       />
       {value && (
@@ -285,7 +285,7 @@ function TagChips({ tags }: { tags: { tag: { id: string; name: string } }[] }) {
 
 // ── Table ─────────────────────────────────────────────────────────────────────
 
-const TH = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
+const TH = "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted";
 const TD = "px-4 py-3.5 text-sm";
 
 function ContactsTable({
@@ -734,8 +734,8 @@ export function ContactsListView() {
             placeholder="e.g. Open house nurtures"
             maxLength={MAX_SAVED_SEGMENT_NAME_LENGTH}
             className={cn(
-              "w-full rounded-lg border border-kp-outline bg-kp-bg px-3 py-2 text-sm text-kp-on-surface",
-              "placeholder:text-kp-on-surface-variant focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+              "w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface",
+              "placeholder:text-kp-on-surface-placeholder focus:border-kp-teal focus:outline-none focus:ring-2 focus:ring-kp-teal/35"
             )}
             autoFocus
           />

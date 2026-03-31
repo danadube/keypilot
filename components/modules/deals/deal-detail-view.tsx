@@ -524,7 +524,7 @@ export function DealDetailView({ dealId }: { dealId: string }) {
                 rows={6}
                 className={cn(
                   "w-full resize-y rounded-lg border border-kp-outline bg-kp-surface-high",
-                  "px-3 py-2.5 text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                  "px-3 py-2.5 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
                   "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
                 )}
               />

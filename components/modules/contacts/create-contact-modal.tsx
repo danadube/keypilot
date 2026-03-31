@@ -85,8 +85,8 @@ export function CreateContactModal({
     firstName.trim().length > 0 && lastName.trim().length > 0 && !submitting;
 
   const inputClass = cn(
-    "w-full rounded-lg border border-kp-outline bg-kp-bg px-3 py-2 text-sm text-kp-on-surface",
-    "placeholder:text-kp-on-surface-variant focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+    "w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface",
+    "placeholder:text-kp-on-surface-placeholder focus:border-kp-teal focus:outline-none focus:ring-2 focus:ring-kp-teal/35"
   );
 
   return (

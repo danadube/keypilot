@@ -713,7 +713,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
                 placeholder="Optional"
                 className={cn(
                   "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
-                  "text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                  "text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
                   "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
                 )}
               />

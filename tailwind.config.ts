@@ -52,6 +52,13 @@ const config: Config = {
         // 3-tier dark surface hierarchy + gold/teal accent palette.
         // Hardcoded hex so Tailwind opacity modifiers (bg-kp-gold/10) work.
         // Do not alter the existing tokens above.
+        //
+        // Text scale (operational readability — WCAG-friendly on kp-bg / kp-surface):
+        //   DEFAULT    → primary body / values
+        //   variant    → labels, descriptions, interactive secondary copy
+        //   muted      → table headers, metadata, eyebrow labels (still readable)
+        //   placeholder→ empty hints only (distinct from filled values)
+        //   disabled   → truly disabled UI copy
         kp: {
           bg:      "#0B1120", // base background — deepest surface
           surface: {
@@ -70,12 +77,15 @@ const config: Config = {
           },
           "chart-teal": "#14B8A6", // chart / data-vis teal
           "on-surface": {
-            DEFAULT: "#F1F5F9", // primary text on dark surface
-            variant: "#8FA3BF", // secondary / muted text on dark surface
+            DEFAULT: "#F1F5F9", // primary text
+            variant: "#B8C9DC", // secondary — labels, helper lines, nav hint copy
+            muted: "#9BB4CC", // tertiary — column headers, dense metadata
+            placeholder: "#7B90AC", // input placeholders (quieter than values)
+            disabled: "#627792", // disabled copy (clearly below secondary)
           },
           outline: {
-            DEFAULT: "#2A3850", // borders, dividers
-            variant: "#1C2840", // subtle / low-emphasis dividers
+            DEFAULT: "#354A66", // borders — slightly stronger for input/scan clarity
+            variant: "#243047", // subtle dividers
           },
         },
       },

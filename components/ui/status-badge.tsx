@@ -13,8 +13,8 @@ const statusBadgeVariants = cva(
         pending:  "bg-kp-gold/10 text-kp-gold border border-kp-gold/25",
         upcoming: "bg-kp-gold/10 text-kp-gold-bright border border-kp-gold/20",
         // Neutral / off states
-        inactive: "bg-kp-outline/40 text-kp-on-surface-variant border border-kp-outline",
-        draft:    "bg-kp-surface-high text-kp-on-surface-variant border border-kp-outline",
+        inactive: "bg-kp-outline/40 text-kp-on-surface-muted border border-kp-outline",
+        draft:    "bg-kp-surface-high text-kp-on-surface-muted border border-kp-outline",
         // Completed / positive
         sold:     "bg-emerald-950 text-emerald-400 border border-emerald-800/60",
         closed:   "bg-emerald-950 text-emerald-400 border border-emerald-800/60",
@@ -58,7 +58,7 @@ export function StatusBadge({ children, variant, dot, className }: StatusBadgePr
               ? "bg-emerald-400"
               : variant === "cancelled"
               ? "bg-red-400"
-              : "bg-kp-on-surface-variant"
+              : "bg-kp-on-surface-muted"
           )}
         />
       )}

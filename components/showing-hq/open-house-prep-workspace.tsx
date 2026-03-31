@@ -312,7 +312,7 @@ export function OpenHousePrepWorkspace({
             }}
             onBlur={() => void flushNotes()}
             placeholder="Host instructions, parking, special notes…"
-            className="mt-2 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant/70"
+            className="mt-2 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder"
           />
           <Button
             type="button"

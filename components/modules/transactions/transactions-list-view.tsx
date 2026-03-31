@@ -141,7 +141,7 @@ function SearchInput({ value, onChange }: { value: string; onChange: (v: string)
         onChange={(e) => onChange(e.target.value)}
         className={cn(
           "h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high pl-8 pr-8",
-          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
           "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
         )}
       />

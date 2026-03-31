@@ -118,7 +118,7 @@ function PropertySearchPicker({
           placeholder="Search properties by address…"
           className={cn(
             "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high pl-8 pr-8",
-            "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+            "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
             "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
           )}
         />
@@ -369,7 +369,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                   onChange={(e) => setSalePrice(e.target.value)}
                   className={cn(
                     "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3",
-                    "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                    "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
                     "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
                   )}
                 />
@@ -410,7 +410,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                 placeholder="Company or team name"
                 className={cn(
                   "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3",
-                  "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                  "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
                   "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
                 )}
               />
@@ -431,7 +431,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                 placeholder="Internal notes"
                 className={cn(
                   "w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2",
-                  "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                  "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
                   "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
                 )}
               />

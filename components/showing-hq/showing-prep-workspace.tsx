@@ -222,7 +222,7 @@ export function ShowingPrepWorkspace<
                 void flushSaveFields();
               }}
               placeholder="Name as it should appear in outreach"
-              className="mt-2 h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant/70"
+              className="mt-2 h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder"
             />
           ) : (
             <p className="mt-2 text-sm text-kp-on-surface">{name}</p>
@@ -258,7 +258,7 @@ export function ShowingPrepWorkspace<
                 void flushSaveFields();
               }}
               placeholder="Work email for feedback request"
-              className="mt-2 h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant/70"
+              className="mt-2 h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder"
             />
           ) : (
             <p className="mt-2 text-sm text-kp-on-surface">{email}</p>
@@ -287,7 +287,7 @@ export function ShowingPrepWorkspace<
             }}
             onBlur={() => void flushSaveFields()}
             placeholder="Gate codes, parking, buyer context…"
-            className="mt-2 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant/70"
+            className="mt-2 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder"
           />
         </div>
 

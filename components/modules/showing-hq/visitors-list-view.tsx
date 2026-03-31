@@ -268,7 +268,7 @@ export function VisitorsListView() {
                 placeholder="Search name, email, phone..."
                 value={qInput}
                 onChange={(e) => setQInput(e.target.value)}
-                className="h-9 border-kp-outline bg-kp-surface-high pl-9 text-kp-on-surface placeholder:text-kp-on-surface-variant focus:ring-kp-teal"
+                className="h-9 border-kp-outline bg-kp-surface-high pl-9 text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:ring-kp-teal"
               />
             </div>
             <Select
@@ -572,7 +572,7 @@ export function VisitorsListView() {
             maxLength={MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH}
             className={cn(
               "w-full rounded-lg border border-kp-outline bg-kp-bg px-3 py-2 text-sm text-kp-on-surface",
-              "placeholder:text-kp-on-surface-variant focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+              "placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
             )}
             autoFocus
           />
