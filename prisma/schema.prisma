@@ -50,6 +50,9 @@ model User {
   userActivities           UserActivity[]
   activityTemplates   ActivityTemplate[]
   contactsCreated     Contact[]         @relation("ContactCreatedBy")
+  farmTerritories        FarmTerritory[]
+  farmAreas              FarmArea[]
+  contactFarmMemberships ContactFarmMembership[]
 
   @@index([clerkId])
   @@map("users")
@@ -145,6 +148,8 @@ model Contact {
   /** CRM / transaction primary client on a deal-style transaction (optional). */
   transactionsPrimary Transaction[] @relation("TransactionPrimaryContact")
   userActivities    UserActivity[]
+  /** FarmTrackr: one Contact, many farm area memberships (no second contact type). */
+  farmMemberships   ContactFarmMembership[]
 
   @@index([email])
   @@index([phone])
@@ -970,4 +975,79 @@ model Commission {
   @@index([transactionId])
   @@index([agentId])
   @@map("commissions")
+}
+
+// ─── FarmTrackr — segmentation foundation (territory → area → contact membership) ──
+// Canonical farm structure only; no free-text farm field on Contact.
+
+/** Roll-up territory (e.g. brand / market plan). User-scoped. */
+model FarmTerritory {
+  id          String    @id @default(uuid())
+  userId      String
+  name        String
+  description String?   @db.Text
+  /** Display order in UI; lower first. */
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  areas FarmArea[]
+
+  @@index([userId, deletedAt])
+  @@index([userId, sortOrder])
+  @@map("farm_territories")
+}
+
+/** Actionable farm segment within a territory (geo, subdivision, route, etc.). */
+model FarmArea {
+  id          String    @id @default(uuid())
+  territoryId String
+  /** Denormalized from FarmTerritory.userId for RLS and queries. */
+  userId      String
+  name        String
+  description String?   @db.Text
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  territory   FarmTerritory            @relation(fields: [territoryId], references: [id], onDelete: Cascade)
+  user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memberships ContactFarmMembership[]
+
+  @@index([territoryId, deletedAt])
+  @@index([userId, deletedAt])
+  @@map("farm_areas")
+}
+
+enum FarmMembershipStatus {
+  ACTIVE
+  ARCHIVED
+  /** Future: suppressed from mailings while keeping history. */
+  SUPPRESSED
+}
+
+/** Contact ↔ FarmArea junction. One row per (contact, area); soft-delete to remove. */
+model ContactFarmMembership {
+  id         String               @id @default(uuid())
+  userId     String
+  contactId  String
+  farmAreaId String
+  status     FarmMembershipStatus @default(ACTIVE)
+  notes      String?              @db.Text
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+  deletedAt  DateTime?
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact  Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  farmArea FarmArea @relation(fields: [farmAreaId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, farmAreaId])
+  @@index([farmAreaId, deletedAt])
+  @@index([contactId, deletedAt])
+  @@index([userId, deletedAt])
+  @@map("contact_farm_memberships")
 }
