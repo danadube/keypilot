@@ -1,24 +1,24 @@
-import { getHeaderNewMenuItems } from "@/lib/dashboard/header-new-menu-items";
+import {
+  GLOBAL_HEADER_NEW_MENU_ITEMS,
+  getHeaderNewMenuItems,
+} from "@/lib/dashboard/header-new-menu-items";
 
-describe("getHeaderNewMenuItems", () => {
-  it("prioritizes Transaction on /transactions", () => {
-    const items = getHeaderNewMenuItems("/transactions");
-    expect(items[0]).toEqual({ label: "Transaction", href: "/transactions?new=1" });
+const EXPECTED = [
+  { label: "New Showing", href: "/showing-hq/showings/new" },
+  { label: "New Open House", href: "/open-houses/new" },
+  { label: "New Transaction", href: "/transactions?new=1" },
+  { label: "New Deal", href: "/deals?new=1" },
+  { label: "New Property", href: "/properties/new" },
+  { label: "New Contact", href: "/contacts" },
+] as const;
+
+describe("header + New menu (global)", () => {
+  it("exports a fixed ordered list", () => {
+    expect([...GLOBAL_HEADER_NEW_MENU_ITEMS]).toEqual([...EXPECTED]);
   });
 
-  it("ShowingHQ context includes Showing first", () => {
-    const items = getHeaderNewMenuItems("/showing-hq/showings");
-    expect(items.map((i) => i.label)).toEqual([
-      "Showing",
-      "Open house",
-      "Property",
-      "Contact",
-    ]);
-  });
-
-  it("default menu lists common creates", () => {
-    const items = getHeaderNewMenuItems("/settings/account");
-    expect(items.some((i) => i.label === "Transaction")).toBe(true);
-    expect(items.some((i) => i.label === "Deal")).toBe(true);
+  it("getHeaderNewMenuItems returns the same list on every call", () => {
+    expect(getHeaderNewMenuItems()).toEqual(EXPECTED);
+    expect(getHeaderNewMenuItems()).toEqual(getHeaderNewMenuItems());
   });
 });

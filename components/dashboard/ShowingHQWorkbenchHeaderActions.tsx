@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { ChevronDown, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,8 +34,7 @@ function buildAvatarCandidates(profile: BrandingProfile | null, clerkImageUrl: s
 }
 
 export function ShowingHQWorkbenchHeaderActions() {
-  const pathname = usePathname() ?? "";
-  const newMenuItems = getHeaderNewMenuItems(pathname);
+  const newMenuItems = getHeaderNewMenuItems();
   const [newOpen, setNewOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [brandingProfile, setBrandingProfile] = useState<BrandingProfile | null>(null);
