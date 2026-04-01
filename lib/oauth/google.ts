@@ -20,11 +20,13 @@ export function getGoogleOAuth2Client() {
 export const GOOGLE_SCOPES = {
   google_calendar: [
     "https://www.googleapis.com/auth/calendar.events.readonly",
+    "https://www.googleapis.com/auth/spreadsheets.readonly",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
   ],
   gmail: [
     "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/spreadsheets.readonly",
     "https://www.googleapis.com/auth/userinfo.email",
     "https://www.googleapis.com/auth/userinfo.profile",
   ],
