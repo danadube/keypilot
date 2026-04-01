@@ -20,7 +20,10 @@ function shouldBypassRlsWithAdminRead(e: unknown): boolean {
     msg.includes("permission denied") ||
     msg.includes("row-level security") ||
     msg.includes("violates row-level security") ||
-    msg.includes("insufficient privilege")
+    msg.includes("insufficient privilege") ||
+    // After a failed statement under RLS, Postgres often surfaces only this on follow-up queries in the same tx.
+    msg.includes("current transaction is aborted") ||
+    msg.includes("25p02")
   ) {
     return true;
   }
@@ -39,7 +42,8 @@ function shouldBypassRlsWithAdminRead(e: unknown): boolean {
     return (
       raw.includes("permission denied") ||
       raw.includes("row-level security") ||
-      raw.includes("insufficient privilege")
+      raw.includes("insufficient privilege") ||
+      raw.includes("current transaction is aborted")
     );
   }
   return false;

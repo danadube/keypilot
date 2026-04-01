@@ -23,7 +23,7 @@ export async function GET() {
       return apiError("CRM features require Full CRM tier", 403);
     }
 
-    const { areas, activeMembershipCounts } = await withRLSContextOrFallbackAdmin(
+    const { areas, membershipCountByAreaId } = await withRLSContextOrFallbackAdmin(
       user.id,
       "farm-areas:get",
       async (tx) => {
@@ -46,26 +46,27 @@ export async function GET() {
         });
 
         const areaIds = areas.map((area) => area.id);
-        const activeMembershipCounts = areaIds.length
-          ? await tx.contactFarmMembership.groupBy({
-              by: ["farmAreaId"],
-              where: {
-                userId: user.id,
-                farmAreaId: { in: areaIds },
-                status: ContactFarmMembershipStatus.ACTIVE,
-              },
-              _count: { _all: true },
-            })
-          : [];
+        const membershipCountByAreaId = new Map<string, number>();
+        if (areaIds.length > 0) {
+          const membershipRows = await tx.contactFarmMembership.findMany({
+            where: {
+              userId: user.id,
+              farmAreaId: { in: areaIds },
+              status: ContactFarmMembershipStatus.ACTIVE,
+            },
+            select: { farmAreaId: true },
+          });
+          for (const row of membershipRows) {
+            membershipCountByAreaId.set(
+              row.farmAreaId,
+              (membershipCountByAreaId.get(row.farmAreaId) ?? 0) + 1
+            );
+          }
+        }
 
-        return { areas, activeMembershipCounts };
+        return { areas, membershipCountByAreaId };
       }
     );
-
-    const membershipCountByAreaId = new Map<string, number>();
-    for (const row of activeMembershipCounts) {
-      membershipCountByAreaId.set(row.farmAreaId, row._count._all);
-    }
 
     return NextResponse.json({
       data: areas.map((area) => ({
