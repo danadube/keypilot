@@ -19,6 +19,7 @@ export type TxStatus =
 export type TransactionRow = {
   id: string;
   status: TxStatus;
+  deletedAt?: string | null;
   salePrice: string | number | null;
   closingDate: string | null;
   brokerageName: string | null;
@@ -111,12 +112,24 @@ export function TransactionsListTableRow({ row: t, index: i }: { row: Transactio
         <p className="text-xs text-kp-on-surface-variant">
           {t.property.city}, {t.property.state} {t.property.zip}
         </p>
+        {t.deletedAt && (
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-amber-300">
+            Archived
+          </p>
+        )}
         <span className="mt-1 inline-block sm:hidden">
           <StatusBadge variant={statusBadgeVariant(t.status)}>{STATUS_LABELS[t.status]}</StatusBadge>
         </span>
       </td>
       <td className={cn(TD, "hidden sm:table-cell")}>
-        <StatusBadge variant={statusBadgeVariant(t.status)}>{STATUS_LABELS[t.status]}</StatusBadge>
+        <div className="flex items-center gap-2">
+          <StatusBadge variant={statusBadgeVariant(t.status)}>{STATUS_LABELS[t.status]}</StatusBadge>
+          {t.deletedAt ? (
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-300">
+              Archived
+            </span>
+          ) : null}
+        </div>
       </td>
       <td className={cn(TD, "hidden tabular-nums text-kp-on-surface md:table-cell")}>
         {formatMoney(t.salePrice)}

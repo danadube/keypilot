@@ -34,6 +34,14 @@ export const UpdateTransactionSchema = z.object({
   notes: z.string().max(5000).optional().nullable(),
 });
 
+export const ArchiveTransactionBodySchema = z.object({
+  archive: z.literal(true),
+});
+
+export const UnarchiveTransactionBodySchema = z.object({
+  unarchive: z.literal(true),
+});
+
 export const CreateCommissionSchema = z.object({
   role: z.string().min(1).max(100),
   amount: z.number().positive(),

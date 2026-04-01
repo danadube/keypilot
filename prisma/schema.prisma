@@ -895,6 +895,7 @@ model Transaction {
   closingDate    DateTime?
   brokerageName  String?
   notes          String?           @db.Text
+  deletedAt      DateTime?
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
@@ -907,6 +908,7 @@ model Transaction {
   @@index([propertyId])
   @@index([status])
   @@index([closingDate])
+  @@index([userId, deletedAt])
   @@map("transactions")
 }
 

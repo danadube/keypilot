@@ -7,7 +7,11 @@ import {
   responseIfDealIdUniqueViolation,
   transactionLinkedDealSelect,
 } from "@/lib/transaction-deal-link";
-import { UpdateTransactionSchema } from "@/lib/validations/transaction";
+import {
+  ArchiveTransactionBodySchema,
+  UnarchiveTransactionBodySchema,
+  UpdateTransactionSchema,
+} from "@/lib/validations/transaction";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import type { Prisma } from "@prisma/client";
 
@@ -60,6 +64,32 @@ export async function PATCH(
     const { id } = await params;
 
     const body = await req.json();
+    const archiveParse = ArchiveTransactionBodySchema.safeParse(body);
+    const unarchiveParse = UnarchiveTransactionBodySchema.safeParse(body);
+
+    if (archiveParse.success || unarchiveParse.success) {
+      const transaction = await withRLSContext(user.id, async (tx) => {
+        const existing = await tx.transaction.findFirst({
+          where: { id, userId: user.id },
+          select: { id: true },
+        });
+        if (!existing) return null;
+
+        return tx.transaction.update({
+          where: { id },
+          data: { deletedAt: archiveParse.success ? new Date() : null },
+          include: {
+            property: { select: propertySelect },
+            deal: { select: transactionLinkedDealSelect },
+            commissions: { orderBy: { createdAt: "asc" } },
+          },
+        });
+      });
+
+      if (!transaction) return apiError("Transaction not found", 404);
+      return NextResponse.json({ data: transaction });
+    }
+
     const parsed = UpdateTransactionSchema.safeParse(body);
     if (!parsed.success) {
       return apiError(parsed.error.issues[0]?.message ?? "Invalid input", 400);
@@ -138,7 +168,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -147,6 +177,12 @@ export async function DELETE(
       return apiError("CRM features require Full CRM tier", 403);
     }
     const { id } = await params;
+    if (req.nextUrl.searchParams.get("force") !== "1") {
+      return apiError(
+        "Delete is permanent. Archive this transaction instead, or confirm permanent delete.",
+        409
+      );
+    }
 
     const deleted = await withRLSContext(user.id, async (tx) => {
       const existing = await tx.transaction.findFirst({

@@ -32,18 +32,18 @@ const STATUS_TABS = [
 
 type StatusTabValue = (typeof STATUS_TABS)[number]["value"];
 
-function useTransactions(statusFilter: StatusTabValue) {
+function useTransactions(statusFilter: StatusTabValue, showArchived: boolean) {
   const [rows, setRows] = useState<TransactionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  function load(status: StatusTabValue) {
+  function load(status: StatusTabValue, includeArchived: boolean) {
     setError(null);
     setLoading(true);
-    const url =
-      status !== "__all__"
-        ? `/api/v1/transactions?status=${encodeURIComponent(status)}`
-        : "/api/v1/transactions";
+    const params = new URLSearchParams();
+    if (status !== "__all__") params.set("status", status);
+    if (includeArchived) params.set("showArchived", "1");
+    const url = params.size > 0 ? `/api/v1/transactions?${params.toString()}` : "/api/v1/transactions";
     fetch(url)
       .then((res) => res.json())
       .then((json) => {
@@ -55,10 +55,10 @@ function useTransactions(statusFilter: StatusTabValue) {
   }
 
   useEffect(() => {
-    load(statusFilter);
-  }, [statusFilter]);
+    load(statusFilter, showArchived);
+  }, [statusFilter, showArchived]);
 
-  return { rows, loading, error, reload: () => load(statusFilter) };
+  return { rows, loading, error, reload: () => load(statusFilter, showArchived) };
 }
 
 function matchesSearch(t: TransactionRow, q: string): boolean {
@@ -94,7 +94,15 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   );
 }
 
-function EmptyState({ isFiltered, onReset }: { isFiltered: boolean; onReset: () => void }) {
+function EmptyState({
+  isFiltered,
+  onReset,
+  showArchived,
+}: {
+  isFiltered: boolean;
+  onReset: () => void;
+  showArchived: boolean;
+}) {
   return (
     <div className="flex min-h-[240px] flex-col items-center justify-center gap-4 px-4 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-kp-surface-high">
@@ -112,7 +120,9 @@ function EmptyState({ isFiltered, onReset }: { isFiltered: boolean; onReset: () 
           <>
             <p className="text-sm font-medium text-kp-on-surface">No transactions yet</p>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-              Add a transaction to track a closing and commission splits.
+              {showArchived
+                ? "No active or archived transactions found."
+                : "Add a transaction to track a closing and commission splits."}
             </p>
           </>
         )}
@@ -192,8 +202,9 @@ export function TransactionsListView() {
   const [statusFilter, setStatusFilter] = useState<StatusTabValue>("__all__");
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
-  const { rows, loading, error, reload } = useTransactions(statusFilter);
+  const { rows, loading, error, reload } = useTransactions(statusFilter, showArchived);
 
   const visible = useMemo(() => {
     if (!search.trim()) return rows;
@@ -224,7 +235,7 @@ export function TransactionsListView() {
             Transactions
           </h1>
           <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-            Closings, sale details, and commission splits per property
+            Closings, sale details, commission splits, and lifecycle state
           </p>
         </div>
         <Button
@@ -270,9 +281,26 @@ export function TransactionsListView() {
           </div>
         )}
 
-        {showContent && rows.length > 0 && (
+        {showContent && (
           <div className="border-b border-kp-outline-variant px-5 py-3">
-            <SearchInput value={search} onChange={setSearch} />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              {rows.length > 0 ? (
+                <div className="sm:min-w-[340px] sm:flex-1">
+                  <SearchInput value={search} onChange={setSearch} />
+                </div>
+              ) : (
+                <div />
+              )}
+              <label className="inline-flex items-center gap-2 text-xs text-kp-on-surface-variant">
+                <input
+                  type="checkbox"
+                  checked={showArchived}
+                  onChange={(e) => setShowArchived(e.target.checked)}
+                  className="h-4 w-4 rounded border-kp-outline bg-kp-surface-high text-kp-teal focus:ring-kp-teal/40"
+                />
+                Show archived
+              </label>
+            </div>
           </div>
         )}
 
@@ -281,7 +309,11 @@ export function TransactionsListView() {
         ) : error ? (
           <ErrorState message={error} onRetry={reload} />
         ) : visible.length === 0 ? (
-          <EmptyState isFiltered={isFiltered} onReset={handleClearFilters} />
+          <EmptyState
+            isFiltered={isFiltered}
+            onReset={handleClearFilters}
+            showArchived={showArchived}
+          />
         ) : (
           <TransactionsTable rows={visible} />
         )}

@@ -28,11 +28,13 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status") as TransactionStatus | null;
+    const showArchived = searchParams.get("showArchived") === "1";
 
     const transactions = await withRLSContext(user.id, (tx) =>
       tx.transaction.findMany({
         where: {
           userId: user.id,
+          ...(showArchived ? {} : { deletedAt: null }),
           ...(status ? { status } : {}),
         },
         include: {

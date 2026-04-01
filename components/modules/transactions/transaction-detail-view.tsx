@@ -103,6 +103,7 @@ function dealStatusBadgeVariant(
 type TransactionDetail = {
   id: string;
   status: TxStatus;
+  deletedAt: string | null;
   salePrice: string | number | null;
   closingDate: string | null;
   brokerageName: string | null;
@@ -235,6 +236,9 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
   const [selectedDealId, setSelectedDealId] = useState("");
   const [dealLinkError, setDealLinkError] = useState<string | null>(null);
   const [dealLinkBusy, setDealLinkBusy] = useState(false);
+  const [lifecycleBusy, setLifecycleBusy] = useState<"archive" | "unarchive" | "delete" | null>(
+    null
+  );
 
   const selectableDeals = useMemo(
     () =>
@@ -496,6 +500,60 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     }
   };
 
+  const handleArchiveTransaction = async () => {
+    setLifecycleBusy("archive");
+    try {
+      const res = await fetch(`/api/v1/transactions/${transactionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archive: true }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message ?? "Archive failed");
+      await load();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Archive failed");
+    } finally {
+      setLifecycleBusy(null);
+    }
+  };
+
+  const handleRestoreTransaction = async () => {
+    setLifecycleBusy("unarchive");
+    try {
+      const res = await fetch(`/api/v1/transactions/${transactionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ unarchive: true }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message ?? "Restore failed");
+      await load();
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Restore failed");
+    } finally {
+      setLifecycleBusy(null);
+    }
+  };
+
+  const handleDeleteTransaction = async () => {
+    const confirmed = prompt("Type DELETE to permanently remove this transaction.");
+    if (confirmed !== "DELETE") return;
+
+    setLifecycleBusy("delete");
+    try {
+      const res = await fetch(`/api/v1/transactions/${transactionId}?force=1`, {
+        method: "DELETE",
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message ?? "Delete failed");
+      window.location.href = "/transactions";
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Delete failed");
+      setLifecycleBusy(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-[320px] items-center justify-center rounded-2xl bg-kp-bg">
@@ -543,6 +601,11 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             <p className="mt-1 text-sm text-kp-on-surface-variant">
               {txn.property.city}, {txn.property.state} {txn.property.zip}
             </p>
+            {txn.deletedAt && (
+              <p className="mt-2 inline-flex rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-300">
+                Archived transaction
+              </p>
+            )}
           </div>
           <Link
             href={`/properties/${txn.property.id}`}
@@ -808,6 +871,51 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save
+            </button>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+          <h2 className="text-sm font-semibold text-kp-on-surface">Transaction lifecycle</h2>
+          <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+            Archive hides this record from default lists. Delete is permanent.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {!txn.deletedAt ? (
+              <button
+                type="button"
+                disabled={lifecycleBusy !== null}
+                onClick={() => void handleArchiveTransaction()}
+                className={cn(
+                  "rounded-lg border border-kp-outline px-3 py-2 text-xs font-semibold text-kp-on-surface",
+                  "hover:bg-kp-surface-high disabled:opacity-50"
+                )}
+              >
+                {lifecycleBusy === "archive" ? "Archiving..." : "Archive transaction"}
+              </button>
+            ) : (
+              <button
+                type="button"
+                disabled={lifecycleBusy !== null}
+                onClick={() => void handleRestoreTransaction()}
+                className={cn(
+                  "rounded-lg border border-kp-outline px-3 py-2 text-xs font-semibold text-kp-on-surface",
+                  "hover:bg-kp-surface-high disabled:opacity-50"
+                )}
+              >
+                {lifecycleBusy === "unarchive" ? "Restoring..." : "Restore transaction"}
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={lifecycleBusy !== null}
+              onClick={() => void handleDeleteTransaction()}
+              className={cn(
+                "rounded-lg border border-red-500/40 px-3 py-2 text-xs font-semibold text-red-300",
+                "hover:bg-red-500/10 disabled:opacity-50"
+              )}
+            >
+              {lifecycleBusy === "delete" ? "Deleting..." : "Delete permanently"}
             </button>
           </div>
         </section>
