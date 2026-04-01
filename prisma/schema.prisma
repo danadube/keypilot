@@ -49,6 +49,9 @@ model User {
   supraGmailImportSettings SupraGmailImportSettings?
   userActivities           UserActivity[]
   activityTemplates   ActivityTemplate[]
+  farmTerritories     FarmTerritory[]
+  farmAreas           FarmArea[]
+  contactFarmMemberships ContactFarmMembership[]
 
   @@index([clerkId])
   @@map("users")
@@ -139,6 +142,7 @@ model Contact {
   followUps         FollowUp[]
   deals             Deal[]
   userActivities    UserActivity[]
+  farmMemberships   ContactFarmMembership[]
 
   @@index([email])
   @@index([phone])
@@ -154,6 +158,68 @@ enum ContactStatus {
   NURTURING
   READY
   LOST
+}
+
+enum ContactFarmMembershipStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model FarmTerritory {
+  id          String   @id @default(uuid())
+  userId      String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  areas FarmArea[]
+
+  @@index([userId, deletedAt])
+  @@map("farm_territories")
+}
+
+model FarmArea {
+  id          String   @id @default(uuid())
+  userId      String
+  territoryId String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  user        User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  territory   FarmTerritory         @relation(fields: [territoryId], references: [id], onDelete: Cascade)
+  memberships ContactFarmMembership[]
+
+  @@index([userId, deletedAt])
+  @@index([territoryId, deletedAt])
+  @@map("farm_areas")
+}
+
+model ContactFarmMembership {
+  id         String                      @id @default(uuid())
+  userId     String
+  contactId  String
+  farmAreaId String
+  status     ContactFarmMembershipStatus @default(ACTIVE)
+  notes      String?
+  createdAt  DateTime                    @default(now())
+  updatedAt  DateTime                    @updatedAt
+  archivedAt DateTime?
+
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact  Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  farmArea FarmArea @relation(fields: [farmAreaId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, farmAreaId])
+  @@index([userId, status])
+  @@index([contactId, status])
+  @@index([farmAreaId, status])
+  @@map("contact_farm_memberships")
 }
 
 model OpenHouse {

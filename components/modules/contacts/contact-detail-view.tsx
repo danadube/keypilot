@@ -35,6 +35,7 @@ import {
   MessageSquare,
   FileText,
   X,
+  MapPinned,
 } from "lucide-react";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -45,6 +46,18 @@ const CONTACT_STATUSES = ["LEAD", "CONTACTED", "NURTURING", "READY", "LOST"] as 
 
 type ContactTag = { id: string; name: string };
 type Reminder = { id: string; dueAt: string; body: string; status: string };
+type FarmAreaOption = {
+  id: string;
+  name: string;
+  territory: { id: string; name: string };
+};
+type FarmMembership = {
+  id: string;
+  status: "ACTIVE" | "ARCHIVED";
+  notes: string | null;
+  createdAt: string;
+  farmArea: FarmAreaOption;
+};
 
 type Contact = {
   id: string;
@@ -139,6 +152,11 @@ export function ContactDetailView({ id }: { id: string }) {
   const [reminderBody, setReminderBody] = useState("");
   const [reminderDue, setReminderDue] = useState("");
   const [addingReminder, setAddingReminder] = useState(false);
+  const [farmAreas, setFarmAreas] = useState<FarmAreaOption[]>([]);
+  const [farmMemberships, setFarmMemberships] = useState<FarmMembership[]>([]);
+  const [selectedFarmAreaId, setSelectedFarmAreaId] = useState("");
+  const [addingFarmMembership, setAddingFarmMembership] = useState(false);
+  const [farmMembershipError, setFarmMembershipError] = useState<string | null>(null);
   const [commChannel, setCommChannel] = useState<"CALL" | "EMAIL">("CALL");
   const [commBody, setCommBody] = useState("");
   const [loggingComm, setLoggingComm] = useState(false);
@@ -240,6 +258,54 @@ export function ContactDetailView({ id }: { id: string }) {
       .finally(() => setAddingReminder(false));
   }, [id, reminderBody, reminderDue, addingReminder]);
 
+  const addFarmMembership = useCallback(() => {
+    if (!selectedFarmAreaId || addingFarmMembership) return;
+    setAddingFarmMembership(true);
+    setFarmMembershipError(null);
+    fetch(`/api/v1/contacts/${id}/farm-memberships`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ farmAreaId: selectedFarmAreaId }),
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.error) throw new Error(json.error.message);
+        const created = json.data as FarmMembership;
+        setFarmMemberships((prev) => {
+          const withoutExisting = prev.filter((m) => m.id !== created.id);
+          return [...withoutExisting, created].sort((a, b) =>
+            `${a.farmArea.territory.name} ${a.farmArea.name}`.localeCompare(
+              `${b.farmArea.territory.name} ${b.farmArea.name}`
+            )
+          );
+        });
+        setSelectedFarmAreaId("");
+      })
+      .catch((err) =>
+        setFarmMembershipError(err instanceof Error ? err.message : "Failed to add membership")
+      )
+      .finally(() => setAddingFarmMembership(false));
+  }, [id, selectedFarmAreaId, addingFarmMembership]);
+
+  const archiveFarmMembership = useCallback(
+    (membershipId: string) => {
+      fetch(`/api/v1/contacts/${id}/farm-memberships/${membershipId}`, {
+        method: "DELETE",
+      })
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.error) throw new Error(json.error.message);
+          setFarmMemberships((prev) => prev.filter((m) => m.id !== membershipId));
+        })
+        .catch((err) =>
+          setFarmMembershipError(
+            err instanceof Error ? err.message : "Failed to archive membership"
+          )
+        );
+    },
+    [id]
+  );
+
   const updateReminderStatus = useCallback((reminderId: string, status: "DONE" | "DISMISSED") => {
     fetch(`/api/v1/reminders/${reminderId}`, {
       method: "PATCH",
@@ -315,13 +381,20 @@ export function ContactDetailView({ id }: { id: string }) {
       fetch(`/api/v1/contacts/${id}`),
       fetch(`/api/v1/contacts/${id}/activities`),
       fetch("/api/v1/me"),
+      fetch(`/api/v1/contacts/${id}/farm-memberships`),
+      fetch("/api/v1/farm-areas"),
     ])
-      .then(async ([cRes, aRes, meRes]) => {
+      .then(async ([cRes, aRes, meRes, membershipsRes, farmAreasRes]) => {
         const cJson = await cRes.json();
         const aJson = await aRes.json();
+        const membershipsJson = await membershipsRes.json();
+        const farmAreasJson = await farmAreasRes.json();
         if (cJson.error) throw new Error(cJson.error.message);
         setContact(cJson.data);
         setActivities(aJson.data || []);
+        setFarmMemberships(membershipsJson.data || []);
+        setFarmAreas(farmAreasJson.data || []);
+        setFarmMembershipError(null);
         try {
           const meJson = await meRes.json();
           if (meJson.data?.id) setCurrentUserId(meJson.data.id);
@@ -498,6 +571,85 @@ export function ContactDetailView({ id }: { id: string }) {
                   disabled={!tagName.trim() || addingTag}
                 >
                   {addingTag ? "Adding…" : "Add"}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Farm memberships */}
+          {hasCrmAccess && (
+            <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+              <div className="mb-3 flex items-center gap-2">
+                <MapPinned className="h-3.5 w-3.5 text-kp-on-surface-variant" />
+                <h2 className="text-sm font-semibold text-kp-on-surface">Farm memberships</h2>
+              </div>
+              <p className="mb-3 text-xs text-kp-on-surface-variant">
+                Assign this contact to a farm area for segmentation.
+              </p>
+
+              {farmMembershipError && (
+                <p className="mb-3 text-xs text-red-400">{farmMembershipError}</p>
+              )}
+
+              {farmMemberships.length > 0 ? (
+                <ul className="mb-3 space-y-2">
+                  {farmMemberships.map((membership) => (
+                    <li
+                      key={membership.id}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-kp-on-surface">
+                          {membership.farmArea.name}
+                        </p>
+                        <p className="truncate text-xs text-kp-on-surface-variant">
+                          {membership.farmArea.territory.name}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className={cn(kpBtnTertiary, "h-7 px-2 text-xs")}
+                        onClick={() => archiveFarmMembership(membership.id)}
+                      >
+                        Remove
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mb-3 text-xs text-kp-on-surface-variant">
+                  No farm memberships yet.
+                </p>
+              )}
+
+              <div className="flex flex-col gap-2">
+                <Select value={selectedFarmAreaId} onValueChange={setSelectedFarmAreaId}>
+                  <SelectTrigger className="h-8 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface">
+                    <SelectValue
+                      placeholder={
+                        farmAreas.length > 0 ? "Select farm area..." : "No farm areas available"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent className="border-kp-outline bg-kp-surface text-kp-on-surface">
+                    {farmAreas.map((area) => (
+                      <SelectItem key={area.id} value={area.id}>
+                        {area.territory.name} — {area.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(kpBtnPrimary, "h-8 border-transparent px-3 text-xs")}
+                  onClick={addFarmMembership}
+                  disabled={!selectedFarmAreaId || addingFarmMembership}
+                >
+                  {addingFarmMembership ? "Adding..." : "Add to farm area"}
                 </Button>
               </div>
             </div>
