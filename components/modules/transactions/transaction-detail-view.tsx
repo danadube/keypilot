@@ -1161,10 +1161,3 @@ function percentDisplay(v: string | number | null) {
   if (Number.isNaN(n)) return null;
   return n;
 }
-
-function formatTimestamp(iso: string | null | undefined) {
-  if (!iso) return null;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toLocaleString();
-}

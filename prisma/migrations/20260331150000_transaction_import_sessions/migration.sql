@@ -54,3 +54,31 @@ CREATE INDEX IF NOT EXISTS "transaction_import_sessions_status_idx"
   ON "transaction_import_sessions"("status");
 CREATE INDEX IF NOT EXISTS "transaction_import_sessions_createdAt_idx"
   ON "transaction_import_sessions"("createdAt");
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+  ON TABLE "transaction_import_sessions"
+  TO keypilot_app;
+
+ALTER TABLE "transaction_import_sessions" ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS txn_import_sessions_select_own ON "transaction_import_sessions";
+DROP POLICY IF EXISTS txn_import_sessions_insert_own ON "transaction_import_sessions";
+DROP POLICY IF EXISTS txn_import_sessions_update_own ON "transaction_import_sessions";
+DROP POLICY IF EXISTS txn_import_sessions_delete_own ON "transaction_import_sessions";
+
+CREATE POLICY txn_import_sessions_select_own
+  ON "transaction_import_sessions" FOR SELECT TO keypilot_app
+  USING ("userId" = app.current_user_id());
+
+CREATE POLICY txn_import_sessions_insert_own
+  ON "transaction_import_sessions" FOR INSERT TO keypilot_app
+  WITH CHECK ("userId" = app.current_user_id());
+
+CREATE POLICY txn_import_sessions_update_own
+  ON "transaction_import_sessions" FOR UPDATE TO keypilot_app
+  USING ("userId" = app.current_user_id())
+  WITH CHECK ("userId" = app.current_user_id());
+
+CREATE POLICY txn_import_sessions_delete_own
+  ON "transaction_import_sessions" FOR DELETE TO keypilot_app
+  USING ("userId" = app.current_user_id());

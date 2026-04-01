@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { TransactionImportStatus } from "@prisma/client";
+import type { TextItem, TextMarkedContent } from "pdfjs-dist/types/src/display/api";
 import { getCurrentUser } from "@/lib/auth";
 import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
@@ -12,7 +13,7 @@ export const runtime = "nodejs";
 const MAX_FILE_SIZE_BYTES = 15 * 1024 * 1024;
 
 async function extractTextFromPdf(buffer: Buffer) {
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const pdfjs = await import("pdfjs-dist");
   const task = pdfjs.getDocument({ data: new Uint8Array(buffer) });
   const doc = await task.promise;
   const pages: string[] = [];
@@ -21,8 +22,8 @@ async function extractTextFromPdf(buffer: Buffer) {
     const page = await doc.getPage(i);
     const textContent = await page.getTextContent();
     const lines = textContent.items
-      .map((item) => ("str" in item ? item.str : ""))
-      .filter((v): v is string => typeof v === "string" && v.length > 0);
+      .map((item: TextItem | TextMarkedContent) => ("str" in item ? item.str : ""))
+      .filter((value: string) => value.length > 0);
     pages.push(lines.join(" "));
   }
 

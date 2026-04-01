@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 const steps = [
   { key: "db-safety", label: "DB safety validator", command: "npm", args: ["run", "validate:db-safety"] },
   { key: "prisma-validate", label: "Prisma schema validate", command: "npx", args: ["prisma", "validate"] },
+  { key: "prisma-generate", label: "Prisma client generate", command: "npx", args: ["prisma", "generate"] },
   { key: "prisma-check", label: "Prisma usage check", command: "npm", args: ["run", "check:prisma"] },
   { key: "typecheck", label: "TypeScript typecheck", command: "npm", args: ["run", "typecheck"] },
   { key: "lint", label: "Lint", command: "npm", args: ["run", "lint"] },
