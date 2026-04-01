@@ -3,6 +3,7 @@
  * Verifies slug → by-slug API → visitor-signin API flow with consistent data.
  */
 
+import type { NextRequest } from "next/server";
 import { GET as getBySlug } from "@/app/api/v1/open-houses/by-slug/[slug]/route";
 import { POST as postVisitorSignIn } from "@/app/api/v1/visitor-signin/route";
 
@@ -98,7 +99,7 @@ beforeEach(() => {
 describe("QR sign-in flow", () => {
   it("by-slug returns open house data needed for sign-in form", async () => {
     const res = await getBySlug(
-      {} as Request,
+      {} as unknown as NextRequest,
       { params: Promise.resolve({ slug: "abc12345" }) }
     );
     expect(res.status).toBe(200);
@@ -122,7 +123,7 @@ describe("QR sign-in flow", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(signInPayload),
-    });
+    }) as unknown as NextRequest;
 
     const res = await postVisitorSignIn(req);
     expect(res.status).toBe(200);
@@ -135,7 +136,7 @@ describe("QR sign-in flow", () => {
   it("slug from by-slug matches openHouseId used in visitor-signin", async () => {
     // Step 1: Get open house by slug (as VisitorSignInForm does)
     const bySlugRes = await getBySlug(
-      {} as Request,
+      {} as unknown as NextRequest,
       { params: Promise.resolve({ slug: "abc12345" }) }
     );
     const { data: ohData } = await bySlugRes.json();
@@ -151,7 +152,7 @@ describe("QR sign-in flow", () => {
         phone: "555-999-8888",
         signInMethod: "QR",
       }),
-    });
+    }) as unknown as NextRequest;
 
     const signInRes = await postVisitorSignIn(signInReq);
     expect(signInRes.status).toBe(200);

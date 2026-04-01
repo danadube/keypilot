@@ -3,6 +3,7 @@
  * Mocks Prisma to verify request/response flow.
  */
 
+import type { NextRequest } from "next/server";
 import { GET } from "@/app/api/v1/open-houses/by-slug/[slug]/route";
 
 const mockOpenHouseFindFirst = jest.fn();
@@ -52,7 +53,7 @@ beforeEach(() => {
 describe("GET /api/v1/open-houses/by-slug/[slug]", () => {
   it("returns open house data for valid slug", async () => {
     const res = await GET(
-      {} as Request,
+      {} as unknown as NextRequest,
       { params: Promise.resolve({ slug: "abc123" }) }
     );
     expect(res.status).toBe(200);
@@ -89,7 +90,7 @@ describe("GET /api/v1/open-houses/by-slug/[slug]", () => {
   it("returns 404 when open house not found", async () => {
     mockOpenHouseFindFirst.mockResolvedValue(null);
     const res = await GET(
-      {} as Request,
+      {} as unknown as NextRequest,
       { params: Promise.resolve({ slug: "nonexistent" }) }
     );
     expect(res.status).toBe(404);
@@ -100,7 +101,7 @@ describe("GET /api/v1/open-houses/by-slug/[slug]", () => {
   it("returns 500 on unexpected error", async () => {
     mockOpenHouseFindFirst.mockRejectedValue(new Error("DB error"));
     const res = await GET(
-      {} as Request,
+      {} as unknown as NextRequest,
       { params: Promise.resolve({ slug: "abc123" }) }
     );
     expect(res.status).toBe(500);

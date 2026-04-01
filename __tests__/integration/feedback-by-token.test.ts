@@ -2,6 +2,7 @@
  * Integration tests for public feedback by-token API (load form data).
  */
 
+import type { NextRequest } from "next/server";
 import { GET } from "@/app/api/v1/feedback/by-token/[token]/route";
 
 const mockFeedbackRequestFindUnique = jest.fn();
@@ -22,7 +23,7 @@ beforeEach(() => {
 describe("GET /api/v1/feedback/by-token/[token]", () => {
   it("returns 400 for empty token", async () => {
     const res = await GET(
-      {} as Request,
+      {} as unknown as NextRequest,
       { params: Promise.resolve({ token: "" }) }
     );
     expect(res.status).toBe(400);
@@ -31,7 +32,7 @@ describe("GET /api/v1/feedback/by-token/[token]", () => {
   it("returns 404 when token not found", async () => {
     mockFeedbackRequestFindUnique.mockResolvedValue(null);
     const res = await GET(
-      {} as Request,
+      {} as unknown as NextRequest,
       { params: Promise.resolve({ token: "nonexistent" }) }
     );
     expect(res.status).toBe(404);
@@ -53,7 +54,7 @@ describe("GET /api/v1/feedback/by-token/[token]", () => {
       showing: { scheduledAt: new Date("2025-03-16T14:00:00Z"), buyerAgentName: "Jane" },
     });
     const res = await GET(
-      {} as Request,
+      {} as unknown as NextRequest,
       { params: Promise.resolve({ token: "valid-token" }) }
     );
     expect(res.status).toBe(200);
@@ -70,7 +71,7 @@ describe("GET /api/v1/feedback/by-token/[token]", () => {
       showing: {},
     });
     const res = await GET(
-      {} as Request,
+      {} as unknown as NextRequest,
       { params: Promise.resolve({ token: "used-token" }) }
     );
     expect(res.status).toBe(200);

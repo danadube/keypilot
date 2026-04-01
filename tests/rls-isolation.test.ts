@@ -369,7 +369,7 @@ describe("POST /api/v1/transactions — write isolation", () => {
 describe("GET /api/v1/commissions/mine — recipient view isolation", () => {
   it("User B sees their own commission (agentId path)", async () => {
     setUser(userB);
-    const res = await getMine(makeGetRequest());
+    const res = await getMine();
     const body = await res.json();
     expect(res.status).toBe(200);
     const ids = body.data.map((c: { id: string }) => c.id);
@@ -378,7 +378,7 @@ describe("GET /api/v1/commissions/mine — recipient view isolation", () => {
 
   it("User A does not see User B's commission in /mine", async () => {
     setUser(userA);
-    const res = await getMine(makeGetRequest());
+    const res = await getMine();
     const body = await res.json();
     expect(res.status).toBe(200);
     // commAId has agentId = userB — User A should not see it via /mine
@@ -393,7 +393,7 @@ describe("GET /api/v1/contacts/[id]/activities — RLS cascade isolation", () =>
   it("User A can read activities for a contact who visited their open house", async () => {
     setUser(userA);
     const res = await getContactActivities(makeGetRequest(), {
-      params: Promise.resolve({ id: contactId }),
+      params: { id: contactId },
     });
     const body = await res.json();
     expect(res.status).toBe(200);
@@ -404,7 +404,7 @@ describe("GET /api/v1/contacts/[id]/activities — RLS cascade isolation", () =>
   it("User B gets 404 for a contact not linked to their open houses", async () => {
     setUser(userB);
     const res = await getContactActivities(makeGetRequest(), {
-      params: Promise.resolve({ id: contactId }),
+      params: { id: contactId },
     });
     // contacts RLS (Phase 2c): B has no OH that this contact visited → 404
     expect(res.status).toBe(404);

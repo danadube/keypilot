@@ -2,6 +2,7 @@
  * PATCH /api/v1/showing-hq/showings/[id] — prep checklist, empty body, null flags.
  */
 
+import type { NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import { PATCH } from "@/app/api/v1/showing-hq/showings/[id]/route";
 
@@ -56,7 +57,7 @@ async function patchJson(body: unknown) {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  });
+  }) as unknown as NextRequest;
   return PATCH(req, { params: Promise.resolve({ id: SHOWING_ID }) });
 }
 

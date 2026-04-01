@@ -24,7 +24,7 @@ function mockTxForUpdate(overrides: {
 
   const update = jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
     updateData.data = data;
-    return { id: overrides.owned.id, ...overrides.owned, ...data };
+    return { ...overrides.owned, ...data };
   });
 
   return {
@@ -190,7 +190,7 @@ describe("updateUserActivity — PATCH placeholder substitution (explicit fields
       patch: { contactId: "c-new" },
     });
 
-    const callData = (update.mock.calls[0][0] as { data: Record<string, unknown> }).data;
+    const callData = ((update.mock.calls as unknown as unknown[][])[0][0] as { data: Record<string, unknown> }).data;
     expect(callData.title).toBeUndefined();
     expect(callData.description).toBeUndefined();
   });

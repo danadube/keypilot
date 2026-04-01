@@ -21,7 +21,7 @@ function mockTx(overrides: {
     __captured: captured,
     __propertyFindFirst: propertyFindFirst,
     __contactFindFirst: contactFindFirst,
-  } as ActivityTx & {
+  } as unknown as ActivityTx & {
     __captured: typeof captured;
     __propertyFindFirst: jest.Mock;
     __contactFindFirst: jest.Mock;

@@ -2,6 +2,7 @@
  * Supra apply calls feedback draft persistence after a successful transaction.
  */
 
+import type { NextRequest } from "next/server";
 import { POST } from "@/app/api/v1/showing-hq/supra-queue/[id]/apply/route";
 import { SupraQueueState } from "@prisma/client";
 
@@ -78,7 +79,7 @@ describe("POST /api/v1/showing-hq/supra-queue/[id]/apply — feedback draft hook
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
-    });
+    }) as unknown as NextRequest;
 
     const res = await POST(req, { params: Promise.resolve({ id: "qi-1" }) });
 
@@ -100,7 +101,7 @@ describe("POST /api/v1/showing-hq/supra-queue/[id]/apply — feedback draft hook
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
-    });
+    }) as unknown as NextRequest;
 
     const res = await POST(req, { params: Promise.resolve({ id: "qi-1" }) });
 

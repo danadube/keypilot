@@ -2,6 +2,7 @@
  * Integration test: creating a showing with feedbackRequired creates a FeedbackRequest.
  */
 
+import type { NextRequest } from "next/server";
 import { POST } from "@/app/api/v1/showing-hq/showings/route";
 
 jest.mock("@/lib/id", () => ({ generateId: () => "mock-feedback-token-24chars------" }));
@@ -48,7 +49,7 @@ describe("POST /api/v1/showing-hq/showings with feedbackRequired", () => {
         scheduledAt: "2025-03-20T14:00:00.000Z",
         feedbackRequired: true,
       }),
-    });
+    }) as unknown as NextRequest;
     const res = await POST(req);
     expect(res.status).toBe(200);
     expect(mockShowingCreate).toHaveBeenCalledWith(
@@ -76,7 +77,7 @@ describe("POST /api/v1/showing-hq/showings with feedbackRequired", () => {
         scheduledAt: "2025-03-20T14:00:00.000Z",
         feedbackRequired: false,
       }),
-    });
+    }) as unknown as NextRequest;
     const res = await POST(req);
     expect(res.status).toBe(200);
     expect(mockFeedbackRequestCreate).not.toHaveBeenCalled();

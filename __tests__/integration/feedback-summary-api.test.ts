@@ -2,6 +2,7 @@
  * Integration test for property feedback-summary API.
  */
 
+import type { NextRequest } from "next/server";
 import { GET } from "@/app/api/v1/showing-hq/properties/[propertyId]/feedback-summary/route";
 
 const mockPropertyFindFirst = jest.fn();
@@ -55,7 +56,7 @@ describe("GET /api/v1/showing-hq/properties/[propertyId]/feedback-summary", () =
   it("returns 404 when property not found", async () => {
     mockPropertyFindFirst.mockResolvedValue(null);
     const res = await GET(
-      {} as Request,
+      {} as unknown as NextRequest,
       { params: Promise.resolve({ propertyId: PROP_ID }) }
     );
     expect(res.status).toBe(404);
@@ -64,7 +65,7 @@ describe("GET /api/v1/showing-hq/properties/[propertyId]/feedback-summary", () =
 
   it("returns aggregated summary for property", async () => {
     const res = await GET(
-      {} as Request,
+      {} as unknown as NextRequest,
       { params: Promise.resolve({ propertyId: PROP_ID }) }
     );
     expect(res.status).toBe(200);

@@ -2,6 +2,7 @@
  * Integration tests for public feedback submit API.
  */
 
+import type { NextRequest } from "next/server";
 import { POST } from "@/app/api/v1/feedback/submit/route";
 
 const mockFeedbackRequestFindUnique = jest.fn();
@@ -30,7 +31,7 @@ function jsonRequest(body: unknown) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
-  });
+  }) as unknown as NextRequest;
 }
 
 describe("POST /api/v1/feedback/submit", () => {
