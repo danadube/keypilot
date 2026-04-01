@@ -1089,6 +1089,10 @@ model TransactionImportSession {
   mimeType               String
   parsedPayload          Json
   editedPayload          Json?
+  detectedBrokerage      String?
+  selectedBrokerage      String?
+  parserProfile          String                  @default("generic")
+  parserProfileVersion   String                  @default("v1")
   brokerageProfile       String?
   parserVersion          String
   confidence             Float

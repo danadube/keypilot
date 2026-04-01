@@ -2,6 +2,10 @@ import {
   ParsedCommissionStatementSchema,
   type ParsedCommissionStatement,
 } from "@/lib/validations/transaction-import";
+import {
+  applyCommissionParserProfile,
+  detectBrokerageFromText,
+} from "@/lib/transactions/commission-parser-profiles";
 
 const DEFAULT_PARSER_VERSION = "v1-rule-based";
 
@@ -226,13 +230,14 @@ export function parseCommissionStatementFromPdfText(
         )
       : 0.2;
 
-  const parsed = {
-    source: {
-      fileName: input.fileName,
-      mimeType: input.mimeType,
-      pageCount: input.pageCount,
-      parserVersion,
-    },
+  const detectedBrokerage = detectBrokerageFromText(
+    `${text}\n${brokerageName ?? ""}\n${officeName ?? ""}`
+  );
+  if (detectedBrokerage) fieldConfidence.detectedBrokerage = 0.9;
+
+  const profileApplied = applyCommissionParserProfile({
+    text,
+    detectedBrokerage,
     extracted: {
       propertyAddress,
       transactionType,
@@ -251,6 +256,19 @@ export function parseCommissionStatementFromPdfText(
       officeName,
       lineItems,
     },
+  });
+
+  const parsed = {
+    source: {
+      fileName: input.fileName,
+      mimeType: input.mimeType,
+      pageCount: input.pageCount,
+      parserVersion,
+      detectedBrokerage,
+      parserProfile: profileApplied.parserProfile,
+      parserProfileVersion: profileApplied.parserProfileVersion,
+    },
+    extracted: profileApplied.extracted,
     scoring: {
       overallConfidence,
       fieldConfidence,

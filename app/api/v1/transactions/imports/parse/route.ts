@@ -4,8 +4,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
-import { ParsedCommissionStatementSchema } from "@/lib/validations/transaction-import";
 import { parseCommissionStatementFromPdfText } from "@/lib/transactions/commission-import-parser";
+import { ParsedCommissionStatementSchema } from "@/lib/validations/transaction-import";
 
 export const runtime = "nodejs";
 
@@ -27,14 +27,6 @@ async function extractTextFromPdf(buffer: Buffer) {
   }
 
   return { text: pages.join("\n"), pageCount: doc.numPages || 1 };
-}
-
-function detectBrokerageProfile(name: string | undefined): string | null {
-  if (!name) return null;
-  const normalized = name.toLowerCase();
-  if (normalized.includes("keller") || normalized.includes("kw")) return "KW";
-  if (normalized.includes("bennion") || normalized.includes("bdh")) return "BDH";
-  return null;
 }
 
 export async function POST(req: NextRequest) {
@@ -78,9 +70,6 @@ export async function POST(req: NextRequest) {
     });
 
     const validated = ParsedCommissionStatementSchema.parse(parsed);
-    const brokerageProfile = detectBrokerageProfile(
-      validated.extracted.brokerageName
-    );
 
     const session = await withRLSContext(user.id, (tx) =>
       tx.transactionImportSession.create({
@@ -90,7 +79,13 @@ export async function POST(req: NextRequest) {
           fileName: file.name,
           mimeType: file.type,
           parsedPayload: validated,
-          brokerageProfile,
+          detectedBrokerage: validated.source.detectedBrokerage ?? null,
+          selectedBrokerage: validated.source.detectedBrokerage ?? null,
+          parserProfile:
+            validated.source.parserProfile ??
+            "generic",
+          parserProfileVersion: validated.source.parserProfileVersion ?? "v1",
+          brokerageProfile: validated.source.detectedBrokerage ?? null,
           parserVersion: validated.source.parserVersion,
           confidence: validated.scoring.overallConfidence,
           warnings: validated.scoring.warnings,

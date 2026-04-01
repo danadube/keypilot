@@ -30,6 +30,7 @@ type TxStatus =
   | "FALLEN_APART";
 
 type CreateMode = "manual" | "import";
+type BrokerageSelection = "" | "KW" | "BDH" | "CUSTOM";
 
 type ParsedParty = {
   raw: string;
@@ -49,6 +50,9 @@ type ParsedPayload = {
     mimeType: "application/pdf";
     pageCount: number;
     parserVersion: string;
+    detectedBrokerage?: string | null;
+    parserProfile?: string;
+    parserProfileVersion?: string;
   };
   extracted: {
     propertyAddress?: string;
@@ -84,6 +88,19 @@ const STATUS_OPTIONS: { value: TxStatus; label: string }[] = [
   { value: "CLOSED", label: "Closed" },
   { value: "FALLEN_APART", label: "Fallen apart" },
 ];
+
+const BROKERAGE_SELECT_OPTIONS: { value: BrokerageSelection; label: string }[] = [
+  { value: "", label: "Auto (detected)" },
+  { value: "KW", label: "Keller Williams (KW)" },
+  { value: "BDH", label: "Bennion Deville Homes (BDH)" },
+  { value: "CUSTOM", label: "Custom brokerage name" },
+];
+
+function brokerageSelectionToName(selection: BrokerageSelection): string | undefined {
+  if (selection === "KW") return "Keller Williams";
+  if (selection === "BDH") return "Bennion Deville Homes";
+  return undefined;
+}
 
 function propertyLabel(p: PropertyOption) {
   return `${p.address1}, ${p.city}, ${p.state} ${p.zip}`;
@@ -267,6 +284,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
   const [importSessionId, setImportSessionId] = useState<string | null>(null);
   const [parsedPayload, setParsedPayload] = useState<ParsedPayload | null>(null);
   const [editedPayload, setEditedPayload] = useState<ParsedPayload | null>(null);
+  const [selectedBrokerage, setSelectedBrokerage] = useState<BrokerageSelection>("");
 
   useEffect(() => {
     if (!open) return;
@@ -284,6 +302,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
     setImportSessionId(null);
     setParsedPayload(null);
     setEditedPayload(null);
+    setSelectedBrokerage("");
 
     setLoadingProperties(true);
     fetch("/api/v1/properties")
@@ -340,7 +359,20 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
       setEditedPayload(payload);
       setSalePrice(formatNumberInput(payload.extracted.salePrice));
       setClosingDate(payload.extracted.closeDate ?? "");
-      setBrokerageName(payload.extracted.brokerageName ?? "");
+      const detectedDefaultName =
+        payload.source.detectedBrokerage === "KW"
+          ? "Keller Williams"
+          : payload.source.detectedBrokerage === "BDH"
+            ? "Bennion Deville Homes"
+            : "";
+      setBrokerageName(payload.extracted.brokerageName ?? detectedDefaultName);
+      if (payload.source.detectedBrokerage === "KW") {
+        setSelectedBrokerage("KW");
+      } else if (payload.source.detectedBrokerage === "BDH") {
+        setSelectedBrokerage("BDH");
+      } else {
+        setSelectedBrokerage("");
+      }
     } catch (err) {
       setParseError(err instanceof Error ? err.message : "Failed to parse statement");
     } finally {
@@ -388,6 +420,9 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
     setCommitting(true);
     setParseError(null);
     try {
+      const selectedBrokerageName = brokerageSelectionToName(selectedBrokerage);
+      const finalBrokerageName =
+        selectedBrokerageName ?? (brokerageName.trim() || null);
       const res = await fetch(`/api/v1/transactions/imports/${importSessionId}/commit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -398,7 +433,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
             status,
             salePrice: parseNumberInput(salePrice) ?? null,
             closingDate: closingDate || null,
-            brokerageName: brokerageName.trim() || null,
+            brokerageName: finalBrokerageName,
             notes: notes.trim() || null,
           },
         }),
@@ -639,15 +674,61 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                   {parsing ? "Parsing statement..." : "Upload and parse PDF"}
                 </button>
                 {parsedPayload && (
-                  <p className="text-xs text-kp-on-surface-variant">
-                    Parsed {parsedPayload.source.fileName} · {parsedPayload.source.pageCount} page(s)
-                  </p>
+                  <div className="space-y-1 text-xs text-kp-on-surface-variant">
+                    <p>
+                      Parsed {parsedPayload.source.fileName} · {parsedPayload.source.pageCount} page(s)
+                    </p>
+                    <p>
+                      Profile: {parsedPayload.source.parserProfile ?? "generic"} (
+                      {parsedPayload.source.parserProfileVersion ?? "v1"})
+                      {parsedPayload.source.detectedBrokerage
+                        ? ` · Detected brokerage: ${parsedPayload.source.detectedBrokerage}`
+                        : ""}
+                    </p>
+                  </div>
                 )}
               </div>
 
               {editedPayload && (
                 <>
                   <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                        Brokerage profile
+                      </label>
+                      <select
+                        value={selectedBrokerage}
+                        onChange={(e) => {
+                          const next = e.target.value as BrokerageSelection;
+                          setSelectedBrokerage(next);
+                          const mapped = brokerageSelectionToName(next);
+                          if (mapped) {
+                            setBrokerageName(mapped);
+                            updateExtracted("brokerageName", mapped);
+                          } else if (next === "") {
+                            const detected = editedPayload.source.detectedBrokerage;
+                            const autoMapped =
+                              detected === "KW"
+                                ? "Keller Williams"
+                                : detected === "BDH"
+                                  ? "Bennion Deville Homes"
+                                  : undefined;
+                            setBrokerageName(autoMapped ?? editedPayload.extracted.brokerageName ?? "");
+                            updateExtracted(
+                              "brokerageName",
+                              autoMapped ?? editedPayload.extracted.brokerageName ?? undefined
+                            );
+                          }
+                        }}
+                        className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      >
+                        {BROKERAGE_SELECT_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                     <div className="space-y-1.5">
                       <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
                         Property address
@@ -667,6 +748,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                         type="text"
                         value={brokerageName}
                         onChange={(e) => {
+                          setSelectedBrokerage("CUSTOM");
                           setBrokerageName(e.target.value);
                           updateExtracted("brokerageName", e.target.value || undefined);
                         }}

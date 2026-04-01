@@ -136,6 +136,19 @@ export async function POST(
           ...(editedPayloadForSession !== undefined && {
             editedPayload: editedPayloadForSession,
           }),
+          selectedBrokerage:
+            parsedBody.data.transaction.brokerageName ??
+            statement.source.detectedBrokerage ??
+            statement.extracted.brokerageName ??
+            null,
+          parserProfile:
+            statement.source.parserProfile ??
+            session.parserProfile ??
+            "generic",
+          parserProfileVersion:
+            statement.source.parserProfileVersion ??
+            session.parserProfileVersion ??
+            "v1",
           status: TransactionImportStatus.COMMITTED,
           committedTransactionId: transaction.id,
         },

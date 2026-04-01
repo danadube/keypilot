@@ -37,6 +37,9 @@ export const ParsedCommissionStatementSchema = z
         mimeType: z.literal("application/pdf"),
         pageCount: z.number().int().positive(),
         parserVersion: z.string().min(1),
+        detectedBrokerage: z.string().min(1).nullable().optional(),
+        parserProfile: z.string().min(1).optional(),
+        parserProfileVersion: z.string().min(1).optional(),
       })
       .strict(),
     extracted: z
