@@ -41,6 +41,19 @@ export async function GET(
           property: { select: propertySelect },
           deal: { select: transactionLinkedDealSelect },
           commissions: { orderBy: { createdAt: "asc" } },
+          committedImportSessions: {
+            select: {
+              id: true,
+              fileName: true,
+              selectedBrokerage: true,
+              detectedBrokerage: true,
+              parserProfile: true,
+              parserProfileVersion: true,
+              createdAt: true,
+            },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
         },
       })
     );
@@ -135,6 +148,19 @@ export async function PATCH(
         property: { select: propertySelect },
         deal: { select: transactionLinkedDealSelect },
         commissions: { orderBy: { createdAt: "asc" } as const },
+        committedImportSessions: {
+          select: {
+            id: true,
+            fileName: true,
+            selectedBrokerage: true,
+            detectedBrokerage: true,
+            parserProfile: true,
+            parserProfileVersion: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: "desc" } as const,
+          take: 1,
+        },
       };
 
       if (Object.keys(data).length === 0) {

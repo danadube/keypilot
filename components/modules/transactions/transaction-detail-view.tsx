@@ -125,6 +125,15 @@ type TransactionDetail = {
     zip: string;
   };
   commissions: CommissionRow[];
+  committedImportSessions?: Array<{
+    id: string;
+    fileName: string;
+    selectedBrokerage: string | null;
+    detectedBrokerage: string | null;
+    parserProfile: string;
+    parserProfileVersion: string;
+    createdAt: string;
+  }>;
 };
 
 const STATUS_OPTIONS: { value: TxStatus; label: string }[] = [
@@ -600,6 +609,9 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     );
   }
 
+  const importSession = txn.committedImportSessions?.[0] ?? null;
+  const importedAt = formatTimestamp(importSession?.createdAt);
+
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
       <div className="px-6 pt-3 sm:px-8">
@@ -789,6 +801,24 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           <p className="mt-0.5 text-xs text-kp-on-surface-variant">
             Changes save to this closing record only.
           </p>
+
+          {importSession && (
+            <div className="mt-4 rounded-lg border border-kp-teal/20 bg-kp-teal/10 px-3 py-2">
+              <p className="text-xs font-semibold text-kp-teal">
+                Imported from commission statement
+              </p>
+              <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+                {importSession.fileName} · Profile {importSession.parserProfile} (
+                {importSession.parserProfileVersion})
+                {importSession.selectedBrokerage
+                  ? ` · Brokerage ${importSession.selectedBrokerage}`
+                  : importSession.detectedBrokerage
+                    ? ` · Detected ${importSession.detectedBrokerage}`
+                    : ""}
+                {importedAt ? ` · Imported ${importedAt}` : ""}
+              </p>
+            </div>
+          )}
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -1130,4 +1160,11 @@ function percentDisplay(v: string | number | null) {
   const n = typeof v === "string" ? parseFloat(v) : v;
   if (Number.isNaN(n)) return null;
   return n;
+}
+
+function formatTimestamp(iso: string | null | undefined) {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toLocaleString();
 }

@@ -12,6 +12,11 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  getCommitBlockReason,
+  getLowConfidenceFields,
+  prettyFieldName,
+} from "@/lib/transactions/commission-import-review";
 
 type PropertyOption = {
   id: string;
@@ -452,8 +457,17 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
   }
 
   const canManualSubmit = !!selectedProperty && !submitting;
+  const importCommitBlockReason = editedPayload
+    ? getCommitBlockReason(editedPayload)
+    : "Upload a PDF to generate preview.";
+  const lowConfidenceFields = editedPayload ? getLowConfidenceFields(editedPayload) : [];
   const canCommitImport =
-    !!selectedProperty && !!importSessionId && !!editedPayload && !parsing && !committing;
+    !!selectedProperty &&
+    !!importSessionId &&
+    !!editedPayload &&
+    !parsing &&
+    !committing &&
+    !importCommitBlockReason;
 
   if (!open) return null;
 
@@ -917,13 +931,46 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                       <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
                         Missing required
                       </p>
-                      <p className="mt-1 text-sm text-kp-on-surface">
-                        {editedPayload.scoring.missingRequired.length > 0
-                          ? editedPayload.scoring.missingRequired.join(", ")
-                          : "None"}
-                      </p>
+                      {editedPayload.scoring.missingRequired.length > 0 ? (
+                        <ul className="mt-1 space-y-1">
+                          {editedPayload.scoring.missingRequired.map((field) => (
+                            <li key={field} className="text-sm text-red-300">
+                              {prettyFieldName(field)}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="mt-1 text-sm text-kp-on-surface">None</p>
+                      )}
                     </div>
                   </div>
+
+                  {editedPayload.scoring.missingRequired.length > 0 && (
+                    <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-red-300">
+                        Action required before commit
+                      </p>
+                      <p className="mt-1 text-sm text-red-200">
+                        Add {editedPayload.scoring.missingRequired.map(prettyFieldName).join(", ")} to
+                        complete this import.
+                      </p>
+                    </div>
+                  )}
+
+                  {lowConfidenceFields.length > 0 && (
+                    <div className="rounded-lg border border-kp-outline bg-kp-surface-high px-4 py-3">
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                        Low confidence fields
+                      </p>
+                      <ul className="mt-1 space-y-1">
+                        {lowConfidenceFields.map((item) => (
+                          <li key={item.field} className="text-sm text-kp-on-surface-variant">
+                            {item.label} ({Math.round(item.confidence * 100)}%)
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                   {editedPayload.scoring.warnings.length > 0 && (
                     <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-3">
@@ -956,6 +1003,8 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                   ? "Select a property to continue."
                   : !editedPayload
                   ? "Upload a PDF to generate preview."
+                  : importCommitBlockReason
+                  ? importCommitBlockReason
                   : "Review edits, then commit import."}
               </p>
               <div className="flex items-center gap-2">

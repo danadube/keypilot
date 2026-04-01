@@ -10,7 +10,11 @@ import {
   CreateCommissionSchema,
   CreateTransactionSchema,
 } from "@/lib/validations/transaction";
-import { ParsedCommissionStatementSchema } from "@/lib/validations/transaction-import";
+import {
+  getCommitBlockReason,
+  pickFinalStatementPayload,
+  resolveSelectedBrokerageName,
+} from "@/lib/transactions/commission-import-review";
 import { responseIfDealIdUniqueViolation } from "@/lib/transaction-deal-link";
 
 const CommitTransactionImportSchema = z
@@ -68,8 +72,14 @@ export async function POST(
         return { transactionId: session.committedTransactionId };
       }
 
-      const sourcePayload = parsedBody.data.editedPayload ?? session.parsedPayload;
-      const statement = ParsedCommissionStatementSchema.parse(sourcePayload);
+      const statement = pickFinalStatementPayload({
+        parsedPayload: session.parsedPayload,
+        editedPayload: parsedBody.data.editedPayload,
+      });
+      const blockReason = getCommitBlockReason(statement);
+      if (blockReason) {
+        throw Object.assign(new Error(blockReason), { status: 400 });
+      }
       const editedPayloadForSession =
         parsedBody.data.editedPayload !== undefined
           ? JSON.parse(JSON.stringify(statement))
@@ -136,11 +146,10 @@ export async function POST(
           ...(editedPayloadForSession !== undefined && {
             editedPayload: editedPayloadForSession,
           }),
-          selectedBrokerage:
-            parsedBody.data.transaction.brokerageName ??
-            statement.source.detectedBrokerage ??
-            statement.extracted.brokerageName ??
-            null,
+          selectedBrokerage: resolveSelectedBrokerageName({
+            overrideBrokerageName: parsedBody.data.transaction.brokerageName,
+            statement,
+          }),
           parserProfile:
             statement.source.parserProfile ??
             session.parserProfile ??
