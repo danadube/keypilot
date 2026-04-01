@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
-import { withRLSContext } from "@/lib/db-context";
+import { withRLSContext, withRLSContextOrFallbackAdmin } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
@@ -21,25 +21,29 @@ export async function GET() {
       return apiError("CRM features require Full CRM tier", 403);
     }
 
-    const { territories, areas } = await withRLSContext(user.id, async (tx) => {
-      const territories = await tx.farmTerritory.findMany({
-        where: { userId: user.id, deletedAt: null },
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-        },
-        orderBy: { name: "asc" },
-      });
+    const { territories, areas } = await withRLSContextOrFallbackAdmin(
+      user.id,
+      "farm-territories:get",
+      async (tx) => {
+        const territories = await tx.farmTerritory.findMany({
+          where: { userId: user.id, deletedAt: null },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            createdAt: true,
+          },
+          orderBy: { name: "asc" },
+        });
 
-      const areas = await tx.farmArea.findMany({
-        where: { userId: user.id, deletedAt: null },
-        select: { id: true, territoryId: true },
-      });
+        const areas = await tx.farmArea.findMany({
+          where: { userId: user.id, deletedAt: null },
+          select: { id: true, territoryId: true },
+        });
 
-      return { territories, areas };
-    });
+        return { territories, areas };
+      }
+    );
 
     const areaCountByTerritoryId = new Map<string, number>();
     for (const area of areas) {

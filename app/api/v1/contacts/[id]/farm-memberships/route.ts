@@ -3,7 +3,7 @@ import type { Prisma } from "@prisma/client";
 import { ContactFarmMembershipStatus } from "@prisma/client";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
-import { withRLSContext } from "@/lib/db-context";
+import { withRLSContext, withRLSContextOrFallbackAdmin } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
@@ -27,47 +27,51 @@ export async function GET(
       return apiError("CRM features require Full CRM tier", 403);
     }
 
-    const memberships = await withRLSContext(user.id, async (tx) => {
-      const allowed = await tx.contact.findFirst({
-        where: {
-          id: params.id,
-          deletedAt: null,
-          ...contactAccessScope(user.id),
-        },
-        select: { id: true },
-      });
-      if (!allowed) {
-        throw new Error("CONTACT_NOT_FOUND");
-      }
-
-      return tx.contactFarmMembership.findMany({
-        where: {
-          contactId: params.id,
-          userId: user.id,
-          status: ContactFarmMembershipStatus.ACTIVE,
-          farmArea: {
+    const memberships = await withRLSContextOrFallbackAdmin(
+      user.id,
+      "contacts:farm-memberships:get",
+      async (tx) => {
+        const allowed = await tx.contact.findFirst({
+          where: {
+            id: params.id,
             deletedAt: null,
-            territory: { deletedAt: null },
+            ...contactAccessScope(user.id),
           },
-        },
-        select: {
-          id: true,
-          status: true,
-          notes: true,
-          createdAt: true,
-          farmArea: {
-            select: {
-              id: true,
-              name: true,
-              territory: {
-                select: { id: true, name: true },
+          select: { id: true },
+        });
+        if (!allowed) {
+          throw new Error("CONTACT_NOT_FOUND");
+        }
+
+        return tx.contactFarmMembership.findMany({
+          where: {
+            contactId: params.id,
+            userId: user.id,
+            status: ContactFarmMembershipStatus.ACTIVE,
+            farmArea: {
+              deletedAt: null,
+              territory: { deletedAt: null },
+            },
+          },
+          select: {
+            id: true,
+            status: true,
+            notes: true,
+            createdAt: true,
+            farmArea: {
+              select: {
+                id: true,
+                name: true,
+                territory: {
+                  select: { id: true, name: true },
+                },
               },
             },
           },
-        },
-        orderBy: [{ farmArea: { territory: { name: "asc" } } }, { farmArea: { name: "asc" } }],
-      });
-    });
+          orderBy: [{ farmArea: { territory: { name: "asc" } } }, { farmArea: { name: "asc" } }],
+        });
+      }
+    );
 
     return NextResponse.json({ data: memberships });
   } catch (err) {

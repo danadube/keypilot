@@ -76,6 +76,7 @@ export function BrandModal({
       role="dialog"
       aria-labelledby={title ? "brand-modal-title" : undefined}
       aria-describedby={description ? "brand-modal-desc" : undefined}
+      aria-label={title ? undefined : "Dialog"}
     >
       <div
         className="fixed inset-0 bg-black/40 transition-opacity"

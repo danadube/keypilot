@@ -3,7 +3,7 @@ import { google } from "googleapis";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { hasModuleAccess, type ModuleAccessMap } from "@/lib/module-access";
-import { withRLSContext } from "@/lib/db-context";
+import { withRLSContextOrFallbackAdmin } from "@/lib/db-context";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import { ensureValidGoogleOAuth2Client } from "@/lib/oauth/google-connection-auth";
 import type { FarmImportRawRow } from "@/lib/farm/import/types";
@@ -27,17 +27,20 @@ export async function POST(req: NextRequest) {
     }
     const body = FetchGoogleSheetBodySchema.parse(await req.json());
 
-    const connection = await withRLSContext(user.id, (tx) =>
-      tx.connection.findFirst({
-        where: {
-          userId: user.id,
-          provider: "GOOGLE",
-          status: "CONNECTED",
-          accessToken: { not: null },
-          service: { in: ["GOOGLE_CALENDAR", "GMAIL"] },
-        },
-        orderBy: [{ updatedAt: "desc" }],
-      })
+    const connection = await withRLSContextOrFallbackAdmin(
+      user.id,
+      "farm-imports:google-sheets:fetch",
+      (tx) =>
+        tx.connection.findFirst({
+          where: {
+            userId: user.id,
+            provider: "GOOGLE",
+            status: "CONNECTED",
+            accessToken: { not: null },
+            service: { in: ["GOOGLE_CALENDAR", "GMAIL"] },
+          },
+          orderBy: [{ updatedAt: "desc" }],
+        })
     );
     if (!connection?.accessToken) {
       return NextResponse.json(

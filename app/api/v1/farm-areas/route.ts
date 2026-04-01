@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ContactFarmMembershipStatus } from "@prisma/client";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
-import { withRLSContext } from "@/lib/db-context";
+import { withRLSContext, withRLSContextOrFallbackAdmin } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
@@ -23,39 +23,44 @@ export async function GET() {
       return apiError("CRM features require Full CRM tier", 403);
     }
 
-    const { areas, activeMembershipCounts } = await withRLSContext(user.id, async (tx) => {
-      const areas = await tx.farmArea.findMany({
-        where: {
-          userId: user.id,
-          deletedAt: null,
-          territory: { deletedAt: null },
-        },
-        select: {
-          id: true,
-          name: true,
-          territoryId: true,
-          description: true,
-          territory: {
-            select: { id: true, name: true },
+    const { areas, activeMembershipCounts } = await withRLSContextOrFallbackAdmin(
+      user.id,
+      "farm-areas:get",
+      async (tx) => {
+        const areas = await tx.farmArea.findMany({
+          where: {
+            userId: user.id,
+            deletedAt: null,
+            territory: { deletedAt: null },
           },
-        },
-        orderBy: [{ territory: { name: "asc" } }, { name: "asc" }],
-      });
-
-      const areaIds = areas.map((area) => area.id);
-      const activeMembershipCounts = areaIds.length
-        ? await tx.contactFarmMembership.groupBy({
-            by: ["farmAreaId"],
-            where: {
-              farmAreaId: { in: areaIds },
-              status: ContactFarmMembershipStatus.ACTIVE,
+          select: {
+            id: true,
+            name: true,
+            territoryId: true,
+            description: true,
+            territory: {
+              select: { id: true, name: true },
             },
-            _count: { _all: true },
-          })
-        : [];
+          },
+          orderBy: [{ territory: { name: "asc" } }, { name: "asc" }],
+        });
 
-      return { areas, activeMembershipCounts };
-    });
+        const areaIds = areas.map((area) => area.id);
+        const activeMembershipCounts = areaIds.length
+          ? await tx.contactFarmMembership.groupBy({
+              by: ["farmAreaId"],
+              where: {
+                userId: user.id,
+                farmAreaId: { in: areaIds },
+                status: ContactFarmMembershipStatus.ACTIVE,
+              },
+              _count: { _all: true },
+            })
+          : [];
+
+        return { areas, activeMembershipCounts };
+      }
+    );
 
     const membershipCountByAreaId = new Map<string, number>();
     for (const row of activeMembershipCounts) {
