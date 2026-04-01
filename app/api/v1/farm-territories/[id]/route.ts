@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ContactFarmMembershipStatus } from "@prisma/client";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
-import { prismaAdmin } from "@/lib/db";
+import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
@@ -27,10 +27,12 @@ export async function PATCH(
       return apiError("CRM features require Full CRM tier", 403);
     }
 
-    const existing = await prismaAdmin.farmTerritory.findFirst({
-      where: { id: params.id, userId: user.id, deletedAt: null },
-      select: { id: true },
-    });
+    const existing = await withRLSContext(user.id, (tx) =>
+      tx.farmTerritory.findFirst({
+        where: { id: params.id, userId: user.id, deletedAt: null },
+        select: { id: true },
+      })
+    );
     if (!existing) {
       return apiError("Territory not found", 404);
     }
@@ -39,17 +41,16 @@ export async function PATCH(
     const archiveParse = ArchiveTerritorySchema.safeParse(body);
     if (archiveParse.success) {
       const now = new Date();
-      const areas = await prismaAdmin.farmArea.findMany({
-        where: {
-          territoryId: params.id,
-          userId: user.id,
-          deletedAt: null,
-        },
-        select: { id: true },
-      });
-      const areaIds = areas.map((area) => area.id);
-
-      await prismaAdmin.$transaction(async (tx) => {
+      await withRLSContext(user.id, async (tx) => {
+        const areas = await tx.farmArea.findMany({
+          where: {
+            territoryId: params.id,
+            userId: user.id,
+            deletedAt: null,
+          },
+          select: { id: true },
+        });
+        const areaIds = areas.map((area) => area.id);
         await tx.farmTerritory.update({
           where: { id: params.id },
           data: { deletedAt: now },
@@ -83,19 +84,23 @@ export async function PATCH(
       return apiError("No changes submitted", 400);
     }
 
-    const updated = await prismaAdmin.farmTerritory.update({
-      where: { id: params.id },
-      data: parsed.data,
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        createdAt: true,
-      },
-    });
+    const { updated, areaCount } = await withRLSContext(user.id, async (tx) => {
+      const updated = await tx.farmTerritory.update({
+        where: { id: params.id },
+        data: parsed.data,
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          createdAt: true,
+        },
+      });
 
-    const areaCount = await prismaAdmin.farmArea.count({
-      where: { territoryId: params.id, deletedAt: null },
+      const areaCount = await tx.farmArea.count({
+        where: { territoryId: params.id, deletedAt: null },
+      });
+
+      return { updated, areaCount };
     });
 
     return NextResponse.json({ data: { ...updated, areaCount } });

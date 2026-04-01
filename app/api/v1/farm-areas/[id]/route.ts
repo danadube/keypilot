@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ContactFarmMembershipStatus } from "@prisma/client";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
-import { prismaAdmin } from "@/lib/db";
+import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
@@ -27,15 +27,17 @@ export async function PATCH(
       return apiError("CRM features require Full CRM tier", 403);
     }
 
-    const existing = await prismaAdmin.farmArea.findFirst({
-      where: {
-        id: params.id,
-        userId: user.id,
-        deletedAt: null,
-        territory: { deletedAt: null },
-      },
-      select: { id: true },
-    });
+    const existing = await withRLSContext(user.id, (tx) =>
+      tx.farmArea.findFirst({
+        where: {
+          id: params.id,
+          userId: user.id,
+          deletedAt: null,
+          territory: { deletedAt: null },
+        },
+        select: { id: true },
+      })
+    );
     if (!existing) {
       return apiError("Farm area not found", 404);
     }
@@ -44,7 +46,7 @@ export async function PATCH(
     const archiveParse = ArchiveFarmAreaSchema.safeParse(body);
     if (archiveParse.success) {
       const now = new Date();
-      await prismaAdmin.$transaction(async (tx) => {
+      await withRLSContext(user.id, async (tx) => {
         await tx.farmArea.update({
           where: { id: params.id },
           data: { deletedAt: now },
@@ -71,23 +73,27 @@ export async function PATCH(
       return apiError("No changes submitted", 400);
     }
 
-    const updated = await prismaAdmin.farmArea.update({
-      where: { id: params.id },
-      data: parsed.data,
-      select: {
-        id: true,
-        name: true,
-        territoryId: true,
-        description: true,
-        territory: { select: { id: true, name: true } },
-      },
-    });
+    const { updated, membershipCount } = await withRLSContext(user.id, async (tx) => {
+      const updated = await tx.farmArea.update({
+        where: { id: params.id },
+        data: parsed.data,
+        select: {
+          id: true,
+          name: true,
+          territoryId: true,
+          description: true,
+          territory: { select: { id: true, name: true } },
+        },
+      });
 
-    const membershipCount = await prismaAdmin.contactFarmMembership.count({
-      where: {
-        farmAreaId: params.id,
-        status: ContactFarmMembershipStatus.ACTIVE,
-      },
+      const membershipCount = await tx.contactFarmMembership.count({
+        where: {
+          farmAreaId: params.id,
+          status: ContactFarmMembershipStatus.ACTIVE,
+        },
+      });
+
+      return { updated, membershipCount };
     });
 
     return NextResponse.json({ data: { ...updated, membershipCount } });

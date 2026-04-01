@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { hasModuleAccess, type ModuleAccessMap } from "@/lib/module-access";
 import { apiErrorFromCaught } from "@/lib/api-response";
-import { prismaAdmin } from "@/lib/db";
+import { withRLSContext } from "@/lib/db-context";
 import { previewFarmImport } from "@/lib/farm/import/pipeline";
 
 export const dynamic = "force-dynamic";
@@ -37,12 +37,14 @@ export async function POST(req: NextRequest) {
     }
 
     const body = PreviewBodySchema.parse(await req.json());
-    const preview = await previewFarmImport(prismaAdmin, user.id, {
-      rows: body.rows,
-      mapping: body.mapping,
-      defaultTerritoryName: body.defaultTerritoryName,
-      defaultAreaName: body.defaultAreaName,
-    });
+    const preview = await withRLSContext(user.id, (tx) =>
+      previewFarmImport(tx, user.id, {
+        rows: body.rows,
+        mapping: body.mapping,
+        defaultTerritoryName: body.defaultTerritoryName,
+        defaultAreaName: body.defaultAreaName,
+      })
+    );
 
     return NextResponse.json({ data: preview });
   } catch (error) {

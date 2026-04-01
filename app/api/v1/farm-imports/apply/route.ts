@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { hasModuleAccess, type ModuleAccessMap } from "@/lib/module-access";
 import { apiErrorFromCaught } from "@/lib/api-response";
-import { prismaAdmin } from "@/lib/db";
+import { withRLSContext } from "@/lib/db-context";
 import { applyFarmImport } from "@/lib/farm/import/pipeline";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = ApplyBodySchema.parse(await req.json());
-    const applied = await prismaAdmin.$transaction((tx) =>
+    const applied = await withRLSContext(user.id, (tx) =>
       applyFarmImport(tx, user.id, {
         rows: body.rows,
         mapping: body.mapping,
