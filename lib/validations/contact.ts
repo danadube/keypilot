@@ -43,6 +43,17 @@ export const CreateContactSchema = z.object({
 
 export type CreateContactInput = z.infer<typeof CreateContactSchema>;
 
+const optionalTrimmedNullable = z.preprocess(
+  (v) => {
+    if (v === undefined) return undefined;
+    if (v === null) return null;
+    if (typeof v !== "string") return v;
+    const t = v.trim();
+    return t === "" ? null : t;
+  },
+  z.union([z.null(), z.string()]).optional()
+);
+
 export const UpdateContactSchema = z.object({
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).optional(),
@@ -53,6 +64,11 @@ export const UpdateContactSchema = z.object({
   notes: z.string().optional().nullable(),
   status: ContactStatusEnum.optional().nullable(),
   assignedToUserId: z.string().uuid().optional().nullable(),
+  mailingStreet1: optionalTrimmedNullable,
+  mailingStreet2: optionalTrimmedNullable,
+  mailingCity: optionalTrimmedNullable,
+  mailingState: optionalTrimmedNullable,
+  mailingZip: optionalTrimmedNullable,
 });
 
 export type UpdateContactInput = z.infer<typeof UpdateContactSchema>;
