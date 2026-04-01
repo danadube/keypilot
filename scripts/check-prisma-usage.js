@@ -59,9 +59,18 @@ const BYPASSRLS_ALLOWLIST = {
     "app/api/v1/calendar/events/route.ts",
     // ── Contacts ───────────────────────────────────────────────────────────
     "app/api/v1/contacts/[id]/communications/route.ts",
+    "app/api/v1/contacts/[id]/farm-memberships/[membershipId]/route.ts",
+    "app/api/v1/contacts/[id]/farm-memberships/route.ts",
     "app/api/v1/contacts/[id]/notes/route.ts",
     "app/api/v1/contacts/[id]/route.ts",
     "app/api/v1/contacts/route.ts",
+    // ── Farm ───────────────────────────────────────────────────────────────
+    "app/api/v1/farm-areas/[id]/route.ts",
+    "app/api/v1/farm-areas/route.ts",
+    "app/api/v1/farm-imports/apply/route.ts",
+    "app/api/v1/farm-imports/preview/route.ts",
+    "app/api/v1/farm-territories/[id]/route.ts",
+    "app/api/v1/farm-territories/route.ts",
     // ── Dashboard ──────────────────────────────────────────────────────────
     "app/api/v1/dashboard/stats/route.ts",
     // ── Emails ─────────────────────────────────────────────────────────────
