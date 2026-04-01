@@ -123,7 +123,7 @@ export function ShowingHQWorkbenchHeaderActions({
                 role="menuitem"
                 onClick={() => setNewOpen(false)}
               >
-                Showing
+                New Showing
               </Link>
               <Link
                 href="/open-houses/new"
@@ -131,7 +131,23 @@ export function ShowingHQWorkbenchHeaderActions({
                 role="menuitem"
                 onClick={() => setNewOpen(false)}
               >
-                Open house
+                New Open House
+              </Link>
+              <Link
+                href="/transactions?new=1"
+                className={menuItemClass}
+                role="menuitem"
+                onClick={() => setNewOpen(false)}
+              >
+                New Transaction
+              </Link>
+              <Link
+                href="/deals?new=1"
+                className={menuItemClass}
+                role="menuitem"
+                onClick={() => setNewOpen(false)}
+              >
+                New Deal
               </Link>
               <Link
                 href="/properties/new"
@@ -139,7 +155,7 @@ export function ShowingHQWorkbenchHeaderActions({
                 role="menuitem"
                 onClick={() => setNewOpen(false)}
               >
-                Property
+                New Property
               </Link>
               <Link
                 href="/contacts?new=1"
@@ -147,7 +163,7 @@ export function ShowingHQWorkbenchHeaderActions({
                 role="menuitem"
                 onClick={() => setNewOpen(false)}
               >
-                Contact
+                New Contact
               </Link>
             </div>
           ) : null}

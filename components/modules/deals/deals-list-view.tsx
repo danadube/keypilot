@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Briefcase,
   Search,
@@ -356,9 +357,11 @@ function DealsTable({ deals }: { deals: Deal[] }) {
  * Route: app/(dashboard)/deals/page.tsx
  */
 export function DealsListView() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [statusFilter, setStatusFilter] = useState<StatusTabValue>("__all__");
   const [search, setSearch] = useState("");
-  const [createOpen, setCreateOpen] = useState(false);
+  const createOpen = searchParams.get("new") === "1";
 
   // viewMode stub — "list" only for now; "kanban" deferred
   const [viewMode] = useState<"list" | "kanban">("list");
@@ -407,7 +410,7 @@ export function DealsListView() {
           </p>
         </div>
         <button
-          onClick={() => setCreateOpen(true)}
+          onClick={() => router.replace("/deals?new=1", { scroll: false })}
           className={cn(
             "mt-0.5 shrink-0 rounded-lg bg-kp-gold px-3 py-1.5 text-xs font-semibold text-kp-bg",
             "transition-colors hover:bg-kp-gold-bright"
@@ -504,7 +507,7 @@ export function DealsListView() {
 
       <CreateDealModal
         open={createOpen}
-        onClose={() => setCreateOpen(false)}
+        onClose={() => router.replace("/deals", { scroll: false })}
       />
     </div>
   );

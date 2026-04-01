@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Banknote,
   Search,
@@ -203,11 +204,13 @@ function TransactionsTable({ rows }: { rows: TransactionRow[] }) {
  * API: GET /api/v1/transactions?status=
  */
 export function TransactionsListView() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [statusFilter, setStatusFilter] = useState<StatusTabValue>("__all__");
   const [search, setSearch] = useState("");
-  const [createOpen, setCreateOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [needsSetupOnly, setNeedsSetupOnly] = useState(false);
+  const createOpen = searchParams.get("new") === "1";
 
   const { rows, loading, error, reload } = useTransactions(statusFilter, showArchived);
 
@@ -253,19 +256,14 @@ export function TransactionsListView() {
             Closings, sale details, commission splits, and lifecycle state
           </p>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setCreateOpen(true)}
-            className={cn(kpBtnSave, "mt-0.5 h-9 border-transparent px-3 text-xs")}
-          >
-            + Manual transaction
-          </Button>
-          <p className="text-[11px] text-kp-on-surface-variant">
-            Import statement path appears in create modal
-          </p>
-        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.replace("/transactions?new=1", { scroll: false })}
+          className={cn(kpBtnSave, "mt-0.5 h-9 shrink-0 border-transparent px-3 text-xs")}
+        >
+          + Add transaction
+        </Button>
       </div>
 
       <div className="mx-6 mb-4 grid gap-2 sm:mx-8 sm:grid-cols-4">
@@ -367,7 +365,10 @@ export function TransactionsListView() {
         )}
       </div>
 
-      <CreateTransactionModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <CreateTransactionModal
+        open={createOpen}
+        onClose={() => router.replace("/transactions", { scroll: false })}
+      />
     </div>
   );
 }
