@@ -6,9 +6,8 @@ import { POST } from "@/app/api/v1/contacts/[id]/notes/route";
 
 const mockGetCurrentUser = jest.fn();
 const mockActivityCreate = jest.fn();
-const mockOpenHouseFindMany = jest.fn();
-const mockVisitorFindFirst = jest.fn();
 const mockContactFindFirst = jest.fn();
+const mockCanAccessContact = jest.fn();
 
 jest.mock("@/lib/auth", () => ({
   getCurrentUser: () => mockGetCurrentUser(),
@@ -16,12 +15,6 @@ jest.mock("@/lib/auth", () => ({
 
 jest.mock("@/lib/db", () => {
   const db = {
-    openHouse: {
-      findMany: (...args: unknown[]) => mockOpenHouseFindMany(...args),
-    },
-    openHouseVisitor: {
-      findFirst: (...args: unknown[]) => mockVisitorFindFirst(...args),
-    },
     contact: {
       findFirst: (...args: unknown[]) => mockContactFindFirst(...args),
     },
@@ -32,14 +25,17 @@ jest.mock("@/lib/db", () => {
   return { prisma: db, prismaAdmin: db };
 });
 
+jest.mock("@/lib/contacts/contact-access", () => ({
+  canAccessContact: (...args: unknown[]) => mockCanAccessContact(...args),
+}));
+
 const mockUser = { id: "user-1", name: "Agent", email: "a@x.com", productTier: "FULL_CRM" as const };
 const mockContact = { id: "contact-1", firstName: "Jane", lastName: "Doe" };
 
 beforeEach(() => {
   jest.clearAllMocks();
   mockGetCurrentUser.mockResolvedValue(mockUser);
-  mockOpenHouseFindMany.mockResolvedValue([{ id: "oh-1" }]);
-  mockVisitorFindFirst.mockResolvedValue({ contactId: "contact-1" });
+  mockCanAccessContact.mockResolvedValue(true);
   mockContactFindFirst.mockResolvedValue(mockContact);
   mockActivityCreate.mockImplementation((args: { data: { body: string } }) =>
     Promise.resolve({
@@ -70,7 +66,7 @@ describe("POST /api/v1/contacts/[id]/notes", () => {
   });
 
   it("returns 404 when contact not owned", async () => {
-    mockVisitorFindFirst.mockResolvedValue(null);
+    mockCanAccessContact.mockResolvedValue(false);
     const res = await POST(
       jsonRequest({ body: "My note" }),
       { params: Promise.resolve({ id: "contact-1" }) }
