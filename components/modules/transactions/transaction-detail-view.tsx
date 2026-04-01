@@ -15,6 +15,7 @@ import {
   X,
   Briefcase,
   ExternalLink,
+  User,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -623,36 +624,119 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           Transactions
         </Link>
 
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-headline text-[1.5rem] font-semibold text-kp-on-surface">
-                {txn.property.address1}
-              </h1>
-              <StatusBadge variant={statusBadgeVariant(txn.status)}>
-                {STATUS_LABELS[txn.status]}
-              </StatusBadge>
-            </div>
-            <p className="mt-1 text-sm text-kp-on-surface-variant">
-              {txn.property.city}, {txn.property.state} {txn.property.zip}
-            </p>
-            {txn.deletedAt && (
-              <p className="mt-2 inline-flex rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-300">
-                Archived transaction
-              </p>
-            )}
+        <div className="mt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="font-headline text-[1.5rem] font-semibold text-kp-on-surface">
+              Transaction
+            </h1>
+            <StatusBadge variant={statusBadgeVariant(txn.status)}>
+              {STATUS_LABELS[txn.status]}
+            </StatusBadge>
           </div>
-          <Link
-            href={`/properties/${txn.property.id}`}
-            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-kp-outline bg-kp-surface px-4 py-2 text-xs font-medium text-kp-teal transition-colors hover:bg-kp-surface-high"
-          >
-            <MapPin className="h-3.5 w-3.5" />
-            Property detail
-          </Link>
+          <p className="mt-1 text-sm font-medium text-kp-on-surface">
+            {txn.property.address1}
+            <span className="font-normal text-kp-on-surface-variant">
+              {" "}
+              · {txn.property.city}, {txn.property.state} {txn.property.zip}
+            </span>
+          </p>
+          {txn.deletedAt && (
+            <p className="mt-2 inline-flex rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-300">
+              Archived transaction
+            </p>
+          )}
         </div>
       </div>
 
       <div className="mx-6 mt-6 space-y-6 sm:mx-8">
+        <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+          <h2 className="text-sm font-semibold text-kp-on-surface">Record links</h2>
+          <p className="mt-1 text-xs text-kp-on-surface-variant">
+            This closing is always tied to one property. A CRM deal is optional; the buyer/seller contact
+            comes from that deal, not directly from the transaction.
+          </p>
+          <ul className="mt-4 divide-y divide-kp-outline-variant">
+            <li className="flex flex-col gap-2 pb-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex min-w-0 gap-2">
+                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                    Property
+                  </p>
+                  <p className="mt-0.5 text-sm font-medium text-kp-on-surface">{txn.property.address1}</p>
+                  <p className="text-xs text-kp-on-surface-variant">
+                    {txn.property.city}, {txn.property.state} {txn.property.zip}
+                  </p>
+                </div>
+              </div>
+              <Link
+                href={`/properties/${txn.property.id}`}
+                className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
+              >
+                Open property
+                <ExternalLink className="h-3 w-3 opacity-70" />
+              </Link>
+            </li>
+            <li className="flex flex-col gap-2 py-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex min-w-0 gap-2">
+                <Briefcase className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                    CRM deal
+                  </p>
+                  {txn.deal ? (
+                    <p className="mt-0.5 text-sm text-kp-on-surface">
+                      <StatusBadge variant={dealStatusBadgeVariant(txn.deal.status)}>
+                        {DEAL_STATUS_LABELS[txn.deal.status]}
+                      </StatusBadge>
+                    </p>
+                  ) : (
+                    <p className="mt-0.5 text-sm text-kp-on-surface-variant">Not linked</p>
+                  )}
+                </div>
+              </div>
+              {txn.deal ? (
+                <Link
+                  href={`/deals/${txn.deal.id}`}
+                  className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
+                >
+                  Open deal
+                  <ExternalLink className="h-3 w-3 opacity-70" />
+                </Link>
+              ) : null}
+            </li>
+            <li className="flex flex-col gap-2 pt-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex min-w-0 gap-2">
+                <User className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" aria-hidden />
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                    Contact (via deal)
+                  </p>
+                  {txn.deal ? (
+                    <p className="mt-0.5 text-sm font-medium text-kp-on-surface">
+                      {[txn.deal.contact.firstName, txn.deal.contact.lastName].filter(Boolean).join(" ") ||
+                        "—"}
+                    </p>
+                  ) : (
+                    <p className="mt-0.5 text-sm text-kp-on-surface-variant">
+                      Link a CRM deal below to connect this closing to a contact.
+                    </p>
+                  )}
+                </div>
+              </div>
+              {txn.deal ? (
+                <Link
+                  href={`/contacts/${txn.deal.contact.id}`}
+                  className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
+                >
+                  Open contact
+                  <ExternalLink className="h-3 w-3 opacity-70" />
+                </Link>
+              ) : null}
+            </li>
+          </ul>
+        </section>
+
         {setupGaps.length > 0 ? (
           <section className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-rose-300">
@@ -682,10 +766,11 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
         <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
           <div className="flex flex-wrap items-center gap-2">
             <Briefcase className="h-4 w-4 text-kp-on-surface-variant" />
-            <h2 className="text-sm font-semibold text-kp-on-surface">CRM deal</h2>
+            <h2 className="text-sm font-semibold text-kp-on-surface">Link or change CRM deal</h2>
           </div>
           <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-            Link an existing deal for this property. Only deals you own on this address appear here.
+            Choose a deal on this same property. That deal&apos;s contact is what ties people to this
+            closing (see Record links above).
           </p>
 
           {dealLinkError && (
@@ -697,15 +782,9 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
 
           {txn.deal ? (
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0 space-y-2">
-                <p className="text-sm font-medium text-kp-on-surface">
-                  {[txn.deal.contact.firstName, txn.deal.contact.lastName].filter(Boolean).join(" ") ||
-                    "Unknown contact"}
-                </p>
-                <StatusBadge variant={dealStatusBadgeVariant(txn.deal.status)}>
-                  {DEAL_STATUS_LABELS[txn.deal.status]}
-                </StatusBadge>
-              </div>
+              <p className="text-sm text-kp-on-surface-variant">
+                Linked to the deal above. Unlink to choose a different deal for this property.
+              </p>
               <div className="flex flex-wrap items-center gap-2">
                 <Link
                   href={`/deals/${txn.deal.id}`}

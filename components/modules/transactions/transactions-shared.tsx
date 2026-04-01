@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,13 @@ export type TxStatus =
   | "IN_ESCROW"
   | "CLOSED"
   | "FALLEN_APART";
+
+/** Mirrors `transactionLinkedDealSelect` on GET /api/v1/transactions. */
+export type TransactionLinkedDealRow = {
+  id: string;
+  status: string;
+  contact: { id: string; firstName: string; lastName: string };
+};
 
 export type TransactionRow = {
   id: string;
@@ -32,6 +39,7 @@ export type TransactionRow = {
     state: string;
     zip: string;
   };
+  deal?: TransactionLinkedDealRow | null;
 };
 
 export const STATUS_LABELS: Record<TxStatus, string> = {
@@ -143,10 +151,34 @@ export function TransactionsListTableRow({ row: t, index: i }: { row: Transactio
       )}
     >
       <td className={TD}>
-        <p className="font-medium text-kp-on-surface">{t.property.address1}</p>
+        <Link
+          href={`/properties/${t.property.id}`}
+          className="font-medium text-kp-on-surface hover:text-kp-teal hover:underline"
+        >
+          {t.property.address1}
+        </Link>
         <p className="text-xs text-kp-on-surface-variant">
           {t.property.city}, {t.property.state} {t.property.zip}
         </p>
+        {t.deal ? (
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+            <User className="h-3 w-3 shrink-0 text-kp-on-surface-muted" aria-hidden />
+            <Link
+              href={`/contacts/${t.deal.contact.id}`}
+              className="font-medium text-kp-teal hover:underline"
+            >
+              {[t.deal.contact.firstName, t.deal.contact.lastName].filter(Boolean).join(" ") || "Contact"}
+            </Link>
+            <span className="text-kp-on-surface-variant">·</span>
+            <Link href={`/deals/${t.deal.id}`} className="text-kp-on-surface-variant hover:text-kp-teal hover:underline">
+              CRM deal
+            </Link>
+          </div>
+        ) : (
+          <p className="mt-2 text-[11px] text-kp-on-surface-muted">
+            No CRM deal — add a contact link from the transaction detail.
+          </p>
+        )}
         {t.deletedAt && (
           <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-amber-300">
             Archived
@@ -226,10 +258,28 @@ export function PipelineTableRow({ row: t, index: i }: { row: TransactionRow; in
       )}
     >
       <td className={TD}>
-        <p className="font-medium text-kp-on-surface">{t.property.address1}</p>
+        <Link
+          href={`/properties/${t.property.id}`}
+          className="font-medium text-kp-on-surface hover:text-kp-teal hover:underline"
+        >
+          {t.property.address1}
+        </Link>
         <p className="text-xs text-kp-on-surface-variant">
           {t.property.city}, {t.property.state} {t.property.zip}
         </p>
+        {t.deal ? (
+          <p className="mt-1.5 text-[11px] text-kp-on-surface-variant">
+            <Link href={`/contacts/${t.deal.contact.id}`} className="text-kp-teal hover:underline">
+              {[t.deal.contact.firstName, t.deal.contact.lastName].filter(Boolean).join(" ")}
+            </Link>
+            <span className="text-kp-on-surface-muted"> · </span>
+            <Link href={`/deals/${t.deal.id}`} className="hover:text-kp-teal hover:underline">
+              Deal
+            </Link>
+          </p>
+        ) : (
+          <p className="mt-1.5 text-[11px] text-kp-on-surface-muted">No deal link</p>
+        )}
       </td>
       <td className={cn(TD, "tabular-nums text-kp-on-surface")}>{formatMoney(t.salePrice)}</td>
       <td className={cn(TD, "text-kp-on-surface-variant")}>{formatDate(t.closingDate)}</td>
