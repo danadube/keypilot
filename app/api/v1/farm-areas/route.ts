@@ -1,10 +1,20 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { ContactFarmMembershipStatus } from "@prisma/client";
+import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
+
+const CreateFarmAreaSchema = z
+  .object({
+    territoryId: z.string().min(1),
+    name: z.string().trim().min(1).max(120),
+    description: z.string().trim().max(1000).optional().nullable(),
+  })
+  .strict();
 
 export async function GET() {
   try {
@@ -22,6 +32,8 @@ export async function GET() {
       select: {
         id: true,
         name: true,
+        territoryId: true,
+        description: true,
         territory: {
           select: { id: true, name: true },
         },
@@ -29,7 +41,81 @@ export async function GET() {
       orderBy: [{ territory: { name: "asc" } }, { name: "asc" }],
     });
 
-    return NextResponse.json({ data: areas });
+    const areaIds = areas.map((area) => area.id);
+    const activeMembershipCounts = areaIds.length
+      ? await prismaAdmin.contactFarmMembership.groupBy({
+          by: ["farmAreaId"],
+          where: {
+            farmAreaId: { in: areaIds },
+            status: ContactFarmMembershipStatus.ACTIVE,
+          },
+          _count: { _all: true },
+        })
+      : [];
+
+    const membershipCountByAreaId = new Map<string, number>();
+    for (const row of activeMembershipCounts) {
+      membershipCountByAreaId.set(row.farmAreaId, row._count._all);
+    }
+
+    return NextResponse.json({
+      data: areas.map((area) => ({
+        ...area,
+        membershipCount: membershipCountByAreaId.get(area.id) ?? 0,
+      })),
+    });
+  } catch (err) {
+    return apiErrorFromCaught(err);
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const user = await getCurrentUser();
+    if (!hasCrmAccess(user.productTier)) {
+      return apiError("CRM features require Full CRM tier", 403);
+    }
+
+    const body = await req.json();
+    const parsed = CreateFarmAreaSchema.safeParse(body);
+    if (!parsed.success) {
+      return apiError(parsed.error.issues[0]?.message ?? "Invalid input", 400);
+    }
+
+    const territory = await prismaAdmin.farmTerritory.findFirst({
+      where: {
+        id: parsed.data.territoryId,
+        userId: user.id,
+        deletedAt: null,
+      },
+      select: { id: true, name: true },
+    });
+    if (!territory) {
+      return apiError("Territory not found", 404);
+    }
+
+    const area = await prismaAdmin.farmArea.create({
+      data: {
+        userId: user.id,
+        territoryId: parsed.data.territoryId,
+        name: parsed.data.name,
+        description: parsed.data.description ?? null,
+      },
+      select: {
+        id: true,
+        name: true,
+        territoryId: true,
+        description: true,
+        territory: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+
+    return NextResponse.json(
+      { data: { ...area, membershipCount: 0 } },
+      { status: 201 }
+    );
   } catch (err) {
     return apiErrorFromCaught(err);
   }
