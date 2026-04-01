@@ -30,6 +30,8 @@ type TxStatus =
   | "CLOSED"
   | "FALLEN_APART";
 
+type CreatePath = "manual" | "import";
+
 function propertyLabel(p: PropertyOption) {
   return `${p.address1}, ${p.city}, ${p.state} ${p.zip}`;
 }
@@ -197,6 +199,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createPath, setCreatePath] = useState<CreatePath>("manual");
 
   useEffect(() => {
     if (!open) return;
@@ -208,6 +211,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
     setBrokerageName("");
     setNotes("");
     setError(null);
+    setCreatePath("manual");
 
     setLoadingProperties(true);
     fetch("/api/v1/properties")
@@ -302,7 +306,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
               New transaction
             </h2>
             <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-              Tie a closing to one of your properties. You can adjust fields later.
+              Choose manual entry or statement import, then continue.
             </p>
           </div>
           <button
@@ -318,6 +322,59 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
           </button>
         </div>
 
+        <div className="border-b border-kp-outline px-6 py-3">
+          <div className="inline-flex rounded-lg border border-kp-outline bg-kp-surface-high p-1">
+            <button
+              type="button"
+              onClick={() => setCreatePath("manual")}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm transition-colors",
+                createPath === "manual"
+                  ? "bg-kp-gold text-kp-bg"
+                  : "text-kp-on-surface-variant hover:text-kp-on-surface"
+              )}
+            >
+              Manual entry
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreatePath("import")}
+              className={cn(
+                "rounded-md px-3 py-1.5 text-sm transition-colors",
+                createPath === "import"
+                  ? "bg-kp-gold text-kp-bg"
+                  : "text-kp-on-surface-variant hover:text-kp-on-surface"
+              )}
+            >
+              Import statement
+            </button>
+          </div>
+        </div>
+
+        {createPath === "import" ? (
+          <div className="space-y-4 px-6 py-5">
+            <div className="rounded-lg border border-kp-outline bg-kp-surface-high p-4">
+              <p className="text-sm font-semibold text-kp-on-surface">Statement import path</p>
+              <p className="mt-1 text-sm text-kp-on-surface-variant">
+                Use this path when you have a commission statement PDF and want parsed fields
+                before creating the transaction.
+              </p>
+              <p className="mt-2 text-xs text-kp-on-surface-muted">
+                If your workspace import endpoint is unavailable, continue with manual entry for now.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-kp-outline pt-4">
+              <button
+                type="button"
+                onClick={() => setCreatePath("manual")}
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-kp-teal hover:bg-kp-teal/10"
+              >
+                Continue with manual
+              </button>
+            </div>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit}>
           <div className="space-y-5 px-6 py-5">
             <PropertySearchPicker
@@ -476,6 +533,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
             </div>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

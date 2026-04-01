@@ -16,6 +16,8 @@ import { kpBtnSave } from "@/components/ui/kp-dashboard-button-tiers";
 import { CreateTransactionModal } from "./create-transaction-modal";
 import {
   type TransactionRow,
+  getImportProvenance,
+  isTransactionNeedsSetup,
   TransactionsListTableRow,
   TH,
 } from "./transactions-shared";
@@ -63,10 +65,12 @@ function useTransactions(statusFilter: StatusTabValue, showArchived: boolean) {
 
 function matchesSearch(t: TransactionRow, q: string): boolean {
   const lq = q.toLowerCase();
+  const importSource = getImportProvenance(t.notes)?.sourceFile.toLowerCase() ?? "";
   return (
     t.property.address1.toLowerCase().includes(lq) ||
     t.property.city.toLowerCase().includes(lq) ||
-    (t.brokerageName?.toLowerCase().includes(lq) ?? false)
+    (t.brokerageName?.toLowerCase().includes(lq) ?? false) ||
+    importSource.includes(lq)
   );
 }
 
@@ -203,13 +207,23 @@ export function TransactionsListView() {
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
+  const [needsSetupOnly, setNeedsSetupOnly] = useState(false);
 
   const { rows, loading, error, reload } = useTransactions(statusFilter, showArchived);
 
   const visible = useMemo(() => {
-    if (!search.trim()) return rows;
-    return rows.filter((t) => matchesSearch(t, search));
-  }, [rows, search]);
+    const base = needsSetupOnly ? rows.filter((t) => isTransactionNeedsSetup(t)) : rows;
+    if (!search.trim()) return base;
+    return base.filter((t) => matchesSearch(t, search));
+  }, [rows, search, needsSetupOnly]);
+
+  const summary = useMemo(() => {
+    const active = rows.filter((t) => !t.deletedAt).length;
+    const archived = rows.filter((t) => !!t.deletedAt).length;
+    const needsSetup = rows.filter((t) => isTransactionNeedsSetup(t)).length;
+    const imported = rows.filter((t) => !!getImportProvenance(t.notes)).length;
+    return { active, archived, needsSetup, imported };
+  }, [rows]);
 
   const isUnfiltered = statusFilter === "__all__";
   const tabs = STATUS_TABS.map((t) => ({
@@ -218,11 +232,12 @@ export function TransactionsListView() {
     count: t.value === "__all__" && isUnfiltered ? rows.length : undefined,
   }));
 
-  const isFiltered = statusFilter !== "__all__" || search.trim().length > 0;
+  const isFiltered = statusFilter !== "__all__" || search.trim().length > 0 || needsSetupOnly;
 
   function handleClearFilters() {
     setStatusFilter("__all__");
     setSearch("");
+    setNeedsSetupOnly(false);
   }
 
   const showContent = !loading && !error;
@@ -238,14 +253,38 @@ export function TransactionsListView() {
             Closings, sale details, commission splits, and lifecycle state
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => setCreateOpen(true)}
-          className={cn(kpBtnSave, "mt-0.5 h-9 shrink-0 border-transparent px-3 text-xs")}
-        >
-          + Add transaction
-        </Button>
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setCreateOpen(true)}
+            className={cn(kpBtnSave, "mt-0.5 h-9 border-transparent px-3 text-xs")}
+          >
+            + Manual transaction
+          </Button>
+          <p className="text-[11px] text-kp-on-surface-variant">
+            Import statement path appears in create modal
+          </p>
+        </div>
+      </div>
+
+      <div className="mx-6 mb-4 grid gap-2 sm:mx-8 sm:grid-cols-4">
+        <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
+          <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Active</p>
+          <p className="text-sm font-semibold text-kp-on-surface">{summary.active}</p>
+        </div>
+        <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
+          <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Needs setup</p>
+          <p className="text-sm font-semibold text-rose-300">{summary.needsSetup}</p>
+        </div>
+        <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
+          <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Imported</p>
+          <p className="text-sm font-semibold text-kp-teal">{summary.imported}</p>
+        </div>
+        <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
+          <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Archived</p>
+          <p className="text-sm font-semibold text-amber-300">{summary.archived}</p>
+        </div>
       </div>
 
       <div className="mx-6 mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
@@ -291,6 +330,15 @@ export function TransactionsListView() {
               ) : (
                 <div />
               )}
+              <label className="inline-flex items-center gap-2 text-xs text-kp-on-surface-variant">
+                <input
+                  type="checkbox"
+                  checked={needsSetupOnly}
+                  onChange={(e) => setNeedsSetupOnly(e.target.checked)}
+                  className="h-4 w-4 rounded border-kp-outline bg-kp-surface-high text-rose-300 focus:ring-rose-300/40"
+                />
+                Needs setup only
+              </label>
               <label className="inline-flex items-center gap-2 text-xs text-kp-on-surface-variant">
                 <input
                   type="checkbox"

@@ -98,8 +98,43 @@ export const TH =
   "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted";
 export const TD = "px-4 py-3.5 text-sm";
 
+export type TransactionSetupGap = "salePrice" | "closingDate" | "brokerageName";
+
+export function getTransactionSetupGaps(t: Pick<TransactionRow, "salePrice" | "closingDate" | "brokerageName">) {
+  const gaps: TransactionSetupGap[] = [];
+  if (t.salePrice == null || t.salePrice === "") gaps.push("salePrice");
+  if (!t.closingDate) gaps.push("closingDate");
+  if (!t.brokerageName?.trim()) gaps.push("brokerageName");
+  return gaps;
+}
+
+export function isTransactionNeedsSetup(
+  t: Pick<TransactionRow, "salePrice" | "closingDate" | "brokerageName">
+) {
+  return getTransactionSetupGaps(t).length > 0;
+}
+
+export function setupGapLabel(gap: TransactionSetupGap) {
+  switch (gap) {
+    case "salePrice":
+      return "sale price";
+    case "closingDate":
+      return "closing date";
+    case "brokerageName":
+      return "brokerage";
+  }
+}
+
+export function getImportProvenance(notes: string | null | undefined) {
+  const match = /^Imported from statement \((.+)\)$/i.exec((notes ?? "").trim());
+  if (!match) return null;
+  return { sourceFile: match[1] };
+}
+
 /** Full-width list table row (overview list). */
 export function TransactionsListTableRow({ row: t, index: i }: { row: TransactionRow; index: number }) {
+  const needsSetup = isTransactionNeedsSetup(t);
+  const importProvenance = getImportProvenance(t.notes);
   return (
     <tr
       className={cn(
@@ -117,16 +152,42 @@ export function TransactionsListTableRow({ row: t, index: i }: { row: Transactio
             Archived
           </p>
         )}
+        {needsSetup && (
+          <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-rose-300">
+            Needs setup
+          </p>
+        )}
+        {importProvenance && (
+          <p
+            className="mt-1 max-w-[240px] truncate text-[11px] font-semibold uppercase tracking-wide text-kp-teal"
+            title={`Imported from statement (${importProvenance.sourceFile})`}
+          >
+            Imported statement
+          </p>
+        )}
         <span className="mt-1 inline-block sm:hidden">
           <StatusBadge variant={statusBadgeVariant(t.status)}>{STATUS_LABELS[t.status]}</StatusBadge>
         </span>
       </td>
       <td className={cn(TD, "hidden sm:table-cell")}>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <StatusBadge variant={statusBadgeVariant(t.status)}>{STATUS_LABELS[t.status]}</StatusBadge>
           {t.deletedAt ? (
             <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-300">
               Archived
+            </span>
+          ) : null}
+          {needsSetup ? (
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-rose-300">
+              Needs setup
+            </span>
+          ) : null}
+          {importProvenance ? (
+            <span
+              className="max-w-[140px] truncate text-[11px] font-semibold uppercase tracking-wide text-kp-teal"
+              title={`Imported from statement (${importProvenance.sourceFile})`}
+            >
+              Imported
             </span>
           ) : null}
         </div>

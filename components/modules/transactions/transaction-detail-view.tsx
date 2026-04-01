@@ -18,6 +18,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
+import {
+  getImportProvenance,
+  getTransactionSetupGaps,
+  setupGapLabel,
+} from "./transactions-shared";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -201,6 +206,19 @@ function parsePercent(s: string): number | null | undefined {
   return n;
 }
 
+function formatTimestamp(iso: string | null | undefined) {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function TransactionDetailView({ transactionId }: { transactionId: string }) {
@@ -246,6 +264,11 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
         (d) => !d.linkedTransaction || d.linkedTransaction.id === transactionId
       ),
     [dealCandidates, transactionId]
+  );
+  const importProvenance = useMemo(() => getImportProvenance(txn?.notes), [txn?.notes]);
+  const setupGaps = useMemo(
+    () => (txn ? getTransactionSetupGaps(txn) : []),
+    [txn]
   );
 
   const load = useCallback(() => {
@@ -618,6 +641,32 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       </div>
 
       <div className="mx-6 mt-6 space-y-6 sm:mx-8">
+        {setupGaps.length > 0 ? (
+          <section className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-rose-300">
+              Needs setup
+            </p>
+            <p className="mt-1 text-sm text-rose-100">
+              Fill {setupGaps.map((gap) => setupGapLabel(gap)).join(", ")} to complete this
+              transaction record.
+            </p>
+          </section>
+        ) : null}
+
+        {importProvenance ? (
+          <section className="rounded-xl border border-kp-teal/30 bg-kp-teal/10 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-kp-teal">
+              Imported provenance
+            </p>
+            <p className="mt-1 text-sm text-kp-on-surface">
+              Source statement: <span className="font-medium">{importProvenance.sourceFile}</span>
+            </p>
+            <p className="mt-1 text-xs text-kp-on-surface-variant">
+              Imported transaction created {formatTimestamp(txn.createdAt)}.
+            </p>
+          </section>
+        ) : null}
+
         <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
           <div className="flex flex-wrap items-center gap-2">
             <Briefcase className="h-4 w-4 text-kp-on-surface-variant" />
