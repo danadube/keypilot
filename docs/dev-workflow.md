@@ -114,6 +114,7 @@ Migrations are additive only for this feature (new table and `importRunStartedAt
 Before pushing, run:
 
 ```bash
+npm run ci:local  # Mirrors CI checks locally (recommended)
 npm run build    # Full build (Prisma + Next.js)
 npm run lint     # ESLint
 npm run typecheck # TypeScript check (no emit)
@@ -124,6 +125,20 @@ Or run all:
 ```bash
 npm run validate
 ```
+
+### Local CI guardrail (pre-push)
+
+- `npm run ci:local` runs the local CI guardrail in sequence and stops on first failure:
+  1. `npm run validate:db-safety`
+  2. `npx prisma validate`
+  3. `npm run check:prisma`
+  4. `npm run typecheck`
+  5. `npm run lint`
+  6. `npm run test`
+  7. `npm run build`
+- A repo-managed pre-push hook runs `npm run ci:local` automatically.
+- Emergency bypass only: `SKIP_LOCAL_CI=1 git push`
+- Rule: do **not** push when `npm run ci:local` fails.
 
 ---
 

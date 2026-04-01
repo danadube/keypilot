@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# keypilot-local-ci-guardrail
+if [ "${SKIP_LOCAL_CI:-0}" = "1" ]; then
+  echo "[pre-push] SKIP_LOCAL_CI=1 set. Skipping npm run ci:local."
+  exit 0
+fi
+
+echo "[pre-push] Running local CI guardrail checks..."
+npm run ci:local
