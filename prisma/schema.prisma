@@ -168,6 +168,8 @@ enum ContactStatus {
 enum ContactFarmMembershipStatus {
   ACTIVE
   ARCHIVED
+
+  @@map("FarmMembershipStatus")
 }
 
 model FarmTerritory {
