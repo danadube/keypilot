@@ -9,9 +9,13 @@ import { ContactPrimaryInfoCard } from "./contact-primary-info-card";
 import { ContactNotesCard } from "./contact-notes-card";
 import { ContactActivityTimeline } from "./contact-activity-timeline";
 import { ContactFollowUpsPanel } from "./contact-follow-ups-panel";
+import { ContactMailingAddressCard } from "./contact-mailing-address-card";
+import { ContactFarmMembershipsPanel } from "./contact-farm-memberships-panel";
 import type {
   ContactDetailActivity,
   ContactDetailContact,
+  FarmAreaOption,
+  FarmMembership,
 } from "./contact-detail-types";
 
 export function ContactDetailView({ id }: { id: string }) {
@@ -27,12 +31,25 @@ export function ContactDetailView({ id }: { id: string }) {
   const [reminderBody, setReminderBody] = useState("");
   const [reminderDue, setReminderDue] = useState("");
   const [addingReminder, setAddingReminder] = useState(false);
+  const [farmAreas, setFarmAreas] = useState<FarmAreaOption[]>([]);
+  const [farmMemberships, setFarmMemberships] = useState<FarmMembership[]>([]);
+  const [selectedFarmAreaId, setSelectedFarmAreaId] = useState("");
+  const [addingFarmMembership, setAddingFarmMembership] = useState(false);
+  const [farmMembershipError, setFarmMembershipError] = useState<string | null>(
+    null
+  );
   const [commChannel, setCommChannel] = useState<"CALL" | "EMAIL">("CALL");
   const [commBody, setCommBody] = useState("");
   const [loggingComm, setLoggingComm] = useState(false);
   const [patchingReminderId, setPatchingReminderId] = useState<string | null>(
     null
   );
+  const [mailStreet1, setMailStreet1] = useState("");
+  const [mailStreet2, setMailStreet2] = useState("");
+  const [mailCity, setMailCity] = useState("");
+  const [mailState, setMailState] = useState("");
+  const [mailZip, setMailZip] = useState("");
+  const [savingMailing, setSavingMailing] = useState(false);
   const { hasCrm: hasCrmAccess } = useProductTier();
 
   const refreshActivities = useCallback(() => {
@@ -165,6 +182,56 @@ export function ContactDetailView({ id }: { id: string }) {
       .finally(() => setAddingReminder(false));
   }, [id, reminderBody, reminderDue, addingReminder]);
 
+  const addFarmMembership = useCallback(() => {
+    if (!selectedFarmAreaId || addingFarmMembership) return;
+    setAddingFarmMembership(true);
+    setFarmMembershipError(null);
+    fetch(`/api/v1/contacts/${id}/farm-memberships`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ farmAreaId: selectedFarmAreaId }),
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.error) throw new Error(json.error.message);
+        const created = json.data as FarmMembership;
+        setFarmMemberships((prev) => {
+          const withoutExisting = prev.filter((m) => m.id !== created.id);
+          return [...withoutExisting, created].sort((a, b) =>
+            `${a.farmArea.territory.name} ${a.farmArea.name}`.localeCompare(
+              `${b.farmArea.territory.name} ${b.farmArea.name}`
+            )
+          );
+        });
+        setSelectedFarmAreaId("");
+      })
+      .catch((err) =>
+        setFarmMembershipError(
+          err instanceof Error ? err.message : "Failed to add membership"
+        )
+      )
+      .finally(() => setAddingFarmMembership(false));
+  }, [id, selectedFarmAreaId, addingFarmMembership]);
+
+  const archiveFarmMembership = useCallback(
+    (membershipId: string) => {
+      fetch(`/api/v1/contacts/${id}/farm-memberships/${membershipId}`, {
+        method: "DELETE",
+      })
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.error) throw new Error(json.error.message);
+          setFarmMemberships((prev) => prev.filter((m) => m.id !== membershipId));
+        })
+        .catch((err) =>
+          setFarmMembershipError(
+            err instanceof Error ? err.message : "Failed to archive membership"
+          )
+        );
+    },
+    [id]
+  );
+
   const updateReminderStatus = useCallback(
     (reminderId: string, status: "DONE" | "DISMISSED") => {
       setPatchingReminderId(reminderId);
@@ -236,17 +303,43 @@ export function ContactDetailView({ id }: { id: string }) {
   const loadData = useCallback(() => {
     setError(null);
     setLoading(true);
-    Promise.all([
+    const baseRequests = [
       fetch(`/api/v1/contacts/${id}`),
       fetch(`/api/v1/contacts/${id}/activities`),
       fetch("/api/v1/me"),
-    ])
-      .then(async ([cRes, aRes, meRes]) => {
+    ];
+    const crmRequests = hasCrmAccess
+      ? [
+          fetch(`/api/v1/contacts/${id}/farm-memberships`),
+          fetch("/api/v1/farm-areas"),
+        ]
+      : [];
+
+    Promise.all([...baseRequests, ...crmRequests])
+      .then(async (responses) => {
+        const [cRes, aRes, meRes, membershipsRes, farmAreasRes] = responses;
         const cJson = await cRes.json();
         const aJson = await aRes.json();
         if (cJson.error) throw new Error(cJson.error.message);
         setContact(cJson.data);
         setActivities(aJson.data || []);
+        if (hasCrmAccess && membershipsRes && farmAreasRes) {
+          const membershipsJson = await membershipsRes.json();
+          const farmAreasJson = await farmAreasRes.json();
+          if (membershipsJson.error) {
+            throw new Error(membershipsJson.error.message);
+          }
+          if (farmAreasJson.error) {
+            throw new Error(farmAreasJson.error.message);
+          }
+          setFarmMemberships(membershipsJson.data || []);
+          setFarmAreas(farmAreasJson.data || []);
+          setFarmMembershipError(null);
+        } else {
+          setFarmMemberships([]);
+          setFarmAreas([]);
+          setFarmMembershipError(null);
+        }
         try {
           const meJson = await meRes.json();
           if (meJson.data?.id) setCurrentUserId(meJson.data.id);
@@ -258,11 +351,52 @@ export function ContactDetailView({ id }: { id: string }) {
         setError(err instanceof Error ? err.message : "Failed")
       )
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, hasCrmAccess]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!contact) return;
+    setMailStreet1(contact.mailingStreet1 ?? "");
+    setMailStreet2(contact.mailingStreet2 ?? "");
+    setMailCity(contact.mailingCity ?? "");
+    setMailState(contact.mailingState ?? "");
+    setMailZip(contact.mailingZip ?? "");
+  }, [contact]);
+
+  const saveMailingAddress = useCallback(() => {
+    if (!contact || savingMailing) return;
+    setSavingMailing(true);
+    fetch(`/api/v1/contacts/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mailingStreet1: mailStreet1.trim() || null,
+        mailingStreet2: mailStreet2.trim() || null,
+        mailingCity: mailCity.trim() || null,
+        mailingState: mailState.trim() || null,
+        mailingZip: mailZip.trim() || null,
+      }),
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.error) throw new Error(json.error.message);
+        setContact(json.data);
+      })
+      .catch(() => {})
+      .finally(() => setSavingMailing(false));
+  }, [
+    contact,
+    id,
+    mailStreet1,
+    mailStreet2,
+    mailCity,
+    mailState,
+    mailZip,
+    savingMailing,
+  ]);
 
   /** Open schedule panel when linked from Contacts list (`#schedule-follow-up`). */
   useEffect(() => {
@@ -276,7 +410,7 @@ export function ContactDetailView({ id }: { id: string }) {
       }
     }, 0);
     return () => window.clearTimeout(t);
-  }, [loading, contact?.id]);
+  }, [loading, contact]);
 
   const nextReminder = useMemo(() => {
     const list = contact?.followUpReminders ?? [];
@@ -352,6 +486,32 @@ export function ContactDetailView({ id }: { id: string }) {
             onAssignToMe={assignToMe}
             onUnassign={unassign}
           />
+          <ContactMailingAddressCard
+            street1={mailStreet1}
+            street2={mailStreet2}
+            city={mailCity}
+            state={mailState}
+            zip={mailZip}
+            saving={savingMailing}
+            onStreet1Change={setMailStreet1}
+            onStreet2Change={setMailStreet2}
+            onCityChange={setMailCity}
+            onStateChange={setMailState}
+            onZipChange={setMailZip}
+            onSave={saveMailingAddress}
+          />
+          {hasCrmAccess ? (
+            <ContactFarmMembershipsPanel
+              memberships={farmMemberships}
+              farmAreas={farmAreas}
+              selectedFarmAreaId={selectedFarmAreaId}
+              addingFarmMembership={addingFarmMembership}
+              farmMembershipError={farmMembershipError}
+              onSelectedFarmAreaIdChange={setSelectedFarmAreaId}
+              onAddFarmMembership={addFarmMembership}
+              onArchiveFarmMembership={archiveFarmMembership}
+            />
+          ) : null}
           <ContactNotesCard notes={contact.notes} />
           {hasCrmAccess ? (
             <ContactFollowUpsPanel

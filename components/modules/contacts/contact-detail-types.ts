@@ -14,8 +14,27 @@ export type ContactDetailContact = {
   source: string;
   status?: string | null;
   assignedToUserId?: string | null;
+  mailingStreet1?: string | null;
+  mailingStreet2?: string | null;
+  mailingCity?: string | null;
+  mailingState?: string | null;
+  mailingZip?: string | null;
   contactTags?: { tag: ContactTag }[];
   followUpReminders?: Reminder[];
+};
+
+export type FarmAreaOption = {
+  id: string;
+  name: string;
+  territory: { id: string; name: string };
+};
+
+export type FarmMembership = {
+  id: string;
+  status: "ACTIVE" | "ARCHIVED";
+  notes: string | null;
+  createdAt: string;
+  farmArea: FarmAreaOption;
 };
 
 export type ContactDetailActivity = {
