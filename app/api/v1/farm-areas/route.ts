@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ContactFarmMembershipStatus } from "@prisma/client";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
-import { withRLSContext, withRLSContextOrFallbackAdmin } from "@/lib/db-context";
+import { prismaAdmin } from "@/lib/db";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 
@@ -23,50 +23,44 @@ export async function GET() {
       return apiError("CRM features require Full CRM tier", 403);
     }
 
-    const { areas, membershipCountByAreaId } = await withRLSContextOrFallbackAdmin(
-      user.id,
-      "farm-areas:get",
-      async (tx) => {
-        const areas = await tx.farmArea.findMany({
-          where: {
-            userId: user.id,
-            deletedAt: null,
-            territory: { deletedAt: null },
-          },
-          select: {
-            id: true,
-            name: true,
-            territoryId: true,
-            description: true,
-            territory: {
-              select: { id: true, name: true },
-            },
-          },
-          orderBy: [{ territory: { name: "asc" } }, { name: "asc" }],
-        });
+    // prismaAdmin + strict userId: farm RLS is not universally deployed; avoids 500 when
+    // SET LOCAL ROLE / keypilot_app setup fails while DATABASE_URL is a BYPASSRLS role.
+    const areas = await prismaAdmin.farmArea.findMany({
+      where: {
+        userId: user.id,
+        deletedAt: null,
+        territory: { deletedAt: null },
+      },
+      select: {
+        id: true,
+        name: true,
+        territoryId: true,
+        description: true,
+        territory: {
+          select: { id: true, name: true },
+        },
+      },
+      orderBy: [{ territory: { name: "asc" } }, { name: "asc" }],
+    });
 
-        const areaIds = areas.map((area) => area.id);
-        const membershipCountByAreaId = new Map<string, number>();
-        if (areaIds.length > 0) {
-          const membershipRows = await tx.contactFarmMembership.findMany({
-            where: {
-              userId: user.id,
-              farmAreaId: { in: areaIds },
-              status: ContactFarmMembershipStatus.ACTIVE,
-            },
-            select: { farmAreaId: true },
-          });
-          for (const row of membershipRows) {
-            membershipCountByAreaId.set(
-              row.farmAreaId,
-              (membershipCountByAreaId.get(row.farmAreaId) ?? 0) + 1
-            );
-          }
-        }
-
-        return { areas, membershipCountByAreaId };
+    const areaIds = areas.map((area) => area.id);
+    const membershipCountByAreaId = new Map<string, number>();
+    if (areaIds.length > 0) {
+      const membershipRows = await prismaAdmin.contactFarmMembership.findMany({
+        where: {
+          userId: user.id,
+          farmAreaId: { in: areaIds },
+          status: ContactFarmMembershipStatus.ACTIVE,
+        },
+        select: { farmAreaId: true },
+      });
+      for (const row of membershipRows) {
+        membershipCountByAreaId.set(
+          row.farmAreaId,
+          (membershipCountByAreaId.get(row.farmAreaId) ?? 0) + 1
+        );
       }
-    );
+    }
 
     return NextResponse.json({
       data: areas.map((area) => ({
@@ -92,39 +86,35 @@ export async function POST(req: NextRequest) {
       return apiError(parsed.error.issues[0]?.message ?? "Invalid input", 400);
     }
 
-    const territory = await withRLSContext(user.id, (tx) =>
-      tx.farmTerritory.findFirst({
-        where: {
-          id: parsed.data.territoryId,
-          userId: user.id,
-          deletedAt: null,
-        },
-        select: { id: true, name: true },
-      })
-    );
+    const territory = await prismaAdmin.farmTerritory.findFirst({
+      where: {
+        id: parsed.data.territoryId,
+        userId: user.id,
+        deletedAt: null,
+      },
+      select: { id: true, name: true },
+    });
     if (!territory) {
       return apiError("Territory not found", 404);
     }
 
-    const area = await withRLSContext(user.id, (tx) =>
-      tx.farmArea.create({
-        data: {
-          userId: user.id,
-          territoryId: parsed.data.territoryId,
-          name: parsed.data.name,
-          description: parsed.data.description ?? null,
+    const area = await prismaAdmin.farmArea.create({
+      data: {
+        userId: user.id,
+        territoryId: parsed.data.territoryId,
+        name: parsed.data.name,
+        description: parsed.data.description ?? null,
+      },
+      select: {
+        id: true,
+        name: true,
+        territoryId: true,
+        description: true,
+        territory: {
+          select: { id: true, name: true },
         },
-        select: {
-          id: true,
-          name: true,
-          territoryId: true,
-          description: true,
-          territory: {
-            select: { id: true, name: true },
-          },
-        },
-      })
-    );
+      },
+    });
 
     return NextResponse.json(
       { data: { ...area, membershipCount: 0 } },
