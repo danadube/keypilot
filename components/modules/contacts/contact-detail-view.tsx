@@ -71,6 +71,11 @@ type Contact = {
   source: string;
   status?: string | null;
   assignedToUserId?: string | null;
+  mailingStreet1?: string | null;
+  mailingStreet2?: string | null;
+  mailingCity?: string | null;
+  mailingState?: string | null;
+  mailingZip?: string | null;
   contactTags?: { tag: ContactTag }[];
   followUpReminders?: Reminder[];
 };
@@ -161,6 +166,13 @@ export function ContactDetailView({ id }: { id: string }) {
   const [commBody, setCommBody] = useState("");
   const [loggingComm, setLoggingComm] = useState(false);
   const { hasCrm: hasCrmAccess } = useProductTier();
+
+  const [mailStreet1, setMailStreet1] = useState("");
+  const [mailStreet2, setMailStreet2] = useState("");
+  const [mailCity, setMailCity] = useState("");
+  const [mailState, setMailState] = useState("");
+  const [mailZip, setMailZip] = useState("");
+  const [savingMailing, setSavingMailing] = useState(false);
 
   // ── Handlers (all logic preserved exactly) ──────────────────────────────────
 
@@ -408,6 +420,47 @@ export function ContactDetailView({ id }: { id: string }) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  useEffect(() => {
+    if (!contact) return;
+    setMailStreet1(contact.mailingStreet1 ?? "");
+    setMailStreet2(contact.mailingStreet2 ?? "");
+    setMailCity(contact.mailingCity ?? "");
+    setMailState(contact.mailingState ?? "");
+    setMailZip(contact.mailingZip ?? "");
+  }, [contact]);
+
+  const saveMailingAddress = useCallback(() => {
+    if (!contact || savingMailing) return;
+    setSavingMailing(true);
+    fetch(`/api/v1/contacts/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mailingStreet1: mailStreet1.trim() || null,
+        mailingStreet2: mailStreet2.trim() || null,
+        mailingCity: mailCity.trim() || null,
+        mailingState: mailState.trim() || null,
+        mailingZip: mailZip.trim() || null,
+      }),
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.error) throw new Error(json.error.message);
+        setContact(json.data);
+      })
+      .catch(() => {})
+      .finally(() => setSavingMailing(false));
+  }, [
+    contact,
+    id,
+    mailStreet1,
+    mailStreet2,
+    mailCity,
+    mailState,
+    mailZip,
+    savingMailing,
+  ]);
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   if (loading) return <PageLoading message="Loading contact…" />;
@@ -525,6 +578,58 @@ export function ContactDetailView({ id }: { id: string }) {
               {contact.notes && (
                 <InfoRow label="Notes" value={contact.notes} />
               )}
+            </div>
+          </div>
+
+          {/* Mailing address (FarmTrackr exports) */}
+          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+            <h2 className="text-sm font-semibold text-kp-on-surface">Mailing address</h2>
+            <p className="mt-1 text-xs text-kp-on-surface-variant">
+              Used for FarmTrackr mailing CSV and label exports. Optional.
+            </p>
+            <div className="mt-3 grid gap-2">
+              <Input
+                placeholder="Street line 1"
+                value={mailStreet1}
+                onChange={(e) => setMailStreet1(e.target.value)}
+                className="h-8 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+              />
+              <Input
+                placeholder="Street line 2 (optional)"
+                value={mailStreet2}
+                onChange={(e) => setMailStreet2(e.target.value)}
+                className="h-8 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+              />
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <Input
+                  placeholder="City"
+                  value={mailCity}
+                  onChange={(e) => setMailCity(e.target.value)}
+                  className="h-8 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface sm:col-span-2"
+                />
+                <Input
+                  placeholder="ST"
+                  value={mailState}
+                  onChange={(e) => setMailState(e.target.value)}
+                  className="h-8 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+                />
+                <Input
+                  placeholder="ZIP"
+                  value={mailZip}
+                  onChange={(e) => setMailZip(e.target.value)}
+                  className="h-8 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(kpBtnSecondary, "mt-1 h-8 w-fit border-transparent text-xs")}
+                onClick={saveMailingAddress}
+                disabled={savingMailing}
+              >
+                {savingMailing ? "Saving…" : "Save mailing address"}
+              </Button>
             </div>
           </div>
 

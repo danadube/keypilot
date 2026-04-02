@@ -134,6 +134,12 @@ model Contact {
   googleEtag         String?
   externalSource     String?
   externalSourceId   String?
+  /** Optional mailing address for exports (FarmTrackr labels, mailings). Editable on the contact record. */
+  mailingStreet1     String?
+  mailingStreet2     String?
+  mailingCity        String?
+  mailingState       String?
+  mailingZip         String?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   deletedAt          DateTime?
