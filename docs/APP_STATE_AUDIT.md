@@ -63,10 +63,11 @@
 - Contact mailing address fields + validation (supports mailing exports).
 - Transactions: deal linking model surfaced consistently (list, detail, create manual + import).
 - ShowingHQ, open houses, properties, contacts, deals, commissions baseline, statement import path.
+- **App state audit:** this file (`docs/APP_STATE_AUDIT.md`) merged from `feature/roadmap-state-refresh`; obsolete **`feature/app-state-audit`** branch removed from remote.
 
 ### Complete on branch, pending merge
 
-- **`origin/feature/app-state-audit`** — only adds an **older** `APP_STATE_AUDIT.md` (superseded by this document on **`feature/roadmap-state-refresh`**). **Action:** close branch or merge nothing; prefer this audit as source of truth.
+- *(None for audit/docs — next work is feature branches below.)*
 
 ### Partial / needs follow-up
 
@@ -85,7 +86,7 @@
 
 ### Obsolete / should close or avoid
 
-- **`feature/app-state-audit`** after this roadmap doc lands — redundant doc-only branch.
+- ~~**`feature/app-state-audit`**~~ — **closed** (superseded audit doc is on `main`).
 - Any local branch whose tip is already an ancestor of `main` — safe to delete locally after `git fetch --prune`.
 
 ### Ideas only (not in repo as committed scope)
@@ -100,7 +101,6 @@ Branches verified with: `git merge-base --is-ancestor origin/<branch> main` → 
 
 | Branch | Unique work vs `main` (summary) | Recommended action |
 |--------|----------------------------------|--------------------|
-| **feature/app-state-audit** | Old audit doc only | **Obsolete** — superseded by this file; **close / delete** remote branch after merge of `feature/roadmap-state-refresh`. |
 | **feature/clientkeep-contact-detail** | Large contacts list + follow-ups UX (`contacts-list-view`, segment query tests, etc.) | **Rebase** onto `main`, then **review** for merge (high touch). |
 | **feature/clientkeep-transactions-clarity** | ShowingHQ tabs + small transaction list/detail tweaks; may **overlap** merged transaction-linking | **Rebase** and **diff review**; merge only if deltas still add value; else **close**. |
 | **feature/farm-segmentation-foundation** | Prisma + SQL migrations (segmentation / RLS-related) | **Review later** — schema-heavy; plan migration ordering with ops. |
@@ -144,8 +144,7 @@ These are **not** committed as the immediate roadmap unless explicitly promoted:
 
 ## 7. Recommended next 3 moves (practical)
 
-1. **Land this audit** — Merge `feature/roadmap-state-refresh` (docs only), **delete** obsolete **`origin/feature/app-state-audit`**, point team at this file for planning.  
-   *Reason:* single source of truth after major merges.
+1. ~~**Land this audit**~~ **Done** — `docs/APP_STATE_AUDIT.md` is on `main`; `feature/roadmap-state-refresh` and obsolete `feature/app-state-audit` remotes deleted.
 
 2. **Pick one ShowingHQ UX branch** — Rebase **`feature/showing-hq-command-center`** or **`feature/schedule-showing-workflow-ux`**, run `ci:local`, merge if clean.  
    *Reason:* smaller scope than commission engine; improves daily operating screen.
@@ -159,7 +158,7 @@ These are **not** committed as the immediate roadmap unless explicitly promoted:
 
 | Category | Guidance |
 |----------|----------|
-| **Safe to delete (remote)** | **`feature/app-state-audit`** once this document is on `main`. |
+| **Safe to delete (remote)** | ~~`feature/app-state-audit`~~ **deleted**; `feature/roadmap-state-refresh` **deleted** after merge to `main`. |
 | **Keep until merged / reviewed** | `feature/transactions-commission-engine`, `feature/farm-segmentation-foundation`, `feature/token-public-flows`, `feature/clientkeep-contact-detail`, `feature/showinghq-workspace-ui`. |
 | **Rebase then merge or close** | `feature/clientkeep-transactions-clarity`, `feature/showinghq-workspace-ui`, `feature/showing-hq-command-center`, `feature/schedule-showing-workflow-ux`. |
 | **Local cleanup** | Run `git fetch --prune`; delete local tracking branches whose upstream is gone or whose tip is merged (`git branch --merged main`). |
