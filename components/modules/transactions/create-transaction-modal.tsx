@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
+  Briefcase,
   CheckCircle2,
   Loader2,
   MapPin,
@@ -36,6 +37,14 @@ type TxStatus =
 
 type CreateMode = "manual" | "import";
 type BrokerageSelection = "" | "KW" | "BDH" | "CUSTOM";
+
+/** Deal row from GET /api/v1/deals?propertyId= (includes linkedTransaction when filtered by property). */
+type DealPickerRow = {
+  id: string;
+  status: string;
+  contact: { id: string; firstName: string; lastName: string };
+  linkedTransaction?: { id: string } | null;
+};
 
 type ParsedParty = {
   raw: string;
@@ -290,6 +299,9 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
   const [parsedPayload, setParsedPayload] = useState<ParsedPayload | null>(null);
   const [editedPayload, setEditedPayload] = useState<ParsedPayload | null>(null);
   const [selectedBrokerage, setSelectedBrokerage] = useState<BrokerageSelection>("");
+  const [dealPickerRows, setDealPickerRows] = useState<DealPickerRow[]>([]);
+  const [dealsLoading, setDealsLoading] = useState(false);
+  const [selectedDealId, setSelectedDealId] = useState("");
 
   useEffect(() => {
     if (!open) return;
@@ -308,6 +320,9 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
     setParsedPayload(null);
     setEditedPayload(null);
     setSelectedBrokerage("");
+    setDealPickerRows([]);
+    setSelectedDealId("");
+    setDealsLoading(false);
 
     setLoadingProperties(true);
     fetch("/api/v1/properties")
@@ -318,6 +333,32 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
   }, [open]);
 
   useEffect(() => {
+    if (!open || !selectedProperty) {
+      setDealPickerRows([]);
+      setSelectedDealId("");
+      return;
+    }
+    setSelectedDealId("");
+    let cancelled = false;
+    setDealsLoading(true);
+    fetch(`/api/v1/deals?propertyId=${encodeURIComponent(selectedProperty.id)}`)
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled) return;
+        setDealPickerRows(Array.isArray(json.data) ? json.data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setDealPickerRows([]);
+      })
+      .finally(() => {
+        if (!cancelled) setDealsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, selectedProperty]);
+
+  useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !submitting && !committing) onClose();
@@ -325,6 +366,60 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [open, submitting, committing, onClose]);
+
+  const unlinkedDeals = useMemo(
+    () => dealPickerRows.filter((d) => !d.linkedTransaction),
+    [dealPickerRows]
+  );
+
+  function optionalDealSection(selectId: string) {
+    if (!selectedProperty) return null;
+    return (
+      <div className="rounded-lg border border-kp-outline bg-kp-surface-high p-4">
+        <div className="flex items-start gap-2">
+          <Briefcase className="mt-0.5 h-4 w-4 shrink-0 text-kp-on-surface-variant" aria-hidden />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <label
+              htmlFor={selectId}
+              className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
+            >
+              CRM deal (optional)
+            </label>
+            <p className="text-xs text-kp-on-surface-variant">
+              Same property only. The deal&apos;s contact is how people tie to this closing; leave blank and link
+              later on the transaction if you prefer.
+            </p>
+            {dealsLoading ? (
+              <div className="flex items-center gap-2 py-2 text-sm text-kp-on-surface-variant">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading deals…
+              </div>
+            ) : unlinkedDeals.length === 0 ? (
+              <p className="text-xs text-kp-on-surface-variant">
+                No unlinked deals on this property yet. You can link a deal from the transaction after it&apos;s
+                created.
+              </p>
+            ) : (
+              <select
+                id={selectId}
+                value={selectedDealId}
+                onChange={(e) => setSelectedDealId(e.target.value)}
+                className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+              >
+                <option value="">None — link a deal later on the transaction</option>
+                {unlinkedDeals.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {[d.contact.firstName, d.contact.lastName].filter(Boolean).join(" ") || "Contact"} ·{" "}
+                    {d.status.replace(/_/g, " ")}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   function updateExtracted<K extends keyof ParsedPayload["extracted"]>(
     key: K,
@@ -394,6 +489,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
       propertyId: selectedProperty.id,
       status,
     };
+    if (selectedDealId) body.dealId = selectedDealId;
     const parsedSalePrice = parseNumberInput(salePrice);
     if (parsedSalePrice !== undefined && parsedSalePrice > 0) body.salePrice = parsedSalePrice;
     if (closingDate.trim()) body.closingDate = closingDate.trim();
@@ -435,6 +531,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
           editedPayload,
           transaction: {
             propertyId: selectedProperty.id,
+            ...(selectedDealId ? { dealId: selectedDealId } : {}),
             status,
             salePrice: parseNumberInput(salePrice) ?? null,
             closingDate: closingDate || null,
@@ -547,6 +644,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                 selected={selectedProperty}
                 onSelect={setSelectedProperty}
               />
+              {optionalDealSection("create-txn-deal-manual")}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
@@ -657,6 +755,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                 selected={selectedProperty}
                 onSelect={setSelectedProperty}
               />
+              {optionalDealSection("create-txn-deal-import")}
 
               <div className="space-y-2 rounded-lg border border-kp-outline bg-kp-surface-high p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
