@@ -74,7 +74,7 @@ describe("GET /api/v1/feedback/by-token/[token]", () => {
       showing: { scheduledAt: new Date(), buyerAgentName: null },
     });
     const res = await GET(
-      {} as Request,
+      {} as unknown as NextRequest,
       { params: Promise.resolve({ token: "expired-by-date" }) }
     );
     expect(res.status).toBe(200);
