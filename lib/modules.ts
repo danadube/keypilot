@@ -8,15 +8,12 @@ import {
   LayoutDashboard,
   Building2,
   Calendar,
-  CheckSquare,
   Megaphone,
   BarChart3,
-  FileText,
   QrCode,
   Settings,
   List,
   Inbox,
-  Map,
 } from "lucide-react";
 
 export type ModuleId =
@@ -112,12 +109,10 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     id: "farm-trackr",
     name: "FarmTrackr",
     href: "/farm-trackr",
-    available: false,
+    /** Territories, areas, imports, memberships ship on `/farm-trackr`; no separate sub-app pages yet. */
+    available: true,
     sidebar: [
       { label: "Overview", href: "/farm-trackr", icon: LayoutDashboard, section: "OVERVIEW" },
-      { label: "Farms", href: "/farm-trackr/farms", icon: Map, section: "WORK" },
-      { label: "Farm Lists", href: "/farm-trackr/lists", icon: List, section: "WORK" },
-      { label: "Performance", href: "/farm-trackr/performance", icon: BarChart3, section: "WORK" },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
     ],
   },
@@ -128,8 +123,6 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     available: false,
     sidebar: [
       { label: "Overview", href: "/task-pilot", icon: LayoutDashboard },
-      { label: "My Tasks", href: "/task-pilot/tasks", icon: CheckSquare },
-      { label: "Calendar", href: "/task-pilot/calendar", icon: Calendar },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
     ],
   },
@@ -151,7 +144,6 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     available: false,
     sidebar: [
       { label: "Overview", href: "/seller-pulse", icon: LayoutDashboard },
-      { label: "Seller Reports", href: "/seller-pulse/reports", icon: FileText },
       { label: "Settings", href: "/settings", icon: Settings },
     ],
   },
