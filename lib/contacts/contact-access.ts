@@ -1,4 +1,5 @@
 import { prismaAdmin } from "@/lib/db";
+import { contactAccessScope } from "@/lib/contacts/contact-access-scope";
 
 /**
  * Whether the current user may access this contact for dashboard and CRM operations:
@@ -9,27 +10,27 @@ export async function canAccessContact(contactId: string, userId: string): Promi
     where: {
       id: contactId,
       deletedAt: null,
-      OR: [
-        { assignedToUserId: userId },
-        {
-          openHouseVisits: {
-            some: {
-              openHouse: { hostUserId: userId, deletedAt: null },
-            },
-          },
-        },
-        { deals: { some: { userId } } },
-        {
-          followUps: {
-            some: { createdByUserId: userId, deletedAt: null },
-          },
-        },
-        { followUpReminders: { some: { userId } } },
-        { userActivities: { some: { userId } } },
-        { contactTags: { some: { tag: { userId } } } },
-      ],
+      ...contactAccessScope(userId),
     },
     select: { id: true },
   });
   return !!row;
+}
+
+/** Subset of `contactIds` the user may access (for bulk farm membership actions). */
+export async function filterAccessibleContactIds(
+  contactIds: string[],
+  userId: string
+): Promise<string[]> {
+  const unique = Array.from(new Set(contactIds));
+  if (unique.length === 0) return [];
+  const rows = await prismaAdmin.contact.findMany({
+    where: {
+      id: { in: unique },
+      deletedAt: null,
+      ...contactAccessScope(userId),
+    },
+    select: { id: true },
+  });
+  return rows.map((r) => r.id);
 }

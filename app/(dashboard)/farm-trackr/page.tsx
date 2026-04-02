@@ -10,6 +10,7 @@ import {
   kpBtnSecondary,
 } from "@/components/ui/kp-dashboard-button-tiers";
 import { AlertCircle, Loader2, MapPinned, Upload } from "lucide-react";
+import { FarmAreaMembersBulkPanel } from "./_components/farm-area-members-bulk-panel";
 
 type Territory = {
   id: string;
@@ -135,6 +136,8 @@ export default function FarmTrackrPage() {
   const [importResultSummary, setImportResultSummary] = useState<ImportSummary | null>(null);
   const [sheetsSpreadsheetId, setSheetsSpreadsheetId] = useState("");
   const [sheetsRange, setSheetsRange] = useState("Sheet1!A1:Z");
+
+  const [expandedMemberAreaId, setExpandedMemberAreaId] = useState<string | null>(null);
 
   const loadData = useCallback(() => {
     setLoading(true);
@@ -840,10 +843,11 @@ export default function FarmTrackrPage() {
                           <div
                             key={area.id}
                             className={cn(
-                              "flex flex-wrap items-center justify-between gap-2 px-3 py-2",
+                              "px-3 py-2",
                               idx > 0 && "border-t border-kp-outline"
                             )}
                           >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="min-w-0">
                               {editingArea ? (
                                 <div className="flex items-center gap-2">
@@ -906,6 +910,26 @@ export default function FarmTrackrPage() {
                                 Archive
                               </Button>
                             </div>
+                            </div>
+                          <FarmAreaMembersBulkPanel
+                            areaId={area.id}
+                            areaName={area.name}
+                            membershipCountListed={area.membershipCount}
+                            expanded={expandedMemberAreaId === area.id}
+                            onToggle={() =>
+                              setExpandedMemberAreaId((cur) =>
+                                cur === area.id ? null : area.id
+                              )
+                            }
+                            onMembershipsChanged={() => loadData()}
+                            otherAreas={areas
+                              .filter((a) => a.id !== area.id)
+                              .map((a) => ({
+                                id: a.id,
+                                name: a.name,
+                                territoryName: a.territory.name,
+                              }))}
+                          />
                           </div>
                         );
                       })

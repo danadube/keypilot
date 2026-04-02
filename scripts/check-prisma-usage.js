@@ -66,6 +66,8 @@ const BYPASSRLS_ALLOWLIST = {
     "app/api/v1/contacts/route.ts",
     // ── Farm ───────────────────────────────────────────────────────────────
     "app/api/v1/farm-areas/[id]/route.ts",
+    "app/api/v1/farm-areas/[id]/members/bulk/route.ts",
+    "app/api/v1/farm-areas/[id]/members/route.ts",
     "app/api/v1/farm-areas/route.ts",
     "app/api/v1/farm-imports/apply/route.ts",
     "app/api/v1/farm-imports/preview/route.ts",

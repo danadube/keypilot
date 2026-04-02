@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import type { Prisma } from "@prisma/client";
 import { ContactFarmMembershipStatus } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
+import { contactAccessScope } from "@/lib/contacts/contact-access-scope";
 import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
@@ -65,28 +65,4 @@ export async function DELETE(
     }
     return apiErrorFromCaught(err);
   }
-}
-
-function contactAccessScope(userId: string): Prisma.ContactWhereInput {
-  return {
-    OR: [
-      { assignedToUserId: userId },
-      {
-        openHouseVisits: {
-          some: {
-            openHouse: { hostUserId: userId, deletedAt: null },
-          },
-        },
-      },
-      { deals: { some: { userId } } },
-      {
-        followUps: {
-          some: { createdByUserId: userId, deletedAt: null },
-        },
-      },
-      { followUpReminders: { some: { userId } } },
-      { userActivities: { some: { userId } } },
-      { contactTags: { some: { tag: { userId } } } },
-    ],
-  };
 }
