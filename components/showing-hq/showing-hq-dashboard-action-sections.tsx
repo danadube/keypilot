@@ -494,8 +494,8 @@ export const QUEUE_ROW_VISUAL: Record<
     pill: "text-violet-300 bg-violet-500/10",
   },
   awaiting: {
-    border: "border-l-2 border-amber-400",
-    pill: "text-amber-300 bg-amber-500/10",
+    border: "border-l-2 border-amber-400/55",
+    pill: "text-amber-300/90 bg-amber-500/[0.07]",
   },
   prep: {
     border: "border-l-2 border-blue-400",
@@ -655,7 +655,7 @@ export function ShowingHQMetricsStrip({
           key={item.key}
           className="rounded-md border border-kp-outline-variant/50 bg-kp-surface/50 px-2.5 py-2"
         >
-          <p className="text-[11px] font-medium text-kp-on-surface-muted">{item.label}</p>
+          <p className="text-[11px] font-medium text-kp-on-surface-variant">{item.label}</p>
           <p className="mt-0.5 text-lg font-bold tabular-nums text-kp-on-surface">{item.value}</p>
           {item.hint ? (
             <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-variant">{item.hint}</p>
@@ -1065,7 +1065,7 @@ export function ShowingHQCommandStrip({
 
   return (
     <header
-      className="w-full rounded-xl border border-kp-teal/30 bg-kp-surface-high/35 px-4 py-4 shadow-[0_0_0_1px_rgba(75,174,216,0.12)] sm:px-5 sm:py-5"
+      className="w-full rounded-xl border border-kp-teal/60 bg-kp-surface-high/28 px-4 py-4 sm:px-5 sm:py-5"
       aria-label="Next event and schedule stats"
     >
       {priorityLine ? (
@@ -1090,7 +1090,7 @@ export function ShowingHQCommandStrip({
                 {eventStartsLabel ? (
                   <>
                     <span className="text-kp-outline/45">·</span>
-                    <span className="inline-flex rounded-md border border-kp-gold/40 bg-kp-gold/10 px-1.5 py-0.5 font-semibold text-kp-gold">
+                    <span className="inline-flex rounded-md border border-kp-gold/30 bg-kp-gold/[0.07] px-1.5 py-0.5 font-semibold text-kp-gold">
                       {eventStartsLabel}
                     </span>
                   </>
@@ -1199,7 +1199,7 @@ export function WhatNeedsAttentionSection({
                   className={cn(
                     "text-[12px] font-semibold uppercase tracking-wider",
                     group === "action_now"
-                      ? "text-amber-300"
+                      ? "text-amber-300/85"
                       : group === "upcoming"
                         ? "text-sky-300"
                         : "text-kp-on-surface-muted"
@@ -1211,7 +1211,7 @@ export function WhatNeedsAttentionSection({
                   className={cn(
                     "space-y-2 rounded-lg p-2",
                     group === "action_now"
-                      ? "border border-amber-400/45 bg-amber-500/[0.08] shadow-[0_0_0_1px_rgba(245,158,11,0.18)]"
+                      ? "border border-amber-400/30 bg-amber-500/[0.05]"
                       : group === "upcoming"
                         ? "border border-sky-500/28 bg-sky-500/[0.045]"
                         : "border border-kp-outline/45 bg-kp-bg/20"
@@ -1228,7 +1228,7 @@ export function WhatNeedsAttentionSection({
                           "flex flex-wrap items-start justify-between gap-3 rounded-lg border border-kp-outline/60 bg-kp-surface-high/35 py-3 pl-3 pr-3 sm:pl-3 sm:pr-3.5",
                           vis.border,
                           spotlight &&
-                            "border-amber-500/35 bg-amber-500/[0.07] shadow-[0_0_0_1px_rgba(245,158,11,0.12)]"
+                            "border-amber-500/25 bg-amber-500/[0.045]"
                         )}
                       >
                         <div className="min-w-0 flex-1 space-y-1.5">
