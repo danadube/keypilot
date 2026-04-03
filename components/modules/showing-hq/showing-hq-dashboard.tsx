@@ -28,6 +28,7 @@ import {
   ShowingHqAgentFollowUpsSection,
   type AgentFollowUpBuckets,
 } from "@/components/showing-hq/ShowingHqAgentFollowUpsSection";
+import { ShowingHqTodayRailCard } from "@/components/showing-hq/ShowingHqTodayRailCard";
 import { cn } from "@/lib/utils";
 
 // ── Types (mirrored from API) ───────────────────────────────────────────────
@@ -410,8 +411,8 @@ export function ShowingHQDashboardView() {
       <div
         className={cn(
           "mt-9 grid grid-cols-1 gap-6 sm:mt-10",
-          "lg:grid-cols-[minmax(0,1.5fr)_minmax(240px,0.95fr)] lg:items-start lg:gap-x-9",
-          "xl:gap-x-10"
+          "lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,1fr)] lg:items-start lg:gap-x-8",
+          "xl:gap-x-9"
         )}
       >
         <div className="flex min-w-0 flex-col gap-6 lg:gap-7">
@@ -448,7 +449,13 @@ export function ShowingHQDashboardView() {
           ) : null}
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-5 lg:gap-6">
+        <aside className="flex min-w-0 flex-col gap-5">
+          <ShowingHqTodayRailCard
+            showingsToday={stats.privateShowingsToday ?? 0}
+            openHousesToday={todaysOpenHousesFromApi.length}
+            draftsWaiting={draftsWaitingCount}
+            awaitingResponse={awaitingCount}
+          />
           <QuickActionsRailSection nextEvent={nextEvent} hasDrafts={draftsWaitingCount > 0} />
           <UpNextRailSection
             rows={upNextRows}
