@@ -194,7 +194,7 @@ export default function ClientKeepTagsPage() {
               onKeyDown={(e) => e.key === "Enter" && createTag()}
               placeholder="e.g. Open house — Maple"
               maxLength={50}
-              className="h-9 border-kp-outline bg-kp-surface-high text-sm"
+              className="h-9 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant"
             />
           </div>
           <Button
