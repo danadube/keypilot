@@ -1,6 +1,7 @@
 import {
   isOpenHousesListPath,
   isShowingHQContext,
+  isWorkspaceContext,
 } from "@/lib/showing-hq/isShowingHQContext";
 
 describe("isShowingHQContext", () => {
@@ -18,6 +19,21 @@ describe("isShowingHQContext", () => {
   it("is false outside ShowingHQ surfaces", () => {
     expect(isShowingHQContext("/contacts")).toBe(false);
     expect(isShowingHQContext("/")).toBe(false);
+    expect(isShowingHQContext("/client-keep")).toBe(false);
+  });
+});
+
+describe("isWorkspaceContext", () => {
+  it("is true for ShowingHQ, open houses, and ClientKeep prefixes", () => {
+    expect(isWorkspaceContext("/showing-hq")).toBe(true);
+    expect(isWorkspaceContext("/open-houses")).toBe(true);
+    expect(isWorkspaceContext("/client-keep")).toBe(true);
+    expect(isWorkspaceContext("/client-keep/contacts")).toBe(true);
+  });
+
+  it("is false outside workspace surfaces", () => {
+    expect(isWorkspaceContext("/contacts")).toBe(false);
+    expect(isWorkspaceContext("/")).toBe(false);
   });
 });
 

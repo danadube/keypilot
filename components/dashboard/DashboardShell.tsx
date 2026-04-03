@@ -9,15 +9,15 @@ import { cn } from "@/lib/utils";
 import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
 import {
   isOpenHousesListPath,
-  isShowingHQContext,
+  isWorkspaceContext,
 } from "@/lib/showing-hq/isShowingHQContext";
 
 /**
- * Date + time under ShowingHQ shell title — client-only so locale and timezone match
- * the user and avoid SSR hydration mismatches.
+ * Date + time under workspace shell title (ShowingHQ, ClientKeep, etc.) — client-only
+ * so locale and timezone match the user and avoid SSR hydration mismatches.
  * Format: "Thursday, April 2, 2026 • 4:27 PM" (locale from `undefined` = user default).
  */
-function ShowingHQShellDateTimeLine() {
+function WorkspaceShellDateTimeLine() {
   const [line, setLine] = React.useState<string | null>(null);
   React.useEffect(() => {
     function formatNow() {
@@ -40,7 +40,7 @@ function ShowingHQShellDateTimeLine() {
   }, []);
   if (!line) return null;
   return (
-    <p className="mt-0.5 truncate text-[11px] leading-tight tabular-nums text-kp-on-surface-muted">
+    <p className="mt-0.5 truncate text-[11px] tabular-nums text-kp-on-surface-muted">
       {line}
     </p>
   );
@@ -80,7 +80,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
   /** + New stays available globally (direct-create links), not only on ShowingHQ surfaces. */
   const showHeaderNewMenu = true;
-  const showingHqShell = isShowingHQContext(pathname);
+  const workspaceShell = isWorkspaceContext(pathname);
   const pageTitle = getPageTitle(pathname);
 
   return (
@@ -94,13 +94,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <header
           className={cn(
             "sticky top-0 z-20 flex w-full shrink-0 border-b border-kp-outline bg-kp-surface",
-            showingHqShell ? "items-center" : "items-stretch",
+            workspaceShell ? "items-center" : "items-stretch",
             shellTopRowHeightClass(pathname)
           )}
         >
           <div className="flex min-w-0 flex-1 items-center overflow-hidden pl-6 pr-3 md:pl-8 md:pr-4 lg:pl-10">
             <div className="min-w-0">
-              {showingHqShell ? (
+              {workspaceShell ? (
                 <>
                   {pageTitle === "ShowingHQ" ? (
                     <h1
@@ -110,12 +110,20 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                       <span className="text-kp-on-surface">Showing</span>
                       <span className="text-kp-teal">HQ</span>
                     </h1>
+                  ) : pageTitle === "ClientKeep" ? (
+                    <h1
+                      aria-label="ClientKeep"
+                      className="truncate text-lg font-semibold leading-none tracking-tight md:text-xl"
+                    >
+                      <span className="text-kp-on-surface">Client</span>
+                      <span className="text-kp-teal">Keep</span>
+                    </h1>
                   ) : (
                     <h1 className="truncate text-lg font-semibold leading-none tracking-tight text-kp-on-surface md:text-xl">
                       {pageTitle}
                     </h1>
                   )}
-                  <ShowingHQShellDateTimeLine />
+                  <WorkspaceShellDateTimeLine />
                 </>
               ) : (
                 <h1 className="truncate text-sm font-semibold leading-tight text-kp-on-surface md:text-base">

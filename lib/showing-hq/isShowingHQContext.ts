@@ -8,6 +8,19 @@ export function isShowingHQContext(pathname: string): boolean {
   return base.startsWith("/showing-hq") || base.startsWith("/open-houses");
 }
 
+/**
+ * Shell alignment: same header height, sticky sidebar, and date line as ShowingHQ.
+ * Includes ClientKeep (`/client-keep/*`) plus ShowingHQ surfaces.
+ */
+export function isWorkspaceContext(pathname: string): boolean {
+  const base = normalizePathnameBase(pathname);
+  return (
+    base.startsWith("/showing-hq") ||
+    base.startsWith("/open-houses") ||
+    base.startsWith("/client-keep")
+  );
+}
+
 /** `/open-houses` list manager only (not `/open-houses/new` or `/open-houses/sign-in`). */
 export function isOpenHousesListPath(pathname: string): boolean {
   const base = pathname.split("?")[0] ?? "";
