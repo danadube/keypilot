@@ -6,13 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary, kpBtnSecondary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { ModuleGate } from "@/components/shared/ModuleGate";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users } from "lucide-react";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
@@ -43,9 +37,9 @@ export default function ClientKeepOverviewPage() {
       valueProposition="Full CRM for contacts, leads, tags, communication logs, and follow-ups."
       backHref="/showing-hq"
     >
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold text-kp-on-surface">Overview</h2>
+    <div className="space-y-5">
+      <h2 className="sr-only">Snapshot and shortcuts</h2>
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <Button variant="outline" className={cn(kpBtnPrimary, "border-transparent")} asChild>
           <Link href="/contacts">View all contacts</Link>
         </Button>
@@ -72,18 +66,16 @@ export default function ClientKeepOverviewPage() {
           </CardContent>
         </Card>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Customer relationship management</CardTitle>
-          <CardDescription>
-            Manage contacts, leads, communication history, and open-house follow-ups.
-          </CardDescription>
+      <Card className="border-kp-outline-variant/70 bg-kp-surface-high/5">
+        <CardHeader className="space-y-1 pb-2">
+          <CardTitle className="text-sm font-medium text-kp-on-surface-muted">
+            Quick orientation
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Contacts and Deals stay in the platform sidebar. Segments are quick links into filtered
-            contact views; Tags lists your labels and usage counts. Use the shortcuts below for
-            segments, tags, communications, follow-ups, and recent activity.
+        <CardContent className="space-y-3 pt-0">
+          <p className="text-xs leading-relaxed text-kp-on-surface-variant sm:text-sm">
+            Segments open saved filters; Tags shows labels and counts. Shortcuts jump to
+            communications, follow-ups, and activity.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "text-xs")} asChild>

@@ -31,41 +31,42 @@ export function ClientKeepTabBar({ className }: { className?: string }) {
   const activeId = getActiveClientKeepTabId(pathname);
 
   return (
-    <div
-      role="tablist"
-      aria-label="ClientKeep primary navigation"
-      className={cn(
-        "flex flex-wrap items-end gap-0.5 border-b-2 border-kp-outline bg-kp-surface-high/80 px-1 sm:gap-1 sm:px-2",
-        className
-      )}
-    >
-      {CLIENT_KEEP_TAB_ITEMS.map((tab) => {
-        const isActive = tab.id === activeId;
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            role="tab"
-            aria-selected={isActive}
-            prefetch={true}
-            scroll={false}
-            className={cn(
-              "relative -mb-0.5 rounded-t-md px-3 py-2.5 text-sm font-medium transition-colors sm:px-4 sm:py-3 sm:text-base sm:font-semibold",
-              isActive
-                ? "z-[1] border border-b-0 border-kp-outline bg-kp-surface text-kp-gold ring-1 ring-kp-gold/20"
-                : "border border-transparent border-b-0 text-kp-on-surface-variant hover:bg-kp-surface/60 hover:text-kp-on-surface"
-            )}
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
+    <div className={cn("border-b border-kp-outline px-6 pb-3", className)}>
+      <div
+        role="tablist"
+        aria-label="ClientKeep primary navigation"
+        className="flex flex-wrap items-end gap-6 md:gap-8"
+      >
+        {CLIENT_KEEP_TAB_ITEMS.map((tab) => {
+          const isActive = tab.id === activeId;
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              role="tab"
+              aria-selected={isActive}
+              prefetch={true}
+              scroll={false}
+              className={cn(
+                "relative inline-flex py-3 text-base transition-colors md:text-[15px]",
+                "after:pointer-events-none after:absolute after:left-0 after:h-[2px] after:w-full after:transition-opacity after:duration-200",
+                isActive
+                  ? "font-semibold text-kp-on-surface after:bottom-[-6px] after:bg-kp-gold after:opacity-100"
+                  : "font-medium text-kp-on-surface-variant after:bottom-[-6px] after:bg-kp-outline after:opacity-0 hover:text-kp-on-surface hover:after:opacity-100"
+              )}
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 /**
- * Lightweight ClientKeep workspace: tab navigation only (shell provides module title).
+ * ClientKeep workspace: tabs first (primary in-page nav), then a short context line.
+ * Matches ShowingHQ chrome hierarchy; shell provides the module title.
  * Wraps /client-keep/* and /contacts/*.
  */
 export function ClientKeepWorkspaceChrome({
@@ -74,9 +75,14 @@ export function ClientKeepWorkspaceChrome({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-0 flex-col gap-4">
-      <header className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
+    <div className="flex min-h-0 flex-col gap-1.5">
+      <header className="overflow-hidden rounded-lg border border-kp-outline-variant bg-kp-surface">
         <ClientKeepTabBar />
+        <div className="px-3.5 py-1.5 sm:px-4 sm:py-2">
+          <p className="text-sm leading-normal text-kp-on-surface-muted">
+            Use the tabs for primary areas; below is a snapshot and shortcuts.
+          </p>
+        </div>
       </header>
       <div className="min-h-0 flex-1">{children}</div>
     </div>
