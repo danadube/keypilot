@@ -645,7 +645,7 @@ export function ShowingHQMetricsStrip({
   return (
     <section
       className={cn(
-        "grid grid-cols-2 gap-3 rounded-lg border border-kp-outline/55 bg-kp-surface-high/20 p-3 sm:grid-cols-4",
+        "grid grid-cols-2 gap-2.5 rounded-lg border border-kp-outline-variant/60 bg-kp-surface-high/10 p-2.5 sm:grid-cols-4",
         className
       )}
       aria-label="ShowingHQ quick metrics"
@@ -653,12 +653,12 @@ export function ShowingHQMetricsStrip({
       {items.map((item) => (
         <div
           key={item.key}
-          className="rounded-md border border-kp-outline/45 bg-kp-surface/70 px-3 py-2.5"
+          className="rounded-md border border-kp-outline-variant/50 bg-kp-surface/50 px-2.5 py-2"
         >
-          <p className="text-xs font-medium text-kp-on-surface-muted">{item.label}</p>
+          <p className="text-[11px] font-medium text-kp-on-surface-muted">{item.label}</p>
           <p className="mt-0.5 text-lg font-bold tabular-nums text-kp-on-surface">{item.value}</p>
           {item.hint ? (
-            <p className="mt-0.5 text-xs leading-snug text-kp-on-surface-muted">{item.hint}</p>
+            <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-variant">{item.hint}</p>
           ) : null}
         </div>
       ))}
@@ -1065,7 +1065,7 @@ export function ShowingHQCommandStrip({
 
   return (
     <header
-      className="w-full rounded-xl border border-kp-teal/30 bg-kp-surface-high/35 px-4 py-3.5 shadow-[0_0_0_1px_rgba(75,174,216,0.12)] sm:px-5"
+      className="w-full rounded-xl border border-kp-teal/30 bg-kp-surface-high/35 px-4 py-4 shadow-[0_0_0_1px_rgba(75,174,216,0.12)] sm:px-5 sm:py-5"
       aria-label="Next event and schedule stats"
     >
       {priorityLine ? (
@@ -1080,7 +1080,7 @@ export function ShowingHQCommandStrip({
           </p>
           {nextEvent ? (
             <>
-              <h2 className="mt-0.5 truncate text-base font-bold text-kp-on-surface sm:text-lg">
+              <h2 className="mt-0.5 truncate text-lg font-bold text-kp-on-surface sm:text-xl">
                 {nextEvent.address}
               </h2>
               <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-kp-on-surface-muted">

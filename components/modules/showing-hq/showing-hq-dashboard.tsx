@@ -395,7 +395,7 @@ export function ShowingHQDashboardView() {
   const nextUpPrimary = upNextRows[0] ?? null;
 
   return (
-    <div className="flex min-h-0 w-full flex-col gap-6 bg-transparent sm:gap-7">
+    <div className="flex min-h-0 w-full flex-col bg-transparent">
       <ShowingHQCommandStrip
         nextEvent={nextEvent}
         upcomingCount={upcomingCount}
@@ -405,11 +405,11 @@ export function ShowingHQDashboardView() {
         formatTime={formatTime}
         priorityLine={priorityLine}
       />
-      <ShowingHQMetricsStrip items={metricTiles} />
+      <ShowingHQMetricsStrip className="mt-5 sm:mt-6" items={metricTiles} />
 
       <div
         className={cn(
-          "grid grid-cols-1 gap-6",
+          "mt-9 grid grid-cols-1 gap-6 sm:mt-10",
           "lg:grid-cols-[minmax(0,1.5fr)_minmax(240px,0.95fr)] lg:items-start lg:gap-x-9",
           "xl:gap-x-10"
         )}

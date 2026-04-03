@@ -101,11 +101,11 @@ export function ShowingHqWorkspaceChrome({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-0 flex-col gap-3">
-      <header className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
+    <div className="flex min-h-0 flex-col gap-1.5">
+      <header className="overflow-hidden rounded-lg border border-kp-outline-variant bg-kp-surface">
         <ShowingHqTabBar />
-        <div className="flex flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-2.5">
-          <p className="text-sm leading-normal text-kp-on-surface-variant">
+        <div className="flex flex-col gap-1.5 px-3.5 py-1.5 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-2">
+          <p className="text-sm leading-normal text-kp-on-surface-muted">
             Tabs switch workspace areas; saved views keep filters.
           </p>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
