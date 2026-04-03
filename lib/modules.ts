@@ -7,13 +7,10 @@ import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   Building2,
-  Calendar,
   Megaphone,
   BarChart3,
-  QrCode,
   Settings,
   List,
-  Inbox,
 } from "lucide-react";
 
 export type ModuleId =
@@ -89,9 +86,6 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     available: true,
     sidebar: [
       { label: "Dashboard", href: "/showing-hq", icon: LayoutDashboard, section: "OVERVIEW" },
-      { label: "Showings", href: "/showing-hq/showings", icon: Calendar, section: "WORK" },
-      { label: "Open Houses", href: "/open-houses", icon: QrCode, section: "WORK" },
-      { label: "Inbox", href: "/showing-hq/supra-inbox", icon: Inbox, section: "WORK" },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
     ],
   },
