@@ -122,7 +122,10 @@ export function NewShowingForm() {
         description="This will appear in ShowingHQ → Today. Private appointment only — not an open house."
         action={
           <Button variant="ghost" size="sm" className={cn(kpBtnTertiary)} asChild>
-            <Link href="/showing-hq/showings" className="text-slate-200 hover:text-white">
+            <Link
+              href="/showing-hq/showings"
+              className="text-kp-on-surface-variant hover:text-kp-on-surface"
+            >
               ← Back to showings
             </Link>
           </Button>

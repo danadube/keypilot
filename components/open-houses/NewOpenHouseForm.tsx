@@ -220,7 +220,10 @@ export function NewOpenHouseForm() {
         description="Public event with visitor sign-in — not a private showing. This will appear in ShowingHQ once scheduled."
         action={
           <Button variant="ghost" size="sm" className={cn(kpBtnTertiary)} asChild>
-            <Link href="/open-houses" className="text-slate-200 hover:text-white">
+            <Link
+              href="/open-houses"
+              className="text-kp-on-surface-variant hover:text-kp-on-surface"
+            >
               ← Back to open houses
             </Link>
           </Button>

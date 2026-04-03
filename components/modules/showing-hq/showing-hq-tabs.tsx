@@ -87,8 +87,8 @@ export function ShowingHqTabBar({ className }: { className?: string }) {
 }
 
 /**
- * Unified ShowingHQ workspace chrome: title, placeholder KPI row, quick actions,
- * Saved views menu, and primary tab bar. Wraps all /showing-hq/* and /open-houses/* pages.
+ * ShowingHQ workspace chrome: tab bar first, then a light context line and module actions.
+ * Wraps all /showing-hq/* and /open-houses/* pages.
  */
 export function ShowingHqWorkspaceChrome({
   children,
@@ -96,31 +96,14 @@ export function ShowingHqWorkspaceChrome({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-0 flex-col gap-4">
-      <header className="rounded-xl border border-kp-outline bg-kp-surface px-4 py-3 sm:px-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 space-y-1">
-            <Link
-              href="/showing-hq"
-              className="inline-block text-xl font-semibold tracking-tight text-kp-on-surface transition-colors hover:text-kp-teal"
-            >
-              ShowingHQ
-            </Link>
-            <p
-              className="text-[11px] tabular-nums text-kp-on-surface-variant"
-              aria-hidden
-            >
-              <span className="opacity-80">Overview</span> · — &nbsp;
-              <span className="text-kp-outline">|</span> &nbsp;
-              <span className="opacity-80">This week</span> · — &nbsp;
-              <span className="text-kp-outline">|</span> &nbsp;
-              <span className="opacity-80">Pipeline</span> · —
-            </p>
-            <p className="sr-only">
-              Summary stats placeholder; detailed metrics stay on the dashboard and list views.
-            </p>
-          </div>
-
+    <div className="flex min-h-0 flex-col gap-3">
+      <header className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
+        <ShowingHqTabBar className="px-2 sm:px-3" />
+        <div className="flex flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-3">
+          <p className="text-sm leading-snug text-kp-on-surface-variant">
+            Each tab opens its own lists and tools. Saved views keep your filters and
+            search for later.
+          </p>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <details className="group relative">
               <summary
@@ -169,8 +152,6 @@ export function ShowingHqWorkspaceChrome({
             </Link>
           </div>
         </div>
-
-        <ShowingHqTabBar className="mt-4" />
       </header>
 
       <div className="min-h-0 flex-1">{children}</div>
