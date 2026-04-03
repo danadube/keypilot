@@ -54,34 +54,39 @@ export function ShowingHqTabBar({ className }: { className?: string }) {
 
   return (
     <div
-      role="tablist"
-      aria-label="ShowingHQ workspace tabs"
       className={cn(
-        "flex flex-wrap items-end gap-0 border-b border-kp-outline",
+        "border-b border-kp-outline px-6 pb-3",
         className
       )}
     >
-      {SHOWING_HQ_TAB_ITEMS.map((tab) => {
-        const isActive = tab.id === activeId;
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            role="tab"
-            aria-selected={isActive}
-            prefetch={true}
-            scroll={false}
-            className={cn(
-              "-mb-px border-b-2 px-3 pb-2.5 pt-2 text-sm font-medium transition-colors sm:px-4",
-              isActive
-                ? "border-kp-gold text-kp-gold"
-                : "border-transparent text-kp-on-surface-variant hover:border-kp-outline hover:text-kp-on-surface"
-            )}
-          >
-            {tab.label}
-          </Link>
-        );
-      })}
+      <div
+        role="tablist"
+        aria-label="ShowingHQ workspace tabs"
+        className="flex flex-wrap items-end gap-6 md:gap-8"
+      >
+        {SHOWING_HQ_TAB_ITEMS.map((tab) => {
+          const isActive = tab.id === activeId;
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              role="tab"
+              aria-selected={isActive}
+              prefetch={true}
+              scroll={false}
+              className={cn(
+                "relative inline-flex py-3 text-base transition-colors md:text-[15px]",
+                "after:pointer-events-none after:absolute after:left-0 after:h-[2px] after:w-full after:transition-opacity after:duration-200",
+                isActive
+                  ? "font-semibold text-kp-on-surface after:bottom-[-6px] after:bg-kp-gold after:opacity-100"
+                  : "font-medium text-kp-on-surface-variant after:bottom-[-6px] after:bg-kp-outline after:opacity-0 hover:text-kp-on-surface hover:after:opacity-100"
+              )}
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -98,7 +103,7 @@ export function ShowingHqWorkspaceChrome({
   return (
     <div className="flex min-h-0 flex-col gap-3">
       <header className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
-        <ShowingHqTabBar className="px-2 sm:px-3" />
+        <ShowingHqTabBar />
         <div className="flex flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-3">
           <p className="text-sm leading-snug text-kp-on-surface-variant">
             Each tab opens its own lists and tools. Saved views keep your filters and
