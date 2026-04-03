@@ -7,10 +7,7 @@ import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
 import { ShowingHQWorkbenchHeaderActions } from "@/components/dashboard/ShowingHQWorkbenchHeaderActions";
 import { cn } from "@/lib/utils";
 import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
-import {
-  isOpenHousesListPath,
-  isWorkspaceContext,
-} from "@/lib/showing-hq/isShowingHQContext";
+import { isWorkspaceContext } from "@/lib/showing-hq/isShowingHQContext";
 
 /**
  * Date + time under workspace shell title (ShowingHQ, ClientKeep, etc.) — client-only
@@ -48,29 +45,19 @@ function WorkspaceShellDateTimeLine() {
 
 function getPageTitle(pathname: string): string {
   const base = (pathname.split("?")[0] ?? "").replace(/\/$/, "") || "/";
-  // All routes under ShowingHQ use one shell title; entity context lives on the page.
-  if (base.startsWith("/showing-hq")) return "ShowingHQ";
-  if (base.startsWith("/open-houses")) {
-    if (isOpenHousesListPath(pathname)) return "All Open Houses";
-    // Page hero carries the specific title; shell stays contextual like /showing-hq/*.
-    if (base.startsWith("/open-houses/new")) return "ShowingHQ";
+  // Workspace shells: module name only; tabs/page carry section identity.
+  if (base.startsWith("/showing-hq") || base.startsWith("/open-houses")) {
     return "ShowingHQ";
   }
-  // Page carries the specific title; shell stays module context (matches /open-houses/new).
+  if (pathname.startsWith("/contacts") || pathname.startsWith("/client-keep")) {
+    return "ClientKeep";
+  }
   if (pathname.startsWith("/properties/new")) return "Properties";
   if (pathname.startsWith("/properties")) return "Properties";
   if (pathname.startsWith("/property-vault")) return "PropertyVault";
   if (pathname.startsWith("/market-pilot/campaigns")) return "Campaigns";
   if (pathname.startsWith("/market-pilot")) return "MarketPilot";
-  // Contacts lives under ClientKeep; shell shows module mark (tabs label the Contacts area).
-  if (pathname.startsWith("/contacts")) return "ClientKeep";
   if (pathname.startsWith("/deals")) return "Deals";
-  if (pathname.startsWith("/client-keep/activity")) return "Recent activity";
-  if (pathname.startsWith("/client-keep/follow-ups")) return "Follow-ups";
-  if (pathname.startsWith("/client-keep/communications")) return "Communications";
-  if (pathname.startsWith("/client-keep/tags")) return "Tags";
-  if (pathname.startsWith("/client-keep/segments")) return "Segments";
-  if (pathname.startsWith("/client-keep")) return "ClientKeep";
   if (pathname.startsWith("/settings/integrations")) return "Integrations";
   if (pathname.startsWith("/settings")) return "Settings";
   if (pathname === "/") return "Overview";

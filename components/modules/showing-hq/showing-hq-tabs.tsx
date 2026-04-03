@@ -11,7 +11,6 @@ export const SHOWING_HQ_TAB_ITEMS = [
   { id: "open-houses", label: "Open Houses", href: "/open-houses" },
   { id: "visitors", label: "Visitors", href: "/showing-hq/visitors" },
   { id: "feedback", label: "Feedback", href: "/showing-hq/feedback-requests" },
-  { id: "activity", label: "Activity", href: "/showing-hq/activity" },
 ] as const;
 
 export type ShowingHqTabId = (typeof SHOWING_HQ_TAB_ITEMS)[number]["id"];
@@ -39,12 +38,7 @@ export function getActiveShowingHqTabId(pathname: string): ShowingHqTabId | null
   ) {
     return "feedback";
   }
-  if (
-    pathname.startsWith("/showing-hq/activity") ||
-    pathname.startsWith("/showing-hq/templates")
-  ) {
-    return "activity";
-  }
+  // Activity / templates: reachable via sidebar and deep links; no primary tab.
   return null;
 }
 

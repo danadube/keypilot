@@ -8,21 +8,19 @@ export const CLIENT_KEEP_TAB_ITEMS = [
   { id: "contacts", label: "Contacts", href: "/contacts" },
   { id: "segments", label: "Segments", href: "/client-keep/segments" },
   { id: "follow-ups", label: "Follow-ups", href: "/client-keep/follow-ups" },
-  { id: "communications", label: "Communications", href: "/client-keep/communications" },
 ] as const;
 
 export type ClientKeepTabId = (typeof CLIENT_KEEP_TAB_ITEMS)[number]["id"];
 
 /**
- * Active workspace tab for ClientKeep. Activity, Tags, and other auxiliary
- * /client-keep/* routes (not the tab targets) return null (no tab selected).
+ * Active workspace tab for ClientKeep. Tags, communications hub, and other auxiliary
+ * /client-keep/* routes (not tab targets) return null (no tab selected).
  */
 export function getActiveClientKeepTabId(pathname: string): ClientKeepTabId | null {
   if (pathname.startsWith("/contacts")) return "contacts";
   if (pathname.startsWith("/client-keep/tags")) return "contacts";
   if (pathname.startsWith("/client-keep/segments")) return "segments";
   if (pathname.startsWith("/client-keep/follow-ups")) return "follow-ups";
-  if (pathname.startsWith("/client-keep/communications")) return "communications";
   return null;
 }
 

@@ -16,6 +16,7 @@ import {
   Megaphone,
   Handshake,
   CheckSquare,
+  Activity,
   BarChart3,
 } from "lucide-react";
 import { MODULES, getModuleFromPath } from "@/lib/modules";
@@ -336,6 +337,21 @@ export function ModuleSidebar() {
               >
                 <CheckSquare className="h-[18px] w-[18px] shrink-0 opacity-85" />
                 Tasks
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/showing-hq/activity"
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                  "text-slate-400 hover:bg-white/5 hover:text-white",
+                  (pathname.startsWith("/showing-hq/activity") ||
+                    pathname.startsWith("/showing-hq/templates")) &&
+                    "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
+                )}
+              >
+                <Activity className="h-[18px] w-[18px] shrink-0 opacity-85" />
+                Activity
               </Link>
             </li>
             <li>
