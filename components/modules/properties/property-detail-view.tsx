@@ -639,7 +639,7 @@ export function PropertyDetailView({ id }: { id: string }) {
             <p className="mb-4 text-xs text-kp-on-surface-variant">Events at this property</p>
 
             {!property.openHouses?.length ? (
-              <p className="mb-4 text-sm text-kp-on-surface-variant">No open houses yet.</p>
+              <p className="mb-4 text-sm text-kp-on-surface-variant">{UI_COPY.empty.noneYet("open houses")}</p>
             ) : (
               <ul className="mb-4 divide-y divide-kp-outline">
                 {property.openHouses.map((oh) => (

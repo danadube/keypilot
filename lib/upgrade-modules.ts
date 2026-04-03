@@ -5,6 +5,7 @@
 
 import type { ModuleId } from "./modules";
 import { UPGRADE_MODULES } from "./module-access";
+import { UI_COPY } from "./ui-copy";
 
 export interface UpgradeModuleConfig {
   moduleId: ModuleId;
@@ -29,8 +30,7 @@ export const UPGRADE_MODULE_CONFIGS: Record<string, UpgradeModuleConfig> = {
     displayName: "ClientKeep",
     name: "ClientKeep",
     headline: "Turn visitors into clients",
-    description:
-      "Track every open house visitor through your full sales pipeline.",
+    description: UI_COPY.gates.clientKeep,
     benefits: [
       "Full contact CRM with leads, tags, and status tracking",
       "Communication history and follow-up reminders",

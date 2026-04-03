@@ -141,12 +141,7 @@ export default function ClientKeepSegmentsPage() {
   }
 
   return (
-    <ModuleGate
-      moduleId="client-keep"
-      moduleName="ClientKeep"
-      valueProposition="Full CRM for contacts, leads, tags, communication logs, and follow-ups."
-      backHref="/showing-hq"
-    >
+    <ModuleGate moduleId="client-keep" moduleName="ClientKeep" backHref="/showing-hq">
       <div className="flex flex-col gap-4">
         <p className="text-sm text-kp-on-surface-muted">
           Saved views of your contacts.
@@ -164,7 +159,7 @@ export default function ClientKeepSegmentsPage() {
           </div>
           {savedSegments.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-kp-on-surface-variant">
-              No saved segments yet.
+              {UI_COPY.empty.noneYet("saved segments")}
             </div>
           ) : (
             <ul className="divide-y divide-kp-outline">
@@ -335,7 +330,7 @@ export default function ClientKeepSegmentsPage() {
           ) : tags.length === 0 ? (
             <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
               <Tag className="h-8 w-8 text-kp-on-surface-variant opacity-70" />
-              <p className="text-sm text-kp-on-surface">No tags yet.</p>
+              <p className="text-sm text-kp-on-surface">{UI_COPY.empty.noneYet("tags")}</p>
               <Link
                 href="/client-keep/tags"
                 className="text-sm font-medium text-kp-teal hover:underline"

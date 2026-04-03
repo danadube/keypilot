@@ -165,7 +165,7 @@ export function OpenHouseSellerReportView({ openHouseId }: { openHouseId: string
               <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-kp-surface-high text-kp-on-surface-variant">
                 <FileText className="h-6 w-6" />
               </div>
-              <p className="text-sm font-medium text-kp-on-surface">No report yet</p>
+              <p className="text-sm font-medium text-kp-on-surface">{UI_COPY.empty.noneYet("report")}</p>
               <p className="mt-1 max-w-xs text-xs text-kp-on-surface-variant">
                 Generate a report to share event metrics with the seller.
               </p>

@@ -191,7 +191,7 @@ export function DashboardHome() {
         />
         {stats.recentOpenHouses.length === 0 ? (
           <BrandEmptyState
-            title="No open houses yet"
+            title={UI_COPY.empty.noneYet("open houses")}
             description="Create one to get started"
             action={
               <BrandButton variant="accent" asChild>

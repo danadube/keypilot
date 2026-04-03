@@ -380,7 +380,7 @@ export function VisitorsListView() {
                 </>
               ) : (
                 <>
-                  <p className="text-sm font-medium text-kp-on-surface">No visitors yet</p>
+                  <p className="text-sm font-medium text-kp-on-surface">{UI_COPY.empty.noneYet("visitors")}</p>
                   <p className="mt-1 max-w-xs text-xs text-kp-on-surface-variant">
                     Share your sign-in link or QR code at your next open house. Visitors will appear here as they sign in.
                   </p>

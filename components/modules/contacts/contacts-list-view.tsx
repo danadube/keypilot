@@ -251,7 +251,7 @@ function EmptyState({ isFiltered, onReset }: { isFiltered: boolean; onReset: () 
           </>
         ) : (
           <>
-            <p className="text-sm font-medium text-kp-on-surface">No contacts yet</p>
+            <p className="text-sm font-medium text-kp-on-surface">{UI_COPY.empty.noneYet("contacts")}</p>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant">
               Contacts appear here when visitors sign in at your open houses.
             </p>

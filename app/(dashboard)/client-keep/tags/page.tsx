@@ -167,12 +167,7 @@ export default function ClientKeepTagsPage() {
   }
 
   return (
-    <ModuleGate
-      moduleId="client-keep"
-      moduleName="ClientKeep"
-      valueProposition="Full CRM for contacts, leads, tags, communication logs, and follow-ups."
-      backHref="/showing-hq"
-    >
+    <ModuleGate moduleId="client-keep" moduleName="ClientKeep" backHref="/showing-hq">
       <div className="flex flex-col gap-4">
         <DashboardContextStrip message="Your tags are scoped to your account. Assign them on each contact’s profile from the contacts list." />
 
@@ -243,7 +238,7 @@ export default function ClientKeepTagsPage() {
           ) : tags.length === 0 ? (
             <div className="flex min-h-[200px] flex-col items-center justify-center gap-2 px-4 py-10 text-center">
               <Tag className="h-8 w-8 text-kp-on-surface-variant opacity-70" />
-              <p className="text-sm font-medium text-kp-on-surface">No tags yet</p>
+              <p className="text-sm font-medium text-kp-on-surface">{UI_COPY.empty.noneYet("tags")}</p>
               <p className="max-w-sm text-xs text-kp-on-surface-variant">
                 Create one above, or add a tag when viewing a contact — matching names reuse the same tag.
               </p>

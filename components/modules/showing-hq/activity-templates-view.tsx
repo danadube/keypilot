@@ -257,7 +257,7 @@ export function ActivityTemplatesView() {
             <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-kp-surface-high text-kp-on-surface-variant">
               <FileText className="h-5 w-5" />
             </div>
-            <p className="text-sm font-medium text-kp-on-surface">No templates yet</p>
+            <p className="text-sm font-medium text-kp-on-surface">{UI_COPY.empty.noneYet("templates")}</p>
             <p className="mt-1 max-w-sm text-xs text-kp-on-surface-variant">
               Save reusable title and description patterns for follow-ups and tasks.
             </p>

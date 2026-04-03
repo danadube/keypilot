@@ -192,7 +192,7 @@ function EmptyState({
           </>
         ) : (
           <>
-            <p className="text-sm font-medium text-kp-on-surface">No open houses yet</p>
+            <p className="text-sm font-medium text-kp-on-surface">{UI_COPY.empty.noneYet("open houses")}</p>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant">
               Create an event to get your QR sign-in link and start collecting visitors.
             </p>

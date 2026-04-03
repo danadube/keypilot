@@ -193,7 +193,7 @@ function EmptyState({ isFiltered, onReset }: { isFiltered: boolean; onReset: () 
           </>
         ) : (
           <>
-            <p className="text-sm font-medium text-kp-on-surface">No deals yet</p>
+            <p className="text-sm font-medium text-kp-on-surface">{UI_COPY.empty.noneYet("deals")}</p>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant">
               Deals link contacts and properties to track your transaction pipeline.
             </p>

@@ -9,12 +9,7 @@ export default function ContactDetailPage({
   params: { id: string };
 }) {
   return (
-    <ModuleGate
-      moduleId="client-keep"
-      moduleName="ClientKeep"
-      valueProposition="Full CRM for contacts, leads, tags, communication logs, and follow-ups."
-      backHref="/showing-hq"
-    >
+    <ModuleGate moduleId="client-keep" moduleName="ClientKeep" backHref="/showing-hq">
       <ContactDetail id={params.id} />
     </ModuleGate>
   );

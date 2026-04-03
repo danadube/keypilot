@@ -318,7 +318,7 @@ function EmptyState({
           </>
         ) : (
           <>
-            <p className="text-sm font-medium text-kp-on-surface">No showings yet</p>
+            <p className="text-sm font-medium text-kp-on-surface">{UI_COPY.empty.noneYet("showings")}</p>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant">
               Add a private showing or check Supra Inbox for scraped notifications.
             </p>

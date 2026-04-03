@@ -19,12 +19,7 @@ function ContactsListFallback() {
 
 export default function ContactsPage() {
   return (
-    <ModuleGate
-      moduleId="client-keep"
-      moduleName="ClientKeep"
-      valueProposition="Full CRM for contacts, leads, tags, communication logs, and follow-ups."
-      backHref="/showing-hq"
-    >
+    <ModuleGate moduleId="client-keep" moduleName="ClientKeep" backHref="/showing-hq">
       <Suspense fallback={<ContactsListFallback />}>
         <ContactsListView />
       </Suspense>

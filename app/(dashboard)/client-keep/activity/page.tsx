@@ -179,12 +179,7 @@ export default function ClientKeepRecentActivityPage() {
   );
 
   return (
-    <ModuleGate
-      moduleId="client-keep"
-      moduleName="ClientKeep"
-      valueProposition="Full CRM for contacts, leads, tags, communication logs, and follow-ups."
-      backHref="/showing-hq"
-    >
+    <ModuleGate moduleId="client-keep" moduleName="ClientKeep" backHref="/showing-hq">
       <div className="flex flex-col gap-4">
         <DashboardContextStrip message="A chronological view of open-house follow-ups and CRM tasks. Use row actions to complete reminders and tasks; open drafts in Follow-ups or from the row link." />
 

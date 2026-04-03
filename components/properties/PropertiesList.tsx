@@ -111,7 +111,8 @@ export function PropertiesList() {
         <CardContent>
           {properties.length === 0 ? (
             <p className="py-8 text-center text-muted-foreground">
-              No properties yet. Add one to create open houses.
+              <span className="block">{UI_COPY.empty.noneYet("properties")}</span>
+              <span className="mt-1 block text-sm">Add one to create open houses.</span>
             </p>
           ) : (
             <Table>

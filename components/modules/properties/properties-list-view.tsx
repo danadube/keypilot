@@ -92,7 +92,7 @@ function EmptyState() {
         <Building2 className="h-5 w-5 text-kp-on-surface-variant" />
       </div>
       <div>
-        <p className="text-sm font-medium text-kp-on-surface">No properties yet</p>
+        <p className="text-sm font-medium text-kp-on-surface">{UI_COPY.empty.noneYet("properties")}</p>
         <p className="mt-0.5 text-xs text-kp-on-surface-variant">
           Add your first property to start scheduling open houses.
         </p>

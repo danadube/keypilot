@@ -449,7 +449,7 @@ export function FollowUpsView({ compact = false }: { compact?: boolean } = {}) {
             compact ? undefined : "Sent drafts and completed reminders."
           }
           icon={<CheckCircle className="h-5 w-5" />}
-          emptyTitle="Nothing here yet"
+          emptyTitle={UI_COPY.empty.nothingHere}
           emptyDescription={
             compact ? undefined : "Completed work will show up for reference."
           }

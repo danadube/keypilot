@@ -207,7 +207,7 @@ export default function OpenSignInPage() {
           {active.length === 0 && recentOthers.length === 0 ? (
             <Card>
               <CardHeader>
-                <CardTitle>No events yet</CardTitle>
+                <CardTitle>{UI_COPY.empty.noneYet("events")}</CardTitle>
                 <CardDescription>
                   Create an event first. Then return here to open the host console or print the QR poster for visitors.
                 </CardDescription>

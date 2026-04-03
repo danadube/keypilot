@@ -10,6 +10,12 @@
  * See `docs/CONTENT_STYLE_GUIDE.md` for full guidance. Prefer importing from here for new strings.
  */
 export const UI_COPY = {
+  /** Upgrade / ModuleGate surfaces — keep to one line per module where possible. */
+  gates: {
+    clientKeep:
+      "Organize contacts with tags, segments, activity, and follow-ups.",
+  },
+
   actions: {
     open: "Open",
     create: "Create",

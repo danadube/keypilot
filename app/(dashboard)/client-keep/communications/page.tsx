@@ -60,12 +60,7 @@ const hubSections: {
 
 export default function ClientKeepCommunicationsHubPage() {
   return (
-    <ModuleGate
-      moduleId="client-keep"
-      moduleName="ClientKeep"
-      valueProposition="Full CRM for contacts, leads, tags, communication logs, and follow-ups."
-      backHref="/showing-hq"
-    >
+    <ModuleGate moduleId="client-keep" moduleName="ClientKeep" backHref="/showing-hq">
       <div className="flex flex-col gap-4">
         <p className="text-sm font-semibold text-kp-on-surface">
           Communication workflows

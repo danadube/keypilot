@@ -133,7 +133,8 @@ export function ContactsList() {
         <CardContent>
           {contacts.length === 0 ? (
             <p className="py-8 text-center text-muted-foreground">
-              No contacts yet. Share your QR sign-in link at open houses.
+              <span className="block">{UI_COPY.empty.noneYet("contacts")}</span>
+              <span className="mt-1 block text-sm">Share your QR sign-in link at open houses.</span>
             </p>
           ) : (
             <Table>

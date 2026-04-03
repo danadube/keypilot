@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type Stats = {
   propertiesCount: number;
@@ -139,7 +140,8 @@ export function DashboardContent({ stats }: { stats: Stats }) {
         <CardContent>
           {stats.recentOpenHouses.length === 0 ? (
             <p className="py-8 text-center text-muted-foreground">
-              No open houses yet. Create one to get started.
+              <span className="block">{UI_COPY.empty.noneYet("open houses")}</span>
+              <span className="mt-1 block text-sm">Create one to get started.</span>
             </p>
           ) : (
             <div className="space-y-3">

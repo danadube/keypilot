@@ -124,7 +124,7 @@ function EmptyState({
           </>
         ) : (
           <>
-            <p className="text-sm font-medium text-kp-on-surface">No transactions yet</p>
+            <p className="text-sm font-medium text-kp-on-surface">{UI_COPY.empty.noneYet("transactions")}</p>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant">
               {showArchived
                 ? "No active or archived transactions found."

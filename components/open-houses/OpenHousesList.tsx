@@ -192,7 +192,10 @@ export function OpenHousesList() {
           <CardContent>
             {openHouses.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
-                <p className="text-muted-foreground mb-4">No open houses yet. Create one to get started.</p>
+                <p className="text-muted-foreground mb-4 text-center">
+                  <span className="block">{UI_COPY.empty.noneYet("open houses")}</span>
+                  <span className="mt-1 block text-sm">Create one to get started.</span>
+                </p>
                 <BrandButton asChild>
                   <Link href="/open-houses/new">New Open House</Link>
                 </BrandButton>

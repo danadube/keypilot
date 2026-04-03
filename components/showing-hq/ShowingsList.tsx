@@ -90,7 +90,7 @@ export function ShowingsList() {
             compact
             variant="premium"
             icon={<Calendar className="h-6 w-6" />}
-            title="No showings yet"
+            title={UI_COPY.empty.noneYet("showings")}
             description="Add a single private showing or check Supra Inbox for scraped showing notifications."
             action={
               <BrandButton variant="primary" size="sm" asChild>
