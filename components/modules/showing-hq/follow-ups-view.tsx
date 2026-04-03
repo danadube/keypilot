@@ -187,10 +187,10 @@ function SectionCard({
 }: {
   eyebrow: string;
   title: string;
-  description: string;
+  description?: string;
   icon: React.ReactNode;
   emptyTitle: string;
-  emptyDescription: string;
+  emptyDescription?: string;
   emptyAction?: React.ReactNode;
   emptyExtra?: React.ReactNode;
   tasks: Task[];
@@ -207,7 +207,9 @@ function SectionCard({
         {eyebrow}
       </p>
       <h3 className="text-sm font-semibold text-kp-on-surface">{title}</h3>
-      <p className="mt-0.5 text-xs text-kp-on-surface-variant">{description}</p>
+      {description ? (
+        <p className="mt-0.5 text-xs text-kp-on-surface-variant">{description}</p>
+      ) : null}
       <div className="mt-4">
         {tasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -218,9 +220,11 @@ function SectionCard({
             <p className="text-sm font-medium text-kp-on-surface">
               {emptyTitle}
             </p>
-            <p className="mt-1 max-w-xs text-xs text-kp-on-surface-variant">
-              {emptyDescription}
-            </p>
+            {emptyDescription ? (
+              <p className="mt-1 max-w-xs text-xs text-kp-on-surface-variant">
+                {emptyDescription}
+              </p>
+            ) : null}
             {emptyAction && <div className="mt-3">{emptyAction}</div>}
           </div>
         ) : (
@@ -249,7 +253,7 @@ function SectionCard({
   );
 }
 
-export function FollowUpsView() {
+export function FollowUpsView({ compact = false }: { compact?: boolean } = {}) {
   const [data, setData] = useState<FollowUpsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -323,17 +327,31 @@ export function FollowUpsView() {
 
       {attentionTotal > 0 ? (
         <div className="rounded-xl border border-kp-teal/25 bg-kp-teal/[0.07] px-4 py-3 sm:px-5">
-          <p className="text-sm font-medium text-kp-on-surface">
-            What needs attention now
-          </p>
-          <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-            {attentionTotal === 1
-              ? "1 item needs your action."
-              : `${attentionTotal} items need your action.`}
-            {overdue.length > 0
-              ? ` ${overdue.length} reminder${overdue.length === 1 ? "" : "s"} overdue.`
-              : ""}
-          </p>
+          {compact ? (
+            <p className="text-sm font-medium text-kp-on-surface">
+              {attentionTotal === 1
+                ? "1 item needs attention"
+                : `${attentionTotal} items need attention`}
+              {overdue.length > 0
+                ? ` · ${overdue.length} overdue`
+                : ""}
+              .
+            </p>
+          ) : (
+            <>
+              <p className="text-sm font-medium text-kp-on-surface">
+                What needs attention now
+              </p>
+              <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+                {attentionTotal === 1
+                  ? "1 item needs your action."
+                  : `${attentionTotal} items need your action.`}
+                {overdue.length > 0
+                  ? ` ${overdue.length} reminder${overdue.length === 1 ? "" : "s"} overdue.`
+                  : ""}
+              </p>
+            </>
+          )}
         </div>
       ) : null}
 
@@ -365,20 +383,28 @@ export function FollowUpsView() {
         <SectionCard
           eyebrow="NEEDS REPLY"
           title="Email drafts"
-          description="Review, edit, and send — or jump to the contact record."
+          description={
+            compact
+              ? undefined
+              : "Review, edit, and send — or jump to the contact record."
+          }
           icon={<Mail className="h-5 w-5" />}
           emptyTitle="No drafts waiting"
-          emptyDescription="After visitors sign in at an open house, drafts land here."
+          emptyDescription={
+            compact ? undefined : "After visitors sign in at an open house, drafts land here."
+          }
           emptyExtra={
-            <div className="mb-4 w-full rounded-lg border border-dashed border-kp-outline bg-kp-surface-high/50 p-4 text-left">
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-variant">
-                Quick loop
-              </p>
-              <ol className="list-inside list-decimal space-y-1 text-xs text-kp-on-surface-variant">
-                <li>Open a draft and send (or tweak first)</li>
-                <li>Use Contact to log notes on their record</li>
-              </ol>
-            </div>
+            compact ? undefined : (
+              <div className="mb-4 w-full rounded-lg border border-dashed border-kp-outline bg-kp-surface-high/50 p-4 text-left">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-variant">
+                  Quick loop
+                </p>
+                <ol className="list-inside list-decimal space-y-1 text-xs text-kp-on-surface-variant">
+                  <li>Open a draft and send (or tweak first)</li>
+                  <li>Use Contact to log notes on their record</li>
+                </ol>
+              </div>
+            )
           }
           emptyAction={
             <Button
@@ -398,10 +424,18 @@ export function FollowUpsView() {
         <SectionCard
           eyebrow="UPCOMING"
           title="Scheduled reminders"
-          description="Due soon — open the contact to work the full timeline."
+          description={
+            compact
+              ? undefined
+              : "Due soon — open the contact to work the full timeline."
+          }
           icon={<Bell className="h-5 w-5" />}
           emptyTitle="Nothing scheduled"
-          emptyDescription="Add follow-ups from a contact detail page when you are ready."
+          emptyDescription={
+            compact
+              ? undefined
+              : "Add follow-ups from a contact detail page when you are ready."
+          }
           tasks={upcoming}
           onReminderDone={onReminderDone}
           reminderPatchingId={reminderPatchingId}
@@ -410,10 +444,14 @@ export function FollowUpsView() {
         <SectionCard
           eyebrow="COMPLETED"
           title="Done"
-          description="Sent drafts and completed reminders."
+          description={
+            compact ? undefined : "Sent drafts and completed reminders."
+          }
           icon={<CheckCircle className="h-5 w-5" />}
           emptyTitle="Nothing here yet"
-          emptyDescription="Completed work will show up for reference."
+          emptyDescription={
+            compact ? undefined : "Completed work will show up for reference."
+          }
           tasks={completed}
           limit={10}
           overflow={completed.length > 10 ? completed.length - 10 : 0}

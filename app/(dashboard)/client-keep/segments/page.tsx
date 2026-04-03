@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ModuleGate } from "@/components/shared/ModuleGate";
-import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 import { cn } from "@/lib/utils";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import {
@@ -34,36 +33,12 @@ type TagRow = {
   usageCount: number;
 };
 
-const STATUS_SEGMENTS: {
-  label: string;
-  description: string;
-  status: ContactSegmentStatus;
-}[] = [
-  {
-    label: "All leads",
-    description: "Contacts in Lead status",
-    status: "LEAD",
-  },
-  {
-    label: "Contacted",
-    description: "Contacts in Contacted status",
-    status: "CONTACTED",
-  },
-  {
-    label: "Nurturing",
-    description: "Contacts in Nurturing status",
-    status: "NURTURING",
-  },
-  {
-    label: "Ready",
-    description: "Contacts ready to transact",
-    status: "READY",
-  },
-  {
-    label: "Lost",
-    description: "Contacts marked lost",
-    status: "LOST",
-  },
+const STATUS_SEGMENTS: { label: string; status: ContactSegmentStatus }[] = [
+  { label: "All leads", status: "LEAD" },
+  { label: "Contacted", status: "CONTACTED" },
+  { label: "Nurturing", status: "NURTURING" },
+  { label: "Ready", status: "READY" },
+  { label: "Lost", status: "LOST" },
 ];
 
 export default function ClientKeepSegmentsPage() {
@@ -172,21 +147,9 @@ export default function ClientKeepSegmentsPage() {
       backHref="/showing-hq"
     >
       <div className="flex flex-col gap-4">
-        <DashboardContextStrip message='Segments are saved views into your contacts list. Each link uses the same filters as Contacts — no separate list. Named shortcuts in "Your saved segments" live in this browser only (not synced across devices).' />
-
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold text-kp-on-surface">
-            Segments
-          </h1>
-          <p className="max-w-2xl text-sm text-kp-on-surface-variant">
-            Jump to common contact slices. Views use your open-house visitor
-            scope and optional status or tag filters, same as{" "}
-            <Link href="/contacts" className="text-kp-teal hover:underline">
-              Contacts
-            </Link>
-            .
-          </p>
-        </div>
+        <p className="text-sm text-kp-on-surface-muted">
+          Saved views of your contacts.
+        </p>
 
         {/* Saved segments (local only) */}
         <div className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
@@ -194,31 +157,13 @@ export default function ClientKeepSegmentsPage() {
             <p className="text-sm font-semibold text-kp-on-surface">
               Your saved segments
             </p>
-            <p className="text-xs text-kp-on-surface-variant">
-              Stored on this browser only — not synced across devices or
-              browsers. Open, rename, or delete shortcuts to your contact filters
-              (
-              <code className="rounded bg-kp-surface-high px-1 text-[11px]">
-                ?status=
-              </code>{" "}
-              and{" "}
-              <code className="rounded bg-kp-surface-high px-1 text-[11px]">
-                ?tagId=
-              </code>
-              ).
+            <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+              Stored on this device only.
             </p>
           </div>
           {savedSegments.length === 0 ? (
             <div className="px-4 py-8 text-center text-sm text-kp-on-surface-variant">
-              No saved segments yet. On{" "}
-              <Link href="/contacts" className="text-kp-teal hover:underline">
-                Contacts
-              </Link>
-              , set a status tab or tag filter, then use{" "}
-              <span className="font-medium text-kp-on-surface">
-                Save segment
-              </span>
-              .
+              No saved segments yet.
             </div>
           ) : (
             <ul className="divide-y divide-kp-outline">
@@ -326,31 +271,18 @@ export default function ClientKeepSegmentsPage() {
               })}
             </ul>
           )}
-          {savedSegments.length > 0 &&
-            savedSegments.some((s) => s.tagId) && (
-              <p className="border-t border-kp-outline px-4 py-2.5 text-[11px] text-kp-on-surface-variant">
-                Segments that include a tag may break if the tag is deleted.
-                Contacts will show an error — use{" "}
-                <span className="font-medium text-kp-on-surface">
-                  Clear filters
-                </span>{" "}
-                there or remove the shortcut here.
-              </p>
-            )}
+          {savedSegments.length > 0 && savedSegments.some((s) => s.tagId) && (
+            <p className="border-t border-kp-outline px-4 py-2.5 text-[11px] text-kp-on-surface-variant">
+              If a tag is deleted, shortcuts that use it may need to be removed.
+            </p>
+          )}
         </div>
 
         {/* Status-based segments */}
         <div className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
           <div className="border-b border-kp-outline px-4 py-3">
             <p className="text-sm font-semibold text-kp-on-surface">
-              By status
-            </p>
-            <p className="text-xs text-kp-on-surface-variant">
-              Opens Contacts with a status filter (
-              <code className="rounded bg-kp-surface-high px-1 text-[11px]">
-                ?status=
-              </code>
-              ).
+              Quick segments
             </p>
           </div>
           <ul className="divide-y divide-kp-outline">
@@ -361,9 +293,6 @@ export default function ClientKeepSegmentsPage() {
               >
                 <div className="min-w-0">
                   <p className="font-medium text-kp-on-surface">{row.label}</p>
-                  <p className="text-xs text-kp-on-surface-variant">
-                    {row.description}
-                  </p>
                 </div>
                 <Link
                   href={segmentToHref(row.status, null)}
@@ -384,13 +313,6 @@ export default function ClientKeepSegmentsPage() {
         <div className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
           <div className="border-b border-kp-outline px-4 py-3">
             <p className="text-sm font-semibold text-kp-on-surface">By tag</p>
-            <p className="text-xs text-kp-on-surface-variant">
-              Opens Contacts filtered to one tag (
-              <code className="rounded bg-kp-surface-high px-1 text-[11px]">
-                ?tagId=
-              </code>
-              ).
-            </p>
           </div>
           {tagsLoading ? (
             <div className="flex min-h-[120px] items-center justify-center py-8">
@@ -398,13 +320,11 @@ export default function ClientKeepSegmentsPage() {
             </div>
           ) : tagsForbidden ? (
             <div className="px-4 py-6 text-sm text-kp-on-surface-variant">
-              Tag-based segments need{" "}
-              <span className="font-medium text-kp-on-surface">Full CRM</span>
-              . Status links above still work; upgrade to use tags here, or open{" "}
+              <span className="font-medium text-kp-on-surface">Full CRM</span>{" "}
+              required for tag shortcuts.{" "}
               <Link href="/client-keep/tags" className="text-kp-teal hover:underline">
                 Tags
-              </Link>{" "}
-              after upgrading.
+              </Link>
             </div>
           ) : tagsError ? (
             <div className="flex items-start gap-2 px-4 py-4 text-sm text-red-300">
@@ -414,11 +334,7 @@ export default function ClientKeepSegmentsPage() {
           ) : tags.length === 0 ? (
             <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
               <Tag className="h-8 w-8 text-kp-on-surface-variant opacity-70" />
-              <p className="text-sm text-kp-on-surface">No tags yet</p>
-              <p className="max-w-sm text-xs text-kp-on-surface-variant">
-                Create tags on the Tags page, then return here for one-click
-                contact views.
-              </p>
+              <p className="text-sm text-kp-on-surface">No tags yet.</p>
               <Link
                 href="/client-keep/tags"
                 className="text-sm font-medium text-kp-teal hover:underline"
@@ -456,29 +372,6 @@ export default function ClientKeepSegmentsPage() {
               ))}
             </ul>
           )}
-        </div>
-
-        {/* Combined guidance */}
-        <div className="rounded-xl border border-kp-outline bg-kp-surface-high/30 px-4 py-3">
-          <p className="text-sm font-medium text-kp-on-surface">
-            Combine filters on Contacts
-          </p>
-          <p className="mt-1 text-xs text-kp-on-surface-variant">
-            Open a segment here, then switch the status tab or adjust the tag on
-            the Contacts page — the URL updates (
-            <code className="rounded bg-kp-surface-high px-1 text-[11px]">
-              ?status=
-            </code>{" "}
-            and{" "}
-            <code className="rounded bg-kp-surface-high px-1 text-[11px]">
-              ?tagId=
-            </code>
-            ). Bookmark any URL, or save a named shortcut in{" "}
-            <span className="font-medium text-kp-on-surface">
-              Your saved segments
-            </span>{" "}
-            (this browser only).
-          </p>
         </div>
       </div>
     </ModuleGate>

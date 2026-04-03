@@ -65,8 +65,7 @@ export function ClientKeepTabBar({ className }: { className?: string }) {
 }
 
 /**
- * ClientKeep workspace: tabs first (primary in-page nav), then a short context line.
- * Matches ShowingHQ chrome hierarchy; shell provides the module title.
+ * ClientKeep workspace: tab bar only (primary in-page identity). Shell provides module title.
  * Wraps /client-keep/* and /contacts/*.
  */
 export function ClientKeepWorkspaceChrome({
@@ -78,11 +77,6 @@ export function ClientKeepWorkspaceChrome({
     <div className="flex min-h-0 flex-col gap-1.5">
       <header className="overflow-hidden rounded-lg border border-kp-outline-variant bg-kp-surface">
         <ClientKeepTabBar />
-        <div className="px-3.5 py-1.5 sm:px-4 sm:py-2">
-          <p className="text-sm leading-normal text-kp-on-surface-muted">
-            Use the tabs to switch between Contacts, segments, follow-ups, and communications.
-          </p>
-        </div>
       </header>
       <div className="min-h-0 flex-1">{children}</div>
     </div>

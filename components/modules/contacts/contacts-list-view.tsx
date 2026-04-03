@@ -709,17 +709,9 @@ export function ContactsListView() {
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
-      {/* ── Page header ─────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-start justify-between gap-3 px-6 pb-4 pt-3 sm:px-8">
-        <div>
-          <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
-            Contacts
-          </h1>
-          <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-            Daily CRM hub — triage follow-ups, open contacts, clear the queue.
-          </p>
-        </div>
-        {canSaveSegment && (
+      {/* ── Save segment (tabs + shell carry page identity) ───────────── */}
+      {canSaveSegment ? (
+        <div className="flex flex-wrap items-center justify-end gap-3 px-6 pb-3 pt-2 sm:px-8">
           <button
             type="button"
             onClick={openSaveSegmentModal}
@@ -728,8 +720,8 @@ export function ContactsListView() {
             <BookmarkPlus className="h-3.5 w-3.5 text-kp-teal" aria-hidden />
             Save segment
           </button>
-        )}
-      </div>
+        </div>
+      ) : null}
 
       {/* ── Metric cards (CRM tier only) ─────────────────────────────────── */}
       {hasCrm && (
@@ -761,9 +753,6 @@ export function ContactsListView() {
           <div className="space-y-1">
             <p className="text-sm font-semibold text-kp-on-surface">
               Leads from open houses
-            </p>
-            <p className="text-xs text-kp-on-surface-variant">
-              Contacts who signed in at your open house events
             </p>
             {tagIdFilter && (
               <p className="text-xs text-kp-teal">
