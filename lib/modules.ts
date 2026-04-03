@@ -11,6 +11,7 @@ import {
   BarChart3,
   Settings,
   List,
+  Users,
 } from "lucide-react";
 
 export type ModuleId =
@@ -92,10 +93,10 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
   "client-keep": {
     id: "client-keep",
     name: "ClientKeep",
-    href: "/client-keep",
+    href: "/contacts",
     available: true,
     sidebar: [
-      { label: "Overview", href: "/client-keep", icon: LayoutDashboard, section: "OVERVIEW" },
+      { label: "Contacts", href: "/contacts", icon: Users, section: "OVERVIEW" },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
     ],
   },

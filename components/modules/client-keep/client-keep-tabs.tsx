@@ -14,8 +14,8 @@ export const CLIENT_KEEP_TAB_ITEMS = [
 export type ClientKeepTabId = (typeof CLIENT_KEEP_TAB_ITEMS)[number]["id"];
 
 /**
- * Active workspace tab for ClientKeep. Overview, Activity, and other auxiliary
- * /client-keep/* routes return null (no tab selected).
+ * Active workspace tab for ClientKeep. Activity, Tags, and other auxiliary
+ * /client-keep/* routes (not the tab targets) return null (no tab selected).
  */
 export function getActiveClientKeepTabId(pathname: string): ClientKeepTabId | null {
   if (pathname.startsWith("/contacts")) return "contacts";
@@ -80,7 +80,7 @@ export function ClientKeepWorkspaceChrome({
         <ClientKeepTabBar />
         <div className="px-3.5 py-1.5 sm:px-4 sm:py-2">
           <p className="text-sm leading-normal text-kp-on-surface-muted">
-            Use the tabs for primary areas; below is a snapshot and shortcuts.
+            Use the tabs to switch between Contacts, segments, follow-ups, and communications.
           </p>
         </div>
       </header>

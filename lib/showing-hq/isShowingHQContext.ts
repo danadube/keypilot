@@ -10,14 +10,15 @@ export function isShowingHQContext(pathname: string): boolean {
 
 /**
  * Shell alignment: same header height, sticky sidebar, and date line as ShowingHQ.
- * Includes ClientKeep (`/client-keep/*`) plus ShowingHQ surfaces.
+ * Includes ClientKeep (`/client-keep/*`, `/contacts/*`) plus ShowingHQ surfaces.
  */
 export function isWorkspaceContext(pathname: string): boolean {
   const base = normalizePathnameBase(pathname);
   return (
     base.startsWith("/showing-hq") ||
     base.startsWith("/open-houses") ||
-    base.startsWith("/client-keep")
+    base.startsWith("/client-keep") ||
+    base.startsWith("/contacts")
   );
 }
 

@@ -24,15 +24,17 @@ describe("isShowingHQContext", () => {
 });
 
 describe("isWorkspaceContext", () => {
-  it("is true for ShowingHQ, open houses, and ClientKeep prefixes", () => {
+  it("is true for ShowingHQ, open houses, ClientKeep, and Contacts prefixes", () => {
     expect(isWorkspaceContext("/showing-hq")).toBe(true);
     expect(isWorkspaceContext("/open-houses")).toBe(true);
     expect(isWorkspaceContext("/client-keep")).toBe(true);
-    expect(isWorkspaceContext("/client-keep/contacts")).toBe(true);
+    expect(isWorkspaceContext("/client-keep/segments")).toBe(true);
+    expect(isWorkspaceContext("/contacts")).toBe(true);
+    expect(isWorkspaceContext("/contacts/abc")).toBe(true);
   });
 
   it("is false outside workspace surfaces", () => {
-    expect(isWorkspaceContext("/contacts")).toBe(false);
+    expect(isWorkspaceContext("/deals")).toBe(false);
     expect(isWorkspaceContext("/")).toBe(false);
   });
 });
