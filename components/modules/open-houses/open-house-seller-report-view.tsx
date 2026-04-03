@@ -10,6 +10,7 @@ import { PageLoading } from "@/components/shared/PageLoading";
 import { FileText, Download, RefreshCw, BarChart2, MessageSquare } from "lucide-react";
 import { OpenHouseSupportPageFrame } from "@/components/showing-hq/OpenHouseSupportPageFrame";
 import { useOpenHouseContextSubtitle } from "@/components/showing-hq/useOpenHouseContextSubtitle";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type ReportData = {
   id: string;
@@ -58,7 +59,7 @@ export function OpenHouseSellerReportView({ openHouseId }: { openHouseId: string
           setReport(json.data);
         }
       })
-      .catch(() => setError("Failed to load report"))
+      .catch(() => setError(UI_COPY.errors.load("report")))
       .finally(() => setLoading(false));
   }, [openHouseId]);
 

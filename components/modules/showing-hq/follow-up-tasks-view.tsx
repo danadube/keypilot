@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { AlertTriangle, CalendarClock, CheckCircle2, Mail } from "lucide-react";
 import type { SerializedAgentFollowUp } from "@/lib/follow-ups/agent-follow-up-buckets";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type FollowUpTasksData = {
   overdue: SerializedAgentFollowUp[];
@@ -31,7 +32,7 @@ export function FollowUpTasksView() {
         if (json.error) setError(json.error.message);
         else setData(json.data);
       })
-      .catch(() => setError("Failed to load follow-up tasks"))
+      .catch(() => setError(UI_COPY.errors.load("follow-up tasks")))
       .finally(() => setLoading(false));
   }, []);
 

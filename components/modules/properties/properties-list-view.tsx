@@ -6,6 +6,7 @@ import { Plus, ExternalLink, Building2, Calendar, AlertCircle, Loader2 } from "l
 import { cn } from "@/lib/utils";
 import { MetricCard } from "@/components/ui/metric-card";
 import { SectionTabs } from "@/components/ui/section-tabs";
+import { UI_COPY } from "@/lib/ui-copy";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 // Mirrors the shape returned by GET /api/v1/properties
@@ -40,7 +41,7 @@ function useProperties() {
         if (json.error) setError(json.error.message);
         else setProperties(json.data ?? []);
       })
-      .catch(() => setError("Failed to load properties"))
+      .catch(() => setError(UI_COPY.errors.load("properties")))
       .finally(() => setLoading(false));
   }
 
@@ -78,7 +79,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
         onClick={onRetry}
         className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
       >
-        Try again
+        {UI_COPY.errors.retry}
       </button>
     </div>
   );

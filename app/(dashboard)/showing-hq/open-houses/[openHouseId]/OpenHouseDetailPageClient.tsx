@@ -64,6 +64,7 @@ import {
 } from "@/components/ui/action-feedback";
 import { afError, FLASH_QUERY } from "@/lib/ui/action-feedback";
 import { DateInputField, TimeInputField, TimeQuickChips } from "@/components/ui/time-input";
+import { UI_COPY } from "@/lib/ui-copy";
 import {
   applyQuickTimePreset,
   dateToLocalDateInput,
@@ -218,7 +219,7 @@ export function OpenHouseDetailPageClient() {
         }
       })
       .catch(() => {
-        setError("Failed to load open house");
+        setError(UI_COPY.errors.load("open house"));
         setData(null);
       })
       .finally(() => setLoading(false));

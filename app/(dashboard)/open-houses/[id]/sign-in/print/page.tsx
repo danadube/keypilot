@@ -10,6 +10,7 @@ import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Printer } from "lucide-react";
 import { OpenHouseSupportPageFrame } from "@/components/showing-hq/OpenHouseSupportPageFrame";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type PrintData = {
   id: string;
@@ -42,7 +43,7 @@ export default function PrintQRPosterPage() {
         if (json.error) setError(json.error.message);
         else setData(json.data);
       })
-      .catch(() => setError("Failed to load"))
+      .catch(() => setError(UI_COPY.errors.load("open house")))
       .finally(() => setLoading(false));
   }, [id]);
 

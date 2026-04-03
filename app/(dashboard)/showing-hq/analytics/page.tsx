@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { Home, Calendar, Users, Mail, Send, MessageSquare, ArrowLeft } from "lucide-react";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type SummaryData = {
   openHousesCreated: number;
@@ -31,7 +32,7 @@ export default function ShowingHQAnalyticsPage() {
         if (json.error) setError(json.error.message);
         else setData(json.data);
       })
-      .catch(() => setError("Failed to load"))
+      .catch(() => setError(UI_COPY.errors.load("metrics")))
       .finally(() => setLoading(false));
   }, []);
 

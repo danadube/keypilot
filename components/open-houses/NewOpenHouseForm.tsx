@@ -21,6 +21,7 @@ import {
 import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
 import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 import { AF, afError, FLASH_QUERY } from "@/lib/ui/action-feedback";
+import { UI_COPY } from "@/lib/ui-copy";
 import {
   Select,
   SelectContent,
@@ -101,7 +102,7 @@ export function NewOpenHouseForm() {
           }
         }
       })
-      .catch(() => setError("Failed to load"))
+      .catch(() => setError(UI_COPY.errors.load("open house form")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -206,7 +207,7 @@ export function NewOpenHouseForm() {
               if (json.error) setError(json.error.message);
               else setProperties(json.data || []);
             })
-            .catch(() => setError("Failed to load properties"))
+            .catch(() => setError(UI_COPY.errors.load("properties")))
             .finally(() => setLoading(false));
         }}
       />

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { ClipboardCheck, Copy, Check, Mail } from "lucide-react";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type FeedbackRequest = {
   id: string;
@@ -53,7 +54,7 @@ export function FeedbackRequestsView() {
           setBuyerAgentDraftShowings(shJson.data);
         }
       })
-      .catch(() => { if (!cancelled) setError("Failed to load"); })
+      .catch(() => { if (!cancelled) setError(UI_COPY.errors.load("feedback requests")); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => {
       cancelled = true;

@@ -24,6 +24,7 @@ import {
   getTransactionSetupGaps,
   setupGapLabel,
 } from "./transactions-shared";
+import { UI_COPY } from "@/lib/ui-copy";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -288,7 +289,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       .then((res) => res.json())
       .then((json) => {
         if (json.error) {
-          setError(json.error.message ?? "Failed to load");
+          setError(json.error.message ?? UI_COPY.errors.load("transaction"));
           setTxn(null);
         } else {
           const t: TransactionDetail = json.data;
@@ -302,7 +303,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           setSaveError(null);
         }
       })
-      .catch(() => setError("Failed to load"))
+      .catch(() => setError(UI_COPY.errors.load("transaction")))
       .finally(() => setLoading(false));
   }, [transactionId]);
 
@@ -790,7 +791,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
                   href={`/deals/${txn.deal.id}`}
                   className="inline-flex items-center gap-1 rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-1.5 text-xs font-medium text-kp-teal hover:bg-kp-teal/10"
                 >
-                  View deal
+                  Open deal
                   <ExternalLink className="h-3 w-3" />
                 </Link>
                 <button

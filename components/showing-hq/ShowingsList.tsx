@@ -12,6 +12,7 @@ import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Calendar, Plus, Inbox, ClipboardCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type Showing = {
   id: string;
@@ -41,7 +42,7 @@ export function ShowingsList() {
         if (json.error) setError(json.error.message);
         else setShowings(json.data || []);
       })
-      .catch(() => setError("Failed to load showings"))
+      .catch(() => setError(UI_COPY.errors.load("showings")))
       .finally(() => setLoading(false));
   }, []);
 

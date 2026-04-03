@@ -29,6 +29,7 @@ import {
   kpBtnSave,
   kpBtnTertiary,
 } from "@/components/ui/kp-dashboard-button-tiers";
+import { UI_COPY } from "@/lib/ui-copy";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -172,7 +173,7 @@ export function PropertyDetailView({ id }: { id: string }) {
         if (json.error) setError(json.error.message);
         else setProperty(json.data);
       })
-      .catch(() => setError("Failed to load"))
+      .catch(() => setError(UI_COPY.errors.load("property")))
       .finally(() => setLoading(false));
   }, [id]);
 

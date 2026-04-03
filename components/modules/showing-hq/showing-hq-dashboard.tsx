@@ -28,6 +28,7 @@ import {
   ShowingHqAgentFollowUpsSection,
   type AgentFollowUpBuckets,
 } from "@/components/showing-hq/ShowingHqAgentFollowUpsSection";
+import { UI_COPY } from "@/lib/ui-copy";
 import { ShowingHqTodayRailCard } from "@/components/showing-hq/ShowingHqTodayRailCard";
 import { cn } from "@/lib/utils";
 
@@ -155,7 +156,7 @@ function ErrorState({
         onClick={onRetry}
         className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
       >
-        Try again
+        {UI_COPY.errors.retry}
       </button>
     </div>
   );
@@ -210,7 +211,7 @@ export function ShowingHQDashboardView() {
         setError(null);
         if (json.data) setData(json.data);
       })
-      .catch(() => setError("Failed to load"));
+      .catch(() => setError(UI_COPY.errors.load("dashboard")));
 
   useEffect(() => {
     refetchDashboard().finally(() => setLoading(false));

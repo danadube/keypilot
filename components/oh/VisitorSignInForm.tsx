@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { SignInFormFields } from "@/components/oh/SignInFormFields";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type OpenHouseInfo = {
   id: string;
@@ -51,7 +52,7 @@ export function VisitorSignInForm({ slug }: { slug: string }) {
         if (json.error) setError(json.error.message);
         else setOh(json.data);
       })
-      .catch(() => setError("Failed to load open house"))
+      .catch(() => setError(UI_COPY.errors.load("open house")))
       .finally(() => setLoading(false));
   }, [slug]);
 

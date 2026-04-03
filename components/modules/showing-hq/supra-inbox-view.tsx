@@ -30,6 +30,7 @@ import {
   supraBtnTertiary,
 } from "@/components/modules/showing-hq/supra-inbox-button-tiers";
 import { cn } from "@/lib/utils";
+import { UI_COPY } from "@/lib/ui-copy";
 import {
   pastedBlobHasDetectedFields,
   splitPastedEmailBlob,
@@ -510,7 +511,7 @@ export function SupraInboxView() {
     const res = await fetch("/api/v1/showing-hq/supra-queue");
     const json = await res.json();
     if (!res.ok) {
-      setError(json.error?.message ?? "Failed to load queue");
+      setError(json.error?.message ?? UI_COPY.errors.load("queue"));
       setItems([]);
       return;
     }

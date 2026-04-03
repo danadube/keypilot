@@ -29,6 +29,7 @@ import {
   formatMissingPrepGuidance,
 } from "@/lib/showing-hq/prep-checklist";
 import { openHouseWorkflowTabHref } from "@/lib/showing-hq/showing-workflow-hrefs";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type HostConsoleOpenHouse = {
   id: string;
@@ -148,7 +149,7 @@ export function OpenHouseHostConsole({ openHouseId }: { openHouseId: string }) {
       }
       setReportSummary(summary);
     } catch {
-      setError("Failed to load");
+      setError(UI_COPY.errors.load("open house"));
     } finally {
       setLoading(false);
     }

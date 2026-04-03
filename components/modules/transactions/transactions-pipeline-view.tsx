@@ -12,6 +12,7 @@ import {
   PipelineTableRow,
   TH,
 } from "./transactions-shared";
+import { UI_COPY } from "@/lib/ui-copy";
 
 const TERMINAL: TxStatus[] = ["CLOSED", "FALLEN_APART"];
 
@@ -44,10 +45,10 @@ export function TransactionsPipelineView() {
     fetch("/api/v1/transactions")
       .then((res) => res.json())
       .then((json) => {
-        if (json.error) setError(json.error.message ?? "Failed to load");
+        if (json.error) setError(json.error.message ?? UI_COPY.errors.load("pipeline"));
         else setRows(json.data ?? []);
       })
-      .catch(() => setError("Failed to load pipeline"))
+      .catch(() => setError(UI_COPY.errors.load("pipeline")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -111,7 +112,7 @@ export function TransactionsPipelineView() {
               onClick={load}
               className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
             >
-              Try again
+              {UI_COPY.errors.retry}
             </button>
           </div>
         ) : totalActive === 0 ? (

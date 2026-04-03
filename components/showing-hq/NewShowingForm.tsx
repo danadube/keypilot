@@ -40,6 +40,7 @@ import {
 } from "@/lib/datetime/local-scheduling";
 import { AF, afError } from "@/lib/ui/action-feedback";
 import { showingWorkflowTabHref } from "@/lib/showing-hq/showing-workflow-hrefs";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type Property = {
   id: string;
@@ -73,7 +74,7 @@ export function NewShowingForm() {
         if (json.error) setError(json.error.message);
         else setProperties(json.data || []);
       })
-      .catch(() => setError("Failed to load properties"))
+      .catch(() => setError(UI_COPY.errors.load("properties")))
       .finally(() => setLoading(false));
   }, []);
 

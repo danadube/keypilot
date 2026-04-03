@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/kp-dashboard-button-tiers";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight, Loader2, Users } from "lucide-react";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type MemberRow = {
   membershipId: string;
@@ -104,11 +105,11 @@ export function FarmAreaMembersBulkPanel({
         `/api/v1/farm-areas/${areaId}/members?limit=${MEMBERS_LIMIT}&offset=0`
       );
       const json = await res.json();
-      if (json.error) throw new Error(json.error.message ?? "Failed to load members");
+      if (json.error) throw new Error(json.error.message ?? UI_COPY.errors.load("members"));
       setMembers(json.data?.members ?? []);
       setMemberTotal(json.data?.total ?? 0);
     } catch (e) {
-      setMembersError(e instanceof Error ? e.message : "Failed to load members");
+      setMembersError(e instanceof Error ? e.message : UI_COPY.errors.load("members"));
       setMembers([]);
       setMemberTotal(0);
     } finally {

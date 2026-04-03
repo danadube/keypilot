@@ -14,6 +14,7 @@ import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
 import { BrandSectionHeader } from "@/components/ui/BrandSectionHeader";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
+import { UI_COPY } from "@/lib/ui-copy";
 
 const RETRY_DELAY_MS = 500;
 const MAX_RETRIES = 2;
@@ -70,7 +71,7 @@ export function DashboardHome() {
         if (retryCount < MAX_RETRIES) {
           setTimeout(() => loadData(retryCount + 1), RETRY_DELAY_MS);
         } else {
-          setError("Failed to load dashboard");
+          setError(UI_COPY.errors.load("dashboard"));
           setLoading(false);
         }
       });

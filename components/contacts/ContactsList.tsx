@@ -30,6 +30,7 @@ import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { useProductTier } from "@/components/ProductTierProvider";
+import { UI_COPY } from "@/lib/ui-copy";
 
 const STATUS_FILTER_OPTIONS = [
   { value: "__all__", label: "All statuses" },
@@ -74,7 +75,7 @@ export function ContactsList() {
         if (json.error) setError(json.error.message);
         else setContacts(json.data || []);
       })
-      .catch(() => setError("Failed to load contacts"))
+      .catch(() => setError(UI_COPY.errors.load("contacts")))
       .finally(() => setLoading(false));
   };
 

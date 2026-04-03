@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FollowUpStatusBadge } from "@/components/shared/FollowUpStatusBadge";
+import { UI_COPY } from "@/lib/ui-copy";
 import {
   Mail,
   Phone,
@@ -107,7 +108,7 @@ export default function VisitorProfilePage() {
           setNotes(json.data?.visitor?.contact?.notes ?? "");
         }
       })
-      .catch(() => setError("Failed to load visitor"))
+      .catch(() => setError(UI_COPY.errors.load("visitor")))
       .finally(() => setLoading(false));
   }, [visitorId]);
 
@@ -225,7 +226,7 @@ export default function VisitorProfilePage() {
             </Button>
           )}
           <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-8 text-xs")} asChild>
-            <Link href={`/contacts/${contact.id}`}>View contact</Link>
+            <Link href={`/contacts/${contact.id}`}>Open contact</Link>
           </Button>
         </div>
       </div>
@@ -472,7 +473,7 @@ export default function VisitorProfilePage() {
                 className={cn(kpBtnSecondary, "mt-3 h-7 text-xs")}
                 asChild
               >
-                <Link href="/showing-hq/follow-ups/drafts">View email drafts</Link>
+                <Link href="/showing-hq/follow-ups/drafts">Open email drafts</Link>
               </Button>
             </div>
           ) : (

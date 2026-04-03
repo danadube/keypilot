@@ -15,6 +15,7 @@ import {
 import { OpenHouseSupportPageFrame } from "@/components/showing-hq/OpenHouseSupportPageFrame";
 import { AgentFollowUpTaskCard } from "@/components/follow-ups/agent-follow-up-task-card";
 import { useOpenHouseContextSubtitle } from "@/components/showing-hq/useOpenHouseContextSubtitle";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type FollowUpDraft = {
   id: string;
@@ -82,7 +83,7 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
           }
         }
       })
-      .catch(() => setError("Failed to load drafts"));
+      .catch(() => setError(UI_COPY.errors.load("drafts")));
   };
 
   useEffect(() => {
@@ -101,7 +102,7 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
           }
         }
       })
-      .catch(() => setError("Failed to load drafts"))
+      .catch(() => setError(UI_COPY.errors.load("drafts")))
       .finally(() => setLoading(false));
   }, [openHouseId]);
 
@@ -172,7 +173,7 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
                   }
                 }
               })
-              .catch(() => setError("Failed to load drafts"));
+              .catch(() => setError(UI_COPY.errors.load("drafts")));
           }}
         />
       </OpenHouseSupportPageFrame>

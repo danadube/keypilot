@@ -24,6 +24,7 @@ import {
   combineLocalDateAndTimeToIso,
   localDateTimeFromParts,
 } from "@/lib/datetime/local-scheduling";
+import { UI_COPY } from "@/lib/ui-copy";
 import { Copy, Check, ClipboardCheck } from "lucide-react";
 
 type Property = { id: string; address1: string; city: string; state: string };
@@ -86,7 +87,7 @@ export function EditEventModal({
         if (json.error) setError(json.error.message);
         else setProperties(json.data || []);
       })
-      .catch(() => setError("Failed to load properties"));
+      .catch(() => setError(UI_COPY.errors.load("properties")));
   }, [open]);
 
   useEffect(() => {
@@ -161,7 +162,7 @@ export function EditEventModal({
           }
         }
       })
-      .catch(() => setError("Failed to load event"))
+      .catch(() => setError(UI_COPY.errors.load("event")))
       .finally(() => setLoading(false));
   }, [open, eventId, isOpenHouse]);
 

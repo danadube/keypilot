@@ -14,6 +14,7 @@ import {
   TH,
   TD,
 } from "./transactions-shared";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type MineTransactionSummary = {
   id: string;
@@ -70,10 +71,10 @@ export function MyCommissionsView() {
     fetch("/api/v1/commissions/mine")
       .then((res) => res.json())
       .then((json) => {
-        if (json.error) setError(json.error.message ?? "Failed to load");
+        if (json.error) setError(json.error.message ?? UI_COPY.errors.load("commissions"));
         else setRows(json.data ?? []);
       })
-      .catch(() => setError("Failed to load commissions"))
+      .catch(() => setError(UI_COPY.errors.load("commissions")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -116,7 +117,7 @@ export function MyCommissionsView() {
               onClick={load}
               className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
             >
-              Try again
+              {UI_COPY.errors.retry}
             </button>
           </div>
         ) : rows.length === 0 ? (

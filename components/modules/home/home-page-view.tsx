@@ -38,6 +38,7 @@ import { AITodoItem, type AITodo } from "@/components/home/AITodoItem";
 import { PriorityEmailCard, type PriorityEmail } from "@/components/home/PriorityEmailCard";
 import { MODULES, MODULE_ORDER } from "@/lib/modules";
 import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
+import { UI_COPY } from "@/lib/ui-copy";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -248,7 +249,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
         onClick={onRetry}
         className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
       >
-        Try again
+        {UI_COPY.errors.retry}
       </button>
     </div>
   );
@@ -375,7 +376,7 @@ export function HomePageView() {
         if (retryCount < MAX_RETRIES) {
           setTimeout(() => loadData(retryCount + 1), RETRY_DELAY_MS);
         } else {
-          setError(err?.message ?? "Failed to load");
+          setError(err?.message ?? UI_COPY.errors.load("home"));
           setLoading(false);
         }
       })

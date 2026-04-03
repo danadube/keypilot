@@ -277,7 +277,7 @@ export function TodayCommandCenter({
               <BrandButton variant="primary" size="sm" className="h-9" asChild>
                 <Link href="/showing-hq/feedback-requests">
                   <MessageSquare className="mr-1.5 h-4 w-4" />
-                  View feedback requests
+                  Open feedback requests
                 </Link>
               </BrandButton>
             </>

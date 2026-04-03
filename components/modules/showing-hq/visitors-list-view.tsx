@@ -43,6 +43,7 @@ import {
   addSavedVisitorsView,
 } from "@/lib/showing-hq/saved-views-storage";
 import { normalizeShowingHqListSearchQ } from "@/lib/showing-hq/list-search-q";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type Visitor = {
   id: string;
@@ -134,17 +135,17 @@ export function VisitorsListView() {
             json.error?.message ??
               (res.status === 401 || res.status === 403
                 ? "You may need to sign in again."
-                : "Failed to load visitors")
+                : UI_COPY.errors.load("visitors"))
           );
           return;
         }
-        if (json.error) setError(json.error.message ?? "Failed to load visitors");
+        if (json.error) setError(json.error.message ?? UI_COPY.errors.load("visitors"));
         else {
           setVisitors(json.data?.visitors ?? []);
           setOpenHouses(json.data?.openHouses ?? []);
         }
       })
-      .catch(() => setError("Failed to load visitors"))
+      .catch(() => setError(UI_COPY.errors.load("visitors")))
       .finally(() => setLoading(false));
   }, [view]);
 

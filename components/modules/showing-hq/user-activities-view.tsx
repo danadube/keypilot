@@ -23,6 +23,7 @@ import {
 import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { CheckCircle2, LayoutTemplate, Link2, ListTodo, Plus } from "lucide-react";
+import { UI_COPY } from "@/lib/ui-copy";
 
 const ACTIVITY_TYPES = [
   "CALL",
@@ -278,10 +279,10 @@ export function UserActivitiesView() {
     return fetch("/api/v1/activities")
       .then((res) => res.json())
       .then((json) => {
-        if (json.error) setError(json.error.message ?? "Failed to load");
+        if (json.error) setError(json.error.message ?? UI_COPY.errors.load("activity"));
         else setRows(json.data ?? []);
       })
-      .catch(() => setError("Failed to load"));
+      .catch(() => setError(UI_COPY.errors.load("activity")));
   }, []);
 
   useEffect(() => {

@@ -18,6 +18,7 @@ import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { FollowUpStatusBadge } from "@/components/shared/FollowUpStatusBadge";
 import { ArrowLeft } from "lucide-react";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type Draft = {
   id: string;
@@ -55,7 +56,7 @@ export default function DraftReviewPage() {
           setBody(json.data?.body ?? "");
         }
       })
-      .catch(() => setError("Failed to load draft"))
+      .catch(() => setError(UI_COPY.errors.load("draft")))
       .finally(() => setLoading(false));
   }, [draftId]);
 
@@ -175,7 +176,7 @@ export default function DraftReviewPage() {
         <div className="flex flex-wrap items-center gap-2">
           <FollowUpStatusBadge status={draft.status} />
           <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-8 text-xs")} asChild>
-            <Link href={`/contacts/${draft.contact.id}`}>View contact</Link>
+            <Link href={`/contacts/${draft.contact.id}`}>Open contact</Link>
           </Button>
         </div>
       </div>

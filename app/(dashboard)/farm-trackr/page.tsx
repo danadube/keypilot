@@ -12,6 +12,7 @@ import {
 import { AlertCircle, Loader2, Mail, MapPinned, Printer, Upload } from "lucide-react";
 import { buildMailingListCsv } from "@/lib/farm/mailing/mailing-list-csv";
 import { FarmAreaMembersBulkPanel } from "./_components/farm-area-members-bulk-panel";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type Territory = {
   id: string;
@@ -158,7 +159,7 @@ export default function FarmTrackrPage() {
         setAreas(areaJson.data ?? []);
       })
       .catch((err) =>
-        setError(err instanceof Error ? err.message : "Failed to load farm management")
+        setError(err instanceof Error ? err.message : UI_COPY.errors.load("farm data"))
       )
       .finally(() => setLoading(false));
   }, []);

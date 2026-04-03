@@ -10,6 +10,7 @@ import {
   kpBtnSecondary,
   kpBtnTertiary,
 } from "@/components/ui/kp-dashboard-button-tiers";
+import { UI_COPY } from "@/lib/ui-copy";
 import {
   AlertCircle,
   Check,
@@ -70,7 +71,7 @@ export default function ClientKeepRecentActivityPage() {
       const json = await res.json();
       if (!res.ok) {
         const msg =
-          (json.error?.message as string) ?? "Failed to load activity";
+          (json.error?.message as string) ?? UI_COPY.errors.load("activity");
         if (!silent) {
           setError(msg);
           setItems([]);
@@ -84,10 +85,10 @@ export default function ClientKeepRecentActivityPage() {
       if (silent) setActionErrorByRowId({});
     } catch {
       if (!silent) {
-        setError("Failed to load activity");
+        setError(UI_COPY.errors.load("activity"));
         setItems([]);
       } else {
-        setRefreshError("Failed to load activity");
+        setRefreshError(UI_COPY.errors.load("activity"));
       }
     } finally {
       if (!silent) setLoading(false);

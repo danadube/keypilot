@@ -10,6 +10,7 @@ import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { PropertyVaultPropertySubnav } from "./property-vault-property-subnav";
 import { PropertyFlyerPanel, type PropertyFlyerFields } from "./property-flyer-panel";
 import { ArrowLeft } from "lucide-react";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type Property = {
   id: string;
@@ -38,7 +39,7 @@ export function PropertyDocumentsView({ id }: { id: string }) {
         if (json.error) setError(json.error.message);
         else setProperty(json.data);
       })
-      .catch(() => setError("Failed to load"))
+      .catch(() => setError(UI_COPY.errors.load("property")))
       .finally(() => setLoading(false));
   }, [id]);
 

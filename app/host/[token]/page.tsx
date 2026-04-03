@@ -25,6 +25,7 @@ import { QrCode, Users, FileText, ExternalLink, Copy } from "lucide-react";
 import { HOST_FEEDBACK_TAGS, TRAFFIC_LEVELS } from "@/lib/validations/open-house";
 import { VisitorRow } from "./VisitorRow";
 import { SignInFormFields } from "@/components/oh/SignInFormFields";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type HostLoadBlocked = {
   title: string;
@@ -200,7 +201,7 @@ export default function HostDashboardPage() {
                 fetchData();
               }}
             >
-              Try again
+              {UI_COPY.errors.retry}
             </Button>
           </CardContent>
         </Card>

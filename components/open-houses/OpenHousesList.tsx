@@ -29,6 +29,7 @@ import { BrandButton } from "@/components/ui/BrandButton";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Calendar, QrCode, Plus, Users, LayoutGrid } from "lucide-react";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type OpenHouse = {
   id: string;
@@ -54,7 +55,7 @@ export function OpenHousesList() {
         if (json.error) setError(json.error.message);
         else setOpenHouses(json.data || []);
       })
-      .catch(() => setError("Failed to load open houses"))
+      .catch(() => setError(UI_COPY.errors.load("open houses")))
       .finally(() => setLoading(false));
   };
 
@@ -291,7 +292,7 @@ export function OpenHousesList() {
                 className={cn(kpBtnSecondary, "w-full justify-start")}
                 asChild
               >
-                <Link href="/properties">View properties</Link>
+                <Link href="/properties">Open properties</Link>
               </Button>
             </CardContent>
           </Card>

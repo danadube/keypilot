@@ -26,6 +26,7 @@ import {
   ExternalLink,
   Clock,
 } from "lucide-react";
+import { UI_COPY } from "@/lib/ui-copy";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -86,7 +87,7 @@ export function OpenHouseDetailView({ id }: { id: string }) {
         if (json.error) setError(json.error.message);
         else setOh(json.data);
       })
-      .catch(() => setError("Failed to load"))
+      .catch(() => setError(UI_COPY.errors.load("open house")))
       .finally(() => setLoading(false));
   }, [id]);
 

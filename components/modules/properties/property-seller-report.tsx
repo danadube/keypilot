@@ -10,6 +10,7 @@ import {
   FEEDBACK_INTEREST_LEVELS,
   FEEDBACK_REASONS,
 } from "@/lib/validations/feedback";
+import { UI_COPY } from "@/lib/ui-copy";
 
 const INTEREST_LABELS: Record<string, string> = {
   LOVED_IT: "Loved it",
@@ -54,12 +55,12 @@ export function PropertySellerReportView({ propertyId, propertyAddress }: Proper
       .then((res) => res.json())
       .then((json) => {
         if (json.error) {
-          setState({ status: "error", message: json.error.message ?? "Failed to load" });
+          setState({ status: "error", message: json.error.message ?? UI_COPY.errors.load("report") });
           return;
         }
         setState({ status: "ready", data: json.data as SellerReportData });
       })
-      .catch(() => setState({ status: "error", message: "Failed to load" }));
+      .catch(() => setState({ status: "error", message: UI_COPY.errors.load("report") }));
   }, [propertyId]);
 
   const header = (

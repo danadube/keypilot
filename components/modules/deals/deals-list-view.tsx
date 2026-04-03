@@ -18,6 +18,7 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { SectionTabs } from "@/components/ui/section-tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { CreateDealModal } from "./create-deal-modal";
+import { UI_COPY } from "@/lib/ui-copy";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -113,7 +114,7 @@ function useDeals(statusFilter: StatusTabValue) {
         if (json.error) setError(json.error.message);
         else setDeals(json.data ?? []);
       })
-      .catch(() => setError("Failed to load deals"))
+      .catch(() => setError(UI_COPY.errors.load("deals")))
       .finally(() => setLoading(false));
   }
 
@@ -170,7 +171,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
         onClick={onRetry}
         className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
       >
-        Try again
+        {UI_COPY.errors.retry}
       </button>
     </div>
   );

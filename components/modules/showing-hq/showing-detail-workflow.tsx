@@ -22,6 +22,7 @@ import {
   showingWorkflowTabHref,
   type ShowingHqWorkflowTab,
 } from "@/lib/showing-hq/showing-workflow-hrefs";
+import { UI_COPY } from "@/lib/ui-copy";
 import { ShowingBuyerAgentFeedbackDraftPanel } from "@/components/showing-hq/ShowingBuyerAgentFeedbackDraftPanel";
 import { ShowingHqWorkflowTabStrip } from "@/components/showing-hq/ShowingHqWorkflowTabStrip";
 import { buildPropertyAddressLineForFeedbackDraft } from "@/lib/showing-hq/buyer-agent-feedback-draft-generate";
@@ -130,7 +131,7 @@ export function ShowingDetailWorkflow() {
           setNotes(row.notes ?? "");
         }
       })
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"))
+      .catch((e) => setError(e instanceof Error ? e.message : UI_COPY.errors.load("showing")))
       .finally(() => setLoading(false));
   }, [id]);
 

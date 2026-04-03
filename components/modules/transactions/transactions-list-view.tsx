@@ -22,6 +22,7 @@ import {
   TransactionsListTableRow,
   TH,
 } from "./transactions-shared";
+import { UI_COPY } from "@/lib/ui-copy";
 
 const STATUS_TABS = [
   { label: "All", value: "__all__" },
@@ -50,10 +51,10 @@ function useTransactions(statusFilter: StatusTabValue, showArchived: boolean) {
     fetch(url)
       .then((res) => res.json())
       .then((json) => {
-        if (json.error) setError(json.error.message ?? "Failed to load");
+        if (json.error) setError(json.error.message ?? UI_COPY.errors.load("transactions"));
         else setRows(json.data ?? []);
       })
-      .catch(() => setError("Failed to load transactions"))
+      .catch(() => setError(UI_COPY.errors.load("transactions")))
       .finally(() => setLoading(false));
   }
 
@@ -93,7 +94,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
         onClick={onRetry}
         className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
       >
-        Try again
+        {UI_COPY.errors.retry}
       </button>
     </div>
   );

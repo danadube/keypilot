@@ -62,6 +62,7 @@ import {
 } from "@/lib/showing-hq/showing-workflow-hrefs";
 import { AF, FLASH_QUERY } from "@/lib/ui/action-feedback";
 import { DismissibleFlashBanner } from "@/components/ui/action-feedback";
+import { UI_COPY } from "@/lib/ui-copy";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -109,17 +110,17 @@ function useShowingsList(view: NormalizedShowingsListView) {
             json.error?.message ??
               (res.status === 401 || res.status === 403
                 ? "You may need to sign in again."
-                : "Failed to load showings")
+                : UI_COPY.errors.load("showings"))
           );
           return;
         }
         if (json.error) {
-          setError(json.error.message ?? "Failed to load showings");
+          setError(json.error.message ?? UI_COPY.errors.load("showings"));
           return;
         }
         setShowings(json.data ?? []);
       })
-      .catch(() => setError("Failed to load showings"))
+      .catch(() => setError(UI_COPY.errors.load("showings")))
       .finally(() => setLoading(false));
   }, [view]);
 
@@ -289,7 +290,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
         onClick={onRetry}
         className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
       >
-        Try again
+        {UI_COPY.errors.retry}
       </button>
     </div>
   );

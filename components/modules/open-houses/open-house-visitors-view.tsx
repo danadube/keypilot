@@ -10,6 +10,7 @@ import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Users } from "lucide-react";
 import { OpenHouseSupportPageFrame } from "@/components/showing-hq/OpenHouseSupportPageFrame";
 import { useOpenHouseContextSubtitle } from "@/components/showing-hq/useOpenHouseContextSubtitle";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type Visitor = {
   id: string;
@@ -47,7 +48,7 @@ export function OpenHouseVisitorsView({ openHouseId }: { openHouseId: string }) 
         if (json.error) setError(json.error.message);
         else setVisitors(json.data || []);
       })
-      .catch(() => setError("Failed to load visitors"))
+      .catch(() => setError(UI_COPY.errors.load("visitors")))
       .finally(() => setLoading(false));
   }, [openHouseId]);
 

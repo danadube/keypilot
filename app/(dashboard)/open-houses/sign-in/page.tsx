@@ -25,6 +25,7 @@ import { QrCode, Radio, Printer, ArrowRight, List, Plus } from "lucide-react";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type OpenHouse = {
   id: string;
@@ -53,7 +54,7 @@ export default function OpenSignInPage() {
         if (json.error) setError(json.error.message);
         else setOpenHouses(json.data || []);
       })
-      .catch(() => setError("Failed to load"))
+      .catch(() => setError(UI_COPY.errors.load("open houses")))
       .finally(() => setLoading(false));
   }, []);
 

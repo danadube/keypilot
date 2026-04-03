@@ -47,6 +47,7 @@ import {
   type OpenHousesListTabValue,
 } from "@/lib/showing-hq/open-houses-view-query";
 import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
+import { UI_COPY } from "@/lib/ui-copy";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 // Mirrors the shape returned by GET /api/v1/open-houses (with full property include)
@@ -88,7 +89,7 @@ function useOpenHousesList(view: Pick<NormalizedOpenHousesListView, "q">) {
         if (json.error) setError(json.error.message);
         else setOpenHouses(json.data ?? []);
       })
-      .catch(() => setError("Failed to load open houses"))
+      .catch(() => setError(UI_COPY.errors.load("open houses")))
       .finally(() => setLoading(false));
   }, [view.q]);
 
@@ -163,7 +164,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
         onClick={onRetry}
         className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
       >
-        Try again
+        {UI_COPY.errors.retry}
       </button>
     </div>
   );

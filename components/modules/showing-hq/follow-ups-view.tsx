@@ -20,6 +20,7 @@ import {
   Check,
   AlertTriangle,
 } from "lucide-react";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type Task =
   | {
@@ -276,7 +277,7 @@ export function FollowUpsView({ compact = false }: { compact?: boolean } = {}) {
             completed: json.data?.completed ?? [],
           });
       })
-      .catch(() => setError("Failed to load follow-ups"))
+      .catch(() => setError(UI_COPY.errors.load("follow-ups")))
       .finally(() => setLoading(false));
   }, []);
 

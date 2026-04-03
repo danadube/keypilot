@@ -7,6 +7,7 @@ import {
   FEEDBACK_INTEREST_LEVELS,
   FEEDBACK_REASONS,
 } from "@/lib/validations/feedback";
+import { UI_COPY } from "@/lib/ui-copy";
 
 const INTEREST_LABELS: Record<string, string> = {
   LOVED_IT: "Loved it",
@@ -74,7 +75,7 @@ export function PropertyFeedbackSummaryView({ propertyId }: { propertyId: string
       .then((res) => res.json())
       .then((json) => {
         if (json.error) {
-          setState({ status: "error", message: json.error.message ?? "Failed to load" });
+          setState({ status: "error", message: json.error.message ?? UI_COPY.errors.load("feedback") });
           return;
         }
         const d = json.data as SummaryPayload;
@@ -85,7 +86,7 @@ export function PropertyFeedbackSummaryView({ propertyId }: { propertyId: string
         }
         setState({ status: "ready", data: { ...d, emailReplies } });
       })
-      .catch(() => setState({ status: "error", message: "Failed to load" }));
+      .catch(() => setState({ status: "error", message: UI_COPY.errors.load("feedback") }));
   }, [propertyId]);
 
   const header = (

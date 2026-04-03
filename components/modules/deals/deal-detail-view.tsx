@@ -25,6 +25,7 @@ import {
   statusBadgeVariant as txStatusBadgeVariant,
   type TxStatus,
 } from "@/components/modules/transactions/transactions-shared";
+import { UI_COPY } from "@/lib/ui-copy";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -186,7 +187,7 @@ export function DealDetailView({ dealId }: { dealId: string }) {
       .then((res) => res.json())
       .then((json) => {
         if (json.error) {
-          setError(json.error.message ?? "Failed to load deal");
+          setError(json.error.message ?? UI_COPY.errors.load("deal"));
         } else {
           const raw = json.data;
           const d: Deal = {
@@ -199,7 +200,7 @@ export function DealDetailView({ dealId }: { dealId: string }) {
           setDirty(false);
         }
       })
-      .catch(() => setError("Failed to load deal"))
+      .catch(() => setError(UI_COPY.errors.load("deal")))
       .finally(() => setLoading(false));
   }, [dealId]);
 
@@ -268,7 +269,7 @@ export function DealDetailView({ dealId }: { dealId: string }) {
             onClick={loadDeal}
             className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
           >
-            Try again
+            {UI_COPY.errors.retry}
           </button>
         </div>
       </div>
@@ -336,7 +337,7 @@ export function DealDetailView({ dealId }: { dealId: string }) {
                   href={`/contacts/${deal.contact.id}`}
                   className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-kp-teal transition-colors hover:bg-kp-teal/10"
                 >
-                  View contact
+                  Open contact
                   <ExternalLink className="h-3 w-3 opacity-70" />
                 </Link>
               </div>
@@ -388,7 +389,7 @@ export function DealDetailView({ dealId }: { dealId: string }) {
                   href={`/properties/${deal.property.id}`}
                   className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-kp-teal transition-colors hover:bg-kp-teal/10"
                 >
-                  View property
+                  Open property
                   <ExternalLink className="h-3 w-3 opacity-70" />
                 </Link>
               </div>

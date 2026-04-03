@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { FileText, Plus } from "lucide-react";
+import { UI_COPY } from "@/lib/ui-copy";
 
 const ACTIVITY_TYPES = [
   "CALL",
@@ -57,10 +58,10 @@ export function ActivityTemplatesView() {
     return fetch("/api/v1/activity-templates")
       .then((res) => res.json())
       .then((json) => {
-        if (json.error) setError(json.error.message ?? "Failed to load");
+        if (json.error) setError(json.error.message ?? UI_COPY.errors.load("templates"));
         else setRows(json.data ?? []);
       })
-      .catch(() => setError("Failed to load"));
+      .catch(() => setError(UI_COPY.errors.load("templates")));
   }, []);
 
   useEffect(() => {

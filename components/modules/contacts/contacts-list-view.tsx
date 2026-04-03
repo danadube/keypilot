@@ -44,6 +44,7 @@ import {
   MAX_SAVED_SEGMENTS,
   addSavedSegment,
 } from "@/lib/client-keep/saved-segments-storage";
+import { UI_COPY } from "@/lib/ui-copy";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -120,7 +121,7 @@ function useContacts(
       .then(({ res, json }) => {
         if (!res.ok) {
           let msg =
-            (json.error?.message as string) ?? "Failed to load contacts";
+            (json.error?.message as string) ?? UI_COPY.errors.load("contacts");
           if (
             res.status === 404 &&
             tagId &&
@@ -135,7 +136,7 @@ function useContacts(
         }
         setContacts((json.data as Contact[]) ?? []);
       })
-      .catch(() => setError("Failed to load contacts"))
+      .catch(() => setError(UI_COPY.errors.load("contacts")))
       .finally(() => setLoading(false));
   }
 
@@ -218,7 +219,7 @@ function ErrorState({
           onClick={onRetry}
           className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
         >
-          Try again
+          {UI_COPY.errors.retry}
         </button>
         {onClearFilters && (
           <button
@@ -545,7 +546,7 @@ function ContactsTable({
                   <Link
                     href={`/contacts/${c.id}`}
                     className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-kp-teal transition-colors hover:bg-kp-teal/10"
-                    aria-label={`View ${fullName(c)}`}
+                    aria-label={`Open ${fullName(c)}`}
                   >
                     View
                     <ExternalLink className="h-3 w-3 opacity-70" />

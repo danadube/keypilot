@@ -20,6 +20,7 @@ import { Building2, Calendar, List, Plus } from "lucide-react";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
+import { UI_COPY } from "@/lib/ui-copy";
 
 type DashboardStats = {
   propertiesCount: number;
@@ -39,7 +40,7 @@ export default function PropertyVaultOverviewPage() {
         if (json.error) setError(json.error.message);
         else setStats(json.data);
       })
-      .catch(() => setError("Failed to load"))
+      .catch(() => setError(UI_COPY.errors.load("stats")))
       .finally(() => setLoading(false));
   }, []);
 

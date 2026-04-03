@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ModuleGate } from "@/components/shared/ModuleGate";
 import { cn } from "@/lib/utils";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import { UI_COPY } from "@/lib/ui-copy";
 import {
   AlertCircle,
   ExternalLink,
@@ -86,14 +87,14 @@ export default function ClientKeepSegmentsPage() {
       }
       if (!res.ok) {
         setTagsError(
-          (json.error?.message as string) ?? "Failed to load tags"
+          (json.error?.message as string) ?? UI_COPY.errors.load("tags")
         );
         setTags([]);
         return;
       }
       setTags(Array.isArray(json.data) ? json.data : []);
     } catch {
-      setTagsError("Failed to load tags");
+      setTagsError(UI_COPY.errors.load("tags"));
       setTags([]);
     } finally {
       setTagsLoading(false);

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import { UI_COPY } from "@/lib/ui-copy";
 import {
   AlertCircle,
   ArrowRight,
@@ -55,13 +56,13 @@ export default function ClientKeepTagsPage() {
       const res = await fetch("/api/v1/tags");
       const json = await res.json();
       if (!res.ok) {
-        setError((json.error?.message as string) ?? "Failed to load tags");
+        setError((json.error?.message as string) ?? UI_COPY.errors.load("tags"));
         setTags([]);
         return;
       }
       setTags(Array.isArray(json.data) ? json.data : []);
     } catch {
-      setError("Failed to load tags");
+      setError(UI_COPY.errors.load("tags"));
       setTags([]);
     } finally {
       setLoading(false);
@@ -272,7 +273,7 @@ export default function ClientKeepTagsPage() {
                           asChild
                         >
                           <Link href={`/contacts?tagId=${encodeURIComponent(t.id)}`}>
-                            View contacts
+                            Open contacts
                             <ArrowRight className="h-3 w-3" />
                           </Link>
                         </Button>
