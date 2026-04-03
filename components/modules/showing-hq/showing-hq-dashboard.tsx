@@ -33,21 +33,30 @@ import { cn } from "@/lib/utils";
 
 // ── Types (mirrored from API) ───────────────────────────────────────────────
 
+/** Public open houses scheduled for today (not private showings). */
+type DashboardTodayOpenHouseRow = {
+  id: string;
+  title: string;
+  startAt: string;
+  endAt: string;
+  status: string;
+  qrSlug?: string;
+  agentName?: string | null;
+  agentEmail?: string | null;
+  flyerUrl?: string | null;
+  flyerOverrideUrl?: string | null;
+  property: { address1: string | null; city: string; state: string };
+  _count: { visitors: number };
+};
+
 type DashboardData = {
-  todaysShowings: {
-    id: string;
-    title: string;
-    startAt: string;
-    endAt: string;
-    status: string;
-    qrSlug?: string;
-    agentName?: string | null;
-    agentEmail?: string | null;
-    flyerUrl?: string | null;
-    flyerOverrideUrl?: string | null;
-    property: { address1: string | null; city: string; state: string };
-    _count: { visitors: number };
-  }[];
+  /**
+   * Legacy response key — same rows as `todaysOpenHouses` (public open houses).
+   * Do not assume “private showings”; use `todaysOpenHouses` or `todaysSchedule` for semantics.
+   */
+  todaysShowings: DashboardTodayOpenHouseRow[];
+  /** Preferred: today’s public open houses (see `/api/v1/showing-hq/dashboard`). */
+  todaysOpenHouses?: DashboardTodayOpenHouseRow[];
   upcomingOpenHouses: {
     id: string;
     title: string;
@@ -226,7 +235,20 @@ export function ShowingHQDashboardView() {
     prepTomorrowCount: 0,
   };
 
-  const todaysOpenHousesFromApi = Array.isArray(data.todaysShowings) ? data.todaysShowings : [];
+  const todaysOpenHousesList: DashboardTodayOpenHouseRow[] = Array.isArray(
+    data.todaysOpenHouses
+  )
+    ? data.todaysOpenHouses
+    : Array.isArray(data.todaysShowings)
+      ? data.todaysShowings
+      : [];
+
+  const todaysScheduleList = Array.isArray(data.todaysSchedule) ? data.todaysSchedule : [];
+  /** Schedule is authoritative when present; avoids conflating legacy `todaysShowings` naming with private showings. */
+  const openHousesTodayCount = Array.isArray(data.todaysSchedule)
+    ? todaysScheduleList.filter((s) => s.type === "open_house").length
+    : todaysOpenHousesList.length;
+
   const upcoming = Array.isArray(data.upcomingOpenHouses) ? data.upcomingOpenHouses : [];
   const privateShowingsAttention = Array.isArray(data.privateShowingsAttention)
     ? data.privateShowingsAttention
@@ -275,7 +297,7 @@ export function ShowingHQDashboardView() {
 
   const needsAttentionItems = buildNeedsAttentionItems(
     privateShowingsAttention,
-    [...todaysOpenHousesFromApi, ...upcoming.slice(0, 24)],
+    [...todaysOpenHousesList, ...upcoming.slice(0, 24)],
     attentionNow
   );
 
@@ -300,7 +322,7 @@ export function ShowingHQDashboardView() {
   );
 
   const todayScheduleRows = buildTodayScheduleRows(
-    (Array.isArray(data.todaysSchedule) ? data.todaysSchedule : []).map((s) => ({
+    todaysScheduleList.map((s) => ({
       type: s.type,
       id: s.id,
       at: s.at,
@@ -312,7 +334,7 @@ export function ShowingHQDashboardView() {
 
   const upNextRows = buildUpNextRows(
     attentionNow,
-    (Array.isArray(data.todaysSchedule) ? data.todaysSchedule : []).map((s) => ({
+    todaysScheduleList.map((s) => ({
       type: s.type,
       id: s.id,
       at: s.at,
@@ -452,7 +474,7 @@ export function ShowingHQDashboardView() {
         <aside className="flex min-w-0 flex-col gap-5">
           <ShowingHqTodayRailCard
             showingsToday={stats.privateShowingsToday ?? 0}
-            openHousesToday={todaysOpenHousesFromApi.length}
+            openHousesToday={openHousesTodayCount}
             draftsWaiting={draftsWaitingCount}
             awaitingResponse={awaitingCount}
           />
