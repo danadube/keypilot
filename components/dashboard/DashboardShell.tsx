@@ -7,7 +7,10 @@ import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
 import { ShowingHQWorkbenchHeaderActions } from "@/components/dashboard/ShowingHQWorkbenchHeaderActions";
 import { cn } from "@/lib/utils";
 import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
-import { isOpenHousesListPath } from "@/lib/showing-hq/isShowingHQContext";
+import {
+  isOpenHousesListPath,
+  isShowingHQContext,
+} from "@/lib/showing-hq/isShowingHQContext";
 
 /**
  * "Today" line under ShowingHQ — must not run locale formatting during SSR, or the
@@ -69,6 +72,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   /** + New stays available globally (direct-create links), not only on ShowingHQ surfaces. */
   const showHeaderNewMenu = true;
   const isShowingHQWorkbenchHome = pathname === "/showing-hq";
+  const showingHqShell = isShowingHQContext(pathname);
 
   return (
     <ProductTierProvider>
@@ -80,7 +84,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-0 flex-1 flex-col">
         <header
           className={cn(
-            "sticky top-0 z-20 flex w-full shrink-0 items-stretch border-b border-kp-outline bg-kp-surface",
+            "sticky top-0 z-20 flex w-full shrink-0 border-b border-kp-outline bg-kp-surface",
+            showingHqShell ? "items-center" : "items-stretch",
             shellTopRowHeightClass(pathname)
           )}
         >

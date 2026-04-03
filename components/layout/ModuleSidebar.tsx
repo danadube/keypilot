@@ -23,6 +23,7 @@ import { UPGRADE_MODULES } from "@/lib/module-access";
 import { useProductTier } from "@/components/ProductTierProvider";
 import { APP_VERSION, APP_COMMIT } from "@/lib/app-version";
 import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
+import { isShowingHQContext } from "@/lib/showing-hq/isShowingHQContext";
 import type { ModuleConfig, ModuleId, ModuleSidebarItem } from "@/lib/modules";
 
 const SIDEBAR_WIDTH = 200;
@@ -159,9 +160,14 @@ export function ModuleSidebar() {
 
   const dashboardActive = pathname === "/" || activeId === "home";
 
+  const showingHqShell = isShowingHQContext(pathname);
+
   return (
     <aside
-      className="flex shrink-0 flex-col border-r border-kp-outline text-slate-100"
+      className={cn(
+        "flex shrink-0 flex-col border-r border-kp-outline text-slate-100",
+        showingHqShell && "sticky top-0 z-10 h-dvh max-h-dvh min-h-0 overflow-hidden"
+      )}
       style={{ width: SIDEBAR_WIDTH, backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)" }}
       aria-label="Platform navigation"
     >
@@ -186,7 +192,13 @@ export function ModuleSidebar() {
         </Link>
       </div>
 
-      <nav className="flex-1 overflow-auto py-3" aria-label="Module navigation">
+      <nav
+        className={cn(
+          "flex-1 py-3",
+          showingHqShell ? "min-h-0 overflow-y-auto" : "overflow-auto"
+        )}
+        aria-label="Module navigation"
+      >
         <div className="mb-1 px-2">
           <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-widest text-kp-on-surface-muted">
             Platform
