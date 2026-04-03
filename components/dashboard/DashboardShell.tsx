@@ -13,25 +13,34 @@ import {
 } from "@/lib/showing-hq/isShowingHQContext";
 
 /**
- * "Today" line under ShowingHQ — must not run locale formatting during SSR, or the
- * server timezone (e.g. UTC on Vercel) and the browser timezone produce different
- * strings and React throws hydration errors (#425 / #418 / #423).
+ * Date + time under ShowingHQ shell title — client-only so locale and timezone match
+ * the user and avoid SSR hydration mismatches.
+ * Format: "Thursday, April 2, 2026 • 4:27 PM" (locale from `undefined` = user default).
  */
-function WorkbenchDateLine() {
+function ShowingHQShellDateTimeLine() {
   const [line, setLine] = React.useState<string | null>(null);
   React.useEffect(() => {
-    setLine(
-      new Date().toLocaleDateString("en-US", {
+    function formatNow() {
+      const d = new Date();
+      const datePart = d.toLocaleDateString(undefined, {
         weekday: "long",
         month: "long",
         day: "numeric",
         year: "numeric",
-      })
-    );
+      });
+      const timePart = d.toLocaleTimeString(undefined, {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+      setLine(`${datePart} • ${timePart}`);
+    }
+    formatNow();
+    const id = window.setInterval(formatNow, 60_000);
+    return () => window.clearInterval(id);
   }, []);
   if (!line) return null;
   return (
-    <p className="mt-0.5 truncate text-[11px] leading-tight text-kp-on-surface-muted">
+    <p className="mt-0.5 truncate text-[11px] leading-tight tabular-nums text-kp-on-surface-muted">
       {line}
     </p>
   );
@@ -71,8 +80,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
   /** + New stays available globally (direct-create links), not only on ShowingHQ surfaces. */
   const showHeaderNewMenu = true;
-  const isShowingHQWorkbenchHome = pathname === "/showing-hq";
   const showingHqShell = isShowingHQContext(pathname);
+  const pageTitle = getPageTitle(pathname);
 
   return (
     <ProductTierProvider>
@@ -91,10 +100,28 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         >
           <div className="flex min-w-0 flex-1 items-center overflow-hidden pl-6 pr-3 md:pl-8 md:pr-4 lg:pl-10">
             <div className="min-w-0">
-              <h1 className="truncate text-sm font-semibold leading-tight text-kp-on-surface md:text-base">
-                {getPageTitle(pathname)}
-              </h1>
-              {isShowingHQWorkbenchHome ? <WorkbenchDateLine /> : null}
+              {showingHqShell ? (
+                <>
+                  {pageTitle === "ShowingHQ" ? (
+                    <h1
+                      className="truncate text-lg font-semibold leading-none tracking-tight text-kp-on-surface md:text-xl"
+                      aria-label="ShowingHQ"
+                    >
+                      <span className="text-kp-on-surface">Showing</span>
+                      <span className="text-kp-teal">HQ</span>
+                    </h1>
+                  ) : (
+                    <h1 className="truncate text-lg font-semibold leading-none tracking-tight text-kp-on-surface md:text-xl">
+                      {pageTitle}
+                    </h1>
+                  )}
+                  <ShowingHQShellDateTimeLine />
+                </>
+              ) : (
+                <h1 className="truncate text-sm font-semibold leading-tight text-kp-on-surface md:text-base">
+                  {pageTitle}
+                </h1>
+              )}
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5 border-l border-kp-outline bg-kp-surface px-2.5 md:gap-2 md:px-3.5">
