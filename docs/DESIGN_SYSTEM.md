@@ -11,7 +11,7 @@ Stack reference: Next.js App Router, Tailwind CSS, shadcn/ui patterns, Clerk aut
 
 - **Sidebar (module rail):** Fixed left column, full viewport height, branded module navigation. Uses section labels (e.g. OVERVIEW, WORK, SYSTEM) to group items. Active route uses accent treatment consistent with `kp-gold` / module rules.
 - **Main column:** Flex column — **top bar (header)** + **scrollable content**.
-- **Header:** Sticky or visually pinned at the top of the main column (`z-index` above content). Height should stay consistent app-wide (see `shellTopRowHeightClass` in code). Do not let page heroes push the global header off-screen without an explicit product decision.
+- **Header:** Sticky or visually pinned at the top of the main column (`z-index` above content). Height must stay consistent app-wide (see `shellTopRowHeightClass` in code) and **match the sidebar header row** pixel-for-pixel (see §2). Do not let page heroes push the global header off-screen without an explicit product decision.
 
 ### Sticky behavior
 
@@ -26,7 +26,50 @@ Stack reference: Next.js App Router, Tailwind CSS, shadcn/ui patterns, Clerk aut
 
 ---
 
-## 2. Module naming (canonical)
+## 2. Frame alignment and header system
+
+This section locks **visual alignment** between the sidebar and main column and defines **title, date, and hero** responsibilities so the shell reads as one frame.
+
+### Top rail height (strict)
+
+- **Same height:** The **sidebar header row** (brand / logo strip) and the **main-column top header** MUST use the **identical** vertical height app-wide — one shared token or class (e.g. `shellTopRowHeightClass` in code).  
+- **Do not** tune `py-*`, `min-h-*`, or line-height independently on one side; misalignment between rails is a design defect.
+
+### Sidebar internal structure
+
+- **Fixed top:** Logo / KeyPilot mark. Does not scroll with navigation.  
+- **Scrollable middle:** Module switcher and section-grouped nav (OVERVIEW, WORK, SYSTEM, etc.). This region owns vertical scroll when items exceed the viewport.  
+- **Fixed bottom:** **Settings** (and other persistent system entries). Stays pinned; does not scroll away with the middle list.
+
+### Logo sizing and prominence
+
+- **Sizing:** Fit the mark within the shared header height without crowding adjacent controls. Typical visual band: mark height roughly `h-7`–`h-9` (adjust for asset aspect ratio).  
+- **Prominence:** The logo is **identity**, not ornament — **one** primary mark in the sidebar top; do not duplicate a second logo in the main header.  
+- **Behavior:** Logo links to Home (or the org default landing) unless product explicitly routes elsewhere.
+
+### Two-tone module title (shell)
+
+- **Pattern:** For compound **module** names in the shell header, use **two tones**: first segment in **`text-kp-on-surface`** (semibold), second segment in **`text-kp-teal`** (the branded suffix).  
+- **Examples:** Showing**HQ**, Property**Vault**, Client**Keep**, Deal**Desk**, Market**Pilot** — accent the part that belongs to the product wordmark, not random words in a sentence title.  
+- **Plain page titles** (non-module) may stay single-color unless marketing asks for the same treatment.
+
+### Header hierarchy
+
+- **Dominant:** Module or shell context title — largest type in the bar, semibold, `text-kp-on-surface`.  
+- **Secondary:** Date, time, or one-line context — always **visually subordinate**: smaller size (`text-[11px]`–`text-xs`), `text-kp-on-surface-muted` or `text-kp-on-surface-variant`, lighter weight than the title. Never same size/weight as the primary line.
+
+### Consistent date / time (shell)
+
+- **Shell secondary line:** Use **one** canonical pattern: long weekday + calendar date, e.g. **`Weekday, Month D, YYYY`** (`Friday, March 27, 2026`). Prefer **user locale** when rendered client-side to avoid SSR timezone drift (see also §4 Header rules for tables and metadata).
+
+### Hero vs shell (strict)
+
+- **No duplicate module title:** If the app shell header already shows the **module** name (e.g. two-tone ShowingHQ), the **hero must not repeat** that module title. The hero carries **page**, **list**, or **entity** context only (e.g. “All Open Houses”, “123 Main St”, “Schedule showing”).  
+- **Exception:** Rare marketing or onboarding layouts approved outside the standard shell — document in the feature spec.
+
+---
+
+## 3. Module naming (canonical)
 
 Use these **customer-facing** names in UI copy, headers, and marketing. Route prefixes may differ until fully aligned.
 
@@ -51,12 +94,12 @@ Use these **customer-facing** names in UI copy, headers, and marketing. Route pr
 
 ---
 
-## 3. Header rules
+## 4. Header rules
 
 ### Two-tone title
 
-- **Primary line:** Module or page title — `text-kp-on-surface`, semibold, dominant size for the bar (e.g. `text-lg`–`text-xl` depending on breakpoint).
-- **Secondary line (optional):** Context or date — smaller, muted: `text-[11px]`–`text-xs`, `text-kp-on-surface-muted` or `text-kp-on-surface-variant`. Example pattern: full weekday + long date in **user locale**, client-only if needed to avoid SSR/client timezone mismatch.
+- **Primary line:** Module or page title — `text-kp-on-surface`, semibold, dominant size for the bar (e.g. `text-lg`–`text-xl` depending on breakpoint). For **compound module names** in the shell, apply the **second-word `kp-teal`** pattern per §2.
+- **Secondary line (optional):** Context or date — smaller, muted: `text-[11px]`–`text-xs`, `text-kp-on-surface-muted` or `text-kp-on-surface-variant`. Use the **same long date convention** as §2 for shell “today” lines; client-only if needed to avoid SSR/client timezone mismatch.
 
 ### Date / time format
 
@@ -71,15 +114,15 @@ Use these **customer-facing** names in UI copy, headers, and marketing. Route pr
 
 ---
 
-## 4. Hero system
+## 5. Hero system
 
 The **hero** is the first structured block below the global header (and below workspace tabs when present).
 
 ### Anatomy
 
-1. **Title row:** Page-specific title (can differ from shell title when shell carries module name only).
+1. **Title row:** **Page-, list-, or entity-specific** title only. **Strict:** Do **not** repeat the **module** title shown in the shell header (see §2). When the shell already shows “ShowingHQ”, the hero shows the concrete surface (e.g. property address, list name, form name).
 2. **Context line:** One line of state — filters, selection count, record metadata, or last updated. Style: `text-sm` `text-kp-on-surface-variant`.
-3. **Tabs (optional):** See §5 — belong in hero or immediately below it, not duplicated in sidebar for the same concern.
+3. **Tabs (optional):** See §6 — belong in hero or immediately below it, not duplicated in sidebar for the same concern.
 4. **Actions:** Primary CTA right; secondary actions as outline buttons or grouped menu.
 
 ### Tabs inside hero
@@ -93,7 +136,7 @@ The **hero** is the first structured block below the global header (and below wo
 
 ---
 
-## 5. Tabs system
+## 6. Tabs system
 
 ### Visual language
 
@@ -108,7 +151,7 @@ The **hero** is the first structured block below the global header (and below wo
 
 ---
 
-## 6. Layout structure (vertical stack)
+## 7. Layout structure (vertical stack)
 
 Standard dashboard page:
 
@@ -128,7 +171,7 @@ Rules:
 
 ---
 
-## 7. Typography scale
+## 8. Typography scale
 
 | Role              | Tailwind / token direction        | Usage |
 |-------------------|-----------------------------------|--------|
@@ -147,7 +190,7 @@ Rules:
 
 ---
 
-## 8. Spacing system
+## 9. Spacing system
 
 Use a **4px grid**; prefer these steps only:
 
@@ -168,7 +211,7 @@ Use a **4px grid**; prefer these steps only:
 
 ---
 
-## 9. Color system
+## 10. Color system
 
 KeyPilot uses a **dark operational** palette. All semantic UI should map to **`kp-*` tokens** (see `tailwind.config.ts`).
 
@@ -215,7 +258,7 @@ KeyPilot uses a **dark operational** palette. All semantic UI should map to **`k
 
 ---
 
-## 10. Component standards
+## 11. Component standards
 
 ### Buttons
 
@@ -248,7 +291,7 @@ KeyPilot uses a **dark operational** palette. All semantic UI should map to **`k
 
 ---
 
-## 11. Behavior rules
+## 12. Behavior rules
 
 ### Tabs vs sidebar
 
@@ -277,7 +320,7 @@ KeyPilot uses a **dark operational** palette. All semantic UI should map to **`k
 
 ---
 
-## 12. “Do NOT” rules (anti-patterns)
+## 13. “Do NOT” rules (anti-patterns)
 
 1. **Do not** invent new grays or hex colors outside `kp-*` for dashboard UI.
 2. **Do not** use **gold** for body text blocks or long paragraphs.
@@ -289,10 +332,12 @@ KeyPilot uses a **dark operational** palette. All semantic UI should map to **`k
 8. **Do not** place **more than one** primary gold button in a single hero or card footer.
 9. **Do not** use `text-kp-on-surface-placeholder` for real labels (placeholders only).
 10. **Do not** bypass the app shell for **authenticated** dashboard routes (public/token pages follow separate public layout rules).
+11. **Do not** repeat the **module** title in the **hero** when the shell header already shows it (see §2).
+12. **Do not** use **different header row heights** for the sidebar brand strip vs the main-column header (see §2).
 
 ---
 
-## 13. Public / token surfaces
+## 14. Public / token surfaces
 
 Authenticated shell rules above **do not** apply to visitor-facing token routes (e.g. feedback by token, host invite). Those pages should feel like **property/event context**, not admin chrome: minimal header, no module sidebar, no Clerk-gated assumptions in layout.
 
