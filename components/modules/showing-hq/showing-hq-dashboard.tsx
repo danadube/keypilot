@@ -369,28 +369,28 @@ export function ShowingHQDashboardView() {
       value: String(upcomingCount),
       hint:
         upcomingCount === 0
-          ? "No events scheduled this week"
+          ? "None this week"
           : upcomingCount === 1
-            ? "1 event coming up this week"
-            : "Events on deck this week",
+            ? "1 this week"
+            : "This week",
     },
     {
       key: "drafts-waiting",
       label: "Drafts waiting",
       value: String(draftsWaitingCount),
-      hint: draftsWaitingCount === 0 ? "All clear" : "Need review/send",
+      hint: draftsWaitingCount === 0 ? "All clear" : "Review or send",
     },
     {
       key: "last-oh-visitors",
       label: "Last open house",
       value: String(visitorsLastOpenHouse),
-      hint: "Visitors captured (most recent)",
+      hint: "Latest open house",
     },
     {
       key: "awaiting-response",
       label: "Awaiting response",
       value: String(awaitingCount),
-      hint: awaitingCount === 0 ? "All clear" : "Pending replies",
+      hint: awaitingCount === 0 ? "All clear" : "Awaiting reply",
     },
   ];
   const nextUpPrimary = upNextRows[0] ?? null;
@@ -421,7 +421,7 @@ export function ShowingHQDashboardView() {
             <section className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3.5">
               <p className="text-sm font-medium text-kp-on-surface">Person follow-ups</p>
               <p className="mt-1 text-sm text-kp-on-surface-variant">
-                Couldn&apos;t load this section. Your schedule and workflow rows above are still up to date.
+                Couldn&apos;t load this section.
               </p>
               <button
                 type="button"

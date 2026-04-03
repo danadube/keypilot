@@ -280,10 +280,10 @@ export function NeedsAttentionSection({
             Needs attention
           </h2>
         </div>
-        <p className="text-[11px] font-medium text-kp-on-surface-variant">Most urgent first</p>
+        <p className="text-[11px] font-medium text-kp-on-surface-variant">Urgent first</p>
       </div>
       {items.length === 0 ? (
-        <p className="text-xs text-kp-on-surface-variant">You&apos;re all caught up — nothing urgent right now.</p>
+        <p className="text-xs text-kp-on-surface-variant">All caught up.</p>
       ) : (
         <ul className="space-y-2">
           {items.map((row, index) => {
@@ -589,10 +589,10 @@ export function buildCommandStripPriorityLine(args: {
     nextEvent?.kind === "open_house" && isSameLocalCalendarDay(nextEvent.at, now);
 
   if (action.length >= 2 && openHouseToday) {
-    return `${action.length} items need your action before today's open house at ${nextEvent.address}.`;
+    return `${action.length} items to clear before today's open house at ${nextEvent.address}.`;
   }
   if (action.length >= 2) {
-    return `${action.length} items need your action next — start with the first in the queue.`;
+    return `${action.length} items need action next.`;
   }
   const first = workflowRows[0];
   if (!first) return null;
@@ -701,15 +701,13 @@ function attentionItemToWorkflowRow(
     if (attention.action === "review") {
       categoryTitle = "Visitor feedback";
       primaryLine = "Review visitor feedback in your queue";
-      contextLine = "Web requests are waiting — clear them so nothing stalls.";
+      contextLine = "Web requests waiting.";
     } else {
       categoryTitle = "Buyer-agent email";
       primaryLine = hasAgent
         ? "Send the buyer-agent feedback email"
         : "Add buyer agent name and email";
-      contextLine = hasAgent
-        ? "Draft is ready; the outreach email has not been sent yet."
-        : "You need agent contact on file before the email can go out.";
+      contextLine = hasAgent ? "Draft ready — not sent yet." : "Add agent contact to send.";
     }
   } else if (attention.label === "Follow-up required") {
     visualKind = "report_followup";
@@ -718,7 +716,7 @@ function attentionItemToWorkflowRow(
       attention.action === "review"
         ? "Review the feedback or follow-up queue"
         : "Finish the buyer-agent feedback workflow";
-    contextLine = "This showing still needs a clear next step on feedback.";
+    contextLine = "Feedback still needs a next step.";
   } else if (attention.label === "Prep required") {
     visualKind = "prep";
     categoryTitle = row.kind === "open_house" ? "Open house prep" : "Showing prep";
@@ -728,9 +726,7 @@ function attentionItemToWorkflowRow(
         ? "Upload flyer, confirm QR sign-in, and lock host details"
         : "Add buyer agent details, notes, and your follow-up plan");
     contextLine =
-      row.kind === "open_house"
-        ? "Materials or logistics still block a smooth event."
-        : "Prep checklist gaps will slow you down at the door.";
+      row.kind === "open_house" ? "Materials or logistics still missing." : "Prep gaps remain.";
   } else if (attention.label === "Showing soon") {
     visualKind = "prep";
     categoryTitle = "Starting soon";
@@ -738,13 +734,12 @@ function attentionItemToWorkflowRow(
       row.kind === "open_house"
         ? "Last checks before the open house starts"
         : "Last checks before the private showing";
-    contextLine =
-      row.missingPrepSummary || "Inside the two-hour window — confirm you’re ready to host.";
+    contextLine = row.missingPrepSummary || "Starting within two hours.";
   } else {
     visualKind = "prep";
     categoryTitle = "On deck";
     primaryLine = "Calendar event today — open workspace when ready";
-    contextLine = "No urgent queue item; use details when you need tools.";
+    contextLine = "No urgent queue item.";
   }
 
   const ctaLabel = getAttentionActionLabel(row);
@@ -794,26 +789,26 @@ function needsFollowUpToWorkflowRow(
       visualKind = "awaiting";
       categoryTitle = "Awaiting reply";
       primaryLine = "Waiting on the buyer agent to respond";
-      contextLine = "Feedback email is out — nothing to send until they reply.";
+      contextLine = "Email sent — waiting on reply.";
       break;
     case "Report needed":
       visualKind = "report_followup";
       categoryTitle = "Seller report";
       primaryLine = "Generate or send the seller report";
-      contextLine = "The open house is wrapped — share results with your seller.";
+      contextLine = "Open house done — share with seller.";
       break;
     case "Follow-ups due":
       visualKind = "report_followup";
       categoryTitle = "Visitor email";
       primaryLine = "Review or send visitor follow-up emails";
-      contextLine = "Drafts are waiting — visitors expect timely follow-up.";
+      contextLine = "Drafts waiting.";
       break;
     case "Feedback not sent":
     default:
       visualKind = "feedback";
       categoryTitle = "Buyer-agent outreach";
       primaryLine = "Send buyer-agent feedback (email not sent yet)";
-      contextLine = "Close the loop while the showing is still fresh.";
+      contextLine = "Send while the showing is fresh.";
       break;
   }
 
@@ -878,27 +873,27 @@ export function supraAttentionItemsToWorkflowRows(
     if (item.queueState === "FAILED_PARSE") {
       sortRank = 0;
       primaryLine = "Supra email failed to parse";
-      contextLine = "Fix the message in the inbox log — parse failures stay visible for debugging.";
+      contextLine = "Fix in inbox log.";
       ctaLabel = "Review";
     } else if (item.proposedAction === "CREATE_PROPERTY_AND_SHOWING") {
       sortRank = 1;
       primaryLine = "Supra email needs a property link";
-      contextLine = "Match or create the listing, then apply from the inbox.";
+      contextLine = "Match or create listing, then apply.";
       ctaLabel = "Fix property";
     } else if (item.proposedAction === "CREATE_SHOWING") {
       sortRank = 2;
       primaryLine = "New Supra showing ready to confirm";
-      contextLine = "Create the private showing while the details are fresh.";
+      contextLine = "Confirm while details are fresh.";
       ctaLabel = "Create showing";
     } else if (item.proposedAction === "UPDATE_SHOWING") {
       sortRank = 3;
       primaryLine = "Supra wants to update an existing showing";
-      contextLine = "Confirm changes in the inbox, then apply.";
+      contextLine = "Confirm in inbox, then apply.";
       ctaLabel = "Review";
     } else {
       sortRank = 3;
       primaryLine = "Supra inbox item needs a review";
-      contextLine = "Triage the parsed notification in the system log.";
+      contextLine = "Triage in inbox.";
       ctaLabel = "Review";
     }
 
@@ -1099,7 +1094,7 @@ export function ShowingHQCommandStrip({
             </>
           ) : (
             <p className="mt-1 text-sm leading-snug text-kp-on-surface-muted">
-              No upcoming event on the clock. Add a showing or open house to start today&apos;s flow.
+              No upcoming event.
             </p>
           )}
         </div>
@@ -1171,21 +1166,13 @@ export function WhatNeedsAttentionSection({
           What needs attention
         </h2>
         <p className="mt-1.5 text-sm leading-relaxed text-kp-on-surface-variant">
-          Blocking work for showings and open houses — feedback, prep, and seller deliverables. Start
-          with <span className="font-medium text-kp-on-surface/90">Do now</span>; person follow-ups are
-          listed right below.
+          Priority work for showings and open houses.
         </p>
       </div>
       {rows.length === 0 ? (
         <div className="space-y-2 py-2">
           <p className="text-[13px] font-medium leading-snug text-kp-on-surface">
-            Nothing in the event queue right now.
-          </p>
-          <p className="text-sm leading-relaxed text-kp-on-surface-variant">
-            Use <span className="text-kp-on-surface">Today&apos;s schedule</span> for times,{" "}
-            <span className="text-kp-on-surface">Person follow-ups</span> for contact tasks, and{" "}
-            <span className="text-kp-on-surface">Up next</span> for what&apos;s after the current
-            block.
+            Queue is clear.
           </p>
         </div>
       ) : (
@@ -1326,19 +1313,14 @@ export function TodayScheduleSection({
       <h2 id="today-schedule-heading" className="text-sm font-semibold text-kp-on-surface">
         Today&apos;s schedule
       </h2>
-      <p className="mt-0.5 text-xs leading-relaxed text-kp-on-surface-variant sm:text-sm">
-        Times and readiness only — actions stay in{" "}
-        <span className="font-medium text-kp-on-surface/85">What needs attention</span> and{" "}
-        <span className="font-medium text-kp-on-surface/85">Person follow-ups</span>.
-      </p>
       <ul className="mt-2.5 border-l border-kp-outline/45 pl-3.5">
         <li className="relative pb-2.5">
           <span className="absolute -left-[15px] top-1.5 h-2 w-2 rounded-full bg-kp-teal/75" aria-hidden />
           <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">All day</p>
           <p className="mt-0.5 text-[12px] text-kp-on-surface">
             {rows.length === 0
-              ? "No calendar events scheduled today."
-              : `${rows.length} scheduled event${rows.length === 1 ? "" : "s"} on deck today.`}
+              ? "Nothing scheduled today."
+              : `${rows.length} event${rows.length === 1 ? "" : "s"} today.`}
           </p>
         </li>
         <li className="relative border-t border-kp-outline/35 py-2.5">
@@ -1348,10 +1330,10 @@ export function TodayScheduleSection({
           </p>
           <p className="mt-0.5 text-[12px] text-kp-on-surface">
             <span className="tabular-nums font-semibold text-kp-on-surface">{draftQueueCount}</span> draft
-            {draftQueueCount === 1 ? "" : "s"} waiting review
+            {draftQueueCount === 1 ? "" : "s"} to review
             <span className="mx-1 text-kp-outline/45">·</span>
             <span className="tabular-nums font-semibold text-kp-on-surface">{awaitingCount}</span> awaiting
-            response
+            reply
           </p>
         </li>
         <li className="relative border-t border-kp-outline/35 pt-2.5">
@@ -1365,16 +1347,13 @@ export function TodayScheduleSection({
               {nextUp.address}
             </p>
           ) : (
-            <p className="mt-0.5 text-[12px] text-kp-on-surface-muted">
-              Nothing queued after today yet.
-            </p>
+            <p className="mt-0.5 text-[12px] text-kp-on-surface-muted">Nothing after today.</p>
           )}
         </li>
       </ul>
       {rows.length === 0 ? (
         <p className="mt-2.5 text-xs leading-relaxed text-kp-on-surface-variant sm:text-sm">
-          No showings or open houses on the calendar for today. Use{" "}
-          <span className="text-kp-on-surface">Up next</span> for later blocks.
+          Nothing on the calendar today.
         </p>
       ) : (
         <ul className="mt-2.5 space-y-2">
@@ -1461,11 +1440,11 @@ export function buildTodayScheduleRows(
     } else if (att) {
       const op = mapAttentionToOperatingStatus(att.attention);
       if (op === "Ready") {
-        readinessLine = "Nothing from the attention queue is blocking this slot.";
+        readinessLine = "Clear — queue not blocking.";
       } else if (op === "Needs feedback") {
-        readinessLine = "Feedback or follow-up still open — align with the queue above.";
+        readinessLine = "Feedback or follow-up open.";
       } else if (op === "Needs prep") {
-        readinessLine = "Prep gaps remain — use Finish prep on the matching queue row.";
+        readinessLine = "Prep incomplete.";
       }
     }
     const href =
@@ -1567,14 +1546,12 @@ export function UpNextRailSection({
           <h2 id="up-next-heading" className="text-sm font-semibold text-kp-on-surface">
             Up next
           </h2>
-          <p className="text-xs leading-snug text-kp-on-surface-variant">
-            Later today and beyond — planning, not your task list.
-          </p>
+          <p className="text-xs leading-snug text-kp-on-surface-variant">Upcoming</p>
         </div>
       </div>
       {rows.length === 0 ? (
         <p className="text-xs leading-relaxed text-kp-on-surface-variant sm:text-sm">
-          No future blocks after right now. You&apos;re clear to focus on the queue.
+          Nothing after now.
         </p>
       ) : (
         <ul className="space-y-1.5">
@@ -1639,7 +1616,7 @@ export function RecentOutputsRailSection({
           Recent reports
         </h2>
         <p className="mt-2 text-xs leading-relaxed text-kp-on-surface-variant sm:text-sm">
-          Couldn&apos;t load this section. Refresh the page or try again in a moment.
+          Couldn&apos;t load. Try refreshing.
         </p>
       </section>
     );
@@ -1655,9 +1632,6 @@ export function RecentOutputsRailSection({
       <h2 id="recent-outputs-heading" className="text-xs font-semibold uppercase tracking-wide text-kp-on-surface-muted">
         Recent reports
       </h2>
-      <p className="mt-0.5 text-xs leading-snug text-kp-on-surface-variant/90">
-        Reference only — ship new work from the queue.
-      </p>
       {latest ? (
         <div className="mt-2 rounded-md border border-kp-outline/50 bg-kp-surface-high/20 px-2.5 py-2">
           <p className="text-[12px] font-medium text-kp-on-surface">Last open house</p>
@@ -1731,10 +1705,7 @@ export function QuickActionsRailSection({
         <ClipboardList className="h-3.5 w-3.5 text-kp-on-surface-muted" />
         <h2 className="text-sm font-semibold text-kp-on-surface-muted">Quick actions</h2>
       </div>
-      <p className="mb-2.5 text-xs leading-snug text-kp-on-surface-variant">
-        Shortcuts for common next steps.
-      </p>
-      <div className="flex flex-wrap gap-2">
+      <div className="mt-2.5 flex flex-wrap gap-2">
         <Button
           variant="outline"
           size="sm"

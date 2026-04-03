@@ -32,7 +32,7 @@ export function ShowingHqAgentFollowUpsSection({
             <CalendarClock className="h-4 w-4 text-kp-teal" />
             <div>
               <p className="text-sm font-semibold text-kp-on-surface">Person follow-ups</p>
-              <p className="text-xs text-kp-on-surface-variant">Contact tasks — email drafts and reminders</p>
+              <p className="text-xs text-kp-on-surface-variant">Reminders and drafts</p>
             </div>
           </div>
           <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 text-[11px]")} asChild>
@@ -43,18 +43,7 @@ export function ShowingHqAgentFollowUpsSection({
           <div className="mx-auto mb-2.5 flex h-9 w-9 items-center justify-center rounded-full border border-kp-teal/35 bg-kp-teal/10">
             <CheckCircle2 className="h-5 w-5 text-kp-teal/85" />
           </div>
-          <p className="text-sm font-semibold text-kp-on-surface">You&apos;re clear for the next week</p>
-          <p className="mt-1 text-xs text-kp-on-surface-muted">
-            No open person follow-ups due in the next 7 days. Create tasks from an{" "}
-            <Link href="/showing-hq/open-houses" className="text-kp-teal hover:underline">
-              open house visitor
-            </Link>{" "}
-            or a{" "}
-            <Link href="/contacts" className="text-kp-teal hover:underline">
-              contact
-            </Link>{" "}
-            when you need a dated reminder.
-          </p>
+          <p className="text-sm font-semibold text-kp-on-surface">No follow-ups this week.</p>
           <div className="mt-2.5">
             <Button variant="outline" size="sm" className={cn(kpBtnTertiary, "h-7 text-[11px]")} asChild>
               <Link href="/showing-hq/visitors">
@@ -97,7 +86,7 @@ export function ShowingHqAgentFollowUpsSection({
               ) : null}
             </div>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant sm:text-sm">
-              Active work on contacts — complete, edit, or snooze here.
+              Complete, snooze, or edit below.
             </p>
           </div>
         </div>
@@ -114,7 +103,7 @@ export function ShowingHqAgentFollowUpsSection({
       {overdue.length === 0 && (dueToday.length > 0 || upcoming.length > 0) ? (
         <p className="mb-3 flex items-center gap-1.5 text-xs text-kp-teal/90 sm:text-sm">
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-          Nothing overdue — keep momentum on what&apos;s due today.
+          Nothing overdue.
         </p>
       ) : null}
 
@@ -160,7 +149,7 @@ export function ShowingHqAgentFollowUpsSection({
           </div>
           {upcoming.length > 8 ? (
             <p className="mt-2 text-xs text-kp-on-surface-variant sm:text-sm">
-              Showing 8 soonest. Snooze or reschedule with <strong>Edit</strong> on a card.
+              Showing 8 soonest — use <strong>Edit</strong> to adjust.
             </p>
           ) : null}
         </div>
