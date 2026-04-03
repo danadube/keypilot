@@ -32,7 +32,7 @@ export function ShowingHqAgentFollowUpsSection({
             <CalendarClock className="h-4 w-4 text-kp-teal" />
             <div>
               <p className="text-sm font-semibold text-kp-on-surface">Person follow-ups</p>
-              <p className="text-[10px] text-kp-on-surface-variant">Contact tasks — email drafts and reminders</p>
+              <p className="text-xs text-kp-on-surface-variant">Contact tasks — email drafts and reminders</p>
             </div>
           </div>
           <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-7 text-[11px]")} asChild>
@@ -96,7 +96,7 @@ export function ShowingHqAgentFollowUpsSection({
                 </span>
               ) : null}
             </div>
-            <p className="mt-0.5 text-[10px] text-kp-on-surface-variant sm:text-[11px]">
+            <p className="mt-0.5 text-xs text-kp-on-surface-variant sm:text-sm">
               Active work on contacts — complete, edit, or snooze here.
             </p>
           </div>
@@ -112,7 +112,7 @@ export function ShowingHqAgentFollowUpsSection({
       </div>
 
       {overdue.length === 0 && (dueToday.length > 0 || upcoming.length > 0) ? (
-        <p className="mb-3 flex items-center gap-1.5 text-[11px] text-kp-teal/90">
+        <p className="mb-3 flex items-center gap-1.5 text-xs text-kp-teal/90 sm:text-sm">
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
           Nothing overdue — keep momentum on what&apos;s due today.
         </p>
@@ -120,7 +120,7 @@ export function ShowingHqAgentFollowUpsSection({
 
       {overdue.length > 0 ? (
         <div className="mb-4">
-          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-red-300/90">
+          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-red-300/90">
             <AlertTriangle className="h-3 w-3" />
             Overdue ({overdue.length})
           </div>
@@ -134,7 +134,7 @@ export function ShowingHqAgentFollowUpsSection({
 
       {dueToday.length > 0 ? (
         <div className="mb-4">
-          <div className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-200/95">
+          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-amber-200/95">
             <CalendarClock className="h-3 w-3 shrink-0" aria-hidden />
             Due today ({dueToday.length})
           </div>
@@ -145,12 +145,12 @@ export function ShowingHqAgentFollowUpsSection({
           </div>
         </div>
       ) : upcoming.length > 0 || overdue.length > 0 ? (
-        <p className="mb-3 text-[11px] text-kp-on-surface-variant/90">Nothing due today.</p>
+        <p className="mb-3 text-xs text-kp-on-surface-variant/90 sm:text-sm">Nothing due today.</p>
       ) : null}
 
       {upcoming.length > 0 ? (
         <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-kp-on-surface-variant">
             Coming up ({upcoming.length})
           </p>
           <div className="space-y-2">
@@ -159,7 +159,7 @@ export function ShowingHqAgentFollowUpsSection({
             ))}
           </div>
           {upcoming.length > 8 ? (
-            <p className="mt-2 text-[11px] text-kp-on-surface-variant">
+            <p className="mt-2 text-xs text-kp-on-surface-variant sm:text-sm">
               Showing 8 soonest. Snooze or reschedule with <strong>Edit</strong> on a card.
             </p>
           ) : null}

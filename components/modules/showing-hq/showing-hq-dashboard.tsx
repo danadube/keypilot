@@ -395,7 +395,7 @@ export function ShowingHQDashboardView() {
   const nextUpPrimary = upNextRows[0] ?? null;
 
   return (
-    <div className="flex min-h-0 w-full flex-col bg-transparent">
+    <div className="flex min-h-0 w-full flex-col gap-6 bg-transparent sm:gap-7">
       <ShowingHQCommandStrip
         nextEvent={nextEvent}
         upcomingCount={upcomingCount}
@@ -409,17 +409,17 @@ export function ShowingHQDashboardView() {
 
       <div
         className={cn(
-          "grid grid-cols-1 gap-5",
-          "lg:grid-cols-[minmax(0,1.5fr)_minmax(240px,0.95fr)] lg:items-start lg:gap-x-8",
+          "grid grid-cols-1 gap-6",
+          "lg:grid-cols-[minmax(0,1.5fr)_minmax(240px,0.95fr)] lg:items-start lg:gap-x-9",
           "xl:gap-x-10"
         )}
       >
-        <div className="flex min-w-0 flex-col gap-5 lg:gap-6">
+        <div className="flex min-w-0 flex-col gap-6 lg:gap-7">
           <WhatNeedsAttentionSection rows={workflowRows} />
           {data.agentFollowUps === null ? (
-            <section className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3">
+            <section className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3.5">
               <p className="text-sm font-medium text-kp-on-surface">Person follow-ups</p>
-              <p className="mt-1 text-xs text-kp-on-surface-variant">
+              <p className="mt-1 text-sm text-kp-on-surface-variant">
                 Couldn&apos;t load this section. Your schedule and workflow rows above are still up to date.
               </p>
               <button
@@ -448,7 +448,7 @@ export function ShowingHQDashboardView() {
           ) : null}
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-4 lg:gap-5">
+        <aside className="flex min-w-0 flex-col gap-5 lg:gap-6">
           <QuickActionsRailSection nextEvent={nextEvent} hasDrafts={draftsWaitingCount > 0} />
           <UpNextRailSection
             rows={upNextRows}

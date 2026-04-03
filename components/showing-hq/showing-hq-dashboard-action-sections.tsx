@@ -645,7 +645,7 @@ export function ShowingHQMetricsStrip({
   return (
     <section
       className={cn(
-        "mb-4 grid grid-cols-2 gap-2.5 rounded-lg border border-kp-outline/55 bg-kp-surface-high/20 p-2.5 sm:grid-cols-4",
+        "grid grid-cols-2 gap-3 rounded-lg border border-kp-outline/55 bg-kp-surface-high/20 p-3 sm:grid-cols-4",
         className
       )}
       aria-label="ShowingHQ quick metrics"
@@ -653,12 +653,12 @@ export function ShowingHQMetricsStrip({
       {items.map((item) => (
         <div
           key={item.key}
-          className="rounded-md border border-kp-outline/45 bg-kp-surface/70 px-2.5 py-2"
+          className="rounded-md border border-kp-outline/45 bg-kp-surface/70 px-3 py-2.5"
         >
-          <p className="text-[11px] font-medium text-kp-on-surface-muted">{item.label}</p>
+          <p className="text-xs font-medium text-kp-on-surface-muted">{item.label}</p>
           <p className="mt-0.5 text-lg font-bold tabular-nums text-kp-on-surface">{item.value}</p>
           {item.hint ? (
-            <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-muted">{item.hint}</p>
+            <p className="mt-0.5 text-xs leading-snug text-kp-on-surface-muted">{item.hint}</p>
           ) : null}
         </div>
       ))}
@@ -1065,17 +1065,17 @@ export function ShowingHQCommandStrip({
 
   return (
     <header
-      className="mb-4 w-full rounded-xl border border-kp-teal/30 bg-kp-surface-high/35 px-4 py-3.5 shadow-[0_0_0_1px_rgba(75,174,216,0.12)] sm:mb-5 sm:px-5"
+      className="w-full rounded-xl border border-kp-teal/30 bg-kp-surface-high/35 px-4 py-3.5 shadow-[0_0_0_1px_rgba(75,174,216,0.12)] sm:px-5"
       aria-label="Next event and schedule stats"
     >
       {priorityLine ? (
-        <p className="mb-2.5 max-w-3xl text-[13px] font-semibold leading-snug text-kp-on-surface sm:text-[14px]">
+        <p className="mb-2.5 max-w-3xl text-sm font-semibold leading-snug text-kp-on-surface sm:text-[15px]">
           {priorityLine}
         </p>
       ) : null}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+          <p className="text-xs font-semibold uppercase tracking-wide text-kp-on-surface-muted">
             Next event on deck
           </p>
           {nextEvent ? (
@@ -1083,7 +1083,7 @@ export function ShowingHQCommandStrip({
               <h2 className="mt-0.5 truncate text-base font-bold text-kp-on-surface sm:text-lg">
                 {nextEvent.address}
               </h2>
-              <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] text-kp-on-surface-muted">
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-kp-on-surface-muted">
                 <span className="font-medium text-kp-on-surface/95">{eventKindLabel}</span>
                 <span className="text-kp-outline/45">·</span>
                 <span>{formatShortDayAndTime(nextEvent.at, formatTime)}</span>
@@ -1098,7 +1098,7 @@ export function ShowingHQCommandStrip({
               </p>
             </>
           ) : (
-            <p className="mt-1 text-[12px] leading-snug text-kp-on-surface-muted">
+            <p className="mt-1 text-sm leading-snug text-kp-on-surface-muted">
               No upcoming event on the clock. Add a showing or open house to start today&apos;s flow.
             </p>
           )}
@@ -1131,7 +1131,7 @@ export function ShowingHQCommandStrip({
           )}
         </div>
       </div>
-      <p className="mt-2.5 text-[12px] leading-relaxed text-kp-on-surface-muted">
+      <p className="mt-2.5 text-sm leading-relaxed text-kp-on-surface-muted">
         <span className="font-medium tabular-nums text-kp-on-surface">{actionNowCount}</span> action now
         <span className="mx-1 text-kp-outline/40">•</span>
         <span className="font-medium tabular-nums text-kp-on-surface">{upcomingCount}</span> upcoming
@@ -1170,7 +1170,7 @@ export function WhatNeedsAttentionSection({
         >
           What needs attention
         </h2>
-        <p className="mt-1.5 text-[11px] leading-snug text-kp-on-surface-variant sm:text-[12px]">
+        <p className="mt-1.5 text-sm leading-relaxed text-kp-on-surface-variant">
           Blocking work for showings and open houses — feedback, prep, and seller deliverables. Start
           with <span className="font-medium text-kp-on-surface/90">Do now</span>; person follow-ups are
           listed right below.
@@ -1181,7 +1181,7 @@ export function WhatNeedsAttentionSection({
           <p className="text-[13px] font-medium leading-snug text-kp-on-surface">
             Nothing in the event queue right now.
           </p>
-          <p className="text-[12px] leading-snug text-kp-on-surface-variant">
+          <p className="text-sm leading-relaxed text-kp-on-surface-variant">
             Use <span className="text-kp-on-surface">Today&apos;s schedule</span> for times,{" "}
             <span className="text-kp-on-surface">Person follow-ups</span> for contact tasks, and{" "}
             <span className="text-kp-on-surface">Up next</span> for what&apos;s after the current
@@ -1323,10 +1323,10 @@ export function TodayScheduleSection({
       )}
       aria-labelledby="today-schedule-heading"
     >
-      <h2 id="today-schedule-heading" className="text-[13px] font-semibold text-kp-on-surface">
+      <h2 id="today-schedule-heading" className="text-sm font-semibold text-kp-on-surface">
         Today&apos;s schedule
       </h2>
-      <p className="mt-0.5 text-[10px] leading-snug text-kp-on-surface-variant sm:text-[11px]">
+      <p className="mt-0.5 text-xs leading-relaxed text-kp-on-surface-variant sm:text-sm">
         Times and readiness only — actions stay in{" "}
         <span className="font-medium text-kp-on-surface/85">What needs attention</span> and{" "}
         <span className="font-medium text-kp-on-surface/85">Person follow-ups</span>.
@@ -1372,7 +1372,7 @@ export function TodayScheduleSection({
         </li>
       </ul>
       {rows.length === 0 ? (
-        <p className="mt-2.5 text-[11px] leading-snug text-kp-on-surface-variant">
+        <p className="mt-2.5 text-xs leading-relaxed text-kp-on-surface-variant sm:text-sm">
           No showings or open houses on the calendar for today. Use{" "}
           <span className="text-kp-on-surface">Up next</span> for later blocks.
         </p>
@@ -1389,7 +1389,7 @@ export function TodayScheduleSection({
                   <span className="mx-1 text-kp-outline/50">·</span>
                   <span>{row.address}</span>
                 </p>
-                <p className="mt-0.5 text-[11px] text-kp-on-surface-variant">
+                <p className="mt-0.5 text-xs text-kp-on-surface-variant sm:text-sm">
                   <span className="font-medium text-kp-on-surface/90">{row.eventTypeLabel}</span>
                   <span className="text-kp-outline/45"> · </span>
                   <span
@@ -1405,7 +1405,7 @@ export function TodayScheduleSection({
                   </span>
                 </p>
                 {row.readinessLine ? (
-                  <p className="mt-1 text-[11px] leading-snug text-kp-on-surface-variant/95">
+                  <p className="mt-1 text-xs leading-relaxed text-kp-on-surface-variant/95 sm:text-sm">
                     {row.readinessLine}
                   </p>
                 ) : null}
@@ -1564,16 +1564,16 @@ export function UpNextRailSection({
       <div className="mb-1.5 flex items-start gap-1.5">
         <CalendarClock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-kp-on-surface-variant/70" aria-hidden />
         <div>
-          <h2 id="up-next-heading" className="text-[12px] font-semibold text-kp-on-surface">
+          <h2 id="up-next-heading" className="text-sm font-semibold text-kp-on-surface">
             Up next
           </h2>
-          <p className="text-[9px] leading-snug text-kp-on-surface-variant sm:text-[10px]">
+          <p className="text-xs leading-snug text-kp-on-surface-variant">
             Later today and beyond — planning, not your task list.
           </p>
         </div>
       </div>
       {rows.length === 0 ? (
-        <p className="text-[10px] leading-snug text-kp-on-surface-variant sm:text-[11px]">
+        <p className="text-xs leading-relaxed text-kp-on-surface-variant sm:text-sm">
           No future blocks after right now. You&apos;re clear to focus on the queue.
         </p>
       ) : (
@@ -1588,12 +1588,12 @@ export function UpNextRailSection({
                 }
                 className="block rounded-md px-0 py-0.5 text-left transition-colors hover:bg-kp-surface-high/20"
               >
-                <p className="text-[11px] font-medium tabular-nums leading-snug text-kp-on-surface sm:text-[12px]">
+                <p className="text-xs font-medium tabular-nums leading-snug text-kp-on-surface sm:text-sm">
                   {formatShortDate(row.at)} {formatTime(row.at)}
                   <span className="mx-1 font-normal text-kp-outline/35">—</span>
                   <span className="font-normal">{row.address}</span>
                 </p>
-                <p className="text-[10px] text-kp-on-surface-variant sm:text-[11px]">
+                <p className="text-xs text-kp-on-surface-variant sm:text-sm">
                   {row.kind === "open_house" ? "Open house" : "Private showing"}
                 </p>
               </Link>
@@ -1635,10 +1635,10 @@ export function RecentOutputsRailSection({
         className={cn("rounded-md border border-kp-outline/30 bg-kp-bg/40 px-3 py-2.5 sm:px-3.5", className)}
         aria-labelledby="recent-outputs-heading"
       >
-        <h2 id="recent-outputs-heading" className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+        <h2 id="recent-outputs-heading" className="text-xs font-semibold uppercase tracking-wide text-kp-on-surface-variant">
           Recent reports
         </h2>
-        <p className="mt-2 text-[11px] leading-snug text-kp-on-surface-variant">
+        <p className="mt-2 text-xs leading-relaxed text-kp-on-surface-variant sm:text-sm">
           Couldn&apos;t load this section. Refresh the page or try again in a moment.
         </p>
       </section>
@@ -1652,10 +1652,10 @@ export function RecentOutputsRailSection({
       className={cn("rounded-lg border border-kp-outline/40 bg-kp-surface/40 px-3 py-2.5 sm:px-3.5", className)}
       aria-labelledby="recent-outputs-heading"
     >
-      <h2 id="recent-outputs-heading" className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+      <h2 id="recent-outputs-heading" className="text-xs font-semibold uppercase tracking-wide text-kp-on-surface-muted">
         Recent reports
       </h2>
-      <p className="mt-0.5 text-[9px] leading-snug text-kp-on-surface-variant/90">
+      <p className="mt-0.5 text-xs leading-snug text-kp-on-surface-variant/90">
         Reference only — ship new work from the queue.
       </p>
       {latest ? (
@@ -1698,7 +1698,7 @@ export function RecentOutputsRailSection({
           <li key={r.id}>
             <Link
               href={`/open-houses/${r.id}/report`}
-              className="block text-[11px] leading-snug text-kp-on-surface-variant hover:text-kp-on-surface"
+              className="block text-xs leading-snug text-kp-on-surface-variant hover:text-kp-on-surface sm:text-sm"
             >
               <span className="font-medium text-kp-on-surface">{r.address}</span>
               <span className="text-kp-outline/50"> · </span>
@@ -1727,10 +1727,13 @@ export function QuickActionsRailSection({
       : "new-open-house";
   return (
     <section className="rounded-lg border border-kp-outline/35 bg-kp-bg/[0.22] px-3 py-3 sm:px-3.5">
-      <div className="mb-2 flex items-center gap-1.5">
+      <div className="mb-1 flex items-center gap-1.5">
         <ClipboardList className="h-3.5 w-3.5 text-kp-on-surface-muted" />
-        <h2 className="text-[12px] font-semibold text-kp-on-surface-muted">Quick actions</h2>
+        <h2 className="text-sm font-semibold text-kp-on-surface-muted">Quick actions</h2>
       </div>
+      <p className="mb-2.5 text-xs leading-snug text-kp-on-surface-variant">
+        Shortcuts for common next steps.
+      </p>
       <div className="flex flex-wrap gap-2">
         <Button
           variant="outline"

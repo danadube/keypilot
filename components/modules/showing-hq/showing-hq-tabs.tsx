@@ -104,10 +104,9 @@ export function ShowingHqWorkspaceChrome({
     <div className="flex min-h-0 flex-col gap-3">
       <header className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
         <ShowingHqTabBar />
-        <div className="flex flex-col gap-2 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-3">
-          <p className="text-sm leading-snug text-kp-on-surface-variant">
-            Each tab opens its own lists and tools. Saved views keep your filters and
-            search for later.
+        <div className="flex flex-col gap-2 px-4 py-2 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:py-2.5">
+          <p className="text-sm leading-normal text-kp-on-surface-variant">
+            Tabs switch workspace areas; saved views keep filters.
           </p>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <details className="group relative">
