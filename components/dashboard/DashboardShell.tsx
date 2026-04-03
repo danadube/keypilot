@@ -62,7 +62,8 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/property-vault")) return "PropertyVault";
   if (pathname.startsWith("/market-pilot/campaigns")) return "Campaigns";
   if (pathname.startsWith("/market-pilot")) return "MarketPilot";
-  if (pathname.startsWith("/contacts")) return "Contacts";
+  // Contacts lives under ClientKeep; shell shows module mark (tabs label the Contacts area).
+  if (pathname.startsWith("/contacts")) return "ClientKeep";
   if (pathname.startsWith("/deals")) return "Deals";
   if (pathname.startsWith("/client-keep/activity")) return "Recent activity";
   if (pathname.startsWith("/client-keep/follow-ups")) return "Follow-ups";
