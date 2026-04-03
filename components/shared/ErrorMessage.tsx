@@ -1,3 +1,5 @@
+import { UI_COPY } from "@/lib/ui-copy";
+
 type ErrorMessageProps = {
   message: string;
   onRetry?: () => void;
@@ -7,7 +9,7 @@ type ErrorMessageProps = {
 export function ErrorMessage({
   message,
   onRetry,
-  retryLabel = "Try again",
+  retryLabel = UI_COPY.errors.retry,
 }: ErrorMessageProps) {
   return (
     <div className="min-h-[120px] rounded-lg border border-red-500/20 bg-red-500/10 p-4">
