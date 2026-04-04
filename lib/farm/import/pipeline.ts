@@ -332,7 +332,7 @@ export async function applyFarmImport(
           lastName: row.lastName?.trim() || "",
           email: row.email,
           phone: row.phone,
-          assignedToUser: { connect: { id: userId } },
+          assignedToUserId: userId,
           source: "Farm Import",
         },
         select: contactSelect,
