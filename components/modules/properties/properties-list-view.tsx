@@ -225,13 +225,11 @@ export function PropertiesListView() {
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
-      {/* ── Page intro (title lives in DashboardShell) ───────────────────────── */}
-      <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-3 sm:px-8">
-        <div>
-          <p className="max-w-xl text-sm text-kp-on-surface-variant">
-            Manage listings for open house events
-          </p>
-        </div>
+      {/* Hero: one context line + CTA — module title is in the shell */}
+      <div className="flex flex-col gap-3 px-6 pb-3 pt-2 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <p className="max-w-xl text-xs text-kp-on-surface-variant">
+          Listing records for open houses and visitor capture.
+        </p>
         <Link
           href="/properties/new"
           className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-kp-gold px-3 py-1.5 text-xs font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-gold focus-visible:ring-offset-2 focus-visible:ring-offset-kp-bg"
@@ -241,8 +239,22 @@ export function PropertiesListView() {
         </Link>
       </div>
 
+      {/* Page-level list tabs (unchanged visibility rules) */}
+      {!loading && !error && properties.length > 0 && (
+        <div className="px-6 sm:px-8">
+          <SectionTabs
+            tabs={TABS.map((t) => ({
+              ...t,
+              count: t.value === "all" ? properties.length : undefined,
+            }))}
+            active={activeTab}
+            onChange={setActiveTab}
+          />
+        </div>
+      )}
+
       {/* ── Metric cards ────────────────────────────────────────────────────── */}
-      <div className="grid gap-3 px-6 pb-4 sm:grid-cols-3 sm:px-8">
+      <div className="grid gap-3 px-6 pb-4 pt-4 sm:grid-cols-3 sm:px-8">
         <MetricCard
           label="Total properties"
           value={properties.length}
@@ -272,35 +284,11 @@ export function PropertiesListView() {
 
       {/* ── Table panel ─────────────────────────────────────────────────────── */}
       <div className="mx-6 mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
-        {/* Panel header */}
-        <div className="flex items-center justify-between gap-4 border-b border-kp-outline px-5 py-4">
-          <div>
-            <p className="text-sm font-semibold text-kp-on-surface">Your properties</p>
-            <p className="text-xs text-kp-on-surface-variant">
-              Add and manage property records for open house events
-            </p>
-          </div>
-          {!loading && !error && properties.length > 0 && (
-            <span className="text-xs tabular-nums text-kp-on-surface-variant">
+        {!loading && !error && properties.length > 0 && (
+          <div className="flex justify-end border-b border-kp-outline px-5 py-2">
+            <span className="text-xs tabular-nums text-kp-on-surface-muted">
               {properties.length} {properties.length === 1 ? "property" : "properties"}
             </span>
-          )}
-        </div>
-
-        {/* Section tabs */}
-        {!loading && !error && properties.length > 0 && (
-          <div className="px-5">
-            <SectionTabs
-              tabs={TABS.map((t) => ({
-                ...t,
-                count:
-                  t.value === "all"
-                    ? properties.length
-                    : undefined,
-              }))}
-              active={activeTab}
-              onChange={setActiveTab}
-            />
           </div>
         )}
 

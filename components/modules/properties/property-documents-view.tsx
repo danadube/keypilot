@@ -75,11 +75,15 @@ export function PropertyDocumentsView({ id }: { id: string }) {
 
       <PropertyVaultPropertySubnav propertyId={id} current="documents" />
 
-      <div>
-        <h1 className="text-xl font-bold text-kp-on-surface">Documents</h1>
-        <p className="mt-1 text-sm text-kp-on-surface-variant">
+      <div className="space-y-1">
+        <h1 className="text-lg font-semibold leading-snug text-kp-on-surface">
           {property.address1}
-          {property.address2 ? ` ${property.address2}` : ""} · {locationLine}
+          {property.address2 ? ` ${property.address2}` : ""}
+        </h1>
+        <p className="text-xs text-kp-on-surface-variant">
+          {locationLine}
+          <span className="text-kp-on-surface-muted"> · </span>
+          Documents
         </p>
       </div>
 

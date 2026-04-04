@@ -116,19 +116,20 @@ export function NewPropertyForm() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" className={cn(kpBtnTertiary)} asChild>
+      <h1 className="sr-only">New property</h1>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <Button variant="ghost" size="sm" className={cn(kpBtnTertiary, "w-fit")} asChild>
           <Link href="/properties">← Back to properties</Link>
         </Button>
-        <h1 className="text-2xl font-semibold text-kp-on-surface">New property</h1>
+        <p className="text-sm text-kp-on-surface-variant">
+          New listing record for open houses.
+        </p>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Property details</CardTitle>
-          <CardDescription>
-            Add a listing for open house events
-          </CardDescription>
+        <CardHeader className="space-y-1 pb-2">
+          <CardTitle className="text-base font-medium text-kp-on-surface">Details</CardTitle>
+          <CardDescription className="text-xs">Address, price, and notes</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">

@@ -9,13 +9,7 @@ import {
   kpBtnSecondary,
   kpBtnTertiary,
 } from "@/components/ui/kp-dashboard-button-tiers";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Calendar, List, Plus } from "lucide-react";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
@@ -51,14 +45,13 @@ export default function PropertyVaultOverviewPage() {
   const openHousesCount = stats?.openHousesCount ?? 0;
   const vaultContextMessage =
     propertiesCount === 0 && openHousesCount === 0
-      ? "Add a property to start open houses and capturing visitors."
-      : `You have ${propertiesCount} propert${propertiesCount === 1 ? "y" : "ies"} on file and ${openHousesCount} open house ${openHousesCount === 1 ? "event" : "events"} linked.`;
+      ? "Add a listing to run open houses and capture visitors."
+      : `${propertiesCount} propert${propertiesCount === 1 ? "y" : "ies"} · ${openHousesCount} open house ${openHousesCount === 1 ? "event" : "events"}`;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <DashboardContextStrip
-          label="Snapshot"
           message={vaultContextMessage}
           className="min-w-0 flex-1 sm:max-w-2xl"
         />
@@ -135,24 +128,6 @@ export default function PropertyVaultOverviewPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Context card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Property database</CardTitle>
-          <CardDescription>
-            Central database of property records. Add properties to create open houses, track listings, and capture visitors.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground">
-            Manage properties from the list, then schedule open house events and view activity per property.
-          </p>
-          <Button variant="outline" size="sm" className={cn(kpBtnSecondary)} asChild>
-            <Link href="/properties">Go to properties</Link>
-          </Button>
-        </CardContent>
-      </Card>
     </div>
   );
 }

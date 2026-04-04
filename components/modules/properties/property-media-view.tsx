@@ -72,11 +72,15 @@ export function PropertyMediaView({ id }: { id: string }) {
 
       <PropertyVaultPropertySubnav propertyId={id} current="media" />
 
-      <div>
-        <h1 className="text-xl font-bold text-kp-on-surface">Photos &amp; media</h1>
-        <p className="mt-1 text-sm text-kp-on-surface-variant">
+      <div className="space-y-1">
+        <h1 className="text-lg font-semibold leading-snug text-kp-on-surface">
           {property.address1}
-          {property.address2 ? ` ${property.address2}` : ""} · {locationLine}
+          {property.address2 ? ` ${property.address2}` : ""}
+        </h1>
+        <p className="text-xs text-kp-on-surface-variant">
+          {locationLine}
+          <span className="text-kp-on-surface-muted"> · </span>
+          Photos &amp; media
         </p>
       </div>
 
