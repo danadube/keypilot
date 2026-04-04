@@ -33,10 +33,10 @@ export const keypilotTheme: BrandTheme = {
     heroBg: "#E6F1FB",
     heroRing: "#4BAED8",
   },
-  // TODO: Load Inter via next/font: import { Inter } from "next/font/google"; Inter({ subsets: ["latin"] })
+  // Heading/body use CSS vars from app/layout.tsx (next/font); inherit from <html>.
   fonts: {
-    heading: "Inter, system-ui, sans-serif",
-    body: "Inter, system-ui, sans-serif",
+    heading: "var(--font-newsreader), Georgia, ui-serif, serif",
+    body: "var(--font-inter), system-ui, sans-serif",
     mono: "JetBrains Mono, ui-monospace, monospace",
   },
   radius: {

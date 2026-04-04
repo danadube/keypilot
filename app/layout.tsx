@@ -8,15 +8,19 @@ import { BrandProvider } from "@/design-system/brand-context";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  display: "swap",
 });
 
-// Newsreader: editorial / product headings in new KP design system
+// Newsreader: editorial / product headings in new KP design system.
+// adjustFontFallback: false — Newsreader is not in Next's capsize metrics DB; without this,
+// dev/build logs "Failed to find font override values for font `Newsreader`".
 const newsreader = Newsreader({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   style: ["normal", "italic"],
   variable: "--font-newsreader",
   display: "swap",
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {
@@ -46,8 +50,8 @@ export default function RootLayout({
       afterSignInUrl="/"
       afterSignUpUrl="/"
     >
-      <html lang="en">
-        <body className={`${inter.variable} ${newsreader.variable} font-sans antialiased`}>
+      <html lang="en" className={`${inter.variable} ${newsreader.variable}`}>
+        <body className="font-sans antialiased">
           <BrandProvider brand="keypilot">
             {children}
           </BrandProvider>

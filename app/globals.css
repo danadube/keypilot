@@ -69,13 +69,9 @@ body {
   --input: 215 28% 24%;
 }
 
-/* ── KeyPilot design system font fallbacks ───────────────────────────────────
-   --font-inter and --font-newsreader are injected by next/font variables in
-   layout.tsx. These fallbacks apply if the CSS var is somehow absent. */
-:root {
-  --font-inter: "Inter", system-ui, sans-serif;
-  --font-newsreader: "Newsreader", Georgia, ui-serif, serif;
-}
+/* Font stacks: --font-inter and --font-newsreader come from next/font on <html>
+   (app/layout.tsx). Do not redefine them here — duplicates caused inconsistent
+   stacks and are unrelated to next/font optimization. */
 
 /* Design system: CSS vars are applied by BrandProvider via inline style.
    When using Brand* components, wrap with <BrandProvider brand="keypilot">.
