@@ -37,14 +37,35 @@ export async function POST(req: NextRequest) {
     }
 
     const body = ApplyBodySchema.parse(await req.json());
-    const applied = await withRLSContext(user.id, (tx) =>
-      applyFarmImport(tx, user.id, {
-        rows: body.rows,
-        mapping: body.mapping,
-        defaultTerritoryName: body.defaultTerritoryName,
-        defaultAreaName: body.defaultAreaName,
-      })
-    );
+    let applied: Awaited<ReturnType<typeof applyFarmImport>>;
+    try {
+      applied = await withRLSContext(user.id, (tx) =>
+        applyFarmImport(tx, user.id, {
+          rows: body.rows,
+          mapping: body.mapping,
+          defaultTerritoryName: body.defaultTerritoryName,
+          defaultAreaName: body.defaultAreaName,
+        })
+      );
+    } catch (importApplyErr) {
+      console.error("IMPORT APPLY ERROR:", importApplyErr);
+      const exposeApplyDebug =
+        process.env.FARM_IMPORT_APPLY_DEBUG === "1" ||
+        process.env.NODE_ENV === "development";
+      if (exposeApplyDebug && importApplyErr instanceof Error) {
+        return NextResponse.json(
+          {
+            error: {
+              message: importApplyErr.message,
+              stack: importApplyErr.stack,
+              code: "FARM_IMPORT_APPLY_FAILED",
+            },
+          },
+          { status: 500 }
+        );
+      }
+      throw importApplyErr;
+    }
     return NextResponse.json({ data: applied });
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);

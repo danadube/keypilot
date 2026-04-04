@@ -360,25 +360,30 @@ export async function applyFarmImport(
       },
       select: { id: true, status: true },
     });
-    if (!existingMembership) {
-      await db.contactFarmMembership.create({
-        data: {
-          userId,
+    // Upsert avoids P2002 when a membership row exists but was not visible to findUnique
+    // (e.g. race or historical data edge cases) and matches other farm membership routes.
+    await db.contactFarmMembership.upsert({
+      where: {
+        contactId_farmAreaId: {
           contactId: contact.id,
           farmAreaId: area.id,
-          status: ContactFarmMembershipStatus.ACTIVE,
-          archivedAt: null,
         },
-      });
+      },
+      create: {
+        userId,
+        contactId: contact.id,
+        farmAreaId: area.id,
+        status: ContactFarmMembershipStatus.ACTIVE,
+      },
+      update: {
+        userId,
+        status: ContactFarmMembershipStatus.ACTIVE,
+        archivedAt: null,
+      },
+    });
+    if (!existingMembership) {
       summary.createdMemberships += 1;
     } else if (existingMembership.status === ContactFarmMembershipStatus.ARCHIVED) {
-      await db.contactFarmMembership.update({
-        where: { id: existingMembership.id },
-        data: {
-          status: ContactFarmMembershipStatus.ACTIVE,
-          archivedAt: null,
-        },
-      });
       summary.reactivatedMemberships += 1;
     } else {
       summary.skippedRows += 1;
