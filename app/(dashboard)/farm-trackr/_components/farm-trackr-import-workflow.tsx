@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertCircle, ChevronDown, ChevronRight, Loader2, Upload } from "lucide-react";
+import {
+  AlertCircle,
+  Bookmark,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  Pencil,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,6 +18,14 @@ import {
   kpBtnSecondary,
 } from "@/components/ui/kp-dashboard-button-tiers";
 import { cn } from "@/lib/utils";
+import {
+  addImportMappingTemplate,
+  applyTemplateMappingToHeaders,
+  deleteImportMappingTemplateById,
+  loadImportMappingTemplates,
+  type FarmImportMappingTemplateRecord,
+  renameImportMappingTemplate,
+} from "@/lib/farm/import-mapping-templates-storage";
 
 export type ImportDataSet = {
   headers: string[];
@@ -160,13 +177,20 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
   const [importError, setImportError] = useState<string | null>(null);
   const [importBusy, setImportBusy] = useState<"parse" | "preview" | "apply" | null>(null);
   const [showRawPreview, setShowRawPreview] = useState(false);
+  const [savedTemplates, setSavedTemplates] = useState<FarmImportMappingTemplateRecord[]>([]);
+  const [showTemplatesPanel, setShowTemplatesPanel] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
+  const [renamingTemplateId, setRenamingTemplateId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [templateNotice, setTemplateNotice] = useState<string | null>(null);
+  const [templateSectionError, setTemplateSectionError] = useState<string | null>(null);
 
   const currentFingerprint = useMemo(
     () => mappingFingerprint(mapping, defaultTerritoryName, defaultAreaName),
     [mapping, defaultTerritoryName, defaultAreaName]
   );
 
-  const importHeaders = dataset?.headers ?? [];
+  const importHeaders = useMemo(() => dataset?.headers ?? [], [dataset?.headers]);
 
   const canRunPreview = useMemo(
     () =>
@@ -196,6 +220,14 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
     setImportResultSummary(null);
   }, []);
 
+  const refreshSavedTemplates = useCallback(() => {
+    setSavedTemplates(loadImportMappingTemplates());
+  }, []);
+
+  useEffect(() => {
+    refreshSavedTemplates();
+  }, [refreshSavedTemplates]);
+
   const resetToUpload = useCallback(() => {
     setStage("upload");
     setFileMeta(null);
@@ -207,11 +239,18 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
     setImportError(null);
     setImportBusy(null);
     setShowRawPreview(false);
+    setTemplateNotice(null);
+    setTemplateSectionError(null);
+    setNewTemplateName("");
+    setRenamingTemplateId(null);
+    setRenameDraft("");
   }, [clearPreview]);
 
   /** New file = new dataset → always invalidate preview */
   const handleParseFile = async (file: File) => {
     setImportError(null);
+    setTemplateNotice(null);
+    setTemplateSectionError(null);
     clearPreview();
     setImportBusy("parse");
     try {
@@ -355,6 +394,75 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
     ? "Map at least one contact identifier (email, phone, or first+last name or full name) and territory/area (column or default)."
     : null;
 
+  const handleApplyTemplate = useCallback(
+    (rec: FarmImportMappingTemplateRecord) => {
+      setTemplateSectionError(null);
+      clearPreview();
+      const { mapping: next, unmatchedColumnNames } = applyTemplateMappingToHeaders(
+        rec.mapping,
+        importHeaders
+      );
+      setMapping(next as ImportMapping);
+      setDefaultTerritoryName(rec.defaultTerritoryName);
+      setDefaultAreaName(rec.defaultAreaName);
+      if (unmatchedColumnNames.length > 0) {
+        setTemplateNotice(
+          `No column match for: ${unmatchedColumnNames.join(", ")}. Unmatched mappings were cleared.`
+        );
+      } else {
+        setTemplateNotice(null);
+      }
+    },
+    [importHeaders, clearPreview]
+  );
+
+  const handleSaveTemplate = useCallback(() => {
+    setTemplateSectionError(null);
+    const result = addImportMappingTemplate({
+      name: newTemplateName,
+      mapping,
+      defaultTerritoryName,
+      defaultAreaName,
+    });
+    if (!result.ok) {
+      if (result.reason === "empty_name") {
+        setTemplateSectionError("Enter a template name.");
+      } else {
+        setTemplateSectionError("Template limit reached. Delete one to save another.");
+      }
+      return;
+    }
+    setNewTemplateName("");
+    refreshSavedTemplates();
+  }, [newTemplateName, mapping, defaultTerritoryName, defaultAreaName, refreshSavedTemplates]);
+
+  const handleDeleteTemplate = useCallback(
+    (id: string) => {
+      if (!window.confirm("Delete this saved template?")) return;
+      deleteImportMappingTemplateById(id);
+      refreshSavedTemplates();
+      if (renamingTemplateId === id) {
+        setRenamingTemplateId(null);
+        setRenameDraft("");
+      }
+    },
+    [refreshSavedTemplates, renamingTemplateId]
+  );
+
+  const commitRenameTemplate = useCallback(() => {
+    if (!renamingTemplateId) return;
+    const res = renameImportMappingTemplate(renamingTemplateId, renameDraft);
+    if (!res.ok) {
+      setTemplateSectionError(
+        res.reason === "empty_name" ? "Enter a name." : "Could not rename template."
+      );
+      return;
+    }
+    setRenamingTemplateId(null);
+    setRenameDraft("");
+    refreshSavedTemplates();
+  }, [renamingTemplateId, renameDraft, refreshSavedTemplates]);
+
   return (
     <>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -452,6 +560,159 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
 
             {stage === "mapping" ? (
               <>
+                <div className="rounded-lg border border-kp-outline bg-kp-surface-high p-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowTemplatesPanel((v) => !v)}
+                    className="flex w-full items-center gap-2 text-left text-xs font-medium text-kp-on-surface-variant hover:text-kp-on-surface"
+                  >
+                    <Bookmark className="h-3.5 w-3.5 shrink-0 text-kp-teal/90" />
+                    {showTemplatesPanel ? (
+                      <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                    ) : (
+                      <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                    )}
+                    <span className="text-kp-on-surface">Mapping templates</span>
+                    {savedTemplates.length > 0 ? (
+                      <span className="ml-auto tabular-nums text-[11px] text-kp-on-surface-muted/90">
+                        {savedTemplates.length} saved
+                      </span>
+                    ) : null}
+                  </button>
+
+                  {showTemplatesPanel ? (
+                    <div className="mt-3 space-y-2 border-t border-kp-outline pt-3">
+                      {templateSectionError ? (
+                        <p className="text-[11px] text-amber-200/90">{templateSectionError}</p>
+                      ) : null}
+                      {templateNotice ? (
+                        <div className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-amber-500/25 bg-amber-500/10 px-2.5 py-2 text-[11px] text-amber-100/95">
+                          <span className="min-w-0 flex-1 leading-snug">{templateNotice}</span>
+                          <button
+                            type="button"
+                            className="shrink-0 font-medium text-kp-teal underline-offset-2 hover:underline"
+                            onClick={() => setTemplateNotice(null)}
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      ) : null}
+
+                      {savedTemplates.length === 0 ? (
+                        <p className="text-[11px] text-kp-on-surface-variant">
+                          Save a mapping preset to reuse on the next import.
+                        </p>
+                      ) : (
+                        <ul className="space-y-1.5">
+                          {savedTemplates.map((t) => (
+                            <li
+                              key={t.id}
+                              className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-kp-outline/80 bg-kp-surface px-2 py-1.5 text-[11px]"
+                            >
+                              {renamingTemplateId === t.id ? (
+                                <>
+                                  <Input
+                                    value={renameDraft}
+                                    onChange={(e) => setRenameDraft(e.target.value)}
+                                    className="h-7 min-w-[6rem] flex-1 border-kp-outline bg-kp-surface-high text-xs text-kp-on-surface"
+                                    autoFocus
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") commitRenameTemplate();
+                                      if (e.key === "Escape") {
+                                        setRenamingTemplateId(null);
+                                        setRenameDraft("");
+                                      }
+                                    }}
+                                  />
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    className={cn(kpBtnSecondary, "h-7 px-2 text-[11px]")}
+                                    onClick={() => void commitRenameTemplate()}
+                                  >
+                                    Save
+                                  </Button>
+                                  <button
+                                    type="button"
+                                    className="text-kp-on-surface-variant hover:text-kp-on-surface"
+                                    onClick={() => {
+                                      setRenamingTemplateId(null);
+                                      setRenameDraft("");
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="min-w-0 flex-1 truncate font-medium text-kp-on-surface">
+                                    {t.name}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="shrink-0 font-medium text-kp-teal underline-offset-2 hover:underline"
+                                    onClick={() => handleApplyTemplate(t)}
+                                  >
+                                    Apply
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="inline-flex shrink-0 items-center gap-0.5 text-kp-on-surface-variant hover:text-kp-on-surface"
+                                    onClick={() => {
+                                      setTemplateSectionError(null);
+                                      setRenamingTemplateId(t.id);
+                                      setRenameDraft(t.name);
+                                    }}
+                                    aria-label={`Rename ${t.name}`}
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                    <span className="hidden sm:inline">Rename</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="inline-flex shrink-0 items-center gap-0.5 text-kp-on-surface-variant hover:text-red-300"
+                                    onClick={() => handleDeleteTemplate(t.id)}
+                                    aria-label={`Delete ${t.name}`}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                    <span className="hidden sm:inline">Delete</span>
+                                  </button>
+                                </>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      <div className="flex flex-wrap items-end gap-2 border-t border-kp-outline pt-3">
+                        <label className="min-w-[10rem] flex-1 space-y-1">
+                          <span className="text-[11px] text-kp-on-surface-variant">
+                            Save current mapping
+                          </span>
+                          <Input
+                            value={newTemplateName}
+                            onChange={(e) => setNewTemplateName(e.target.value)}
+                            placeholder="Template name"
+                            className="h-8 border-kp-outline bg-kp-surface text-xs text-kp-on-surface"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleSaveTemplate();
+                            }}
+                          />
+                        </label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className={cn(kpBtnSecondary, "h-8 shrink-0 px-3 text-xs")}
+                          onClick={() => handleSaveTemplate()}
+                          disabled={!newTemplateName.trim()}
+                        >
+                          Save template
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
                 <button
                   type="button"
                   onClick={() => setShowRawPreview((v) => !v)}
