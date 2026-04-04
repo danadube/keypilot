@@ -18,17 +18,22 @@ export async function GET(req: NextRequest) {
     }
 
     const sp = req.nextUrl.searchParams;
+    const summaryOnlyFlag = sp.get("summaryOnly");
+    const summaryOnly =
+      summaryOnlyFlag === "1" || summaryOnlyFlag === "true";
     const raw = {
       territoryId: sp.get("territoryId") ?? undefined,
       farmAreaId: sp.get("farmAreaId") ?? undefined,
       format: (sp.get("format") as "json" | "html" | null) ?? "json",
+      summaryOnly,
     };
     const parsed = FarmMailingRecipientsQuerySchema.safeParse(raw);
     if (!parsed.success) {
       return apiError(parsed.error.issues[0]?.message ?? "Invalid query", 400);
     }
 
-    const { territoryId, farmAreaId, format } = parsed.data;
+    const { territoryId, farmAreaId, format, summaryOnly: summaryOnlyResponse } =
+      parsed.data;
     const scope =
       farmAreaId != null
         ? ({ kind: "area" as const, farmAreaId })
@@ -37,6 +42,23 @@ export async function GET(req: NextRequest) {
     const { recipients, scopeLabel } = await withRLSContext(user.id, (tx) =>
       loadFarmMailingRecipients(tx, user.id, scope)
     );
+
+    if (summaryOnlyResponse) {
+      const labelPages =
+        recipients.length === 0
+          ? 0
+          : Math.ceil(recipients.length / AVERY_5160.labelsPerPage);
+      return NextResponse.json({
+        data: {
+          scopeLabel,
+          summary: {
+            contactCount: recipients.length,
+            labelPages,
+            labelsPerPage: AVERY_5160.labelsPerPage,
+          },
+        },
+      });
+    }
 
     if (format === "html") {
       const html = buildAvery5160PrintHtml(recipients);

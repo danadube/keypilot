@@ -1,10 +1,5 @@
-import { FarmTrackrStubPage } from "../_components/farm-trackr-stub";
+import { FarmTrackrListsView } from "../_components/farm-trackr-lists-view";
 
 export default function FarmTrackrListsPage() {
-  return (
-    <FarmTrackrStubPage
-      title="Farm lists"
-      description="List views and segments will land here. Memberships: contacts and Overview imports."
-    />
-  );
+  return <FarmTrackrListsView />;
 }
