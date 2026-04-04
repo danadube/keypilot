@@ -10,14 +10,15 @@ export function isShowingHQContext(pathname: string): boolean {
 
 /**
  * Shell alignment: same header height, sticky sidebar, and date line as ShowingHQ.
- * Includes PropertyVault (`/property-vault/*`, `/properties/*`), ClientKeep (`/client-keep/*`, `/contacts/*`),
- * plus ShowingHQ surfaces.
+ * Includes FarmTrackr (`/farm-trackr/*`), PropertyVault (`/property-vault/*`, `/properties/*`),
+ * ClientKeep (`/client-keep/*`, `/contacts/*`), plus ShowingHQ surfaces.
  */
 export function isWorkspaceContext(pathname: string): boolean {
   const base = normalizePathnameBase(pathname);
   return (
     base.startsWith("/showing-hq") ||
     base.startsWith("/open-houses") ||
+    base.startsWith("/farm-trackr") ||
     base.startsWith("/property-vault") ||
     base.startsWith("/properties") ||
     base.startsWith("/client-keep") ||

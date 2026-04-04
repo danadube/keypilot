@@ -10,7 +10,7 @@ import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
 import { isWorkspaceContext } from "@/lib/showing-hq/isShowingHQContext";
 
 /**
- * Date + time under workspace shell title (ShowingHQ, PropertyVault, ClientKeep, etc.) — client-only
+ * Date + time under workspace shell title (ShowingHQ, FarmTrackr, PropertyVault, ClientKeep, etc.) — client-only
  * so locale and timezone match the user and avoid SSR hydration mismatches.
  * Format: "Thursday, April 2, 2026 • 4:27 PM" (locale from `undefined` = user default).
  */
@@ -54,6 +54,9 @@ function getPageTitle(pathname: string): string {
   }
   if (pathname.startsWith("/property-vault") || pathname.startsWith("/properties")) {
     return "PropertyVault";
+  }
+  if (pathname.startsWith("/farm-trackr")) {
+    return "FarmTrackr";
   }
   if (pathname.startsWith("/market-pilot/campaigns")) return "Campaigns";
   if (pathname.startsWith("/market-pilot")) return "MarketPilot";
@@ -113,6 +116,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     >
                       <span className="text-kp-on-surface">Property</span>
                       <span className="text-kp-teal">Vault</span>
+                    </h1>
+                  ) : pageTitle === "FarmTrackr" ? (
+                    <h1
+                      aria-label="FarmTrackr"
+                      className="truncate text-lg font-semibold leading-none tracking-tight md:text-xl"
+                    >
+                      <span className="text-kp-on-surface">Farm</span>
+                      <span className="text-kp-teal">Trackr</span>
                     </h1>
                   ) : (
                     <h1 className="truncate text-lg font-semibold leading-none tracking-tight text-kp-on-surface md:text-xl">
