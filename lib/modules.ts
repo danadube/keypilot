@@ -72,10 +72,10 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
   "property-vault": {
     id: "property-vault",
     name: "PropertyVault",
-    href: "/property-vault",
+    href: "/properties",
     available: true,
     sidebar: [
-      { label: "Overview", href: "/property-vault", icon: LayoutDashboard, section: "OVERVIEW" },
+      { label: "Overview", href: "/property-vault/overview", icon: LayoutDashboard, section: "OVERVIEW" },
       { label: "Properties", href: "/properties", icon: Building2, section: "PROPERTIES" },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
     ],

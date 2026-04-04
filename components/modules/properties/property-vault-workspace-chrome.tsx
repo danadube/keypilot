@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 export const PROPERTY_VAULT_TAB_ITEMS = [
-  { id: "overview", label: "Overview", href: "/property-vault" },
+  { id: "overview", label: "Overview", href: "/property-vault/overview" },
   { id: "properties", label: "Properties", href: "/properties" },
 ] as const;
 
@@ -13,7 +13,7 @@ export type PropertyVaultTabId = (typeof PROPERTY_VAULT_TAB_ITEMS)[number]["id"]
 
 export function getActivePropertyVaultTabId(pathname: string): PropertyVaultTabId {
   const base = pathname.split("?")[0] ?? "";
-  if (base === "/property-vault" || base.startsWith("/property-vault/")) {
+  if (base === "/property-vault/overview" || base.startsWith("/property-vault/overview/")) {
     return "overview";
   }
   return "properties";
