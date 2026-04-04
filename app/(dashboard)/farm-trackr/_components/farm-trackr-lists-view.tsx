@@ -479,6 +479,18 @@ export function FarmTrackrListsView() {
                                   )}
                                   Labels
                                 </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className={cn(kpBtnSecondary, "h-8 border-transparent px-2.5 text-xs")}
+                                  asChild
+                                >
+                                  <Link
+                                    href={`/contacts?farmTerritoryId=${encodeURIComponent(t.id)}`}
+                                  >
+                                    Open contacts
+                                  </Link>
+                                </Button>
                               </div>
                             </td>
                           </tr>
@@ -576,6 +588,18 @@ export function FarmTrackrListsView() {
                                   )}
                                   Labels
                                 </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className={cn(kpBtnSecondary, "h-8 border-transparent px-2.5 text-xs")}
+                                  asChild
+                                >
+                                  <Link
+                                    href={`/contacts?farmAreaId=${encodeURIComponent(a.id)}`}
+                                  >
+                                    Open contacts
+                                  </Link>
+                                </Button>
                               </div>
                             </td>
                           </tr>
@@ -594,7 +618,7 @@ export function FarmTrackrListsView() {
                 className={cn(kpBtnPrimary, "h-9 text-xs")}
                 asChild
               >
-                <Link href="/contacts">Open contacts</Link>
+                <Link href="/contacts">All contacts</Link>
               </Button>
             </div>
 

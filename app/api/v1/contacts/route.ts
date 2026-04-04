@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ContactFarmMembershipStatus } from "@prisma/client";
+import { z } from "zod";
 import { prismaAdmin } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
@@ -37,25 +39,107 @@ function sortContactsByFollowUpUrgency<T extends ContactRowForSort>(
   });
 }
 
+const uuidParam = z.string().uuid();
+
 export async function GET(_req: NextRequest) {
   try {
     const user = await getCurrentUser();
 
-    // Contacts scoped to those created via current user's open houses
-    const openHouses = await prismaAdmin.openHouse.findMany({
-      where: { hostUserId: user.id, deletedAt: null },
-      select: { id: true },
-    });
-    const openHouseIds = openHouses.map((oh) => oh.id);
-
-    const visitors = await prismaAdmin.openHouseVisitor.findMany({
-      where: { openHouseId: { in: openHouseIds } },
-      select: { contactId: true },
-      distinct: ["contactId"],
-    });
-    const contactIds = Array.from(new Set(visitors.map((v) => v.contactId)));
-
     const { searchParams } = new URL(_req.url);
+    const farmAreaRaw = searchParams.get("farmAreaId")?.trim() ?? "";
+    const farmTerritoryRaw = searchParams.get("farmTerritoryId")?.trim() ?? "";
+    const farmAreaUuid = uuidParam.safeParse(farmAreaRaw);
+    const farmTerritoryUuid = uuidParam.safeParse(farmTerritoryRaw);
+
+    type FarmScopeMeta = {
+      farmScope: { kind: "area" | "territory"; id: string; name: string };
+    };
+    let farmMeta: FarmScopeMeta | undefined;
+
+    let contactIds: string[];
+
+    if (farmAreaUuid.success) {
+      const area = await prismaAdmin.farmArea.findFirst({
+        where: {
+          id: farmAreaUuid.data,
+          userId: user.id,
+          deletedAt: null,
+        },
+        select: { id: true, name: true },
+      });
+      if (!area) {
+        return apiError("Farm area not found", 404);
+      }
+      const memberships = await prismaAdmin.contactFarmMembership.findMany({
+        where: {
+          farmAreaId: area.id,
+          userId: user.id,
+          status: ContactFarmMembershipStatus.ACTIVE,
+        },
+        select: { contactId: true },
+        distinct: ["contactId"],
+      });
+      contactIds = memberships.map((m) => m.contactId);
+      farmMeta = {
+        farmScope: { kind: "area", id: area.id, name: area.name },
+      };
+    } else if (farmTerritoryUuid.success) {
+      const territory = await prismaAdmin.farmTerritory.findFirst({
+        where: {
+          id: farmTerritoryUuid.data,
+          userId: user.id,
+          deletedAt: null,
+        },
+        select: { id: true, name: true },
+      });
+      if (!territory) {
+        return apiError("Territory not found", 404);
+      }
+      const areasInTerritory = await prismaAdmin.farmArea.findMany({
+        where: {
+          territoryId: territory.id,
+          userId: user.id,
+          deletedAt: null,
+        },
+        select: { id: true },
+      });
+      const areaIds = areasInTerritory.map((a) => a.id);
+      if (areaIds.length === 0) {
+        contactIds = [];
+      } else {
+        const memberships = await prismaAdmin.contactFarmMembership.findMany({
+          where: {
+            farmAreaId: { in: areaIds },
+            userId: user.id,
+            status: ContactFarmMembershipStatus.ACTIVE,
+          },
+          select: { contactId: true },
+        });
+        contactIds = Array.from(new Set(memberships.map((m) => m.contactId)));
+      }
+      farmMeta = {
+        farmScope: {
+          kind: "territory",
+          id: territory.id,
+          name: territory.name,
+        },
+      };
+    } else {
+      // Default: contacts tied to current user's open-house visitors
+      const openHouses = await prismaAdmin.openHouse.findMany({
+        where: { hostUserId: user.id, deletedAt: null },
+        select: { id: true },
+      });
+      const openHouseIds = openHouses.map((oh) => oh.id);
+
+      const visitors = await prismaAdmin.openHouseVisitor.findMany({
+        where: { openHouseId: { in: openHouseIds } },
+        select: { contactId: true },
+        distinct: ["contactId"],
+      });
+      contactIds = Array.from(new Set(visitors.map((v) => v.contactId)));
+    }
+
     const status = searchParams.get("status")?.toUpperCase();
 
     const statusFilter =
@@ -85,6 +169,12 @@ export async function GET(_req: NextRequest) {
           },
         }
       : {};
+
+    if (contactIds.length === 0) {
+      return NextResponse.json(
+        farmMeta ? { data: [], ...farmMeta } : { data: [] }
+      );
+    }
 
     const contacts = await prismaAdmin.contact.findMany({
       where: {
@@ -118,7 +208,9 @@ export async function GET(_req: NextRequest) {
       ? contacts
       : sortContactsByFollowUpUrgency(contacts, nowMs);
 
-    return NextResponse.json({ data: ordered });
+    return NextResponse.json(
+      farmMeta ? { data: ordered, ...farmMeta } : { data: ordered }
+    );
   } catch (err) {
     return apiErrorFromCaught(err);
   }

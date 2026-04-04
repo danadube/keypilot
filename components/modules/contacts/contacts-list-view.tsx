@@ -30,6 +30,7 @@ import {
   STATUS_TAB_VALUES,
   buildContactsApiUrl,
   hasSegmentFiltersInSearchParams,
+  parseContactsFarmScopeFromSearchParams,
   parseContactsListSortFromSearchParams,
   parseFollowUpNeedsFromSearchParams,
   parseSegmentFromSearchParams,
@@ -37,6 +38,7 @@ import {
   segmentToHref,
   tabToSavedStatus,
   type ContactSegmentStatusTab,
+  type ContactsFarmScopeInput,
   type ContactsListSortMode,
 } from "@/lib/client-keep/contact-segment-query";
 import {
@@ -98,25 +100,35 @@ function statusLabel(s: ContactStatus | null | undefined): string {
 // Server-side status and optional tag filters — same visibility as GET /api/v1/contacts.
 // Client-side search is layered on top of the fetched result.
 
+type ContactsApiFarmScopeMeta = {
+  kind: "area" | "territory";
+  id: string;
+  name: string;
+};
+
 function useContacts(
   statusFilter: StatusTabValue,
   tagIdFilter: string | null,
   needsFollowUp: boolean,
-  sortMode: ContactsListSortMode
+  sortMode: ContactsListSortMode,
+  farmScope: ContactsFarmScopeInput
 ) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [farmScopeMeta, setFarmScopeMeta] =
+    useState<ContactsApiFarmScopeMeta | null>(null);
 
   function load(
     status: StatusTabValue,
     tagId: string | null,
     followUp: boolean,
-    sort: ContactsListSortMode
+    sort: ContactsListSortMode,
+    scope: ContactsFarmScopeInput
   ) {
     setError(null);
     setLoading(true);
-    fetch(buildContactsApiUrl(status, tagId, followUp, sort))
+    fetch(buildContactsApiUrl(status, tagId, followUp, sort, scope))
       .then((res) => res.json().then((json) => ({ res, json })))
       .then(({ res, json }) => {
         if (!res.ok) {
@@ -130,25 +142,41 @@ function useContacts(
             msg =
               "Tag not found — it may have been deleted. Clear the tag filter (above) or remove this shortcut from ClientKeep → Segments.";
           }
+          if (
+            res.status === 404 &&
+            (scope.farmAreaId || scope.farmTerritoryId) &&
+            /(farm area|territory) not found/i.test(String(msg))
+          ) {
+            msg =
+              "That farm area or territory was not found. Clear the farm filter or return to FarmTrackr.";
+          }
           setError(msg);
           setContacts([]);
+          setFarmScopeMeta(null);
           return;
         }
         setContacts((json.data as Contact[]) ?? []);
+        const meta = json.meta?.farmScope as ContactsApiFarmScopeMeta | undefined;
+        setFarmScopeMeta(meta ?? null);
       })
-      .catch(() => setError(UI_COPY.errors.load("contacts")))
+      .catch(() => {
+        setError(UI_COPY.errors.load("contacts"));
+        setFarmScopeMeta(null);
+      })
       .finally(() => setLoading(false));
   }
 
   useEffect(() => {
-    load(statusFilter, tagIdFilter, needsFollowUp, sortMode);
-  }, [statusFilter, tagIdFilter, needsFollowUp, sortMode]);
+    load(statusFilter, tagIdFilter, needsFollowUp, sortMode, farmScope);
+  }, [statusFilter, tagIdFilter, needsFollowUp, sortMode, farmScope]);
 
   return {
     contacts,
     loading,
     error,
-    reload: () => load(statusFilter, tagIdFilter, needsFollowUp, sortMode),
+    farmScopeMeta,
+    reload: () =>
+      load(statusFilter, tagIdFilter, needsFollowUp, sortMode, farmScope),
   };
 }
 
@@ -235,7 +263,15 @@ function ErrorState({
   );
 }
 
-function EmptyState({ isFiltered, onReset }: { isFiltered: boolean; onReset: () => void }) {
+function EmptyState({
+  isFiltered,
+  onReset,
+  farmFilterActive,
+}: {
+  isFiltered: boolean;
+  onReset: () => void;
+  farmFilterActive: boolean;
+}) {
   return (
     <div className="flex min-h-[240px] flex-col items-center justify-center gap-4 px-4 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-kp-surface-high">
@@ -246,14 +282,18 @@ function EmptyState({ isFiltered, onReset }: { isFiltered: boolean; onReset: () 
           <>
             <p className="text-sm font-medium text-kp-on-surface">No matching contacts</p>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-              Try a different search or filter.
+              {farmFilterActive
+                ? "Try clearing the farm filter or adjusting status, tag, or follow-up filters."
+                : "Try a different search or filter."}
             </p>
           </>
         ) : (
           <>
             <p className="text-sm font-medium text-kp-on-surface">{UI_COPY.empty.noneYet("contacts")}</p>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-              Contacts appear here when visitors sign in at your open houses.
+              {farmFilterActive
+                ? "No contacts have an active membership in this farm scope."
+                : "Contacts appear here when visitors sign in at your open houses."}
             </p>
           </>
         )}
@@ -582,6 +622,13 @@ function ContactsTable({
 export function ContactsListView() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const contactsUrlQuery = searchParams.toString();
+  const farmScope = useMemo(() => {
+    const sp = new URLSearchParams(contactsUrlQuery);
+    return parseContactsFarmScopeFromSearchParams(sp);
+  }, [contactsUrlQuery]);
+  const farmFilterActive =
+    farmScope.farmAreaId !== null || farmScope.farmTerritoryId !== null;
   const [statusFilter, setStatusFilter] = useState<StatusTabValue>(() =>
     parseSegmentFromSearchParams(searchParams).status
   );
@@ -598,11 +645,12 @@ export function ContactsListView() {
   const [patchingReminderId, setPatchingReminderId] = useState<string | null>(
     null
   );
-  const { contacts, loading, error, reload } = useContacts(
+  const { contacts, loading, error, farmScopeMeta, reload } = useContacts(
     statusFilter,
     tagIdFilter,
     needsFollowUp,
-    listSort
+    listSort,
+    farmScope
   );
 
   const onMarkReminderDone = useCallback(
@@ -659,7 +707,18 @@ export function ContactsListView() {
     statusFilter !== "__all__" ||
     search.trim().length > 0 ||
     tagIdFilter !== null ||
-    needsFollowUp;
+    needsFollowUp ||
+    farmFilterActive;
+
+  function clearFarmScopeOnly() {
+    router.replace(
+      segmentToHref(statusFilter, tagIdFilter, needsFollowUp, listSort, {
+        farmAreaId: null,
+        farmTerritoryId: null,
+      }),
+      { scroll: false }
+    );
+  }
 
   function handleClearFilters() {
     setStatusFilter("__all__");
@@ -749,11 +808,33 @@ export function ContactsListView() {
 
       {/* ── Table panel ─────────────────────────────────────────────────── */}
       <div className="mx-6 mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
+        {farmFilterActive ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-kp-outline bg-kp-teal/[0.06] px-5 py-2.5">
+            <p className="text-xs text-kp-on-surface">
+              {farmScopeMeta
+                ? farmScopeMeta.kind === "area"
+                  ? `Farm area: ${farmScopeMeta.name}`
+                  : `Territory: ${farmScopeMeta.name}`
+                : loading
+                  ? "Farm filter…"
+                  : "Farm filter active"}
+            </p>
+            <button
+              type="button"
+              onClick={clearFarmScopeOnly}
+              className="shrink-0 text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
+            >
+              Clear farm filter
+            </button>
+          </div>
+        ) : null}
         {/* Panel header */}
         <div className="flex items-start justify-between gap-4 border-b border-kp-outline px-5 py-4">
           <div className="space-y-1">
             <p className="text-sm font-semibold text-kp-on-surface">
-              Leads from open houses
+              {farmFilterActive
+                ? "Contacts in farm scope"
+                : "Leads from open houses"}
             </p>
             {tagIdFilter && (
               <p className="text-xs text-kp-teal">
@@ -763,7 +844,13 @@ export function ContactsListView() {
                   onClick={() => {
                     setTagIdFilter(null);
                     router.replace(
-                      segmentToHref(statusFilter, null, needsFollowUp, listSort),
+                      segmentToHref(
+                        statusFilter,
+                        null,
+                        needsFollowUp,
+                        listSort,
+                        farmScope
+                      ),
                       {
                         scroll: false,
                       }
@@ -786,7 +873,8 @@ export function ContactsListView() {
                         statusFilter,
                         tagIdFilter,
                         false,
-                        listSort
+                        listSort,
+                        farmScope
                       ),
                       { scroll: false }
                     )
@@ -813,12 +901,14 @@ export function ContactsListView() {
           (contacts.length > 0 ||
             needsFollowUp ||
             tagIdFilter !== null ||
-            statusFilter !== "__all__") && (
+            statusFilter !== "__all__" ||
+            farmFilterActive) && (
           <div className="border-b border-kp-outline px-5">
             {contacts.length > 0 ||
             statusFilter !== "__all__" ||
             tagIdFilter !== null ||
-            needsFollowUp ? (
+            needsFollowUp ||
+            farmFilterActive ? (
               <SectionTabs
                 tabs={tabs}
                 active={statusFilter}
@@ -831,7 +921,8 @@ export function ContactsListView() {
                       next,
                       tagIdFilter,
                       needsFollowUp,
-                      listSort
+                      listSort,
+                      farmScope
                     ),
                     {
                       scroll: false,
@@ -849,7 +940,8 @@ export function ContactsListView() {
                       statusFilter,
                       tagIdFilter,
                       !needsFollowUp,
-                      listSort
+                      listSort,
+                      farmScope
                     ),
                     { scroll: false }
                   )
@@ -885,7 +977,8 @@ export function ContactsListView() {
                         statusFilter,
                         tagIdFilter,
                         needsFollowUp,
-                        "followups"
+                        "followups",
+                        farmScope
                       ),
                       { scroll: false }
                     )
@@ -907,7 +1000,8 @@ export function ContactsListView() {
                         statusFilter,
                         tagIdFilter,
                         needsFollowUp,
-                        "recent"
+                        "recent",
+                        farmScope
                       ),
                       { scroll: false }
                     )
@@ -943,13 +1037,18 @@ export function ContactsListView() {
             onClearFilters={
               tagIdFilter !== null ||
               statusFilter !== "__all__" ||
-              needsFollowUp
+              needsFollowUp ||
+              farmFilterActive
                 ? handleClearFilters
                 : undefined
             }
           />
         ) : visibleContacts.length === 0 ? (
-          <EmptyState isFiltered={isFiltered} onReset={handleClearFilters} />
+          <EmptyState
+            isFiltered={isFiltered}
+            onReset={handleClearFilters}
+            farmFilterActive={farmFilterActive}
+          />
         ) : (
           <ContactsTable
             contacts={visibleContacts}

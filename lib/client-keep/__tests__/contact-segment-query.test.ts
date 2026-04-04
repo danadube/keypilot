@@ -1,6 +1,7 @@
 import {
   buildContactsApiUrl,
   hasSegmentFiltersInSearchParams,
+  parseContactsFarmScopeFromSearchParams,
   parseContactsListSortFromSearchParams,
   parseFollowUpNeedsFromSearchParams,
   parseSegmentFromSearchParams,
@@ -100,6 +101,24 @@ describe("contact-segment-query", () => {
         "/contacts?status=LEAD&tagId=t1&followUp=needs&sort=recent"
       );
     });
+
+    it("includes farmAreaId when set (wins over territory)", () => {
+      expect(
+        segmentToHref("__all__", null, false, "followups", {
+          farmAreaId: "a1",
+          farmTerritoryId: "t9",
+        })
+      ).toBe("/contacts?farmAreaId=a1");
+    });
+
+    it("includes farmTerritoryId when area absent", () => {
+      expect(
+        segmentToHref("LEAD", null, false, "followups", {
+          farmAreaId: null,
+          farmTerritoryId: "terr-1",
+        })
+      ).toBe("/contacts?status=LEAD&farmTerritoryId=terr-1");
+    });
   });
 
   describe("buildContactsApiUrl", () => {
@@ -114,6 +133,29 @@ describe("contact-segment-query", () => {
       expect(buildContactsApiUrl("__all__", null, false, "recent")).toBe(
         "/api/v1/contacts?sort=recent"
       );
+      expect(
+        buildContactsApiUrl("__all__", null, false, "followups", {
+          farmAreaId: "area-x",
+          farmTerritoryId: null,
+        })
+      ).toBe("/api/v1/contacts?farmAreaId=area-x");
+    });
+  });
+
+  describe("parseContactsFarmScopeFromSearchParams", () => {
+    it("reads farmAreaId and farmTerritoryId", () => {
+      expect(
+        parseContactsFarmScopeFromSearchParams(
+          sp("farmAreaId=  x  &farmTerritoryId=y")
+        )
+      ).toEqual({ farmAreaId: "x", farmTerritoryId: "y" });
+    });
+
+    it("returns nulls when missing or blank", () => {
+      expect(parseContactsFarmScopeFromSearchParams(sp(""))).toEqual({
+        farmAreaId: null,
+        farmTerritoryId: null,
+      });
     });
   });
 

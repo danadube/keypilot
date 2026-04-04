@@ -1,6 +1,6 @@
 /**
  * Canonical contact segment query grammar for /contacts and GET /api/v1/contacts.
- * Single source of truth for URL-driven filters (status + tagId only).
+ * Single source of truth for URL-driven filters (status, tagId, follow-up, sort, farm scope).
  */
 
 /** Values accepted by GET /api/v1/contacts?status= */
@@ -72,6 +72,34 @@ export function parseTagIdFromSearchParams(sp: URLSearchParams): string | null {
   return normalizeSavedTagIdValue(sp.get("tagId"));
 }
 
+/** FarmTrackr → ClientKeep deep link: filter contacts by active farm membership. */
+export type ContactsFarmScopeInput = {
+  farmAreaId: string | null;
+  farmTerritoryId: string | null;
+};
+
+export function parseContactsFarmScopeFromSearchParams(
+  sp: URLSearchParams
+): ContactsFarmScopeInput {
+  return {
+    farmAreaId: normalizeSavedTagIdValue(sp.get("farmAreaId")),
+    farmTerritoryId: normalizeSavedTagIdValue(sp.get("farmTerritoryId")),
+  };
+}
+
+function appendFarmScopeToSearchParams(
+  params: URLSearchParams,
+  farmScope: ContactsFarmScopeInput
+): void {
+  if (farmScope.farmAreaId) {
+    params.set("farmAreaId", farmScope.farmAreaId);
+    return;
+  }
+  if (farmScope.farmTerritoryId) {
+    params.set("farmTerritoryId", farmScope.farmTerritoryId);
+  }
+}
+
 /** `followUp=needs` — contacts with at least one pending CRM reminder for the current user. */
 export function parseFollowUpNeedsFromSearchParams(
   sp: URLSearchParams
@@ -96,13 +124,18 @@ export function segmentToHref(
   status: ContactSegmentStatusTab,
   tagId: string | null,
   needsFollowUp = false,
-  sortMode: ContactsListSortMode = "followups"
+  sortMode: ContactsListSortMode = "followups",
+  farmScope: ContactsFarmScopeInput = {
+    farmAreaId: null,
+    farmTerritoryId: null,
+  }
 ): string {
   const params = new URLSearchParams();
   if (status !== "__all__") params.set("status", status);
   if (tagId) params.set("tagId", tagId);
   if (needsFollowUp) params.set("followUp", "needs");
   if (sortMode === "recent") params.set("sort", "recent");
+  appendFarmScopeToSearchParams(params, farmScope);
   const q = params.toString();
   return q ? `/contacts?${q}` : "/contacts";
 }
@@ -111,13 +144,18 @@ export function buildContactsApiUrl(
   status: ContactSegmentStatusTab,
   tagId: string | null,
   needsFollowUp = false,
-  sortMode: ContactsListSortMode = "followups"
+  sortMode: ContactsListSortMode = "followups",
+  farmScope: ContactsFarmScopeInput = {
+    farmAreaId: null,
+    farmTerritoryId: null,
+  }
 ): string {
   const params = new URLSearchParams();
   if (status !== "__all__") params.set("status", status);
   if (tagId) params.set("tagId", tagId);
   if (needsFollowUp) params.set("followUp", "needs");
   if (sortMode === "recent") params.set("sort", "recent");
+  appendFarmScopeToSearchParams(params, farmScope);
   const q = params.toString();
   return q ? `/api/v1/contacts?${q}` : "/api/v1/contacts";
 }
