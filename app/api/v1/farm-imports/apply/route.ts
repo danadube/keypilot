@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { hasModuleAccess, type ModuleAccessMap } from "@/lib/module-access";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { prismaAdmin } from "@/lib/db";
 import { withRLSContext } from "@/lib/db-context";
 import { applyFarmImport } from "@/lib/farm/import/pipeline";
 
@@ -27,8 +29,31 @@ const ApplyBodySchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getCurrentUser();
-    const accessMap = user.moduleAccess as ModuleAccessMap | null | undefined;
+    const { userId: clerkId } = await auth();
+    if (!clerkId) {
+      return apiErrorFromCaught(new Error("Unauthorized"));
+    }
+
+    let dbUser = await prismaAdmin.user.findUnique({
+      where: { clerkId },
+      select: { id: true, moduleAccess: true },
+    });
+    if (!dbUser) {
+      await getCurrentUser();
+      dbUser = await prismaAdmin.user.findUnique({
+        where: { clerkId },
+        select: { id: true, moduleAccess: true },
+      });
+    }
+    if (!dbUser) {
+      return apiError(
+        "No application account found for this sign-in. Try signing out and signing in again, or contact support.",
+        404,
+        "USER_NOT_PROVISIONED"
+      );
+    }
+
+    const accessMap = dbUser.moduleAccess as ModuleAccessMap | null | undefined;
     if (!hasModuleAccess(accessMap, "farm-trackr")) {
       return NextResponse.json(
         { error: { message: "Farm imports require CRM access." } },
@@ -37,8 +62,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = ApplyBodySchema.parse(await req.json());
-    const applied = await withRLSContext(user.id, (tx) =>
-      applyFarmImport(tx, user.id, {
+    const applied = await withRLSContext(dbUser.id, (tx) =>
+      applyFarmImport(tx, dbUser.id, {
         rows: body.rows,
         mapping: body.mapping,
         defaultTerritoryName: body.defaultTerritoryName,
