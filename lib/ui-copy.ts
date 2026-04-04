@@ -21,6 +21,26 @@ export const UI_COPY = {
     create: "Create",
     save: "Save",
     review: "Review",
+    delete: "Delete",
+  },
+
+  /** FarmTrackr — short labels for badges and list scopes */
+  farmTrackr: {
+    farmAreaEmpty: "Empty",
+    farmAreaActive: "Active",
+    loadingFarmStructure: "Loading farm structure…",
+    loadingLists: "Loading…",
+    listsBlurb:
+      "CSV and labels need a full mailing address on the contact (deduped per scope). Save a shortcut to jump to a territory or area row.",
+    lastActivityPlaceholder: "Last activity — not tracked yet",
+    savedListScopes: "Saved scopes",
+    saveScope: "Save scope",
+    scopeKindTerritory: "Territory",
+    scopeKindArea: "Farm area",
+    performanceBlurb:
+      "Live structure and mailing-ready totals — not campaign or import analytics.",
+    mailingReadySumNote: "Sum of territory mail-ready counts (deduped per territory).",
+    totalMembersNote: "Assignment rows; same contact in multiple areas counts more than once.",
   },
 
   errors: {

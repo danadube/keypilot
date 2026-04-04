@@ -7,6 +7,7 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { ModuleGate } from "@/components/shared/ModuleGate";
 import { useFarmTrackrStructure } from "@/components/modules/farm-trackr/use-farm-trackr-structure";
 import { fetchFarmMailingSummary } from "@/lib/farm/mailing/farm-mailing-browser";
+import { UI_COPY } from "@/lib/ui-copy";
 
 function StatCard({
   label,
@@ -38,7 +39,9 @@ export function FarmTrackrPerformanceView() {
     const territoryCount = territories.length;
     const areaCount = areas.length;
     const assignments = areas.reduce((s, a) => s + a.membershipCount, 0);
-    return { territoryCount, areaCount, assignments };
+    const activeFarms = areas.filter((a) => a.membershipCount > 0).length;
+    const emptyFarms = areas.filter((a) => a.membershipCount === 0).length;
+    return { territoryCount, areaCount, assignments, activeFarms, emptyFarms };
   }, [territories, areas]);
 
   useEffect(() => {
@@ -90,8 +93,7 @@ export function FarmTrackrPerformanceView() {
     >
       <div className="flex flex-col gap-4">
         <p className="max-w-2xl text-xs text-kp-on-surface-variant">
-          Live counts from your farm structure and mailing rules. This is not campaign analytics —
-          there is no import history or open-rate data here yet.
+          {UI_COPY.farmTrackr.performanceBlurb}
         </p>
 
         {error ? (
@@ -105,20 +107,30 @@ export function FarmTrackrPerformanceView() {
         {loading ? (
           <div className="flex items-center gap-2 text-sm text-kp-on-surface-variant">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading…
+            {UI_COPY.farmTrackr.loadingLists}
           </div>
         ) : (
           <>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <StatCard label="Territories" value={totals.territoryCount} />
               <StatCard label="Farm areas" value={totals.areaCount} />
               <StatCard
-                label="Membership assignments"
-                value={totals.assignments}
-                sub="Sum of active memberships per area; contacts in multiple areas are counted more than once."
+                label="Active farms"
+                value={totals.activeFarms}
+                sub="Areas with at least one active membership."
               />
               <StatCard
-                label="Mailing-ready (territories)"
+                label="Empty farms"
+                value={totals.emptyFarms}
+                sub="Areas with zero members."
+              />
+              <StatCard
+                label="Total members"
+                value={totals.assignments}
+                sub={UI_COPY.farmTrackr.totalMembersNote}
+              />
+              <StatCard
+                label="Mailing-ready"
                 value={
                   mailLoading ? (
                     <Loader2 className="h-6 w-6 animate-spin text-kp-on-surface-muted" />
@@ -126,7 +138,7 @@ export function FarmTrackrPerformanceView() {
                     mailingReadySum
                   )
                 }
-                sub="Sum of territory-level mail-ready counts (deduped within each territory). Not a unique people count across all territories."
+                sub={UI_COPY.farmTrackr.mailingReadySumNote}
               />
             </div>
 
@@ -185,11 +197,6 @@ export function FarmTrackrPerformanceView() {
                 </table>
               </div>
             </section>
-
-            <p className="text-xs text-kp-on-surface-muted">
-              Import batches and audit logs are not exposed in the API yet — there is no import count on
-              this page.
-            </p>
           </>
         )}
       </div>

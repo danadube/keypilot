@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { ModuleGate } from "@/components/shared/ModuleGate";
 import { useFarmTrackrStructure } from "@/components/modules/farm-trackr/use-farm-trackr-structure";
+import { UI_COPY } from "@/lib/ui-copy";
+import { cn } from "@/lib/utils";
 import { FarmAreaMembersBulkPanel } from "./farm-area-members-bulk-panel";
 
 export function FarmTrackrFarmsView() {
@@ -27,8 +29,7 @@ export function FarmTrackrFarmsView() {
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <p className="max-w-2xl text-xs text-kp-on-surface-variant">
-            Territory and farm area directory. Manage members per area; imports and mailing stay on
-            Overview.
+            Territory and farm area directory. Manage members per area; imports and mailing on Overview.
           </p>
           <div className="flex flex-wrap gap-3 text-xs">
             <Link
@@ -56,7 +57,7 @@ export function FarmTrackrFarmsView() {
         {loading ? (
           <div className="flex items-center gap-2 text-sm text-kp-on-surface-variant">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading farm structure…
+            {UI_COPY.farmTrackr.loadingFarmStructure}
           </div>
         ) : (
           <>
@@ -113,8 +114,28 @@ export function FarmTrackrFarmsView() {
                         </p>
                       ) : (
                         <ul className="divide-y divide-kp-outline">
-                          {tAreas.map((area) => (
+                          {tAreas.map((area) => {
+                            const isEmpty = area.membershipCount === 0;
+                            return (
                             <li key={area.id} className="px-4 py-3">
+                              <div className="mb-2 flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-medium text-kp-on-surface">{area.name}</p>
+                                <span
+                                  className={cn(
+                                    "rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                                    isEmpty
+                                      ? "border border-kp-outline bg-kp-surface-high/60 text-kp-on-surface-muted"
+                                      : "border border-kp-teal/35 bg-kp-teal/10 text-kp-teal"
+                                  )}
+                                >
+                                  {isEmpty
+                                    ? UI_COPY.farmTrackr.farmAreaEmpty
+                                    : UI_COPY.farmTrackr.farmAreaActive}
+                                </span>
+                                <span className="text-[10px] text-kp-on-surface-muted">
+                                  {UI_COPY.farmTrackr.lastActivityPlaceholder}
+                                </span>
+                              </div>
                               <FarmAreaMembersBulkPanel
                                 areaId={area.id}
                                 areaName={area.name}
@@ -129,7 +150,8 @@ export function FarmTrackrFarmsView() {
                                 otherAreas={otherAreaOptions.filter((o) => o.id !== area.id)}
                               />
                             </li>
-                          ))}
+                            );
+                          })}
                         </ul>
                       )}
                     </section>
