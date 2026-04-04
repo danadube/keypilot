@@ -8,6 +8,13 @@ export const dynamic = "force-dynamic";
 
 const FARM_IMPORT_MAX_ROWS = 1000;
 const MAX_XLSX_BYTES = 12 * 1024 * 1024;
+const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+function isAllowedXlsxUpload(file: File): boolean {
+  if (file.name.toLowerCase().endsWith(".xlsx")) return true;
+  const mime = (file.type ?? "").split(";")[0]?.trim().toLowerCase() ?? "";
+  return mime === XLSX_MIME;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,9 +34,8 @@ export async function POST(req: NextRequest) {
       return apiError("Choose an Excel file (.xlsx) to import.", 400);
     }
 
-    const name = file.name.toLowerCase();
-    if (!name.endsWith(".xlsx")) {
-      return apiError("Only .xlsx files are supported for Excel import.", 400);
+    if (!isAllowedXlsxUpload(file)) {
+      return apiError("Only .xlsx Excel workbooks are supported for this import.", 400);
     }
 
     if (file.size > MAX_XLSX_BYTES) {
