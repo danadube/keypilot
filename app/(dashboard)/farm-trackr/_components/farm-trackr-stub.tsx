@@ -18,13 +18,15 @@ export function FarmTrackrStubPage({
       backHref="/showing-hq"
     >
       <div className="flex flex-col gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-kp-on-surface">{title}</h1>
-          <p className="mt-1 text-sm text-kp-on-surface-variant">{description}</p>
+        <div className="space-y-1">
+          <p className="text-xs font-medium uppercase tracking-wider text-kp-on-surface-muted">
+            {title}
+          </p>
+          <p className="text-xs text-kp-on-surface-variant">{description}</p>
         </div>
         <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-          <p className="text-sm text-kp-on-surface-variant">
-            Territories, farm areas, imports, and mailing tools live on the overview for now.
+          <p className="text-xs text-kp-on-surface-variant">
+            Territories, imports, and mailing tools are on Overview for now.
           </p>
           <Link
             href="/farm-trackr"

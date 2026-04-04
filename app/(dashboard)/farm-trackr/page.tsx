@@ -524,12 +524,10 @@ export default function FarmTrackrPage() {
       backHref="/showing-hq"
     >
       <div className="flex flex-col gap-5">
-        <div>
-          <h1 className="text-xl font-bold text-kp-on-surface">FarmTrackr</h1>
-          <p className="mt-1 text-sm text-kp-on-surface-variant">
-            Manage territories and farm areas used by contact memberships.
-          </p>
-        </div>
+        {/* Module title lives in DashboardShell; one line of context only */}
+        <p className="max-w-2xl text-xs text-kp-on-surface-variant">
+          Territories, farm areas, imports, and mailing tools for contact memberships.
+        </p>
 
         {error ? (
           <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">

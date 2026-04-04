@@ -4,7 +4,7 @@ export default function FarmTrackrFarmsPage() {
   return (
     <FarmTrackrStubPage
       title="Farms"
-      description="Dedicated farm map and territory tools are not built yet. Use the overview to manage territories and areas."
+      description="Map view is not built yet — use Overview for territories and farm areas."
     />
   );
 }
