@@ -18,7 +18,22 @@ async function syncUserFromClerk(clerkId: string) {
 }
 
 export async function getCurrentUser() {
-  const { userId } = await auth();
+  let userId: string | undefined;
+  try {
+    const session = await auth();
+    userId = session.userId ?? undefined;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    // Clerk throws when session headers are missing (e.g. middleware not applied).
+    // Map to Unauthorized so API routes return 401 instead of a generic 500.
+    if (
+      msg.includes("can't detect usage of clerkMiddleware") ||
+      msg.includes("auth() was called but Clerk can't detect")
+    ) {
+      throw new Error("Unauthorized");
+    }
+    throw e;
+  }
   if (!userId) {
     throw new Error("Unauthorized");
   }
@@ -26,13 +41,35 @@ export async function getCurrentUser() {
     where: { clerkId: userId },
   });
   if (!user) {
-    user = await syncUserFromClerk(userId);
+    try {
+      user = await syncUserFromClerk(userId);
+    } catch (e) {
+      console.error("[auth] syncUserFromClerk failed", e);
+      const err = new Error(
+        "Account setup is incomplete. Try again shortly, or sign out and sign in."
+      );
+      (err as Error & { code?: string }).code = "USER_PROVISIONING_FAILED";
+      throw err;
+    }
+  }
+  if (!user) {
+    const err = new Error(
+      "No application account found for this sign-in. Try signing out and signing in again."
+    );
+    (err as Error & { code?: string }).code = "USER_NOT_PROVISIONED";
+    throw err;
   }
   return user;
 }
 
 export async function getCurrentUserOrNull() {
-  const { userId } = await auth();
+  let userId: string | undefined;
+  try {
+    const session = await auth();
+    userId = session.userId ?? undefined;
+  } catch {
+    return null;
+  }
   if (!userId) {
     return null;
   }

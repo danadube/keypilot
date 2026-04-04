@@ -41,5 +41,11 @@ export function apiErrorFromCaught(
   if (code === "CRM_ACCESS_REQUIRED") {
     return apiError("CRM access required", 403, code);
   }
+  if (code === "USER_PROVISIONING_FAILED") {
+    return apiError(msg, 503, code);
+  }
+  if (code === "USER_NOT_PROVISIONED") {
+    return apiError(msg, 404, code);
+  }
   return apiError("Internal server error", 500);
 }
