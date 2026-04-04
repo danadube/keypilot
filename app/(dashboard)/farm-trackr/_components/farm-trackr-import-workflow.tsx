@@ -69,7 +69,7 @@ export type ImportStage = "upload" | "mapping" | "validation" | "executing" | "c
 /** Aggregated shape of workflow state (implemented with discrete useState hooks). */
 export type ImportWorkflowState = {
   stage: ImportStage;
-  fileMeta: { name: string; format: "csv" } | null;
+  fileMeta: { name: string; format: "csv" | "xlsx" } | null;
   dataset: ImportDataSet | null;
   mapping: ImportMapping;
   defaultTerritoryName: string;
@@ -147,7 +147,7 @@ function mappingFingerprint(
 
 export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: () => void }) {
   const [stage, setStage] = useState<ImportStage>("upload");
-  const [fileMeta, setFileMeta] = useState<{ name: string; format: "csv" } | null>(null);
+  const [fileMeta, setFileMeta] = useState<{ name: string; format: "csv" | "xlsx" } | null>(null);
   const [dataset, setDataset] = useState<ImportDataSet | null>(null);
   const [mapping, setMapping] = useState<ImportMapping>(EMPTY_MAPPING);
   const [defaultTerritoryName, setDefaultTerritoryName] = useState("");
@@ -210,27 +210,63 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
   }, [clearPreview]);
 
   /** New file = new dataset → always invalidate preview */
-  const handleParseCsv = async (file: File) => {
+  const handleParseFile = async (file: File) => {
     setImportError(null);
     clearPreview();
     setImportBusy("parse");
     try {
-      const csvText = await file.text();
-      const res = await fetch("/api/v1/farm-imports/csv/parse", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ csvText }),
-      });
-      const json = await res.json();
-      if (json.error) throw new Error(json.error.message ?? "Failed to parse CSV");
-      const data = json.data as ImportDataSet;
+      const lower = file.name.toLowerCase();
+      const isXlsx =
+        lower.endsWith(".xlsx") ||
+        file.type ===
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+      const isCsv =
+        lower.endsWith(".csv") ||
+        file.type === "text/csv" ||
+        file.type === "application/csv";
+
+      let data: ImportDataSet;
+      let format: "csv" | "xlsx";
+
+      if (isXlsx) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch("/api/v1/farm-imports/xlsx/parse", {
+          method: "POST",
+          body: fd,
+        });
+        const json = await res.json();
+        if (!res.ok || json.error) {
+          throw new Error(json.error?.message ?? "Failed to parse Excel file");
+        }
+        data = json.data as ImportDataSet;
+        format = "xlsx";
+      } else if (isCsv) {
+        const csvText = await file.text();
+        const res = await fetch("/api/v1/farm-imports/csv/parse", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ csvText }),
+        });
+        const json = await res.json();
+        if (!res.ok || json.error) {
+          throw new Error(json.error?.message ?? "Failed to parse CSV");
+        }
+        data = json.data as ImportDataSet;
+        format = "csv";
+      } else {
+        setImportError("Please choose a CSV (.csv) or Excel (.xlsx) file.");
+        return;
+      }
+
       setDataset(data);
-      setFileMeta({ name: file.name, format: "csv" });
-      const headers: string[] = data.headers ?? [];
-      setMapping(inferMappingFromHeaders(headers));
+      setFileMeta({ name: file.name, format });
+      setMapping(inferMappingFromHeaders(data.headers ?? []));
       setStage("mapping");
     } catch (err) {
-      setImportError(err instanceof Error ? err.message : "Failed to parse CSV");
+      setImportError(
+        err instanceof Error ? err.message : "Could not read that file. Try CSV or .xlsx."
+      );
     } finally {
       setImportBusy(null);
     }
@@ -325,7 +361,8 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
         <div>
           <h2 className="text-sm font-semibold text-kp-on-surface">Import farm data</h2>
           <p className="mt-1 text-xs text-kp-on-surface-variant">
-            Upload a CSV, map columns, preview results, then import. Up to 1000 rows per file.
+            Upload a CSV or Excel (.xlsx), map columns, preview results, then import. Up to 1000 rows
+            per file.
           </p>
         </div>
         <p className="max-w-[11rem] text-right leading-snug">
@@ -358,9 +395,9 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
           <div className="rounded-lg border border-kp-outline bg-kp-surface-high p-3">
             <label
               className="text-xs font-medium text-kp-on-surface"
-              htmlFor="farm-trackr-import-csv-input"
+              htmlFor="farm-trackr-import-file-input"
             >
-              CSV file
+              CSV or Excel (.xlsx)
             </label>
             <div
               className={cn(
@@ -369,13 +406,13 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
               )}
             >
               <input
-                id="farm-trackr-import-csv-input"
+                id="farm-trackr-import-file-input"
                 type="file"
-                accept=".csv,text/csv"
+                accept=".csv,text/csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 disabled={importBusy === "parse"}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) void handleParseCsv(file);
+                  if (file) void handleParseFile(file);
                   e.target.value = "";
                 }}
                 className={cn(
