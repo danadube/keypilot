@@ -323,13 +323,16 @@ export async function applyFarmImport(
     }
 
     if (!contact) {
+      if (!userId) {
+        throw new Error("Farm import apply requires a user id for new contacts.");
+      }
       const created = await db.contact.create({
         data: {
           firstName: row.firstName?.trim() || "Unknown",
           lastName: row.lastName?.trim() || "",
           email: row.email,
           phone: row.phone,
-          assignedToUserId: userId,
+          assignedToUser: { connect: { id: userId } },
           source: "Farm Import",
         },
         select: contactSelect,

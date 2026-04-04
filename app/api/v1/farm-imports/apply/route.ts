@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { hasModuleAccess, type ModuleAccessMap } from "@/lib/module-access";
-import { apiErrorFromCaught } from "@/lib/api-response";
+import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { withRLSContext } from "@/lib/db-context";
 import { applyFarmImport } from "@/lib/farm/import/pipeline";
 
@@ -47,6 +47,14 @@ export async function POST(req: NextRequest) {
     );
     return NextResponse.json({ data: applied });
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
+    if (/row-level security policy/i.test(msg) && /contacts/i.test(msg)) {
+      return apiError(
+        "Could not create a contact for this import (database access check failed). Ensure you are signed in and try again.",
+        403,
+        "FARM_IMPORT_CONTACT_RLS"
+      );
+    }
     return apiErrorFromCaught(error);
   }
 }
