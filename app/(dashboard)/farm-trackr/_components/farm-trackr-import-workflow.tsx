@@ -26,6 +26,7 @@ import {
   type FarmImportMappingTemplateRecord,
   renameImportMappingTemplate,
 } from "@/lib/farm/import-mapping-templates-storage";
+import { buildImportMappingFromHeaders } from "@/lib/farm/import-smart-header-mapping";
 
 export type ImportDataSet = {
   headers: string[];
@@ -119,23 +120,6 @@ const MAPPING_FIELDS: { key: keyof ImportMapping; label: string }[] = [
   { key: "area", label: "Farm area" },
 ];
 
-function inferMappingFromHeaders(headers: string[]): ImportMapping {
-  const map: ImportMapping = { ...EMPTY_MAPPING };
-  for (const header of headers) {
-    const key = header.trim().toLowerCase();
-    if (!map.email && (key === "email" || key === "email address")) map.email = header;
-    if (!map.phone && (key === "phone" || key === "mobile" || key === "phone number")) {
-      map.phone = header;
-    }
-    if (!map.firstName && (key === "first name" || key === "firstname")) map.firstName = header;
-    if (!map.lastName && (key === "last name" || key === "lastname")) map.lastName = header;
-    if (!map.fullName && (key === "name" || key === "full name")) map.fullName = header;
-    if (!map.territory && (key === "territory" || key === "territory name")) map.territory = header;
-    if (!map.area && (key === "area" || key === "farm area" || key === "farmarea")) map.area = header;
-  }
-  return map;
-}
-
 function renderRowStatus(status: ImportPreviewRow["status"]): string {
   if (status === "create_contact") return "Create contact + membership";
   if (status === "create_membership") return "Create membership";
@@ -184,6 +168,7 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
   const [renameDraft, setRenameDraft] = useState("");
   const [templateNotice, setTemplateNotice] = useState<string | null>(null);
   const [templateSectionError, setTemplateSectionError] = useState<string | null>(null);
+  const [smartMappingNotice, setSmartMappingNotice] = useState<string | null>(null);
 
   const currentFingerprint = useMemo(
     () => mappingFingerprint(mapping, defaultTerritoryName, defaultAreaName),
@@ -244,6 +229,7 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
     setNewTemplateName("");
     setRenamingTemplateId(null);
     setRenameDraft("");
+    setSmartMappingNotice(null);
   }, [clearPreview]);
 
   /** New file = new dataset → always invalidate preview */
@@ -251,6 +237,7 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
     setImportError(null);
     setTemplateNotice(null);
     setTemplateSectionError(null);
+    setSmartMappingNotice(null);
     clearPreview();
     setImportBusy("parse");
     try {
@@ -300,7 +287,15 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
 
       setDataset(data);
       setFileMeta({ name: file.name, format });
-      setMapping(inferMappingFromHeaders(data.headers ?? []));
+      const { mapping: initialMap, smartMappedFieldCount } = buildImportMappingFromHeaders(
+        data.headers ?? []
+      );
+      setMapping(initialMap as ImportMapping);
+      setSmartMappingNotice(
+        smartMappedFieldCount > 0
+          ? `Mapped ${smartMappedFieldCount} field${smartMappedFieldCount === 1 ? "" : "s"} automatically.`
+          : null
+      );
       setStage("mapping");
     } catch (err) {
       setImportError(
@@ -397,6 +392,7 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
   const handleApplyTemplate = useCallback(
     (rec: FarmImportMappingTemplateRecord) => {
       setTemplateSectionError(null);
+      setSmartMappingNotice(null);
       clearPreview();
       const { mapping: next, unmatchedColumnNames } = applyTemplateMappingToHeaders(
         rec.mapping,
@@ -557,6 +553,12 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
                 </button>
               ) : null}
             </div>
+
+            {stage === "mapping" && smartMappingNotice ? (
+              <p className="text-[11px] text-kp-on-surface-variant">
+                <span className="font-medium text-kp-teal/95">{smartMappingNotice}</span>
+              </p>
+            ) : null}
 
             {stage === "mapping" ? (
               <>
@@ -758,12 +760,13 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
                       <span className="text-xs text-kp-on-surface-variant">{field.label}</span>
                       <select
                         value={mapping[field.key] ?? ""}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          setSmartMappingNotice(null);
                           setMapping((prev) => ({
                             ...prev,
                             [field.key]: e.target.value || null,
-                          }))
-                        }
+                          }));
+                        }}
                         className="h-9 w-full rounded-md border border-kp-outline bg-kp-surface px-3 text-xs text-kp-on-surface"
                       >
                         <option value="">Not mapped</option>
