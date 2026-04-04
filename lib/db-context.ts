@@ -95,11 +95,6 @@ export async function withRLSContext<T>(
       } catch (setupErr) {
         throw new RlsTransactionSetupError(setupErr);
       }
-      // TEMP DEBUG: remove after FarmTrackr import RLS is verified in production.
-      const rls = await tx.$queryRawUnsafe<Array<{ user_id: unknown }>>(`
-        select app.current_user_id() as user_id
-      `);
-      console.log("RLS USER:", rls, "EXPECTED:", userId);
       return await fn(tx);
     })
   );
