@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { ModuleGate } from "@/components/shared/ModuleGate";
+import { Button } from "@/components/ui/button";
 import { useFarmTrackrStructure } from "@/components/modules/farm-trackr/use-farm-trackr-structure";
 import { UI_COPY } from "@/lib/ui-copy";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,17 @@ export function FarmTrackrFarmsView() {
   const { territories, areas, loading, error, reload, areasByTerritoryId, otherAreaOptions } =
     useFarmTrackrStructure();
   const [expandedMemberAreaId, setExpandedMemberAreaId] = useState<string | null>(null);
+
+  const scrollToMembersPanel = useCallback((areaId: string) => {
+    setExpandedMemberAreaId(areaId);
+    window.requestAnimationFrame(() => {
+      window.setTimeout(() => {
+        document
+          .getElementById(`farm-area-members-${areaId}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
+    });
+  }, []);
 
   const totalAssignments = useMemo(
     () => areas.reduce((s, a) => s + a.membershipCount, 0),
@@ -136,19 +148,49 @@ export function FarmTrackrFarmsView() {
                                   {UI_COPY.farmTrackr.lastActivityPlaceholder}
                                 </span>
                               </div>
-                              <FarmAreaMembersBulkPanel
-                                areaId={area.id}
-                                areaName={area.name}
-                                membershipCountListed={area.membershipCount}
-                                expanded={expandedMemberAreaId === area.id}
-                                onToggle={() =>
-                                  setExpandedMemberAreaId((cur) =>
-                                    cur === area.id ? null : area.id
-                                  )
-                                }
-                                onMembershipsChanged={() => void reload()}
-                                otherAreas={otherAreaOptions.filter((o) => o.id !== area.id)}
-                              />
+                              <p className="text-xs text-kp-on-surface-variant">
+                                Members · {area.membershipCount} active
+                              </p>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={() => scrollToMembersPanel(area.id)}
+                                >
+                                  {area.membershipCount === 0
+                                    ? "+ Add members"
+                                    : "Manage members"}
+                                </Button>
+                                <Button size="sm" variant="outline" asChild>
+                                  <Link
+                                    href={`/farm-trackr/lists?scope=area&id=${encodeURIComponent(area.id)}`}
+                                  >
+                                    📬 Create mailing
+                                  </Link>
+                                </Button>
+                                <Button size="sm" variant="ghost" asChild>
+                                  <Link
+                                    href={`/contacts?farmAreaId=${encodeURIComponent(area.id)}`}
+                                  >
+                                    🔗 Open contacts
+                                  </Link>
+                                </Button>
+                              </div>
+                              <div id={`farm-area-members-${area.id}`} className="scroll-mt-4">
+                                <FarmAreaMembersBulkPanel
+                                  areaId={area.id}
+                                  areaName={area.name}
+                                  membershipCountListed={area.membershipCount}
+                                  expanded={expandedMemberAreaId === area.id}
+                                  onToggle={() =>
+                                    setExpandedMemberAreaId((cur) =>
+                                      cur === area.id ? null : area.id
+                                    )
+                                  }
+                                  onMembershipsChanged={() => void reload()}
+                                  otherAreas={otherAreaOptions.filter((o) => o.id !== area.id)}
+                                />
+                              </div>
                             </li>
                             );
                           })}
