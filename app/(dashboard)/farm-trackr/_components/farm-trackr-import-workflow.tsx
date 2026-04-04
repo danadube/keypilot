@@ -356,9 +356,20 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
 
         {stage === "upload" ? (
           <div className="rounded-lg border border-kp-outline bg-kp-surface-high p-3">
-            <label className="text-xs font-medium text-kp-on-surface">CSV file</label>
-            <div className="mt-2">
+            <label
+              className="text-xs font-medium text-kp-on-surface"
+              htmlFor="farm-trackr-import-csv-input"
+            >
+              CSV file
+            </label>
+            <div
+              className={cn(
+                "mt-2 flex h-9 w-full items-center gap-2 rounded-md border border-kp-outline bg-kp-surface-high px-1.5 transition-shadow",
+                "focus-within:ring-2 focus-within:ring-kp-teal/50 focus-within:ring-offset-2 focus-within:ring-offset-kp-surface"
+              )}
+            >
               <input
+                id="farm-trackr-import-csv-input"
                 type="file"
                 accept=".csv,text/csv"
                 disabled={importBusy === "parse"}
@@ -367,7 +378,13 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
                   if (file) void handleParseCsv(file);
                   e.target.value = "";
                 }}
-                className="block w-full text-xs text-kp-on-surface-variant file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-kp-outline file:bg-kp-surface-high file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-kp-on-surface file:leading-none hover:file:bg-kp-surface-high/80 disabled:file:cursor-not-allowed disabled:file:opacity-50"
+                className={cn(
+                  "min-w-0 flex-1 bg-transparent text-xs text-kp-on-surface-variant",
+                  "file:mr-2 file:inline-flex file:h-7 file:shrink-0 file:cursor-pointer file:items-center file:justify-center file:rounded-md file:border-2 file:border-kp-outline file:bg-kp-surface file:px-3 file:py-0 file:text-xs file:font-semibold file:leading-none file:text-kp-on-surface file:shadow-sm",
+                  "hover:file:border-kp-teal/70 hover:file:bg-kp-surface-high",
+                  "file:focus-visible:outline-none file:focus-visible:ring-2 file:focus-visible:ring-kp-teal/50 file:focus-visible:ring-offset-2 file:focus-visible:ring-offset-kp-surface-high",
+                  "disabled:cursor-not-allowed disabled:opacity-50"
+                )}
               />
             </div>
             {importBusy === "parse" ? (
