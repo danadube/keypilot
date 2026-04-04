@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { ModuleGate } from "@/components/shared/ModuleGate";
 import { Button } from "@/components/ui/button";
+import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { useFarmTrackrStructure } from "@/components/modules/farm-trackr/use-farm-trackr-structure";
 import { UI_COPY } from "@/lib/ui-copy";
 import { cn } from "@/lib/utils";
@@ -168,7 +169,12 @@ export function FarmTrackrFarmsView() {
                                     📬 Create mailing
                                   </Link>
                                 </Button>
-                                <Button size="sm" variant="ghost" asChild>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className={cn(kpBtnSecondary, "border-transparent")}
+                                  asChild
+                                >
                                   <Link
                                     href={`/contacts?farmAreaId=${encodeURIComponent(area.id)}`}
                                   >

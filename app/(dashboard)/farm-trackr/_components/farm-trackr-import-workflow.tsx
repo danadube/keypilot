@@ -323,20 +323,26 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
     <>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-kp-on-surface">
-            Multi-source farm import (foundation)
-          </h2>
+          <h2 className="text-sm font-semibold text-kp-on-surface">Import farm data</h2>
           <p className="mt-1 text-xs text-kp-on-surface-variant">
-            CSV import: upload, map columns, validate with preview, then apply. Up to 1000 rows per
-            import.
+            Upload a CSV, map columns, preview results, then import. Up to 1000 rows per file.
           </p>
         </div>
-        <p className="text-xs text-kp-on-surface-muted">
-          {stage === "upload" && "Step 1 · Upload"}
-          {stage === "mapping" && "Step 2 · Map fields"}
-          {stage === "validation" && "Step 3 · Validate"}
-          {stage === "executing" && "Applying…"}
-          {stage === "complete" && "Done"}
+        <p className="max-w-[11rem] text-right text-xs leading-snug text-kp-on-surface">
+          <span className="font-medium tabular-nums text-kp-on-surface-muted">
+            {stage === "upload" && "Step 1 of 5"}
+            {stage === "mapping" && "Step 2 of 5"}
+            {stage === "validation" && "Step 3 of 5"}
+            {stage === "executing" && "Step 4 of 5"}
+            {stage === "complete" && "Step 5 of 5"}
+          </span>
+          <span className="mt-0.5 block font-medium text-kp-on-surface">
+            {stage === "upload" && "Upload"}
+            {stage === "mapping" && "Map columns"}
+            {stage === "validation" && "Preview"}
+            {stage === "executing" && "Importing"}
+            {stage === "complete" && "Done"}
+          </span>
         </p>
       </div>
 
@@ -350,7 +356,7 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
 
         {stage === "upload" ? (
           <div className="rounded-lg border border-kp-outline bg-kp-surface-high p-3">
-            <label className="text-xs font-medium text-kp-on-surface">Upload CSV</label>
+            <label className="text-xs font-medium text-kp-on-surface">CSV file</label>
             <div className="mt-2">
               <input
                 type="file"
@@ -361,7 +367,7 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
                   if (file) void handleParseCsv(file);
                   e.target.value = "";
                 }}
-                className="block w-full text-xs text-kp-on-surface file:mr-2 file:rounded file:border file:border-kp-outline file:bg-kp-surface file:px-2 file:py-1 file:text-xs"
+                className="block w-full text-xs text-kp-on-surface-variant file:mr-3 file:cursor-pointer file:rounded-md file:border file:border-kp-outline file:bg-kp-surface-high file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-kp-on-surface file:leading-none hover:file:bg-kp-surface-high/80 disabled:file:cursor-not-allowed disabled:file:opacity-50"
               />
             </div>
             {importBusy === "parse" ? (
