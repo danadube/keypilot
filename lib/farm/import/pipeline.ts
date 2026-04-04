@@ -362,6 +362,7 @@ export async function applyFarmImport(
     });
     // Upsert avoids P2002 when a membership row exists but was not visible to findUnique
     // (e.g. race or historical data edge cases) and matches other farm membership routes.
+    // Explicit select narrows RETURNING so older DBs without optional membership columns stay compatible.
     await db.contactFarmMembership.upsert({
       where: {
         contactId_farmAreaId: {
@@ -379,6 +380,7 @@ export async function applyFarmImport(
         userId,
         status: ContactFarmMembershipStatus.ACTIVE,
       },
+      select: { id: true },
     });
     if (!existingMembership) {
       summary.createdMemberships += 1;
