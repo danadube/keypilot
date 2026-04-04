@@ -10,7 +10,7 @@ import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
 import { isWorkspaceContext } from "@/lib/showing-hq/isShowingHQContext";
 
 /**
- * Date + time under workspace shell title (ShowingHQ, ClientKeep, etc.) — client-only
+ * Date + time under workspace shell title (ShowingHQ, PropertyVault, ClientKeep, etc.) — client-only
  * so locale and timezone match the user and avoid SSR hydration mismatches.
  * Format: "Thursday, April 2, 2026 • 4:27 PM" (locale from `undefined` = user default).
  */
@@ -52,9 +52,9 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/contacts") || pathname.startsWith("/client-keep")) {
     return "ClientKeep";
   }
-  if (pathname.startsWith("/properties/new")) return "Properties";
-  if (pathname.startsWith("/properties")) return "Properties";
-  if (pathname.startsWith("/property-vault")) return "PropertyVault";
+  if (pathname.startsWith("/property-vault") || pathname.startsWith("/properties")) {
+    return "PropertyVault";
+  }
   if (pathname.startsWith("/market-pilot/campaigns")) return "Campaigns";
   if (pathname.startsWith("/market-pilot")) return "MarketPilot";
   if (pathname.startsWith("/deals")) return "Deals";
@@ -105,6 +105,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     >
                       <span className="text-kp-on-surface">Client</span>
                       <span className="text-kp-teal">Keep</span>
+                    </h1>
+                  ) : pageTitle === "PropertyVault" ? (
+                    <h1
+                      aria-label="PropertyVault"
+                      className="truncate text-lg font-semibold leading-none tracking-tight md:text-xl"
+                    >
+                      <span className="text-kp-on-surface">Property</span>
+                      <span className="text-kp-teal">Vault</span>
                     </h1>
                   ) : (
                     <h1 className="truncate text-lg font-semibold leading-none tracking-tight text-kp-on-surface md:text-xl">
