@@ -172,7 +172,7 @@ export async function GET(_req: NextRequest) {
 
     if (contactIds.length === 0) {
       return NextResponse.json(
-        farmMeta ? { data: [], ...farmMeta } : { data: [] }
+        farmMeta ? { data: [], meta: farmMeta } : { data: [] }
       );
     }
 
@@ -209,7 +209,7 @@ export async function GET(_req: NextRequest) {
       : sortContactsByFollowUpUrgency(contacts, nowMs);
 
     return NextResponse.json(
-      farmMeta ? { data: ordered, ...farmMeta } : { data: ordered }
+      farmMeta ? { data: ordered, meta: farmMeta } : { data: ordered }
     );
   } catch (err) {
     return apiErrorFromCaught(err);
