@@ -2,13 +2,13 @@
 
 begin;
 
-drop policy if exists contacts_insert_own on public."contacts";
+DROP POLICY IF EXISTS contacts_insert_own ON public."contacts";
 
-create policy contacts_insert_own
-  on public."contacts" for insert to keypilot_app
-  with check (
-    "assignedToUserId" is not null
-    and "assignedToUserId"::uuid = app.current_user_id()
+CREATE POLICY contacts_insert_own
+  ON public."contacts" FOR INSERT TO keypilot_app
+  WITH CHECK (
+    "assignedToUserId" IS NOT NULL
+    AND "assignedToUserId"::uuid = app.current_user_id()::uuid
   );
 
 commit;
