@@ -75,7 +75,6 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     href: "/properties",
     available: true,
     sidebar: [
-      { label: "Overview", href: "/property-vault/overview", icon: LayoutDashboard, section: "OVERVIEW" },
       { label: "Properties", href: "/properties", icon: Building2, section: "PROPERTIES" },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
     ],
