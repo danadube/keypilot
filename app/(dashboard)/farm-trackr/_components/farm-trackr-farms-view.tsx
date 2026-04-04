@@ -152,7 +152,7 @@ export function FarmTrackrFarmsView() {
                               <p className="text-xs text-kp-on-surface-variant">
                                 Members · {area.membershipCount} active
                               </p>
-                              <div className="mt-2 flex flex-wrap gap-2">
+                              <div className="mt-3.5 mb-1 flex flex-wrap gap-2">
                                 <Button
                                   type="button"
                                   size="sm"

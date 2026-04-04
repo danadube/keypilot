@@ -328,15 +328,15 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
             Upload a CSV, map columns, preview results, then import. Up to 1000 rows per file.
           </p>
         </div>
-        <p className="max-w-[11rem] text-right text-xs leading-snug text-kp-on-surface">
-          <span className="font-medium tabular-nums text-kp-on-surface-muted">
+        <p className="max-w-[11rem] text-right leading-snug">
+          <span className="block text-[11px] font-normal tabular-nums tracking-wide text-kp-on-surface-muted/90">
             {stage === "upload" && "Step 1 of 5"}
             {stage === "mapping" && "Step 2 of 5"}
             {stage === "validation" && "Step 3 of 5"}
             {stage === "executing" && "Step 4 of 5"}
             {stage === "complete" && "Step 5 of 5"}
           </span>
-          <span className="mt-0.5 block font-medium text-kp-on-surface">
+          <span className="mt-1 block text-xs font-semibold text-kp-on-surface">
             {stage === "upload" && "Upload"}
             {stage === "mapping" && "Map columns"}
             {stage === "validation" && "Preview"}
