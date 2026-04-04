@@ -50,21 +50,16 @@ function shouldBypassRlsWithAdminRead(e: unknown): boolean {
 }
 
 /**
- * Executes `fn` inside a Prisma transaction with DB-enforced RLS context.
+ * Executes `fn` inside one Prisma interactive transaction with DB-enforced RLS.
  *
- * What this does inside the transaction:
- *   1. SET LOCAL ROLE keypilot_app
- *      Switches to the non-BYPASSRLS role so Postgres evaluates RLS policies.
- *      "LOCAL" makes it transaction-scoped — reverts automatically on commit/rollback.
- *      Safe with PgBouncer in transaction-pooling mode.
+ * Same `tx` for the whole callback (one connection, one Postgres transaction):
+ *   1. `SELECT set_config('app.current_user_id', userId, true)` — transaction-local GUC
+ *      used by `app.current_user_id()` in policies (set while connection is still `postgres`).
+ *   2. `SET LOCAL ROLE keypilot_app` — enforce RLS (non-BYPASSRLS); LOCAL = tx-scoped.
+ *   3. `await fn(tx)` — all DB work must use this `tx`; never `prismaAdmin` inside `fn`.
  *
- *   2. SELECT set_config('app.current_user_id', userId, true)
- *      Sets the GUC that app.current_user_id() reads in policy expressions.
- *      The `true` flag (is_local) makes it transaction-scoped as well.
- *
- * Tables with RLS policies targeting `keypilot_app` will enforce per-user
- * isolation for queries made through `tx`. Queries using plain `prisma.*`
- * continue to run as `postgres` (BYPASSRLS=true).
+ * Tables with RLS policies targeting `keypilot_app` enforce per-user isolation on `tx`.
+ * Plain `prismaAdmin` queries stay `postgres` (BYPASSRLS=true).
  *
  * DEPLOY ORDER: DB migrations must be applied before this code reaches production.
  *   If keypilot_app role does not exist, SET LOCAL ROLE throws and the transaction
@@ -93,14 +88,14 @@ export async function withRLSContext<T>(
   return rlsStore.run({ userId }, () =>
     prismaAdmin.$transaction(async (tx) => {
       try {
-        // Set the user context first (while still postgres, before role switch).
-        await tx.$executeRaw`SELECT set_config('app.current_user_id', ${userId}, true)`;
-        // Switch to the constrained role — RLS policies now fire for this transaction.
+        await tx.$executeRaw`
+          SELECT set_config('app.current_user_id', ${userId}, true)
+        `;
         await tx.$executeRawUnsafe(`SET LOCAL ROLE keypilot_app`);
       } catch (setupErr) {
         throw new RlsTransactionSetupError(setupErr);
       }
-      return fn(tx);
+      return await fn(tx);
     })
   );
 }
