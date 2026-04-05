@@ -44,7 +44,6 @@ export async function POST(req: NextRequest) {
       return apiError("Invalid due date", 400);
     }
     const dueAt = dueResolved.date;
-    const titleTrimmed = title.trim();
     const notesTrimmed =
       notes == null || String(notes).trim() === "" ? null : String(notes).trim();
 
@@ -62,7 +61,7 @@ export async function POST(req: NextRequest) {
             contactId,
             sourceType: "MANUAL" as const,
             sourceId: "manual",
-            title: titleTrimmed,
+            title,
             notes: notesTrimmed,
             dueAt,
             priority: "MEDIUM" as const,

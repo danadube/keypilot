@@ -37,7 +37,7 @@ export const BulkCreateFollowUpsSchema = z.object({
     .array(z.string().min(1))
     .min(1, "Select at least one contact")
     .max(BULK_FOLLOW_UP_MAX_CONTACTS),
-  title: z.string().min(1, "Title is required").max(500).trim(),
+  title: z.string().trim().min(1, "Title is required").max(500),
   dueDate: z.string().max(40).optional().nullable(),
   notes: z.string().max(20000).optional().nullable(),
 });
