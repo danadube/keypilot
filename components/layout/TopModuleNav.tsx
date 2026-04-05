@@ -30,7 +30,9 @@ export function TopModuleNav() {
         {enabledModules.map((id) => {
           const mod = MODULES[id];
           if (!mod?.available) return null;
-          const isActive = activeId === id || pathname === `/upgrade/${id}`;
+          const isActive =
+            (id === "home" ? pathname === "/" : activeId === id) ||
+            pathname === `/upgrade/${id}`;
           const href = mod.href;
 
           return (

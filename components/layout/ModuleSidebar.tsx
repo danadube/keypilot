@@ -20,7 +20,7 @@ import {
   BarChart3,
   Map,
 } from "lucide-react";
-import { MODULES, getModuleFromPath } from "@/lib/modules";
+import { MODULES, getModuleFromPath, pathMatchesHref } from "@/lib/modules";
 import { UPGRADE_MODULES } from "@/lib/module-access";
 import { useProductTier } from "@/components/ProductTierProvider";
 import { APP_VERSION, APP_COMMIT } from "@/lib/app-version";
@@ -103,7 +103,7 @@ function isItemActive(
     return true;
   }
 
-  if (href !== "/" && pathname.startsWith(href)) return true;
+  if (href !== "/" && pathname.startsWith(`${href}/`)) return true;
   return false;
 }
 
@@ -160,7 +160,7 @@ export function ModuleSidebar() {
   const settingsMod = MODULES.settings;
   const settingsChildItems = getModuleChildNavItems(settingsMod);
 
-  const dashboardActive = pathname === "/" || activeId === "home";
+  const dashboardActive = pathname === "/";
 
   return (
     <aside
@@ -327,7 +327,7 @@ export function ModuleSidebar() {
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                   "text-slate-400 hover:bg-white/5 hover:text-white",
-                  pathname.startsWith("/task-pilot") &&
+                  pathMatchesHref(pathname, "/task-pilot") &&
                     "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
                 )}
               >
@@ -341,8 +341,8 @@ export function ModuleSidebar() {
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                   "text-slate-400 hover:bg-white/5 hover:text-white",
-                  (pathname.startsWith("/showing-hq/activity") ||
-                    pathname.startsWith("/showing-hq/templates")) &&
+                  (pathMatchesHref(pathname, "/showing-hq/activity") ||
+                    pathMatchesHref(pathname, "/showing-hq/templates")) &&
                     "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
                 )}
               >
@@ -356,7 +356,7 @@ export function ModuleSidebar() {
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                   "text-slate-400 hover:bg-white/5 hover:text-white",
-                  pathname.startsWith("/insight") &&
+                  pathMatchesHref(pathname, "/insight") &&
                     "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
                 )}
               >
@@ -382,7 +382,7 @@ export function ModuleSidebar() {
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                 "text-slate-400 hover:bg-white/5 hover:text-white",
-                pathname === "/roadmap" &&
+                pathMatchesHref(pathname, "/roadmap") &&
                   "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
               )}
             >
@@ -396,7 +396,7 @@ export function ModuleSidebar() {
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                 "text-slate-400 hover:bg-white/5 hover:text-white",
-                pathname.startsWith("/settings") &&
+                pathMatchesHref(pathname, "/settings") &&
                   "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
               )}
             >

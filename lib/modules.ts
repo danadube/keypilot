@@ -194,21 +194,36 @@ export function getModuleConfig(moduleId: ModuleId): ModuleConfig | undefined {
   return MODULES[moduleId];
 }
 
+/**
+ * True when `pathname` is exactly `href` or a nested path under it (`href` + `/`).
+ * Avoids false positives like `/propertiesLegacy` matching `/properties` or `/roadmap` falling through to a wrong module default.
+ */
+export function pathMatchesHref(pathname: string, href: string): boolean {
+  if (href === "/") return pathname === "/";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 /** Derive active module from pathname */
 export function getModuleFromPath(pathname: string): ModuleId {
-  if (pathname === "/") return "home";
-  if (pathname.startsWith("/upgrade")) return "showing-hq";
-  if (pathname.startsWith("/settings")) return "settings";
-  if (pathname.startsWith("/properties") || pathname.startsWith("/property-vault"))
+  if (pathMatchesHref(pathname, "/")) return "home";
+  if (pathMatchesHref(pathname, "/upgrade")) return "showing-hq";
+  if (pathMatchesHref(pathname, "/settings")) return "settings";
+  if (pathMatchesHref(pathname, "/properties") || pathMatchesHref(pathname, "/property-vault")) {
     return "property-vault";
-  if (pathname.startsWith("/open-houses") || pathname.startsWith("/showing-hq"))
+  }
+  if (pathMatchesHref(pathname, "/open-houses") || pathMatchesHref(pathname, "/showing-hq")) {
     return "showing-hq";
-  if (pathname.startsWith("/contacts") || pathname.startsWith("/client-keep")) return "client-keep";
-  if (pathname.startsWith("/farm-trackr")) return "farm-trackr";
-  if (pathname.startsWith("/task-pilot")) return "task-pilot";
-  if (pathname.startsWith("/market-pilot")) return "market-pilot";
-  if (pathname.startsWith("/seller-pulse")) return "seller-pulse";
-  if (pathname.startsWith("/insight")) return "insight";
-  if (pathname.startsWith("/transactions") || pathname.startsWith("/deals")) return "transactions";
-  return "property-vault"; // default
+  }
+  if (pathMatchesHref(pathname, "/contacts") || pathMatchesHref(pathname, "/client-keep")) {
+    return "client-keep";
+  }
+  if (pathMatchesHref(pathname, "/farm-trackr")) return "farm-trackr";
+  if (pathMatchesHref(pathname, "/task-pilot")) return "task-pilot";
+  if (pathMatchesHref(pathname, "/market-pilot")) return "market-pilot";
+  if (pathMatchesHref(pathname, "/seller-pulse")) return "seller-pulse";
+  if (pathMatchesHref(pathname, "/insight")) return "insight";
+  if (pathMatchesHref(pathname, "/transactions") || pathMatchesHref(pathname, "/deals")) {
+    return "transactions";
+  }
+  return "home";
 }
