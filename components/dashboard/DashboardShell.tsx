@@ -63,6 +63,7 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/deals")) return "Deals";
   if (pathname.startsWith("/settings/integrations")) return "Integrations";
   if (pathname.startsWith("/settings")) return "Settings";
+  if (base === "/roadmap") return "Roadmap";
   if (pathname === "/") return "Overview";
   return "KeyPilot";
 }

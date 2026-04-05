@@ -18,6 +18,7 @@ import {
   CheckSquare,
   Activity,
   BarChart3,
+  Map,
 } from "lucide-react";
 import { MODULES, getModuleFromPath } from "@/lib/modules";
 import { UPGRADE_MODULES } from "@/lib/module-access";
@@ -377,6 +378,20 @@ export function ModuleSidebar() {
           System
         </p>
         <ul className="space-y-0.5">
+          <li>
+            <Link
+              href="/roadmap"
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                "text-slate-400 hover:bg-white/5 hover:text-white",
+                pathname === "/roadmap" &&
+                  "border-l-4 border-l-[#4BAED8] bg-[#4BAED8]/20 pl-[calc(0.75rem+4px)] font-semibold text-white"
+              )}
+            >
+              <Map className="h-[18px] w-[18px] shrink-0 opacity-85" />
+              Roadmap
+            </Link>
+          </li>
           <li className="space-y-0.5">
             <Link
               href="/settings"
