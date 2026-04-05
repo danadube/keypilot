@@ -1,4 +1,6 @@
-import type { ComponentType } from "react";
+"use client";
+
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import Link from "next/link";
 import {
   Building2,
@@ -12,18 +14,83 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 
-function PlaceholderMetric({
+type DashboardStats = {
+  propertiesCount: number;
+  openHousesCount: number;
+  contactsCount: number;
+};
+
+type ShowingRow = { scheduledAt: string };
+
+type DealRow = { status: string };
+
+type FollowRow = { contactId: string };
+
+type FarmAreaRow = { id: string; membershipCount: number };
+
+const INACTIVE_DEAL_STATUSES = new Set(["CLOSED", "LOST"]);
+
+function isSameLocalCalendarDay(d: Date, ref: Date): boolean {
+  return (
+    d.getFullYear() === ref.getFullYear() &&
+    d.getMonth() === ref.getMonth() &&
+    d.getDate() === ref.getDate()
+  );
+}
+
+function deriveShowingsToday(showings: ShowingRow[], now: Date) {
+  let today = 0;
+  let overdueToday = 0;
+  for (const s of showings) {
+    const d = new Date(s.scheduledAt);
+    if (Number.isNaN(d.getTime())) continue;
+    if (!isSameLocalCalendarDay(d, now)) continue;
+    today += 1;
+    if (d.getTime() < now.getTime()) overdueToday += 1;
+  }
+  return { today, overdueToday };
+}
+
+function countActiveDeals(deals: DealRow[]) {
+  return deals.filter((d) => !INACTIVE_DEAL_STATUSES.has(d.status)).length;
+}
+
+function uniqueContactIds(rows: FollowRow[]): number {
+  return new Set(rows.map((r) => r.contactId)).size;
+}
+
+function PrimaryValue({ loading, children }: { loading: boolean; children: ReactNode }) {
+  if (loading) {
+    return (
+      <span
+        className="inline-block h-9 w-16 animate-pulse rounded-md bg-kp-surface-high/90"
+        aria-hidden
+      />
+    );
+  }
+  return (
+    <span className="font-headline text-2xl font-semibold tabular-nums text-kp-on-surface">
+      {children}
+    </span>
+  );
+}
+
+function TodayMetricCard({
   label,
   href,
-  hint,
   icon: Icon,
+  primary,
+  secondary,
+  loading,
 }: {
   label: string;
   href: string;
-  hint?: string;
   icon: ComponentType<{ className?: string }>;
+  primary: ReactNode;
+  secondary: string;
+  loading: boolean;
 }) {
   return (
     <Link
@@ -36,12 +103,8 @@ function PlaceholderMetric({
         </span>
         <Icon className="h-4 w-4 shrink-0 text-kp-on-surface-muted opacity-80 group-hover:text-kp-teal" />
       </div>
-      <p className="font-headline text-2xl font-semibold tabular-nums text-kp-on-surface">—</p>
-      {hint ? (
-        <p className="mt-2 text-xs leading-relaxed text-kp-on-surface-variant">{hint}</p>
-      ) : (
-        <p className="mt-2 text-xs text-kp-on-surface-variant">Counts will appear here.</p>
-      )}
+      <PrimaryValue loading={loading}>{primary}</PrimaryValue>
+      <p className="mt-2 text-xs leading-relaxed text-kp-on-surface-variant">{secondary}</p>
     </Link>
   );
 }
@@ -50,10 +113,16 @@ function PipelineCard({
   label,
   href,
   icon: Icon,
+  primary,
+  secondary,
+  loading,
 }: {
   label: string;
   href: string;
   icon: ComponentType<{ className?: string }>;
+  primary: ReactNode;
+  secondary: string;
+  loading: boolean;
 }) {
   return (
     <Link
@@ -64,9 +133,9 @@ function PipelineCard({
         <Icon className="h-4 w-4 text-kp-teal/90" />
         <span className="text-sm font-semibold text-kp-on-surface">{label}</span>
       </div>
-      <p className="font-headline text-2xl font-semibold tabular-nums text-kp-on-surface">—</p>
+      <PrimaryValue loading={loading}>{primary}</PrimaryValue>
       <span className="mt-2 text-xs text-kp-on-surface-variant group-hover:text-kp-teal">
-        Open →
+        {secondary}
       </span>
     </Link>
   );
@@ -74,14 +143,16 @@ function PipelineCard({
 
 function ModuleShortcut({
   title,
-  description,
+  contextLine,
   href,
   icon: Icon,
+  ctaLabel,
 }: {
   title: string;
-  description: string;
+  contextLine: string;
   href: string;
   icon: ComponentType<{ className?: string }>;
+  ctaLabel: string;
 }) {
   return (
     <Link
@@ -93,9 +164,9 @@ function ModuleShortcut({
       </div>
       <h3 className="font-headline text-base font-semibold text-kp-on-surface">{title}</h3>
       <p className="mt-1.5 flex-1 text-sm leading-relaxed text-kp-on-surface-variant">
-        {description}
+        {contextLine}
       </p>
-      <span className="mt-3 text-xs font-medium text-kp-teal group-hover:underline">Go to module</span>
+      <span className="mt-3 text-xs font-medium text-kp-teal group-hover:underline">{ctaLabel}</span>
     </Link>
   );
 }
@@ -105,7 +176,10 @@ function QuickActionLink({ href, children }: { href: string; children: React.Rea
     <Button
       asChild
       variant="outline"
-      className={cn(kpBtnSecondary, "h-10 min-h-10 justify-center px-4")}
+      className={cn(
+        kpBtnSecondary,
+        "h-12 min-h-12 justify-center gap-2.5 px-6 text-sm font-semibold shadow-sm"
+      )}
     >
       <Link href={href}>{children}</Link>
     </Button>
@@ -113,6 +187,158 @@ function QuickActionLink({ href, children }: { href: string; children: React.Rea
 }
 
 export function OperationalDashboardView() {
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [showings, setShowings] = useState<ShowingRow[]>([]);
+  const [overdue, setOverdue] = useState<FollowRow[]>([]);
+  const [dueToday, setDueToday] = useState<FollowRow[]>([]);
+  const [deals, setDeals] = useState<DealRow[]>([]);
+  const [farmAreas, setFarmAreas] = useState<FarmAreaRow[]>([]);
+  const [farmUnavailable, setFarmUnavailable] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      try {
+        const [statsRes, showRes, followRes, dealsRes, farmRes] = await Promise.all([
+          fetch("/api/v1/dashboard/stats"),
+          fetch("/api/v1/showing-hq/showings"),
+          fetch("/api/v1/follow-ups"),
+          fetch("/api/v1/deals"),
+          fetch("/api/v1/farm-areas?visibility=active"),
+        ]);
+
+        const parse = async <T,>(res: Response): Promise<T | null> => {
+          try {
+            const j = (await res.json()) as { data?: T; error?: unknown };
+            if (!res.ok) return null;
+            return j.data ?? null;
+          } catch {
+            return null;
+          }
+        };
+
+        const statsData = await parse<DashboardStats>(statsRes);
+        const showingsData = await parse<ShowingRow[]>(showRes);
+        const followData = await parse<{ overdue: FollowRow[]; dueToday: FollowRow[] }>(followRes);
+        const dealsData = await parse<DealRow[]>(dealsRes);
+
+        let farms: FarmAreaRow[] = [];
+        let farmBlock = false;
+        if (farmRes.status === 403) {
+          farmBlock = true;
+        } else {
+          const fd = await parse<FarmAreaRow[]>(farmRes);
+          if (fd) farms = fd;
+        }
+
+        if (cancelled) return;
+        if (statsData) setStats(statsData);
+        setShowings(showingsData ?? []);
+        setOverdue(followData?.overdue ?? []);
+        setDueToday(followData?.dueToday ?? []);
+        setDeals(dealsData ?? []);
+        setFarmAreas(farms);
+        setFarmUnavailable(farmBlock);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const now = useMemo(() => new Date(), []);
+
+  const { today: showingsToday, overdueToday: showingsOverdueToday } = useMemo(
+    () => deriveShowingsToday(showings, now),
+    [showings, now]
+  );
+
+  const followUpsDueCount = overdue.length + dueToday.length;
+  const overdueFollowUpCount = overdue.length;
+  const dueTodayFollowUpCount = dueToday.length;
+
+  const contactsAttention = useMemo(() => {
+    const combined = [...overdue, ...dueToday];
+    return uniqueContactIds(combined);
+  }, [overdue, dueToday]);
+
+  const activeDeals = useMemo(() => countActiveDeals(deals), [deals]);
+  const propertiesCount = stats?.propertiesCount ?? 0;
+
+  const farmsNeedingUpdates = useMemo(
+    () => farmAreas.filter((a) => a.membershipCount === 0).length,
+    [farmAreas]
+  );
+
+  const todayShowingsSecondary = loading
+    ? "Loading your schedule."
+    : showingsToday === 0
+      ? "No showings scheduled today."
+      : showingsOverdueToday > 0
+        ? `${showingsOverdueToday} overdue`
+        : `${showingsToday} scheduled today`;
+
+  const todayTasksSecondary = "No tasks today";
+
+  const todayFollowUpsSecondary = loading
+    ? "Loading follow-ups."
+    : followUpsDueCount === 0
+      ? "All caught up"
+      : overdueFollowUpCount > 0
+        ? `${overdueFollowUpCount} overdue`
+        : `${dueTodayFollowUpCount} due today`;
+
+  const pipelineDealsSecondary =
+    activeDeals === 0 ? "No active deals in pipeline." : "Open pipeline for detail.";
+
+  const pipelineListingsSecondary =
+    propertiesCount === 0 ? "Add your first listing." : "In PropertyVault.";
+
+  const pipelineContactsSecondary = loading
+    ? "Loading attention signals."
+    : contactsAttention === 0
+      ? "All caught up"
+      : overdueFollowUpCount > 0
+        ? `${overdueFollowUpCount} overdue`
+        : `${dueTodayFollowUpCount} due today`;
+
+  const focusBody = loading
+    ? "Checking follow-ups…"
+    : overdueFollowUpCount > 0
+      ? `${overdueFollowUpCount} follow-up${overdueFollowUpCount === 1 ? "" : "s"} overdue`
+      : "You are caught up on overdue follow-ups.";
+
+  const moduleShowing = loading
+    ? "Loading schedule context."
+    : showingsToday === 0
+      ? "No showings today"
+      : `${showingsToday} showing${showingsToday === 1 ? "" : "s"} today`;
+
+  const moduleClient = loading
+    ? "Loading contact signals."
+    : contactsAttention === 0
+      ? "No contacts need follow-up right now"
+      : `${contactsAttention} contact${contactsAttention === 1 ? "" : "s"} need follow-up`;
+
+  const moduleFarm = farmUnavailable
+    ? "Farm areas unlock on Full CRM."
+    : loading
+      ? "Loading farm territories."
+      : farmsNeedingUpdates === 0
+        ? "Farms are up to date"
+        : `${farmsNeedingUpdates} farm${farmsNeedingUpdates === 1 ? "" : "s"} need updates`;
+
+  const moduleVault = loading
+    ? "Loading listings."
+    : `${propertiesCount} active listing${propertiesCount === 1 ? "" : "s"}`;
+
   return (
     <div className="space-y-12 pb-8">
       <header className="max-w-3xl">
@@ -120,10 +346,37 @@ export function OperationalDashboardView() {
           Dashboard
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-kp-on-surface-variant md:text-[0.9375rem]">
-          Your operational home — today&apos;s work, pipeline snapshot, and shortcuts into KeyPilot.
+          Your operational home: today&apos;s work, pipeline snapshot, and shortcuts into KeyPilot.
           This is a control center, not analytics.
         </p>
       </header>
+
+      <section aria-labelledby="dash-quick">
+        <h2
+          id="dash-quick"
+          className="mb-5 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
+        >
+          Quick actions
+        </h2>
+        <div className="flex flex-wrap gap-4 md:gap-5">
+          <QuickActionLink href="/contacts?new=1">
+            <UserPlus className="h-5 w-5 shrink-0" />
+            New Contact
+          </QuickActionLink>
+          <QuickActionLink href="/showing-hq/showings/new">
+            <Calendar className="h-5 w-5 shrink-0" />
+            New Showing
+          </QuickActionLink>
+          <QuickActionLink href="/task-pilot">
+            <CheckSquare className="h-5 w-5 shrink-0" />
+            New Task
+          </QuickActionLink>
+          <QuickActionLink href="/farm-trackr">
+            <MapPin className="h-5 w-5 shrink-0" />
+            Import Farm
+          </QuickActionLink>
+        </div>
+      </section>
 
       <section aria-labelledby="dash-today">
         <h2
@@ -133,23 +386,29 @@ export function OperationalDashboardView() {
           Today
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <PlaceholderMetric
+          <TodayMetricCard
             label="Showings today"
             href="/showing-hq/showings"
             icon={Calendar}
-            hint="Private showings and appointments for today."
+            loading={loading}
+            primary={showingsToday}
+            secondary={todayShowingsSecondary}
           />
-          <PlaceholderMetric
+          <TodayMetricCard
             label="Tasks due"
             href="/task-pilot"
             icon={CheckSquare}
-            hint="Cross-module tasks with due dates."
+            loading={loading}
+            primary={0}
+            secondary={todayTasksSecondary}
           />
-          <PlaceholderMetric
+          <TodayMetricCard
             label="Follow-ups due"
             href="/showing-hq/follow-ups"
             icon={MessageSquare}
-            hint="Drafts and scheduled follow-ups."
+            loading={loading}
+            primary={followUpsDueCount}
+            secondary={todayFollowUpsSecondary}
           />
         </div>
       </section>
@@ -162,36 +421,50 @@ export function OperationalDashboardView() {
           Pipeline snapshot
         </h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <PipelineCard label="Active deals" href="/transactions/pipeline" icon={Handshake} />
-          <PipelineCard label="Active listings" href="/properties" icon={Building2} />
-          <PipelineCard label="Contacts needing attention" href="/contacts" icon={Users} />
+          <PipelineCard
+            label="Active deals"
+            href="/transactions/pipeline"
+            icon={Handshake}
+            loading={loading}
+            primary={activeDeals}
+            secondary={pipelineDealsSecondary}
+          />
+          <PipelineCard
+            label="Active listings"
+            href="/properties"
+            icon={Building2}
+            loading={loading}
+            primary={propertiesCount}
+            secondary={pipelineListingsSecondary}
+          />
+          <PipelineCard
+            label="Contacts needing attention"
+            href="/contacts"
+            icon={Users}
+            loading={loading}
+            primary={contactsAttention}
+            secondary={pipelineContactsSecondary}
+          />
         </div>
       </section>
 
-      <section aria-labelledby="dash-quick">
+      <section aria-labelledby="dash-focus">
         <h2
-          id="dash-quick"
+          id="dash-focus"
           className="mb-4 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
         >
-          Quick actions
+          Focus
         </h2>
-        <div className="flex flex-wrap gap-3">
-          <QuickActionLink href="/contacts?new=1">
-            <UserPlus className="h-4 w-4" />
-            New Contact
-          </QuickActionLink>
-          <QuickActionLink href="/showing-hq/showings/new">
-            <Calendar className="h-4 w-4" />
-            New Showing
-          </QuickActionLink>
-          <QuickActionLink href="/task-pilot">
-            <CheckSquare className="h-4 w-4" />
-            New Task
-          </QuickActionLink>
-          <QuickActionLink href="/farm-trackr">
-            <MapPin className="h-4 w-4" />
-            Import Farm
-          </QuickActionLink>
+        <div className="rounded-xl border border-kp-outline bg-kp-surface p-6 shadow-sm">
+          <p className="text-sm leading-relaxed text-kp-on-surface md:text-[0.9375rem]">
+            {focusBody}
+          </p>
+          <Button
+            asChild
+            className={cn(kpBtnPrimary, "mt-5 h-11 min-h-11 px-6 text-sm font-semibold")}
+          >
+            <Link href="/showing-hq/follow-ups">Start now</Link>
+          </Button>
         </div>
       </section>
 
@@ -205,27 +478,31 @@ export function OperationalDashboardView() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <ModuleShortcut
             title="ShowingHQ"
-            description="Showings, open houses, visitors, and follow-ups."
+            contextLine={moduleShowing}
             href="/showing-hq"
             icon={Calendar}
+            ctaLabel="Open schedule"
           />
           <ModuleShortcut
             title="ClientKeep"
-            description="Contacts, segments, tags, and communications."
+            contextLine={moduleClient}
             href="/contacts"
             icon={Users}
+            ctaLabel="Review contacts"
           />
           <ModuleShortcut
             title="FarmTrackr"
-            description="Territories, farm areas, imports, and mailing."
+            contextLine={moduleFarm}
             href="/farm-trackr"
             icon={MapPin}
+            ctaLabel="Review farms"
           />
           <ModuleShortcut
             title="PropertyVault"
-            description="Listings, media, and property records."
+            contextLine={moduleVault}
             href="/properties"
             icon={Building2}
+            ctaLabel="Open vault"
           />
         </div>
       </section>
