@@ -183,6 +183,7 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
       Boolean(
         mapping.email ||
           mapping.phone ||
+          mapping.phone2 ||
           mapping.fullName ||
           (mapping.firstName && mapping.lastName)
       ) &&

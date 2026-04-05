@@ -510,7 +510,16 @@ function prepareRows(
     const territoryName =
       cleanText(getMapped(raw, mapping.territory)) ?? cleanText(defaults.defaultTerritoryName);
     const areaName = cleanText(getMapped(raw, mapping.area)) ?? cleanText(defaults.defaultAreaName);
-    const identityKey = getIdentityKey({ email, phone, firstName, lastName });
+    const identityKey = getIdentityKey({
+      email,
+      phone,
+      firstName,
+      lastName,
+      email2: normalizeEmail(getMapped(raw, mapping.email2)),
+      email3: normalizeEmail(getMapped(raw, mapping.email3)),
+      email4: normalizeEmail(getMapped(raw, mapping.email4)),
+      phone2: normalizePhone(getMapped(raw, mapping.phone2)),
+    });
     return {
       rowNumber: idx + 2,
       email,
@@ -747,9 +756,17 @@ function getIdentityKey(input: {
   phone: string | null;
   firstName: string | null;
   lastName: string | null;
+  email2: string | null;
+  email3: string | null;
+  email4: string | null;
+  phone2: string | null;
 }): string | null {
   if (input.email) return `email:${input.email}`;
+  for (const em of [input.email2, input.email3, input.email4]) {
+    if (em) return `email:${em}`;
+  }
   if (input.phone) return `phone:${input.phone}`;
+  if (input.phone2) return `phone:${input.phone2}`;
   if (input.firstName && input.lastName) {
     return `name:${normalizeNameKey(input.firstName)}|${normalizeNameKey(input.lastName)}`;
   }
