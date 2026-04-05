@@ -15,3 +15,14 @@ export const FarmMailingRecipientsQuerySchema = z
   );
 
 export type FarmMailingRecipientsQuery = z.infer<typeof FarmMailingRecipientsQuerySchema>;
+
+const EXPORT_LABELS_MAX_IDS = 200;
+
+export const FarmExportLabelsBodySchema = z.object({
+  contactIds: z
+    .array(z.string().min(1))
+    .min(1, "Select at least one contact")
+    .max(EXPORT_LABELS_MAX_IDS),
+});
+
+export type FarmExportLabelsBody = z.infer<typeof FarmExportLabelsBodySchema>;

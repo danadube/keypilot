@@ -7,6 +7,41 @@ function escapeCsvField(value: string): string {
   return value;
 }
 
+export type FarmLabelCsvRow = {
+  firstName: string;
+  lastName: string;
+  mailingStreet1: string;
+  mailingStreet2: string;
+  mailingCity: string;
+  mailingState: string;
+  mailingZip: string;
+};
+
+/** Avery / mail-merge style: split name and mailing lines (FarmTrackr bulk export). */
+export function buildFarmLabelExportCsv(rows: FarmLabelCsvRow[]): string {
+  const header = [
+    "First Name",
+    "Last Name",
+    "Mailing Street 1",
+    "Mailing Street 2",
+    "City",
+    "State",
+    "Zip",
+  ].join(",");
+  const body = rows.map((r) =>
+    [
+      escapeCsvField(r.firstName),
+      escapeCsvField(r.lastName),
+      escapeCsvField(r.mailingStreet1),
+      escapeCsvField(r.mailingStreet2),
+      escapeCsvField(r.mailingCity),
+      escapeCsvField(r.mailingState),
+      escapeCsvField(r.mailingZip),
+    ].join(",")
+  );
+  return [header, ...body].join("\n");
+}
+
 /** One row per contact: name, street (combined), city, state, zip */
 export function buildMailingListCsv(recipients: FarmMailingRecipient[]): string {
   const lines = [

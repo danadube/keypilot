@@ -124,6 +124,7 @@ export function FarmAreaMembersBulkPanel({
   const [followUpDueDate, setFollowUpDueDate] = useState("");
   const [followUpNotes, setFollowUpNotes] = useState("");
   const [bulkFollowUpBusy, setBulkFollowUpBusy] = useState(false);
+  const [bulkExportLabelsBusy, setBulkExportLabelsBusy] = useState(false);
 
   const loadMembers = useCallback(async () => {
     setMembersLoading(true);
@@ -195,6 +196,7 @@ export function FarmAreaMembersBulkPanel({
       setFollowUpDueDate("");
       setFollowUpNotes("");
       setBulkFollowUpBusy(false);
+      setBulkExportLabelsBusy(false);
     }
   }, [expanded]);
 
@@ -209,6 +211,7 @@ export function FarmAreaMembersBulkPanel({
       setFollowUpDueDate("");
       setFollowUpNotes("");
       setBulkFollowUpBusy(false);
+      setBulkExportLabelsBusy(false);
     }
   }, [selectedMemberContactIds.size]);
 
@@ -354,6 +357,51 @@ export function FarmAreaMembersBulkPanel({
       setBulkFollowUpBusy(false);
     }
   }, [selectedMemberContactIds, followUpTitle, followUpDueDate, followUpNotes]);
+
+  const exportBulkLabels = useCallback(async () => {
+    const ids = Array.from(selectedMemberContactIds);
+    if (ids.length === 0) return;
+    setBulkExportLabelsBusy(true);
+    try {
+      const res = await fetch("/api/v1/farm/export-labels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactIds: ids }),
+      });
+      if (!res.ok) {
+        const json = (await res.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
+        throw new Error(json.error?.message ?? "Export failed");
+      }
+      const text = await res.text();
+      const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "farm-labels.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      const lines = text.trim().split(/\r?\n/).filter((l) => l.length > 0);
+      const rowCount = Math.max(0, lines.length - 1);
+      setToast({
+        kind: "success",
+        text:
+          rowCount === 0
+            ? "Export ready"
+            : `Downloaded ${rowCount} label${rowCount === 1 ? "" : "s"}`,
+      });
+    } catch (e) {
+      setToast({
+        kind: "error",
+        text: e instanceof Error ? e.message : "Couldn't export labels",
+      });
+    } finally {
+      setBulkExportLabelsBusy(false);
+    }
+  }, [selectedMemberContactIds]);
 
   const memberContactIdSet = useMemo(
     () => new Set(members.map((m) => m.contact.id)),
@@ -579,7 +627,7 @@ export function FarmAreaMembersBulkPanel({
                   size="sm"
                   variant="ghost"
                   className="h-8 px-2 text-xs"
-                  disabled={bulkBusy || bulkTagBusy || bulkFollowUpBusy}
+                  disabled={bulkBusy || bulkTagBusy || bulkFollowUpBusy || bulkExportLabelsBusy}
                   onClick={() => setSelectedMemberContactIds(new Set())}
                 >
                   Clear selection
@@ -597,7 +645,7 @@ export function FarmAreaMembersBulkPanel({
                     type="button"
                     size="sm"
                     className={cn(kpBtnSecondary, "h-8 px-2 text-xs")}
-                    disabled={bulkBusy || bulkTagBusy || bulkFollowUpBusy}
+                    disabled={bulkBusy || bulkTagBusy || bulkFollowUpBusy || bulkExportLabelsBusy}
                     aria-expanded={tagPanelOpen}
                     onClick={() => (tagPanelOpen ? cancelTagPanel() : openTagPanel())}
                   >
@@ -607,7 +655,7 @@ export function FarmAreaMembersBulkPanel({
                     type="button"
                     size="sm"
                     className={cn(kpBtnSecondary, "h-8 px-2 text-xs")}
-                    disabled={bulkBusy || bulkTagBusy || bulkFollowUpBusy}
+                    disabled={bulkBusy || bulkTagBusy || bulkFollowUpBusy || bulkExportLabelsBusy}
                     aria-expanded={followUpPanelOpen}
                     onClick={() =>
                       followUpPanelOpen ? cancelFollowUpPanel() : openFollowUpPanel()
@@ -615,8 +663,23 @@ export function FarmAreaMembersBulkPanel({
                   >
                     Create follow-up
                   </Button>
-                  <Button type="button" size="sm" className={cn(kpBtnSecondary, "h-8 px-2 text-xs")} disabled>
-                    Export labels
+                  <Button
+                    type="button"
+                    size="sm"
+                    className={cn(kpBtnSecondary, "h-8 px-2 text-xs")}
+                    disabled={
+                      bulkBusy || bulkTagBusy || bulkFollowUpBusy || bulkExportLabelsBusy
+                    }
+                    onClick={() => void exportBulkLabels()}
+                  >
+                    {bulkExportLabelsBusy ? (
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Exporting…
+                      </>
+                    ) : (
+                      "Export labels"
+                    )}
                   </Button>
                 </div>
                 {tagPanelOpen ? (
@@ -642,7 +705,7 @@ export function FarmAreaMembersBulkPanel({
                     <select
                       value={tagPickerId}
                       onChange={(e) => setTagPickerId(e.target.value)}
-                      disabled={bulkTagBusy || tagsLoading}
+                      disabled={bulkTagBusy || tagsLoading || bulkExportLabelsBusy}
                       className="mb-2 h-8 w-full max-w-xs rounded border border-kp-outline bg-kp-surface px-2 text-xs text-kp-on-surface"
                       aria-label="Choose existing tag"
                     >
@@ -663,7 +726,7 @@ export function FarmAreaMembersBulkPanel({
                       id={`farm-bulk-new-tag-${areaId}`}
                       value={newTagName}
                       onChange={(e) => setNewTagName(e.target.value)}
-                      disabled={bulkTagBusy}
+                      disabled={bulkTagBusy || bulkExportLabelsBusy}
                       placeholder="Type a new tag"
                       maxLength={50}
                       className="mb-2 h-8 max-w-xs text-xs"
@@ -676,7 +739,11 @@ export function FarmAreaMembersBulkPanel({
                         type="button"
                         size="sm"
                         className={cn(kpBtnPrimary, "h-8 border-transparent px-3 text-xs")}
-                        disabled={bulkTagBusy || (!tagPickerId && !newTagName.trim())}
+                        disabled={
+                          bulkTagBusy ||
+                          bulkExportLabelsBusy ||
+                          (!tagPickerId && !newTagName.trim())
+                        }
                         onClick={() => void applyBulkTag()}
                       >
                         {bulkTagBusy ? (
@@ -693,7 +760,7 @@ export function FarmAreaMembersBulkPanel({
                         size="sm"
                         variant="ghost"
                         className="h-8 px-2 text-xs"
-                        disabled={bulkTagBusy}
+                        disabled={bulkTagBusy || bulkExportLabelsBusy}
                         onClick={cancelTagPanel}
                       >
                         Cancel
@@ -717,7 +784,7 @@ export function FarmAreaMembersBulkPanel({
                       id={`farm-bulk-fu-title-${areaId}`}
                       value={followUpTitle}
                       onChange={(e) => setFollowUpTitle(e.target.value)}
-                      disabled={bulkFollowUpBusy}
+                      disabled={bulkFollowUpBusy || bulkExportLabelsBusy}
                       placeholder="Follow-up title"
                       maxLength={500}
                       className="mb-2 h-8 max-w-md text-xs"
@@ -733,7 +800,7 @@ export function FarmAreaMembersBulkPanel({
                       type="date"
                       value={followUpDueDate}
                       onChange={(e) => setFollowUpDueDate(e.target.value)}
-                      disabled={bulkFollowUpBusy}
+                      disabled={bulkFollowUpBusy || bulkExportLabelsBusy}
                       className="mb-2 h-8 max-w-xs text-xs"
                     />
                     <label
@@ -746,7 +813,7 @@ export function FarmAreaMembersBulkPanel({
                       id={`farm-bulk-fu-notes-${areaId}`}
                       value={followUpNotes}
                       onChange={(e) => setFollowUpNotes(e.target.value)}
-                      disabled={bulkFollowUpBusy}
+                      disabled={bulkFollowUpBusy || bulkExportLabelsBusy}
                       placeholder="Optional notes"
                       maxLength={20000}
                       rows={3}
@@ -757,7 +824,11 @@ export function FarmAreaMembersBulkPanel({
                         type="button"
                         size="sm"
                         className={cn(kpBtnPrimary, "h-8 border-transparent px-3 text-xs")}
-                        disabled={bulkFollowUpBusy || !followUpTitle.trim()}
+                        disabled={
+                          bulkFollowUpBusy ||
+                          bulkExportLabelsBusy ||
+                          !followUpTitle.trim()
+                        }
                         onClick={() => void applyBulkFollowUps()}
                       >
                         {bulkFollowUpBusy ? (
@@ -774,7 +845,7 @@ export function FarmAreaMembersBulkPanel({
                         size="sm"
                         variant="ghost"
                         className="h-8 px-2 text-xs"
-                        disabled={bulkFollowUpBusy}
+                        disabled={bulkFollowUpBusy || bulkExportLabelsBusy}
                         onClick={cancelFollowUpPanel}
                       >
                         Cancel
@@ -788,7 +859,7 @@ export function FarmAreaMembersBulkPanel({
                 <select
                   value={moveTargetId}
                   onChange={(e) => setMoveTargetId(e.target.value)}
-                  disabled={bulkBusy || bulkTagBusy || bulkFollowUpBusy}
+                  disabled={bulkBusy || bulkTagBusy || bulkFollowUpBusy || bulkExportLabelsBusy}
                   className="h-8 max-w-[200px] rounded border border-kp-outline bg-kp-surface px-2 text-xs text-kp-on-surface"
                   aria-label="Move selected members to farm area"
                 >
@@ -803,7 +874,9 @@ export function FarmAreaMembersBulkPanel({
                   type="button"
                   size="sm"
                   className={cn(kpBtnSecondary, "h-8 px-2 text-xs")}
-                  disabled={bulkBusy || bulkTagBusy || bulkFollowUpBusy || !moveTargetId}
+                  disabled={
+                    bulkBusy || bulkTagBusy || bulkFollowUpBusy || bulkExportLabelsBusy || !moveTargetId
+                  }
                   onClick={() =>
                     void runBulk({
                       action: "move",
@@ -819,7 +892,7 @@ export function FarmAreaMembersBulkPanel({
                   size="sm"
                   variant="ghost"
                   className="h-8 px-2 text-xs text-red-300 hover:text-red-200"
-                  disabled={bulkBusy || bulkTagBusy || bulkFollowUpBusy}
+                  disabled={bulkBusy || bulkTagBusy || bulkFollowUpBusy || bulkExportLabelsBusy}
                   onClick={() => {
                     if (!confirm(`Remove ${selectedMemberCount} contact(s) from this area?`))
                       return;
