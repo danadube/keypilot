@@ -119,58 +119,58 @@ export function DashboardCalendarRail({
       });
 
   const cardClass =
-    "rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm transition-colors";
+    "rounded-xl border border-kp-outline bg-kp-surface p-3 shadow-sm transition-colors";
 
   return (
     <aside
-      className="flex w-full flex-col gap-4 xl:sticky xl:top-20 xl:w-[min(100%,320px)] xl:shrink-0"
+      className="flex w-full max-w-full flex-col gap-3 xl:sticky xl:top-20 xl:w-[300px] xl:max-w-[300px] xl:shrink-0 xl:flex-none"
       aria-label="Calendar and schedule"
     >
       <div className={cardClass}>
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <CalendarDays className="h-4 w-4 shrink-0 text-kp-teal/90" aria-hidden />
-            <h2 className="truncate font-headline text-sm font-semibold text-kp-on-surface">
+        <div className="mb-2 flex items-center justify-between gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <CalendarDays className="h-3.5 w-3.5 shrink-0 text-kp-teal/80" aria-hidden />
+            <h2 className="truncate font-headline text-xs font-semibold text-kp-on-surface-variant">
               Calendar
             </h2>
           </div>
-          <div className="flex shrink-0 items-center gap-0.5">
+          <div className="flex shrink-0 items-center gap-0">
             <Button
               type="button"
               variant="ghost"
               size="icon"
               onClick={goPrevMonth}
-              className="h-8 w-8 text-kp-on-surface-variant hover:bg-kp-surface-high/60 hover:text-kp-on-surface"
+              className="h-7 w-7 text-kp-on-surface-variant hover:bg-kp-surface-high/60 hover:text-kp-on-surface"
               aria-label="Previous month"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="icon"
               onClick={goNextMonth}
-              className="h-8 w-8 text-kp-on-surface-variant hover:bg-kp-surface-high/60 hover:text-kp-on-surface"
+              className="h-7 w-7 text-kp-on-surface-variant hover:bg-kp-surface-high/60 hover:text-kp-on-surface"
               aria-label="Next month"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>
-        <p className="mb-3 text-center text-xs font-semibold tabular-nums text-kp-on-surface">
+        <p className="mb-2 text-center text-[11px] font-semibold tabular-nums text-kp-on-surface">
           {monthTitle}
         </p>
-        <div className="grid grid-cols-7 gap-y-1 text-center text-[10px] font-medium uppercase tracking-wide text-kp-on-surface-muted">
+        <div className="grid grid-cols-7 gap-y-0 text-center text-[9px] font-medium uppercase tracking-wide text-kp-on-surface-muted">
           {WEEKDAYS.map((w) => (
-            <div key={w} className="py-1">
+            <div key={w} className="py-0.5 leading-none">
               {w}
             </div>
           ))}
         </div>
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-px">
           {grid.map((cell, i) => {
             if (cell.type === "empty") {
-              return <div key={`e-${i}`} className="aspect-square" />;
+              return <div key={`e-${i}`} className="h-7" />;
             }
             const { day } = cell;
             const key = dayKey(vy, vm, day);
@@ -185,10 +185,10 @@ export function DashboardCalendarRail({
                 type="button"
                 onClick={() => setSelectedDay(cellDate)}
                 className={cn(
-                  "relative flex aspect-square items-center justify-center rounded-lg text-xs font-medium tabular-nums transition-colors",
-                  "text-kp-on-surface hover:bg-kp-surface-high/50",
-                  isToday && "ring-1 ring-kp-teal/50 bg-kp-surface-high/30",
-                  isSelected && "bg-kp-teal/15 text-kp-on-surface ring-1 ring-kp-teal/40"
+                  "relative flex h-7 items-center justify-center rounded-md text-[10px] font-medium tabular-nums transition-colors",
+                  "text-kp-on-surface-variant hover:bg-kp-surface-high/50 hover:text-kp-on-surface",
+                  isToday && "ring-1 ring-kp-teal/40 bg-kp-surface-high/25 text-kp-on-surface",
+                  isSelected && "bg-kp-teal/12 text-kp-on-surface ring-1 ring-kp-teal/35"
                 )}
                 aria-label={`${monthTitle} ${day}`}
                 aria-pressed={isSelected}
@@ -196,7 +196,7 @@ export function DashboardCalendarRail({
                 {day}
                 {hasShowing ? (
                   <span
-                    className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-kp-gold/90"
+                    className="absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-kp-gold/85"
                     aria-hidden
                   />
                 ) : null}
@@ -207,9 +207,9 @@ export function DashboardCalendarRail({
       </div>
 
       <div className={cardClass}>
-        <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="mb-2 flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h2 className="font-headline text-sm font-semibold text-kp-on-surface">
+            <h2 className="font-headline text-xs font-semibold text-kp-on-surface-variant">
               {scheduleTitle}
             </h2>
           </div>
@@ -217,7 +217,7 @@ export function DashboardCalendarRail({
             asChild
             variant="outline"
             size="sm"
-            className={cn(kpBtnSecondary, "h-8 shrink-0 gap-1 px-2.5 text-xs font-semibold")}
+            className={cn(kpBtnSecondary, "h-7 shrink-0 gap-1 px-2 text-[11px] font-semibold")}
           >
             <Link href="/showing-hq/showings/new" aria-label="Add showing">
               <Plus className="h-3.5 w-3.5" />
@@ -227,21 +227,21 @@ export function DashboardCalendarRail({
         </div>
 
         {loading ? (
-          <ul className="space-y-2" aria-busy="true">
+          <ul className="space-y-1.5" aria-busy="true">
             {[0, 1].map((k) => (
               <li
                 key={k}
-                className="h-14 animate-pulse rounded-lg bg-kp-surface-high/50"
+                className="h-9 animate-pulse rounded-md bg-kp-surface-high/40"
                 aria-hidden
               />
             ))}
           </ul>
         ) : itemsForSelected.length === 0 ? (
-          <p className="text-sm leading-relaxed text-kp-on-surface-variant">
+          <p className="text-xs leading-snug text-kp-on-surface-muted">
             No appointments for this day.
           </p>
         ) : (
-          <ul className="space-y-2">
+          <ul className="space-y-1.5">
             {itemsForSelected.map((s) => {
               const t = new Date(s.scheduledAt);
               const timeStr = Number.isNaN(t.getTime())
@@ -255,18 +255,20 @@ export function DashboardCalendarRail({
                 <li key={s.id}>
                   <Link
                     href={`/showing-hq/showings/${s.id}`}
-                    className="block rounded-lg border border-kp-outline/80 bg-kp-surface-high/20 px-3 py-2.5 transition-colors hover:border-kp-teal/25 hover:bg-kp-surface-high/40"
+                    className="block rounded-md border border-kp-outline/70 bg-kp-surface-high/15 px-2 py-2 transition-colors hover:border-kp-teal/25 hover:bg-kp-surface-high/35"
                   >
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="text-xs font-semibold tabular-nums text-kp-teal/90">
+                      <span className="text-[10px] font-semibold tabular-nums text-kp-teal/85">
                         {timeStr}
                       </span>
                     </div>
-                    <p className="mt-0.5 truncate text-sm font-medium text-kp-on-surface">
+                    <p className="mt-0.5 truncate text-xs font-medium text-kp-on-surface">
                       {title}
                     </p>
                     {addr ? (
-                      <p className="mt-0.5 truncate text-xs text-kp-on-surface-variant">{addr}</p>
+                      <p className="mt-0.5 truncate text-[10px] leading-tight text-kp-on-surface-muted">
+                        {addr}
+                      </p>
                     ) : null}
                   </Link>
                 </li>
