@@ -344,8 +344,8 @@ export function OperationalDashboardView() {
     : `${propertiesCount} active listing${propertiesCount === 1 ? "" : "s"}`;
 
   return (
-    <div className="flex flex-col gap-10 xl:flex xl:flex-row xl:items-start xl:gap-10">
-      <div className="min-w-0 w-full flex-1 space-y-12 pb-8 xl:min-w-0">
+    <div className="flex flex-col gap-10 min-[1180px]:flex-row min-[1180px]:items-start min-[1180px]:gap-10">
+      <div className="min-w-0 w-full flex-1 space-y-12 pb-8">
       <header className="max-w-3xl">
         <h1 className="font-headline text-2xl font-semibold tracking-tight text-kp-on-surface md:text-3xl">
           Dashboard

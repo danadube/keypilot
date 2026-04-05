@@ -123,7 +123,7 @@ export function DashboardCalendarRail({
 
   return (
     <aside
-      className="flex w-full max-w-full flex-col gap-3 xl:sticky xl:top-20 xl:w-[300px] xl:max-w-[300px] xl:shrink-0 xl:flex-none"
+      className="flex w-full max-w-full flex-col gap-3 min-[1180px]:sticky min-[1180px]:top-20 min-[1180px]:w-[284px] min-[1180px]:max-w-[284px] min-[1180px]:shrink-0 min-[1180px]:flex-none"
       aria-label="Calendar and schedule"
     >
       <div className={cardClass}>
