@@ -29,6 +29,21 @@ export const CreateFollowUpTaskSchema = z.object({
 
 export type CreateFollowUpTaskInput = z.infer<typeof CreateFollowUpTaskSchema>;
 
+const BULK_FOLLOW_UP_MAX_CONTACTS = 200;
+
+/** FarmTrackr / bulk: one MANUAL follow-up per contact (RLS-scoped). */
+export const BulkCreateFollowUpsSchema = z.object({
+  contactIds: z
+    .array(z.string().min(1))
+    .min(1, "Select at least one contact")
+    .max(BULK_FOLLOW_UP_MAX_CONTACTS),
+  title: z.string().min(1, "Title is required").max(500).trim(),
+  dueDate: z.string().max(40).optional().nullable(),
+  notes: z.string().max(20000).optional().nullable(),
+});
+
+export type BulkCreateFollowUpsInput = z.infer<typeof BulkCreateFollowUpsSchema>;
+
 export const UpdateFollowUpTaskSchema = z
   .object({
     title: z.string().min(1).max(500).optional(),
