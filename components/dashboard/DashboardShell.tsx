@@ -3,7 +3,10 @@
 import * as React from "react";
 import { usePathname } from "next/navigation";
 import { ProductTierProvider } from "@/components/ProductTierProvider";
-import { ModuleSidebar } from "@/components/layout/ModuleSidebar";
+import {
+  DASHBOARD_SIDEBAR_WIDTH_PX,
+  ModuleSidebar,
+} from "@/components/layout/ModuleSidebar";
 import { ShowingHQWorkbenchHeaderActions } from "@/components/dashboard/ShowingHQWorkbenchHeaderActions";
 import { cn } from "@/lib/utils";
 import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
@@ -77,15 +80,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ProductTierProvider>
-    <div className="kp-dashboard-app flex min-h-screen bg-kp-bg">
-      {/* Sidebar: full-height branded rail from top */}
+    <div className="kp-dashboard-app flex h-screen min-h-0 overflow-hidden bg-kp-bg">
       <ModuleSidebar />
 
-      {/* Right: header bar + content */}
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div
+        className="flex min-h-0 min-w-0 flex-1 flex-col"
+        style={{ marginLeft: DASHBOARD_SIDEBAR_WIDTH_PX }}
+      >
         <header
           className={cn(
-            "sticky top-0 z-20 flex w-full shrink-0 border-b border-kp-outline bg-kp-surface",
+            "z-20 flex w-full shrink-0 border-b border-kp-outline bg-kp-surface",
             workspaceShell ? "items-center" : "items-stretch",
             shellTopRowHeightClass(pathname)
           )}
@@ -145,7 +149,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="min-h-0 flex-1 overflow-auto bg-kp-bg px-6 pb-5 pt-2 md:px-8 md:pb-6 md:pt-3 lg:px-10">
+        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-kp-bg px-6 pb-5 pt-2 md:px-8 md:pb-6 md:pt-3 lg:px-10">
           <div className="mx-auto min-h-[50vh] w-full max-w-6xl">{children}</div>
         </main>
       </div>

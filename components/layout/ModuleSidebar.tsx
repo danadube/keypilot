@@ -25,10 +25,10 @@ import { UPGRADE_MODULES } from "@/lib/module-access";
 import { useProductTier } from "@/components/ProductTierProvider";
 import { APP_VERSION, APP_COMMIT } from "@/lib/app-version";
 import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
-import { isWorkspaceContext } from "@/lib/showing-hq/isShowingHQContext";
 import type { ModuleConfig, ModuleId, ModuleSidebarItem } from "@/lib/modules";
 
-const SIDEBAR_WIDTH = 200;
+/** Sidebar width in px — keep in sync with main column `marginLeft` in `DashboardShell`. */
+export const DASHBOARD_SIDEBAR_WIDTH_PX = 200;
 
 const FEEDBACK_MAILTO =
   "mailto:feedback@keypilot.app?subject=" + encodeURIComponent("KeyPilot feedback");
@@ -162,15 +162,13 @@ export function ModuleSidebar() {
 
   const dashboardActive = pathname === "/" || activeId === "home";
 
-  const workspaceShell = isWorkspaceContext(pathname);
-
   return (
     <aside
-      className={cn(
-        "flex shrink-0 flex-col border-r border-kp-outline text-slate-100",
-        workspaceShell && "sticky top-0 z-10 h-dvh max-h-dvh min-h-0 overflow-hidden"
-      )}
-      style={{ width: SIDEBAR_WIDTH, backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)" }}
+      className="fixed left-0 top-0 z-10 flex h-screen flex-col border-r border-kp-outline text-slate-100"
+      style={{
+        width: DASHBOARD_SIDEBAR_WIDTH_PX,
+        backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)",
+      }}
       aria-label="Platform navigation"
     >
       <div
@@ -195,10 +193,7 @@ export function ModuleSidebar() {
       </div>
 
       <nav
-        className={cn(
-          "flex-1 py-3",
-          workspaceShell ? "min-h-0 overflow-y-auto" : "overflow-auto"
-        )}
+        className="min-h-0 flex-1 overflow-y-auto py-3"
         aria-label="Module navigation"
       >
         <div className="mb-1 px-2">
@@ -373,7 +368,10 @@ export function ModuleSidebar() {
         </div>
       </nav>
 
-      <div className="shrink-0 border-t border-white/10 px-2 py-2">
+      <div
+        className="shrink-0 border-t border-white/10 px-2 py-2"
+        aria-label="System navigation"
+      >
         <p className="mb-1.5 px-3 text-[11px] font-bold uppercase tracking-widest text-kp-on-surface-muted">
           System
         </p>
