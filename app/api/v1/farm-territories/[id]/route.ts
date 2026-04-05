@@ -17,6 +17,8 @@ const UpdateTerritorySchema = z
 
 const ArchiveTerritorySchema = z.object({ archive: z.literal(true) }).strict();
 
+const RestoreTerritorySchema = z.object({ restore: z.literal(true) }).strict();
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -32,6 +34,48 @@ export async function PATCH(
       return apiError("CRM features require Full CRM tier", 403);
     }
 
+    const body = await req.json();
+    const restoreParse = RestoreTerritorySchema.safeParse(body);
+    if (restoreParse.success) {
+      const archivedRow = await withRLSContext(user.id, (tx) =>
+        tx.farmTerritory.findFirst({
+          where: { id, userId: user.id, deletedAt: { not: null } },
+          select: { id: true },
+        })
+      );
+      if (!archivedRow) {
+        return apiError("Archived territory not found", 404);
+      }
+
+      const { updated, areaCount } = await withRLSContext(user.id, async (tx) => {
+        await tx.farmTerritory.update({
+          where: { id },
+          data: { deletedAt: null },
+        });
+        await tx.farmArea.updateMany({
+          where: { territoryId: id, userId: user.id, deletedAt: { not: null } },
+          data: { deletedAt: null },
+        });
+        const updated = await tx.farmTerritory.findFirstOrThrow({
+          where: { id },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            createdAt: true,
+          },
+        });
+        const areaCount = await tx.farmArea.count({
+          where: { territoryId: id, userId: user.id, deletedAt: null },
+        });
+        return { updated, areaCount };
+      });
+
+      return NextResponse.json({
+        data: { ...updated, areaCount, archived: false },
+      });
+    }
+
     const existing = await withRLSContext(user.id, (tx) =>
       tx.farmTerritory.findFirst({
         where: { id, userId: user.id, deletedAt: null },
@@ -42,7 +86,6 @@ export async function PATCH(
       return apiError("Territory not found", 404);
     }
 
-    const body = await req.json();
     const archiveParse = ArchiveTerritorySchema.safeParse(body);
     if (archiveParse.success) {
       const now = new Date();
@@ -108,7 +151,9 @@ export async function PATCH(
       return { updated, areaCount };
     });
 
-    return NextResponse.json({ data: { ...updated, areaCount } });
+    return NextResponse.json({
+      data: { ...updated, areaCount, archived: false },
+    });
   } catch (err) {
     return apiErrorFromCaught(err);
   }

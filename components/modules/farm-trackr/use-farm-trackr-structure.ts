@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { UI_COPY } from "@/lib/ui-copy";
+import type { FarmStructureVisibility } from "@/lib/validations/farm-structure-visibility";
 
 export type FarmTerritoryRow = {
   id: string;
   name: string;
   description: string | null;
   areaCount: number;
+  archived: boolean;
 };
 
 export type FarmAreaRow = {
@@ -17,9 +19,12 @@ export type FarmAreaRow = {
   territoryId: string;
   territory: { id: string; name: string };
   membershipCount: number;
+  archived: boolean;
 };
 
 export function useFarmTrackrStructure() {
+  const [structureVisibility, setStructureVisibility] =
+    useState<FarmStructureVisibility>("active");
   const [territories, setTerritories] = useState<FarmTerritoryRow[]>([]);
   const [areas, setAreas] = useState<FarmAreaRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +33,11 @@ export function useFarmTrackrStructure() {
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    return Promise.all([fetch("/api/v1/farm-territories"), fetch("/api/v1/farm-areas")])
+    const v = encodeURIComponent(structureVisibility);
+    return Promise.all([
+      fetch(`/api/v1/farm-territories?visibility=${v}`),
+      fetch(`/api/v1/farm-areas?visibility=${v}`),
+    ])
       .then(async ([territoryRes, areaRes]) => {
         const territoryJson = await territoryRes.json();
         const areaJson = await areaRes.json();
@@ -41,7 +50,7 @@ export function useFarmTrackrStructure() {
         setError(err instanceof Error ? err.message : UI_COPY.errors.load("farm data"))
       )
       .finally(() => setLoading(false));
-  }, []);
+  }, [structureVisibility]);
 
   useEffect(() => {
     void load();
@@ -66,6 +75,8 @@ export function useFarmTrackrStructure() {
   );
 
   return {
+    structureVisibility,
+    setStructureVisibility,
     territories,
     areas,
     loading,

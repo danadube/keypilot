@@ -17,6 +17,8 @@ const UpdateFarmAreaSchema = z
 
 const ArchiveFarmAreaSchema = z.object({ archive: z.literal(true) }).strict();
 
+const RestoreFarmAreaSchema = z.object({ restore: z.literal(true) }).strict();
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -30,6 +32,56 @@ export async function PATCH(
     const user = await getCurrentUser();
     if (!hasCrmAccess(user.productTier)) {
       return apiError("CRM features require Full CRM tier", 403);
+    }
+
+    const body = await req.json();
+    const restoreParse = RestoreFarmAreaSchema.safeParse(body);
+    if (restoreParse.success) {
+      const archivedArea = await withRLSContext(user.id, (tx) =>
+        tx.farmArea.findFirst({
+          where: {
+            id,
+            userId: user.id,
+            deletedAt: { not: null },
+            territory: { deletedAt: null },
+          },
+          select: { id: true },
+        })
+      );
+      if (!archivedArea) {
+        return apiError(
+          "Archived farm area not found, or its territory is still archived. Restore the territory first.",
+          404
+        );
+      }
+
+      const { updated, membershipCount } = await withRLSContext(user.id, async (tx) => {
+        await tx.farmArea.update({
+          where: { id },
+          data: { deletedAt: null },
+        });
+        const updated = await tx.farmArea.findFirstOrThrow({
+          where: { id },
+          select: {
+            id: true,
+            name: true,
+            territoryId: true,
+            description: true,
+            territory: { select: { id: true, name: true } },
+          },
+        });
+        const membershipCount = await tx.contactFarmMembership.count({
+          where: {
+            farmAreaId: id,
+            status: ContactFarmMembershipStatus.ACTIVE,
+          },
+        });
+        return { updated, membershipCount };
+      });
+
+      return NextResponse.json({
+        data: { ...updated, membershipCount, archived: false },
+      });
     }
 
     const existing = await withRLSContext(user.id, (tx) =>
@@ -47,7 +99,6 @@ export async function PATCH(
       return apiError("Farm area not found", 404);
     }
 
-    const body = await req.json();
     const archiveParse = ArchiveFarmAreaSchema.safeParse(body);
     if (archiveParse.success) {
       const now = new Date();
@@ -101,7 +152,9 @@ export async function PATCH(
       return { updated, membershipCount };
     });
 
-    return NextResponse.json({ data: { ...updated, membershipCount } });
+    return NextResponse.json({
+      data: { ...updated, membershipCount, archived: false },
+    });
   } catch (err) {
     return apiErrorFromCaught(err);
   }
