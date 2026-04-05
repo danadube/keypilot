@@ -2,6 +2,7 @@ import { ContactFarmMembershipStatus } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 import {
   contactToMailingRecipient,
+  hasUsableMailingAddress,
   type FarmMailingRecipient,
 } from "@/lib/farm/mailing/recipients";
 
@@ -16,9 +17,29 @@ const contactSelect = {
   mailingZip: true,
 } as const;
 
+/** Mailing completeness only — for summary counts without loading name/street2. */
+const contactSelectSummary = {
+  id: true,
+  mailingStreet1: true,
+  mailingCity: true,
+  mailingState: true,
+  mailingZip: true,
+} as const;
+
 export type FarmMailingScope =
   | { kind: "territory"; territoryId: string }
   | { kind: "area"; farmAreaId: string };
+
+export type LoadFarmMailingRecipientsOptions = {
+  /** When true, returns empty `recipients` and `mailableContactCount` only (lighter contact select). */
+  summaryOnly?: boolean;
+};
+
+export type LoadFarmMailingRecipientsResult = {
+  recipients: FarmMailingRecipient[];
+  scopeLabel: string;
+  mailableContactCount?: number;
+};
 
 /**
  * ACTIVE memberships only, non-deleted contacts, deduped by contact id,
@@ -27,8 +48,9 @@ export type FarmMailingScope =
 export async function loadFarmMailingRecipients(
   tx: Prisma.TransactionClient,
   userId: string,
-  scope: FarmMailingScope
-): Promise<{ recipients: FarmMailingRecipient[]; scopeLabel: string }> {
+  scope: FarmMailingScope,
+  options?: LoadFarmMailingRecipientsOptions
+): Promise<LoadFarmMailingRecipientsResult> {
   let areaIds: string[] = [];
   let scopeLabel = "";
 
@@ -58,17 +80,58 @@ export async function loadFarmMailingRecipients(
   }
 
   if (areaIds.length === 0) {
-    return { recipients: [], scopeLabel };
+    return options?.summaryOnly
+      ? { recipients: [], scopeLabel, mailableContactCount: 0 }
+      : { recipients: [], scopeLabel };
+  }
+
+  const membershipWhere: Prisma.ContactFarmMembershipWhereInput = {
+    userId,
+    status: ContactFarmMembershipStatus.ACTIVE,
+    farmAreaId: { in: areaIds },
+    contact: { deletedAt: null },
+  };
+
+  // Explicit `select` on memberships avoids Prisma selecting `archivedAt` (in schema but absent on some DBs).
+  if (options?.summaryOnly) {
+    const rows = await tx.contactFarmMembership.findMany({
+      where: membershipWhere,
+      select: {
+        contactId: true,
+        contact: { select: contactSelectSummary },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+    const seen = new Set<string>();
+    let mailableContactCount = 0;
+    for (const m of rows) {
+      if (seen.has(m.contactId)) continue;
+      seen.add(m.contactId);
+      const c = m.contact;
+      if (
+        hasUsableMailingAddress({
+          id: c.id,
+          firstName: "",
+          lastName: "",
+          mailingStreet1: c.mailingStreet1,
+          mailingStreet2: null,
+          mailingCity: c.mailingCity,
+          mailingState: c.mailingState,
+          mailingZip: c.mailingZip,
+        })
+      ) {
+        mailableContactCount += 1;
+      }
+    }
+    return { recipients: [], scopeLabel, mailableContactCount };
   }
 
   const memberships = await tx.contactFarmMembership.findMany({
-    where: {
-      userId,
-      status: ContactFarmMembershipStatus.ACTIVE,
-      farmAreaId: { in: areaIds },
-      contact: { deletedAt: null },
+    where: membershipWhere,
+    select: {
+      contactId: true,
+      contact: { select: contactSelect },
     },
-    include: { contact: { select: contactSelect } },
     orderBy: { createdAt: "asc" },
   });
 

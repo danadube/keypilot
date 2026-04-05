@@ -39,20 +39,24 @@ export async function GET(req: NextRequest) {
         ? ({ kind: "area" as const, farmAreaId })
         : ({ kind: "territory" as const, territoryId: territoryId! });
 
-    const { recipients, scopeLabel } = await withRLSContext(user.id, (tx) =>
-      loadFarmMailingRecipients(tx, user.id, scope)
-    );
+    const { recipients, scopeLabel, mailableContactCount } =
+      await withRLSContext(user.id, (tx) =>
+        loadFarmMailingRecipients(tx, user.id, scope, {
+          summaryOnly: summaryOnlyResponse,
+        })
+      );
 
     if (summaryOnlyResponse) {
+      const contactCount = mailableContactCount ?? 0;
       const labelPages =
-        recipients.length === 0
+        contactCount === 0
           ? 0
-          : Math.ceil(recipients.length / AVERY_5160.labelsPerPage);
+          : Math.ceil(contactCount / AVERY_5160.labelsPerPage);
       return NextResponse.json({
         data: {
           scopeLabel,
           summary: {
-            contactCount: recipients.length,
+            contactCount,
             labelPages,
             labelsPerPage: AVERY_5160.labelsPerPage,
           },
