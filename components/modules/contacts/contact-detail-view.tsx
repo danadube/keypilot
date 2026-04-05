@@ -57,6 +57,7 @@ export function ContactDetailView({ id }: { id: string }) {
   const [siteState, setSiteState] = useState("");
   const [siteZip, setSiteZip] = useState("");
   const [savingSite, setSavingSite] = useState(false);
+  const [promotingFromFarm, setPromotingFromFarm] = useState(false);
   const { hasCrm: hasCrmAccess } = useProductTier();
 
   const refreshActivities = useCallback(() => {
@@ -360,6 +361,37 @@ export function ContactDetailView({ id }: { id: string }) {
       .finally(() => setLoading(false));
   }, [id, hasCrmAccess]);
 
+  const promoteFromFarmToLead = useCallback(() => {
+    if (!hasCrmAccess) return;
+    if (!confirm("Promote this contact from Farm to Lead?")) return;
+    setPromotingFromFarm(true);
+    setError(null);
+    fetch("/api/v1/contacts/promote-farm-to-lead", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactIds: [id] }),
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.error) throw new Error(json.error.message);
+        const promoted = (json.data?.promotedCount as number) ?? 0;
+        if (promoted === 0) {
+          setError("No change — contact is not in Farm stage.");
+          return;
+        }
+        return fetch(`/api/v1/contacts/${id}`)
+          .then((r) => r.json())
+          .then((cj) => {
+            if (cj.error) throw new Error(cj.error.message);
+            setContact(cj.data);
+          });
+      })
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : "Promote failed")
+      )
+      .finally(() => setPromotingFromFarm(false));
+  }, [hasCrmAccess, id]);
+
   useEffect(() => {
     loadData();
   }, [loadData]);
@@ -486,6 +518,10 @@ export function ContactDetailView({ id }: { id: string }) {
         status={contact.status}
         hasCrmAccess={hasCrmAccess}
         onStatusChange={updateStatus}
+        onPromoteFromFarmToLead={
+          hasCrmAccess ? () => void promoteFromFarmToLead() : undefined
+        }
+        promotingFromFarm={promotingFromFarm}
         activities={activities}
         nextReminder={nextReminder}
         onMarkNextReminderDone={markNextReminderDone}

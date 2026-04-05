@@ -64,6 +64,7 @@ export async function GET(
               siteCity: true,
               siteState: true,
               siteZip: true,
+              status: true,
             },
           },
         },

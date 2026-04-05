@@ -92,4 +92,16 @@ export const UpdateContactSchema = z.object({
   siteZip: optionalTrimmedNullable,
 });
 
+const BULK_PROMOTE_FARM_TO_LEAD_MAX = 200;
+
+/** Promote contacts from FARM → LEAD. Non-FARM or inaccessible IDs are skipped. */
+export const BulkPromoteFarmToLeadSchema = z.object({
+  contactIds: z
+    .array(z.string().min(1))
+    .min(1, "Select at least one contact")
+    .max(BULK_PROMOTE_FARM_TO_LEAD_MAX),
+});
+
+export type BulkPromoteFarmToLeadInput = z.infer<typeof BulkPromoteFarmToLeadSchema>;
+
 export type UpdateContactInput = z.infer<typeof UpdateContactSchema>;

@@ -44,6 +44,9 @@ type ContactDetailHeroProps = {
   status: string | null | undefined;
   hasCrmAccess: boolean;
   onStatusChange: (status: string) => void;
+  /** Farm → Lead (ClientKeep bridge); shown when status is FARM. */
+  onPromoteFromFarmToLead?: () => void;
+  promotingFromFarm?: boolean;
   activities: ContactDetailActivity[];
   nextReminder: Reminder | null;
   onMarkNextReminderDone: () => void;
@@ -61,6 +64,8 @@ export function ContactDetailHero({
   status,
   hasCrmAccess,
   onStatusChange,
+  onPromoteFromFarmToLead,
+  promotingFromFarm = false,
   activities,
   nextReminder,
   onMarkNextReminderDone,
@@ -121,6 +126,18 @@ export function ContactDetailHero({
                   ))}
                 </SelectContent>
               </Select>
+              {status === "FARM" && onPromoteFromFarmToLead ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(kpBtnSecondary, "h-8 w-full border-transparent text-xs sm:w-[160px]")}
+                  onClick={onPromoteFromFarmToLead}
+                  disabled={promotingFromFarm}
+                >
+                  {promotingFromFarm ? "Promoting…" : "Promote to Lead"}
+                </Button>
+              ) : null}
             </div>
           ) : null}
         </div>
