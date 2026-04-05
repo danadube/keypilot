@@ -73,6 +73,8 @@ function getPageTitle(pathname: string): string {
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
+  const base = (pathname.split("?")[0] ?? "").replace(/\/$/, "") || "/";
+  const isOperationalDashboard = base === "/dashboard";
   /** + New stays available globally (direct-create links), not only on ShowingHQ surfaces. */
   const showHeaderNewMenu = true;
   const workspaceShell = isWorkspaceContext(pathname);
@@ -152,7 +154,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           </header>
 
           <main className="min-h-0 flex-1 bg-kp-bg px-6 pb-5 pt-2 md:px-8 md:pb-6 md:pt-3 lg:px-10">
-            <div className="mx-auto min-h-[50vh] w-full max-w-6xl">{children}</div>
+            <div
+              className={cn(
+                "mx-auto min-h-[50vh] w-full",
+                isOperationalDashboard ? "max-w-7xl" : "max-w-6xl"
+              )}
+            >
+              {children}
+            </div>
           </main>
         </div>
       </div>

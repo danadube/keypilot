@@ -15,6 +15,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import {
+  DashboardCalendarRail,
+  type DashboardScheduleShowing,
+} from "@/components/dashboard/dashboard-calendar-rail";
 
 type DashboardStats = {
   propertiesCount: number;
@@ -22,7 +26,7 @@ type DashboardStats = {
   contactsCount: number;
 };
 
-type ShowingRow = { scheduledAt: string };
+type ShowingRow = DashboardScheduleShowing;
 
 type DealRow = { status: string };
 
@@ -340,7 +344,8 @@ export function OperationalDashboardView() {
     : `${propertiesCount} active listing${propertiesCount === 1 ? "" : "s"}`;
 
   return (
-    <div className="space-y-12 pb-8">
+    <div className="flex flex-col gap-10 xl:flex-row xl:items-start xl:gap-10">
+      <div className="min-w-0 flex-1 space-y-12 pb-8">
       <header className="max-w-3xl">
         <h1 className="font-headline text-2xl font-semibold tracking-tight text-kp-on-surface md:text-3xl">
           Dashboard
@@ -506,6 +511,8 @@ export function OperationalDashboardView() {
           />
         </div>
       </section>
+      </div>
+      <DashboardCalendarRail showings={showings} loading={loading} />
     </div>
   );
 }
