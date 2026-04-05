@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import {
-  DashboardCalendarRail,
+  DashboardTodayCalendarScheduleGrid,
   type DashboardScheduleShowing,
 } from "@/components/dashboard/dashboard-calendar-rail";
 
@@ -161,9 +161,9 @@ function ModuleShortcut({
   return (
     <Link
       href={href}
-      className="group flex flex-col rounded-xl border border-kp-outline bg-kp-surface-high/30 p-5 shadow-sm transition-colors hover:border-kp-gold/30 hover:bg-kp-surface-high/50"
+      className="group flex flex-col rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm transition-colors hover:border-kp-gold/30 hover:bg-kp-surface-high/40"
     >
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-kp-outline/80 bg-kp-surface text-kp-gold">
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-kp-outline/80 bg-kp-surface-high/30 text-kp-gold">
         <Icon className="h-5 w-5" />
       </div>
       <h3 className="font-headline text-base font-semibold text-kp-on-surface">{title}</h3>
@@ -344,8 +344,7 @@ export function OperationalDashboardView() {
     : `${propertiesCount} active listing${propertiesCount === 1 ? "" : "s"}`;
 
   return (
-    <div className="flex flex-col gap-10 min-[1180px]:flex-row min-[1180px]:items-start min-[1180px]:gap-10">
-      <div className="min-w-0 w-full flex-1 space-y-12 pb-8">
+    <div className="space-y-6 pb-8">
       <header className="max-w-3xl">
         <h1 className="font-headline text-2xl font-semibold tracking-tight text-kp-on-surface md:text-3xl">
           Dashboard
@@ -359,7 +358,7 @@ export function OperationalDashboardView() {
       <section aria-labelledby="dash-quick">
         <h2
           id="dash-quick"
-          className="mb-5 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
+          className="mb-3 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
         >
           Quick actions
         </h2>
@@ -386,42 +385,48 @@ export function OperationalDashboardView() {
       <section aria-labelledby="dash-today">
         <h2
           id="dash-today"
-          className="mb-4 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
+          className="mb-3 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
         >
           Today
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <TodayMetricCard
-            label="Showings today"
-            href="/showing-hq/showings"
-            icon={Calendar}
-            loading={loading}
-            primary={showingsToday}
-            secondary={todayShowingsSecondary}
-          />
-          <TodayMetricCard
-            label="Tasks due"
-            href="/task-pilot"
-            icon={CheckSquare}
-            loading={loading}
-            primary={0}
-            secondary={todayTasksSecondary}
-          />
-          <TodayMetricCard
-            label="Follow-ups due"
-            href="/showing-hq/follow-ups"
-            icon={MessageSquare}
-            loading={loading}
-            primary={followUpsDueCount}
-            secondary={todayFollowUpsSecondary}
-          />
-        </div>
+        <DashboardTodayCalendarScheduleGrid
+          showings={showings}
+          loading={loading}
+          todayStats={
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <TodayMetricCard
+                label="Showings today"
+                href="/showing-hq/showings"
+                icon={Calendar}
+                loading={loading}
+                primary={showingsToday}
+                secondary={todayShowingsSecondary}
+              />
+              <TodayMetricCard
+                label="Tasks due"
+                href="/task-pilot"
+                icon={CheckSquare}
+                loading={loading}
+                primary={0}
+                secondary={todayTasksSecondary}
+              />
+              <TodayMetricCard
+                label="Follow-ups due"
+                href="/showing-hq/follow-ups"
+                icon={MessageSquare}
+                loading={loading}
+                primary={followUpsDueCount}
+                secondary={todayFollowUpsSecondary}
+              />
+            </div>
+          }
+        />
       </section>
 
       <section aria-labelledby="dash-pipeline">
         <h2
           id="dash-pipeline"
-          className="mb-4 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
+          className="mb-3 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
         >
           Pipeline snapshot
         </h2>
@@ -456,17 +461,17 @@ export function OperationalDashboardView() {
       <section aria-labelledby="dash-focus">
         <h2
           id="dash-focus"
-          className="mb-4 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
+          className="mb-3 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
         >
           Focus
         </h2>
-        <div className="rounded-xl border border-kp-outline bg-kp-surface p-6 shadow-sm">
+        <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
           <p className="text-sm leading-relaxed text-kp-on-surface md:text-[0.9375rem]">
             {focusBody}
           </p>
           <Button
             asChild
-            className={cn(kpBtnPrimary, "mt-5 h-11 min-h-11 px-6 text-sm font-semibold")}
+            className={cn(kpBtnPrimary, "mt-4 h-11 min-h-11 px-6 text-sm font-semibold")}
           >
             <Link href="/showing-hq/follow-ups">Start now</Link>
           </Button>
@@ -476,7 +481,7 @@ export function OperationalDashboardView() {
       <section aria-labelledby="dash-modules">
         <h2
           id="dash-modules"
-          className="mb-4 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
+          className="mb-3 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
         >
           Modules
         </h2>
@@ -511,8 +516,6 @@ export function OperationalDashboardView() {
           />
         </div>
       </section>
-      </div>
-      <DashboardCalendarRail showings={showings} loading={loading} />
     </div>
   );
 }
