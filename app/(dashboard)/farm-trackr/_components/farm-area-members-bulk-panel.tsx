@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   kpBtnPrimary,
   kpBtnSecondary,
@@ -33,6 +34,11 @@ type ContactOption = {
   firstName: string;
   lastName: string;
   email: string | null;
+};
+
+type TagOption = {
+  id: string;
+  name: string;
 };
 
 export type FarmAreaOption = {
@@ -103,6 +109,15 @@ export function FarmAreaMembersBulkPanel({
   const [bulkMessage, setBulkMessage] = useState<string | null>(null);
   const [showAddRows, setShowAddRows] = useState(false);
 
+  const [tagPanelOpen, setTagPanelOpen] = useState(false);
+  const [tagsForPicker, setTagsForPicker] = useState<TagOption[]>([]);
+  const [tagsLoading, setTagsLoading] = useState(false);
+  const [tagsLoadError, setTagsLoadError] = useState<string | null>(null);
+  const [tagPickerId, setTagPickerId] = useState("");
+  const [newTagName, setNewTagName] = useState("");
+  const [bulkTagBusy, setBulkTagBusy] = useState(false);
+  const [toast, setToast] = useState<{ kind: "success" | "error"; text: string } | null>(null);
+
   const loadMembers = useCallback(async () => {
     setMembersLoading(true);
     setMembersError(null);
@@ -163,8 +178,101 @@ export function FarmAreaMembersBulkPanel({
       setBulkMessage(null);
       setShowAddRows(false);
       setMoveTargetId("");
+      setTagPanelOpen(false);
+      setTagPickerId("");
+      setNewTagName("");
+      setTagsLoadError(null);
+      setBulkTagBusy(false);
     }
   }, [expanded]);
+
+  useEffect(() => {
+    if (selectedMemberContactIds.size === 0) {
+      setTagPanelOpen(false);
+      setTagPickerId("");
+      setNewTagName("");
+      setBulkTagBusy(false);
+    }
+  }, [selectedMemberContactIds.size]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4200);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const loadTagsForPanel = useCallback(async () => {
+    setTagsLoading(true);
+    setTagsLoadError(null);
+    try {
+      const res = await fetch("/api/v1/tags");
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message ?? UI_COPY.errors.load("tags"));
+      const raw = (json.data ?? []) as { id: string; name: string }[];
+      setTagsForPicker(raw.map((t) => ({ id: t.id, name: t.name })));
+    } catch (e) {
+      setTagsLoadError(e instanceof Error ? e.message : UI_COPY.errors.load("tags"));
+    } finally {
+      setTagsLoading(false);
+    }
+  }, []);
+
+  const openTagPanel = useCallback(() => {
+    setTagPanelOpen(true);
+    setTagsLoadError(null);
+    setTagPickerId("");
+    setNewTagName("");
+    if (tagsForPicker.length === 0) {
+      void loadTagsForPanel();
+    }
+  }, [tagsForPicker.length, loadTagsForPanel]);
+
+  const cancelTagPanel = useCallback(() => {
+    setTagPanelOpen(false);
+    setTagPickerId("");
+    setNewTagName("");
+    setTagsLoadError(null);
+  }, []);
+
+  const applyBulkTag = useCallback(async () => {
+    const ids = Array.from(selectedMemberContactIds);
+    if (ids.length === 0) return;
+    const trimmedNew = newTagName.trim();
+    if (!tagPickerId && !trimmedNew) {
+      setToast({ kind: "error", text: "Choose a tag or enter a new name." });
+      return;
+    }
+    setBulkTagBusy(true);
+    try {
+      const body =
+        trimmedNew.length > 0
+          ? { contactIds: ids, tagName: trimmedNew }
+          : { contactIds: ids, tagId: tagPickerId };
+      const res = await fetch("/api/v1/contacts/bulk-tag", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error.message ?? "Request failed");
+      const n = (json.data?.taggedCount as number) ?? 0;
+      setToast({
+        kind: "success",
+        text: `Tag added to ${n} contact${n === 1 ? "" : "s"}`,
+      });
+      setSelectedMemberContactIds(new Set());
+      setTagPanelOpen(false);
+      setTagPickerId("");
+      setNewTagName("");
+    } catch (e) {
+      setToast({
+        kind: "error",
+        text: e instanceof Error ? e.message : "Couldn't apply tag",
+      });
+    } finally {
+      setBulkTagBusy(false);
+    }
+  }, [selectedMemberContactIds, tagPickerId, newTagName]);
 
   const memberContactIdSet = useMemo(
     () => new Set(members.map((m) => m.contact.id)),
@@ -264,6 +372,7 @@ export function FarmAreaMembersBulkPanel({
   const selectedAddCount = selectedAddContactIds.size;
 
   return (
+    <>
     <div className="mt-2 border-t border-kp-outline pt-2">
       <button
         type="button"
@@ -396,21 +505,112 @@ export function FarmAreaMembersBulkPanel({
                 </Button>
               </div>
               <div
-                className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-md border border-dashed border-kp-outline/80 bg-kp-surface-high/30 px-2 py-2 text-xs"
+                className="flex flex-col gap-2 rounded-md border border-dashed border-kp-outline/80 bg-kp-surface-high/30 px-2 py-2 text-xs"
                 aria-label="Bulk actions for selected farm members"
               >
-                <span className="w-full shrink-0 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted sm:w-auto sm:pr-1">
-                  Actions
-                </span>
-                <Button type="button" size="sm" className={cn(kpBtnSecondary, "h-8 px-2 text-xs")} disabled>
-                  Add tag
-                </Button>
-                <Button type="button" size="sm" className={cn(kpBtnSecondary, "h-8 px-2 text-xs")} disabled>
-                  Create follow-up
-                </Button>
-                <Button type="button" size="sm" className={cn(kpBtnSecondary, "h-8 px-2 text-xs")} disabled>
-                  Export labels
-                </Button>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                  <span className="w-full shrink-0 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted sm:w-auto sm:pr-1">
+                    Actions
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className={cn(kpBtnSecondary, "h-8 px-2 text-xs")}
+                    disabled={bulkBusy || bulkTagBusy}
+                    aria-expanded={tagPanelOpen}
+                    onClick={() => (tagPanelOpen ? cancelTagPanel() : openTagPanel())}
+                  >
+                    Add tag
+                  </Button>
+                  <Button type="button" size="sm" className={cn(kpBtnSecondary, "h-8 px-2 text-xs")} disabled>
+                    Create follow-up
+                  </Button>
+                  <Button type="button" size="sm" className={cn(kpBtnSecondary, "h-8 px-2 text-xs")} disabled>
+                    Export labels
+                  </Button>
+                </div>
+                {tagPanelOpen ? (
+                  <div className="rounded-md border border-kp-outline/70 bg-kp-surface-high/50 p-2">
+                    <p className="mb-2 text-[11px] text-kp-on-surface-variant">
+                      Apply a tag to {selectedMemberCount} selected contact
+                      {selectedMemberCount === 1 ? "" : "s"}.
+                    </p>
+                    {tagsLoading ? (
+                      <div className="mb-2 flex items-center gap-2 text-[11px] text-kp-on-surface-variant">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Loading tags…
+                      </div>
+                    ) : null}
+                    {tagsLoadError ? (
+                      <p className="mb-2 text-[11px] text-red-300" role="alert">
+                        {tagsLoadError}
+                      </p>
+                    ) : null}
+                    <label className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-kp-on-surface-muted">
+                      Existing tag
+                    </label>
+                    <select
+                      value={tagPickerId}
+                      onChange={(e) => setTagPickerId(e.target.value)}
+                      disabled={bulkTagBusy || tagsLoading}
+                      className="mb-2 h-8 w-full max-w-xs rounded border border-kp-outline bg-kp-surface px-2 text-xs text-kp-on-surface"
+                      aria-label="Choose existing tag"
+                    >
+                      <option value="">Select a tag…</option>
+                      {tagsForPicker.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                    <label
+                      htmlFor={`farm-bulk-new-tag-${areaId}`}
+                      className="mb-1 block text-[10px] font-medium uppercase tracking-wide text-kp-on-surface-muted"
+                    >
+                      Or new tag name
+                    </label>
+                    <Input
+                      id={`farm-bulk-new-tag-${areaId}`}
+                      value={newTagName}
+                      onChange={(e) => setNewTagName(e.target.value)}
+                      disabled={bulkTagBusy}
+                      placeholder="Type a new tag"
+                      maxLength={50}
+                      className="mb-2 h-8 max-w-xs text-xs"
+                    />
+                    <p className="mb-2 text-[10px] text-kp-on-surface-muted">
+                      If both are set, the new name is used.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        className={cn(kpBtnPrimary, "h-8 border-transparent px-3 text-xs")}
+                        disabled={bulkTagBusy || (!tagPickerId && !newTagName.trim())}
+                        onClick={() => void applyBulkTag()}
+                      >
+                        {bulkTagBusy ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            Applying…
+                          </>
+                        ) : (
+                          "Apply"
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 px-2 text-xs"
+                        disabled={bulkTagBusy}
+                        onClick={cancelTagPanel}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
               </div>
               <div className="flex flex-wrap items-center gap-2 rounded-md border border-kp-outline bg-kp-surface-high px-2 py-2 text-xs">
                 <span className="sr-only">Farm area membership</span>
@@ -572,5 +772,20 @@ export function FarmAreaMembersBulkPanel({
         </div>
       ) : null}
     </div>
+    {toast ? (
+      <div
+        role="status"
+        aria-live="polite"
+        className={cn(
+          "pointer-events-none fixed bottom-4 right-4 z-[200] max-w-sm rounded-md border px-3 py-2 text-sm shadow-lg",
+          toast.kind === "success"
+            ? "border-kp-teal/40 bg-kp-surface-high text-kp-on-surface"
+            : "border-red-500/50 bg-red-950/95 text-red-50"
+        )}
+      >
+        {toast.text}
+      </div>
+    ) : null}
+    </>
   );
 }
