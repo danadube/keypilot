@@ -35,7 +35,8 @@ type TagRow = {
 };
 
 const STATUS_SEGMENTS: { label: string; status: ContactSegmentStatus }[] = [
-  { label: "All leads", status: "LEAD" },
+  { label: "Farm", status: "FARM" },
+  { label: "Leads", status: "LEAD" },
   { label: "Contacted", status: "CONTACTED" },
   { label: "Nurturing", status: "NURTURING" },
   { label: "Ready", status: "READY" },

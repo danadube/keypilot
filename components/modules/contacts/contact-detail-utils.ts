@@ -5,6 +5,8 @@ export function contactStatusBadgeVariant(
   s: string | null | undefined
 ): ComponentProps<typeof StatusBadge>["variant"] {
   switch (s) {
+    case "FARM":
+      return "draft";
     case "LEAD":
       return "pending";
     case "CONTACTED":

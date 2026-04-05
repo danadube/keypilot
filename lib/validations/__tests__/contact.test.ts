@@ -2,6 +2,7 @@ import { UpdateContactSchema } from "../contact";
 
 describe("UpdateContactSchema", () => {
   it("accepts status enum values", () => {
+    expect(UpdateContactSchema.safeParse({ status: "FARM" }).success).toBe(true);
     expect(UpdateContactSchema.safeParse({ status: "LEAD" }).success).toBe(true);
     expect(UpdateContactSchema.safeParse({ status: "CONTACTED" }).success).toBe(true);
     expect(UpdateContactSchema.safeParse({ status: "NURTURING" }).success).toBe(true);

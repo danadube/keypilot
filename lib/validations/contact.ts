@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const ContactStatusEnum = z.enum([
+  "FARM",
   "LEAD",
   "CONTACTED",
   "NURTURING",

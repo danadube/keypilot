@@ -54,6 +54,7 @@ export type ContactDetailActivity = {
 };
 
 export const CONTACT_STATUSES = [
+  "FARM",
   "LEAD",
   "CONTACTED",
   "NURTURING",

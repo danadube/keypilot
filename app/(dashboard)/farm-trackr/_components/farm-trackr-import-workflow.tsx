@@ -28,7 +28,10 @@ import {
   type FarmImportMappingTemplateFields,
   renameImportMappingTemplate,
 } from "@/lib/farm/import-mapping-templates-storage";
-import { buildImportMappingFromHeaders } from "@/lib/farm/import-smart-header-mapping";
+import {
+  buildImportMappingFromHeaders,
+  type ImportFieldMatchTier,
+} from "@/lib/farm/import-smart-header-mapping";
 
 export type ImportDataSet = {
   headers: string[];
@@ -96,28 +99,77 @@ export type ImportWorkflowState = {
 
 const EMPTY_MAPPING: ImportMapping = { ...EMPTY_FARM_IMPORT_MAPPING_FIELDS };
 
-const MAPPING_FIELDS: { key: keyof ImportMapping; label: string }[] = [
-  { key: "email", label: "Email (primary)" },
-  { key: "phone", label: "Phone (primary)" },
-  { key: "phone2", label: "Phone 2 / mobile" },
-  { key: "email2", label: "Email 2" },
-  { key: "email3", label: "Email 3" },
-  { key: "email4", label: "Email 4" },
-  { key: "firstName", label: "First name" },
-  { key: "lastName", label: "Last name" },
-  { key: "fullName", label: "Full name" },
-  { key: "territory", label: "Territory" },
-  { key: "area", label: "Farm area" },
-  { key: "mailingStreet1", label: "Mailing street 1" },
-  { key: "mailingStreet2", label: "Mailing street 2" },
-  { key: "mailingCity", label: "Mailing city" },
-  { key: "mailingState", label: "Mailing state" },
-  { key: "mailingZip", label: "Mailing ZIP" },
-  { key: "siteStreet1", label: "Site / property street 1" },
-  { key: "siteStreet2", label: "Site street 2" },
-  { key: "siteCity", label: "Site city" },
-  { key: "siteState", label: "Site state" },
-  { key: "siteZip", label: "Site ZIP" },
+type ImportMappingFieldKey = keyof ImportMapping;
+
+const MAPPING_SECTIONS: {
+  id: string;
+  title: string;
+  description?: string;
+  fields: { key: ImportMappingFieldKey; label: string }[];
+}[] = [
+  {
+    id: "identity",
+    title: "Identity",
+    description:
+      "At least one identifier is required: email, a phone number, full name, or first and last name together.",
+    fields: [
+      { key: "firstName", label: "First name" },
+      { key: "lastName", label: "Last name" },
+      { key: "fullName", label: "Full name" },
+    ],
+  },
+  {
+    id: "contact",
+    title: "Contact methods",
+    fields: [
+      { key: "email", label: "Email (primary)" },
+      { key: "phone", label: "Phone (primary)" },
+      { key: "phone2", label: "Alternate phone / mobile" },
+      { key: "email2", label: "Alternate email" },
+      { key: "email3", label: "Email 3" },
+      { key: "email4", label: "Email 4" },
+    ],
+  },
+  {
+    id: "mailing",
+    title: "Mailing address",
+    fields: [
+      { key: "mailingStreet1", label: "Street line 1" },
+      { key: "mailingStreet2", label: "Street line 2" },
+      { key: "mailingCity", label: "City" },
+      { key: "mailingState", label: "State / province" },
+      { key: "mailingZip", label: "ZIP / postal code" },
+    ],
+  },
+  {
+    id: "site",
+    title: "Site address",
+    description: "Property / situs location (optional; separate from mailing).",
+    fields: [
+      { key: "siteStreet1", label: "Street line 1" },
+      { key: "siteStreet2", label: "Street line 2" },
+      { key: "siteCity", label: "City" },
+      { key: "siteState", label: "State / province" },
+      { key: "siteZip", label: "ZIP / postal code" },
+    ],
+  },
+  {
+    id: "farm",
+    title: "Farm assignment",
+    description:
+      "Territory and farm area are required — pick a column for each or enter defaults under the table.",
+    fields: [
+      { key: "territory", label: "Territory" },
+      { key: "area", label: "Farm area" },
+    ],
+  },
+  {
+    id: "classification",
+    title: "Classification",
+    description:
+      "Stage is not mapped from the file. New contacts from this import are created in CRM stage Farm (not Lead). Open-house sign-ins still default to Lead.",
+    fields: [],
+  },
 ];
 
 function renderRowStatus(status: ImportPreviewRow["status"]): string {
@@ -146,6 +198,75 @@ function mappingFingerprint(
   });
 }
 
+function mappingRowStatusPill(
+  fieldKey: ImportMappingFieldKey,
+  mapping: ImportMapping,
+  confidence: Partial<Record<ImportMappingFieldKey, ImportFieldMatchTier>>,
+  defaultTerritory: string,
+  defaultArea: string
+): { label: string; className: string } | null {
+  const col = mapping[fieldKey];
+  const tier = confidence[fieldKey];
+  const needsTerritory =
+    fieldKey === "territory" &&
+    !String(col ?? "").trim() &&
+    !defaultTerritory.trim();
+  const needsArea =
+    fieldKey === "area" &&
+    !String(col ?? "").trim() &&
+    !defaultArea.trim();
+  if (needsTerritory || needsArea) {
+    return {
+      label: "Required",
+      className:
+        "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-rose-500/20 text-rose-100 border border-rose-400/35",
+    };
+  }
+  if (!String(col ?? "").trim()) return null;
+  if (tier === "strong") {
+    return {
+      label: "Auto-mapped",
+      className:
+        "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-teal-500/15 text-teal-100 border border-teal-400/30",
+    };
+  }
+  if (tier === "weak") {
+    return {
+      label: "Review",
+      className:
+        "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-amber-500/15 text-amber-100 border border-amber-400/35",
+    };
+  }
+  return {
+    label: "Set",
+    className:
+      "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide bg-kp-surface-high text-kp-on-surface-variant border border-kp-outline",
+  };
+}
+
+function mappingRowAccentClass(
+  fieldKey: ImportMappingFieldKey,
+  mapping: ImportMapping,
+  confidence: Partial<Record<ImportMappingFieldKey, ImportFieldMatchTier>>,
+  defaultTerritory: string,
+  defaultArea: string
+): string {
+  const pill = mappingRowStatusPill(
+    fieldKey,
+    mapping,
+    confidence,
+    defaultTerritory,
+    defaultArea
+  );
+  if (pill?.label === "Required") return "border-l-rose-400/85";
+  const col = mapping[fieldKey];
+  if (!String(col ?? "").trim()) return "border-l-transparent";
+  const tier = confidence[fieldKey];
+  if (tier === "strong") return "border-l-teal-400/75";
+  if (tier === "weak") return "border-l-amber-400/80";
+  return "border-l-kp-outline";
+}
+
 export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: () => void }) {
   const [stage, setStage] = useState<ImportStage>("upload");
   const [fileMeta, setFileMeta] = useState<{ name: string; format: "csv" | "xlsx" } | null>(null);
@@ -169,6 +290,9 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
   const [templateNotice, setTemplateNotice] = useState<string | null>(null);
   const [templateSectionError, setTemplateSectionError] = useState<string | null>(null);
   const [smartMappingNotice, setSmartMappingNotice] = useState<string | null>(null);
+  const [mappingConfidence, setMappingConfidence] = useState<
+    Partial<Record<ImportMappingFieldKey, ImportFieldMatchTier>>
+  >({});
 
   const currentFingerprint = useMemo(
     () => mappingFingerprint(mapping, defaultTerritoryName, defaultAreaName),
@@ -177,19 +301,59 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
 
   const importHeaders = useMemo(() => dataset?.headers ?? [], [dataset?.headers]);
 
-  const canRunPreview = useMemo(
+  const identityMapped = useMemo(
     () =>
-      Boolean(dataset?.rows.length) &&
       Boolean(
         mapping.email ||
           mapping.phone ||
           mapping.phone2 ||
           mapping.fullName ||
           (mapping.firstName && mapping.lastName)
-      ) &&
-      Boolean(mapping.area || defaultAreaName.trim()) &&
-      Boolean(mapping.territory || defaultTerritoryName.trim()),
-    [dataset, mapping, defaultTerritoryName, defaultAreaName]
+      ),
+    [mapping]
+  );
+
+  const farmMapped = useMemo(
+    () =>
+      Boolean(
+        (mapping.territory || defaultTerritoryName.trim()) &&
+          (mapping.area || defaultAreaName.trim())
+      ),
+    [mapping.territory, mapping.area, defaultTerritoryName, defaultAreaName]
+  );
+
+  const canRunPreview = useMemo(
+    () =>
+      Boolean(dataset?.rows.length) && identityMapped && farmMapped,
+    [dataset?.rows.length, identityMapped, farmMapped]
+  );
+
+  const mappingSummary = useMemo(() => {
+    let strong = 0;
+    let weak = 0;
+    for (const key of Object.keys(mapping) as ImportMappingFieldKey[]) {
+      const col = mapping[key];
+      const tier = mappingConfidence[key];
+      if (!col) continue;
+      if (tier === "strong") strong += 1;
+      else if (tier === "weak") weak += 1;
+    }
+    const requiredMissing =
+      (!identityMapped ? 1 : 0) + (!farmMapped ? 1 : 0);
+    return { strong, weak, requiredMissing };
+  }, [mapping, mappingConfidence, identityMapped, farmMapped]);
+
+  const setMappingField = useCallback(
+    (key: ImportMappingFieldKey, header: string | null) => {
+      setSmartMappingNotice(null);
+      setMappingConfidence((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      setMapping((prev) => ({ ...prev, [key]: header }));
+    },
+    []
   );
 
   const previewIsFresh =
@@ -231,6 +395,7 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
     setRenamingTemplateId(null);
     setRenameDraft("");
     setSmartMappingNotice(null);
+    setMappingConfidence({});
   }, [clearPreview]);
 
   /** New file = new dataset → always invalidate preview */
@@ -288,13 +453,20 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
 
       setDataset(data);
       setFileMeta({ name: file.name, format });
-      const { mapping: initialMap, smartMappedFieldCount } = buildImportMappingFromHeaders(
-        data.headers ?? []
-      );
+      const {
+        mapping: initialMap,
+        confidence,
+        smartMappedFieldCount,
+        strongMappedCount,
+        weakMappedCount,
+      } = buildImportMappingFromHeaders(data.headers ?? []);
       setMapping(initialMap as ImportMapping);
+      setMappingConfidence(
+        confidence as Partial<Record<ImportMappingFieldKey, ImportFieldMatchTier>>
+      );
       setSmartMappingNotice(
         smartMappedFieldCount > 0
-          ? `Mapped ${smartMappedFieldCount} field${smartMappedFieldCount === 1 ? "" : "s"} automatically.`
+          ? `Linked ${smartMappedFieldCount} column${smartMappedFieldCount === 1 ? "" : "s"}: ${strongMappedCount} high confidence, ${weakMappedCount} suggest review.`
           : null
       );
       setStage("mapping");
@@ -400,6 +572,7 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
         importHeaders
       );
       setMapping(next as ImportMapping);
+      setMappingConfidence({});
       setDefaultTerritoryName(rec.defaultTerritoryName);
       setDefaultAreaName(rec.defaultAreaName);
       if (unmatchedColumnNames.length > 0) {
@@ -555,14 +728,46 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
               ) : null}
             </div>
 
-            {stage === "mapping" && smartMappingNotice ? (
-              <p className="text-[11px] text-kp-on-surface-variant">
-                <span className="font-medium text-kp-teal/95">{smartMappingNotice}</span>
-              </p>
-            ) : null}
-
             {stage === "mapping" ? (
               <>
+                <div className="grid gap-2 rounded-lg border border-kp-outline bg-kp-surface-high p-3 sm:grid-cols-3">
+                  <div className="rounded-md border border-teal-500/20 bg-teal-500/[0.07] px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                      Auto-mapped
+                    </p>
+                    <p className="mt-0.5 text-xl font-bold tabular-nums text-teal-100">
+                      {mappingSummary.strong}
+                    </p>
+                    <p className="text-[10px] text-kp-on-surface-variant">High-confidence column links</p>
+                  </div>
+                  <div className="rounded-md border border-amber-500/25 bg-amber-500/[0.08] px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                      Need review
+                    </p>
+                    <p className="mt-0.5 text-xl font-bold tabular-nums text-amber-100">
+                      {mappingSummary.weak}
+                    </p>
+                    <p className="text-[10px] text-kp-on-surface-variant">Generic headers — confirm</p>
+                  </div>
+                  <div className="rounded-md border border-rose-500/25 bg-rose-500/[0.07] px-3 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                      Required missing
+                    </p>
+                    <p className="mt-0.5 text-xl font-bold tabular-nums text-rose-100">
+                      {mappingSummary.requiredMissing}
+                    </p>
+                    <p className="text-[10px] text-kp-on-surface-variant">
+                      Identity + territory/area gaps
+                    </p>
+                  </div>
+                </div>
+
+                {smartMappingNotice ? (
+                  <p className="text-[11px] text-kp-on-surface-variant">
+                    <span className="font-medium text-kp-teal/95">{smartMappingNotice}</span>
+                  </p>
+                ) : null}
+
                 <div className="rounded-lg border border-kp-outline bg-kp-surface-high p-3">
                   <button
                     type="button"
@@ -755,45 +960,120 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
                   </div>
                 ) : null}
 
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {MAPPING_FIELDS.map((field) => (
-                    <label key={field.key} className="space-y-1">
-                      <span className="text-xs text-kp-on-surface-variant">{field.label}</span>
-                      <select
-                        value={mapping[field.key] ?? ""}
-                        onChange={(e) => {
-                          setSmartMappingNotice(null);
-                          setMapping((prev) => ({
-                            ...prev,
-                            [field.key]: e.target.value || null,
-                          }));
-                        }}
-                        className="h-9 w-full rounded-md border border-kp-outline bg-kp-surface px-3 text-xs text-kp-on-surface"
-                      >
-                        <option value="">Not mapped</option>
-                        {importHeaders.map((header) => (
-                          <option key={`${field.key}-${header}`} value={header}>
-                            {header}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                <div className="space-y-4">
+                  {MAPPING_SECTIONS.map((section) => (
+                    <div
+                      key={section.id}
+                      className={cn(
+                        "rounded-lg border border-kp-outline bg-kp-surface-high/50 p-4",
+                        section.id === "identity" &&
+                          !identityMapped &&
+                          "ring-2 ring-amber-500/30",
+                        section.id === "farm" && !farmMapped && "ring-2 ring-amber-500/30"
+                      )}
+                    >
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-kp-on-surface">
+                        {section.title}
+                      </h3>
+                      {section.description ? (
+                        <p className="mt-1.5 text-[11px] leading-relaxed text-kp-on-surface-variant">
+                          {section.description}
+                        </p>
+                      ) : null}
+                      {section.fields.length > 0 ? (
+                        <div className="mt-4 space-y-3">
+                          {section.fields.map((field) => {
+                            const pill = mappingRowStatusPill(
+                              field.key,
+                              mapping,
+                              mappingConfidence,
+                              defaultTerritoryName,
+                              defaultAreaName
+                            );
+                            const accent = mappingRowAccentClass(
+                              field.key,
+                              mapping,
+                              mappingConfidence,
+                              defaultTerritoryName,
+                              defaultAreaName
+                            );
+                            return (
+                              <div
+                                key={field.key}
+                                className={cn(
+                                  "rounded-lg border border-kp-outline bg-kp-surface border-l-4 pl-3 pr-3 py-3 shadow-sm",
+                                  accent
+                                )}
+                              >
+                                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:gap-4">
+                                  <div className="min-w-0 flex-1 space-y-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="text-xs font-semibold text-kp-on-surface">
+                                        Maps to: {field.label}
+                                      </span>
+                                      {pill ? (
+                                        <span className={pill.className}>{pill.label}</span>
+                                      ) : null}
+                                    </div>
+                                    <p className="text-[10px] text-kp-on-surface-variant">
+                                      Choose which column from your file supplies this field.
+                                    </p>
+                                  </div>
+                                  <label className="block w-full shrink-0 lg:max-w-md">
+                                    <span className="sr-only">Source column for {field.label}</span>
+                                    <select
+                                      value={mapping[field.key] ?? ""}
+                                      onChange={(e) =>
+                                        setMappingField(
+                                          field.key,
+                                          e.target.value || null
+                                        )
+                                      }
+                                      className="h-10 w-full rounded-md border-2 border-kp-outline bg-kp-surface-high px-3 text-xs font-medium text-kp-on-surface shadow-inner focus:border-kp-teal/60 focus:outline-none focus:ring-2 focus:ring-kp-teal/30"
+                                    >
+                                      <option value="">— Not mapped —</option>
+                                      {importHeaders.map((header) => (
+                                        <option
+                                          key={`${field.key}-${header}`}
+                                          value={header}
+                                        >
+                                          {header}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
                   ))}
                 </div>
 
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <Input
-                    value={defaultTerritoryName}
-                    onChange={(e) => setDefaultTerritoryName(e.target.value)}
-                    placeholder="Default territory (optional if mapped)"
-                    className="h-9 border-kp-outline bg-kp-surface-high text-kp-on-surface"
-                  />
-                  <Input
-                    value={defaultAreaName}
-                    onChange={(e) => setDefaultAreaName(e.target.value)}
-                    placeholder="Default farm area (optional if mapped)"
-                    className="h-9 border-kp-outline bg-kp-surface-high text-kp-on-surface"
-                  />
+                <div className="space-y-2 rounded-lg border border-dashed border-kp-outline/80 bg-kp-surface-high/30 p-3">
+                  <p className="text-[11px] font-semibold text-kp-on-surface">
+                    Default territory &amp; farm area
+                  </p>
+                  <p className="text-[10px] text-kp-on-surface-variant">
+                    Used when the columns above are not mapped. At least one source (column or
+                    default) is required for each.
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Input
+                      value={defaultTerritoryName}
+                      onChange={(e) => setDefaultTerritoryName(e.target.value)}
+                      placeholder="Default territory name"
+                      className="h-10 border-kp-outline bg-kp-surface text-kp-on-surface"
+                    />
+                    <Input
+                      value={defaultAreaName}
+                      onChange={(e) => setDefaultAreaName(e.target.value)}
+                      placeholder="Default farm area name"
+                      className="h-10 border-kp-outline bg-kp-surface text-kp-on-surface"
+                    />
+                  </div>
                 </div>
 
                 {mappingGuardHint ? (

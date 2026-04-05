@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
-import { ContactFarmMembershipStatus } from "@prisma/client";
+import { ContactFarmMembershipStatus, ContactStatus } from "@prisma/client";
 import type {
   FarmImportColumnMapping,
   FarmImportPreviewRow,
@@ -389,6 +389,7 @@ export async function applyFarmImport(
           phone: row.phone,
           assignedToUserId: userId,
           source: "Farm Import",
+          status: ContactStatus.FARM,
         },
         select: contactSelect,
       });

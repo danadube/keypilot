@@ -143,8 +143,17 @@ export async function GET(_req: NextRequest) {
     const status = searchParams.get("status")?.toUpperCase();
 
     const statusFilter =
-      status && ["LEAD", "CONTACTED", "NURTURING", "READY", "LOST"].includes(status)
-        ? { status: status as "LEAD" | "CONTACTED" | "NURTURING" | "READY" | "LOST" }
+      status &&
+      ["FARM", "LEAD", "CONTACTED", "NURTURING", "READY", "LOST"].includes(status)
+        ? {
+            status: status as
+              | "FARM"
+              | "LEAD"
+              | "CONTACTED"
+              | "NURTURING"
+              | "READY"
+              | "LOST",
+          }
         : {};
 
     const tagIdParam = searchParams.get("tagId")?.trim();

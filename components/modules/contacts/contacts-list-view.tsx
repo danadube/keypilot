@@ -50,7 +50,13 @@ import { UI_COPY } from "@/lib/ui-copy";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ContactStatus = "LEAD" | "CONTACTED" | "NURTURING" | "READY" | "LOST";
+type ContactStatus =
+  | "FARM"
+  | "LEAD"
+  | "CONTACTED"
+  | "NURTURING"
+  | "READY"
+  | "LOST";
 
 type PendingReminderRow = { id: string; dueAt: string; body: string };
 
@@ -76,6 +82,7 @@ function statusBadgeVariant(
   s: ContactStatus | null | undefined
 ): React.ComponentProps<typeof StatusBadge>["variant"] {
   switch (s) {
+    case "FARM":       return "draft";     // farm list — not yet a sales lead
     case "LEAD":       return "pending";   // gold — incoming potential
     case "CONTACTED":  return "upcoming";  // gold-bright — we've reached out
     case "NURTURING":  return "active";    // teal — actively engaged
@@ -87,6 +94,7 @@ function statusBadgeVariant(
 
 function statusLabel(s: ContactStatus | null | undefined): string {
   switch (s) {
+    case "FARM":       return "Farm";
     case "LEAD":       return "Lead";
     case "CONTACTED":  return "Contacted";
     case "NURTURING":  return "Nurturing";
@@ -687,9 +695,26 @@ export function ContactsListView() {
   }, [contacts, search]);
 
   // Metrics computed from current fetch (reflects active status filter)
-  const leadCount      = useMemo(() => contacts.filter((c) => !c.status || c.status === "LEAD").length,       [contacts]);
-  const readyCount     = useMemo(() => contacts.filter((c) => c.status === "READY").length,                   [contacts]);
-  const nurturingCount = useMemo(() => contacts.filter((c) => c.status === "NURTURING" || c.status === "CONTACTED").length, [contacts]);
+  const farmCount = useMemo(
+    () => contacts.filter((c) => c.status === "FARM").length,
+    [contacts]
+  );
+  const leadCount = useMemo(
+    () =>
+      contacts.filter((c) => !c.status || c.status === "LEAD").length,
+    [contacts]
+  );
+  const readyCount = useMemo(
+    () => contacts.filter((c) => c.status === "READY").length,
+    [contacts]
+  );
+  const nurturingCount = useMemo(
+    () =>
+      contacts.filter(
+        (c) => c.status === "NURTURING" || c.status === "CONTACTED"
+      ).length,
+    [contacts]
+  );
 
   // SectionTabs with per-status counts — only count when unfiltered
   // (showing count for current filter would be redundant — just show total)
@@ -785,11 +810,21 @@ export function ContactsListView() {
 
       {/* ── Metric cards (CRM tier only) ─────────────────────────────────── */}
       {hasCrm && (
-        <div className="grid gap-3 px-6 pb-4 sm:grid-cols-3 sm:px-8">
+        <div className="grid gap-3 px-6 pb-4 sm:grid-cols-2 lg:grid-cols-4 sm:px-8">
           <MetricCard
             label="Total contacts"
             value={loading ? "—" : contacts.length}
             accent="gold"
+          />
+          <MetricCard
+            label="Farm pool"
+            value={loading ? "—" : farmCount}
+            accent="teal"
+            sub={
+              !loading && farmCount > 0
+                ? "From farm imports & territory"
+                : undefined
+            }
           />
           <MetricCard
             label="Leads / Contacted"

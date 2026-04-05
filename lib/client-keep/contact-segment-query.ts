@@ -5,6 +5,7 @@
 
 /** Values accepted by GET /api/v1/contacts?status= */
 export const CONTACT_SEGMENT_STATUS_VALUES = [
+  "FARM",
   "LEAD",
   "CONTACTED",
   "NURTURING",
@@ -44,6 +45,7 @@ export type ContactSegmentStatusTab = ContactSegmentStatus | "__all__";
 
 export const STATUS_TAB_VALUES = [
   { label: "All", value: "__all__" as const },
+  { label: "Farm", value: "FARM" as const },
   { label: "Lead", value: "LEAD" as const },
   { label: "Contacted", value: "CONTACTED" as const },
   { label: "Nurturing", value: "NURTURING" as const },

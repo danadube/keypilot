@@ -34,6 +34,7 @@ import { UI_COPY } from "@/lib/ui-copy";
 
 const STATUS_FILTER_OPTIONS = [
   { value: "__all__", label: "All statuses" },
+  { value: "FARM", label: "Farm" },
   { value: "LEAD", label: "Lead" },
   { value: "CONTACTED", label: "Contacted" },
   { value: "NURTURING", label: "Nurturing" },

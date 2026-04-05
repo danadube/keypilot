@@ -176,6 +176,7 @@ model Contact {
 }
 
 enum ContactStatus {
+  FARM
   LEAD
   CONTACTED
   NURTURING

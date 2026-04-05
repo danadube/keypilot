@@ -28,6 +28,7 @@ describe("contact-segment-query", () => {
     });
 
     it("accepts valid statuses case-insensitively", () => {
+      expect(parseStatusTabFromSearchParams(sp("status=farm"))).toBe("FARM");
       expect(parseStatusTabFromSearchParams(sp("status=lead"))).toBe("LEAD");
       expect(parseStatusTabFromSearchParams(sp("status=LeAd"))).toBe("LEAD");
     });
@@ -71,6 +72,7 @@ describe("contact-segment-query", () => {
     });
 
     it("builds query string for status only", () => {
+      expect(segmentToHref("FARM", null)).toBe("/contacts?status=FARM");
       expect(segmentToHref("LEAD", null)).toBe("/contacts?status=LEAD");
     });
 
