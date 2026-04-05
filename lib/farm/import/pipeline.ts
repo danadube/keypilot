@@ -436,6 +436,7 @@ export async function applyFarmImport(
       update: {
         userId,
         status: ContactFarmMembershipStatus.ACTIVE,
+        archivedAt: null,
       },
       select: { id: true },
     });

@@ -48,6 +48,7 @@ export async function DELETE(
         where: { id: membership.id },
         data: {
           status: ContactFarmMembershipStatus.ARCHIVED,
+          archivedAt: new Date(),
         },
       });
 

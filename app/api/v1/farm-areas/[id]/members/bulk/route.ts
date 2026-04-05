@@ -95,6 +95,7 @@ export async function POST(
               data: {
                 userId: user.id,
                 status: ContactFarmMembershipStatus.ACTIVE,
+                archivedAt: null,
               },
             });
             reactivated += 1;
@@ -123,6 +124,7 @@ export async function POST(
       }
 
       if (body.action === "archive") {
+        const archivedAt = new Date();
         const res = await tx.contactFarmMembership.updateMany({
           where: {
             farmAreaId,
@@ -132,6 +134,7 @@ export async function POST(
           },
           data: {
             status: ContactFarmMembershipStatus.ARCHIVED,
+            archivedAt,
           },
         });
         return {
@@ -180,6 +183,7 @@ export async function POST(
           where: { id: sourceMembership.id },
           data: {
             status: ContactFarmMembershipStatus.ARCHIVED,
+            archivedAt: new Date(),
           },
         });
 
@@ -197,6 +201,7 @@ export async function POST(
             data: {
               userId: user.id,
               status: ContactFarmMembershipStatus.ACTIVE,
+              archivedAt: null,
             },
           });
         } else {

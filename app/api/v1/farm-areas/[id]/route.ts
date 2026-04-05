@@ -63,6 +63,7 @@ export async function PATCH(
           },
           data: {
             status: ContactFarmMembershipStatus.ARCHIVED,
+            archivedAt: now,
           },
         });
       });
