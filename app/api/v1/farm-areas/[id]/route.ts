@@ -19,9 +19,14 @@ const ArchiveFarmAreaSchema = z.object({ archive: z.literal(true) }).strict();
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    if (!id) {
+      return apiError("Farm area not found", 404);
+    }
+
     const user = await getCurrentUser();
     if (!hasCrmAccess(user.productTier)) {
       return apiError("CRM features require Full CRM tier", 403);
@@ -30,7 +35,7 @@ export async function PATCH(
     const existing = await withRLSContext(user.id, (tx) =>
       tx.farmArea.findFirst({
         where: {
-          id: params.id,
+          id,
           userId: user.id,
           deletedAt: null,
           territory: { deletedAt: null },
@@ -48,12 +53,12 @@ export async function PATCH(
       const now = new Date();
       await withRLSContext(user.id, async (tx) => {
         await tx.farmArea.update({
-          where: { id: params.id },
+          where: { id },
           data: { deletedAt: now },
         });
         await tx.contactFarmMembership.updateMany({
           where: {
-            farmAreaId: params.id,
+            farmAreaId: id,
             status: ContactFarmMembershipStatus.ACTIVE,
           },
           data: {
@@ -62,7 +67,7 @@ export async function PATCH(
           },
         });
       });
-      return NextResponse.json({ data: { archived: true, id: params.id } });
+      return NextResponse.json({ data: { archived: true, id } });
     }
 
     const parsed = UpdateFarmAreaSchema.safeParse(body);
@@ -75,7 +80,7 @@ export async function PATCH(
 
     const { updated, membershipCount } = await withRLSContext(user.id, async (tx) => {
       const updated = await tx.farmArea.update({
-        where: { id: params.id },
+        where: { id },
         data: parsed.data,
         select: {
           id: true,
@@ -88,7 +93,7 @@ export async function PATCH(
 
       const membershipCount = await tx.contactFarmMembership.count({
         where: {
-          farmAreaId: params.id,
+          farmAreaId: id,
           status: ContactFarmMembershipStatus.ACTIVE,
         },
       });
