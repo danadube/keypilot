@@ -19,9 +19,14 @@ const ArchiveTerritorySchema = z.object({ archive: z.literal(true) }).strict();
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    if (!id) {
+      return apiError("Territory not found", 404);
+    }
+
     const user = await getCurrentUser();
     if (!hasCrmAccess(user.productTier)) {
       return apiError("CRM features require Full CRM tier", 403);
@@ -29,7 +34,7 @@ export async function PATCH(
 
     const existing = await withRLSContext(user.id, (tx) =>
       tx.farmTerritory.findFirst({
-        where: { id: params.id, userId: user.id, deletedAt: null },
+        where: { id, userId: user.id, deletedAt: null },
         select: { id: true },
       })
     );
@@ -44,7 +49,7 @@ export async function PATCH(
       await withRLSContext(user.id, async (tx) => {
         const areas = await tx.farmArea.findMany({
           where: {
-            territoryId: params.id,
+            territoryId: id,
             userId: user.id,
             deletedAt: null,
           },
@@ -52,7 +57,7 @@ export async function PATCH(
         });
         const areaIds = areas.map((area) => area.id);
         await tx.farmTerritory.update({
-          where: { id: params.id },
+          where: { id },
           data: { deletedAt: now },
         });
         await tx.farmArea.updateMany({
@@ -73,7 +78,7 @@ export async function PATCH(
         }
       });
 
-      return NextResponse.json({ data: { archived: true, id: params.id } });
+      return NextResponse.json({ data: { archived: true, id } });
     }
 
     const parsed = UpdateTerritorySchema.safeParse(body);
@@ -86,7 +91,7 @@ export async function PATCH(
 
     const { updated, areaCount } = await withRLSContext(user.id, async (tx) => {
       const updated = await tx.farmTerritory.update({
-        where: { id: params.id },
+        where: { id },
         data: parsed.data,
         select: {
           id: true,
@@ -97,7 +102,7 @@ export async function PATCH(
       });
 
       const areaCount = await tx.farmArea.count({
-        where: { territoryId: params.id, deletedAt: null },
+        where: { territoryId: id, deletedAt: null },
       });
 
       return { updated, areaCount };
