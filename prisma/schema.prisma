@@ -55,6 +55,7 @@ model User {
   farmTerritories           FarmTerritory[]
   farmAreas                 FarmArea[]
   contactFarmMemberships    ContactFarmMembership[]
+  farmImportRuns            FarmImportRun[]
 
   @@index([clerkId])
   @@map("users")
@@ -246,6 +247,40 @@ model ContactFarmMembership {
   @@index([contactId, status])
   @@index([farmAreaId, status])
   @@map("contact_farm_memberships")
+}
+
+enum FarmImportSourceType {
+  CSV
+  XLSX
+}
+
+enum FarmImportRunStatus {
+  COMPLETED
+  FAILED
+}
+
+/**
+ * Audit trail for FarmTrackr CSV/XLSX imports (one row per apply attempt).
+ */
+model FarmImportRun {
+  id            String               @id @default(uuid())
+  userId        String
+  createdAt     DateTime             @default(now())
+  completedAt   DateTime?
+  sourceType    FarmImportSourceType
+  fileName      String?
+  totalRows     Int
+  createdCount  Int
+  updatedCount  Int
+  skippedCount  Int
+  failedCount   Int                  @default(0)
+  status        FarmImportRunStatus
+  errorSummary  String?              @db.VarChar(500)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("farm_import_runs")
 }
 
 model OpenHouse {

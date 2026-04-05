@@ -13,6 +13,7 @@ import { AlertCircle, Loader2, Mail, MapPinned, Printer } from "lucide-react";
 import { buildMailingListCsv } from "@/lib/farm/mailing/mailing-list-csv";
 import { FarmAreaMembersBulkPanel } from "./_components/farm-area-members-bulk-panel";
 import { FarmTrackrImportWorkflow } from "./_components/farm-trackr-import-workflow";
+import { FarmTrackrRecentImports } from "./_components/farm-trackr-recent-imports";
 import { UI_COPY } from "@/lib/ui-copy";
 
 type Territory = {
@@ -57,6 +58,7 @@ export default function FarmTrackrPage() {
   const [mailingAreaId, setMailingAreaId] = useState("");
   const [mailingBusy, setMailingBusy] = useState<"csv" | "print" | null>(null);
   const [mailingHint, setMailingHint] = useState<string | null>(null);
+  const [farmImportHistoryTick, setFarmImportHistoryTick] = useState(0);
 
   const loadData = useCallback(() => {
     setLoading(true);
@@ -496,7 +498,15 @@ export default function FarmTrackrPage() {
         </div>
 
         <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-          <FarmTrackrImportWorkflow onApplySuccess={loadData} />
+          <div className="space-y-5">
+            <FarmTrackrImportWorkflow
+              onApplySuccess={() => {
+                loadData();
+                setFarmImportHistoryTick((n) => n + 1);
+              }}
+            />
+            <FarmTrackrRecentImports refreshKey={farmImportHistoryTick} />
+          </div>
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">

@@ -4,6 +4,10 @@ import { getCurrentUser } from "@/lib/auth";
 import { hasModuleAccess, type ModuleAccessMap } from "@/lib/module-access";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { withRLSContext } from "@/lib/db-context";
+import {
+  farmImportSummaryToRunCounts,
+  truncateFarmImportErrorSummary,
+} from "@/lib/farm/import/import-run-counts";
 import { applyFarmImport } from "@/lib/farm/import/pipeline";
 import { FarmImportMappingSchema } from "@/lib/farm/import/mapping-schema";
 
@@ -14,6 +18,9 @@ const ApplyBodySchema = z.object({
   mapping: FarmImportMappingSchema,
   defaultTerritoryName: z.string().nullish(),
   defaultAreaName: z.string().nullish(),
+  /** Client-reported source; defaults to CSV when omitted (older clients). */
+  sourceType: z.enum(["CSV", "XLSX"]).optional(),
+  fileName: z.string().trim().max(512).optional().nullable(),
 });
 
 export async function POST(req: NextRequest) {
@@ -28,18 +35,64 @@ export async function POST(req: NextRequest) {
     }
 
     const body = ApplyBodySchema.parse(await req.json());
+    const sourceType = body.sourceType ?? "CSV";
+    const fileName =
+      body.fileName && body.fileName.length > 0 ? body.fileName.slice(0, 512) : null;
+
     let applied: Awaited<ReturnType<typeof applyFarmImport>>;
     try {
-      applied = await withRLSContext(user.id, (tx) =>
-        applyFarmImport(tx, user.id, {
+      applied = await withRLSContext(user.id, async (tx) => {
+        const result = await applyFarmImport(tx, user.id, {
           rows: body.rows,
           mapping: body.mapping,
           defaultTerritoryName: body.defaultTerritoryName,
           defaultAreaName: body.defaultAreaName,
-        })
-      );
+        });
+        const counts = farmImportSummaryToRunCounts(result.summary);
+        await tx.farmImportRun.create({
+          data: {
+            userId: user.id,
+            completedAt: new Date(),
+            sourceType,
+            fileName,
+            totalRows: result.summary.totalRows,
+            createdCount: counts.createdCount,
+            updatedCount: counts.updatedCount,
+            skippedCount: counts.skippedCount,
+            failedCount: 0,
+            status: "COMPLETED",
+            errorSummary: null,
+          },
+        });
+        return result;
+      });
     } catch (importApplyErr) {
       console.error("IMPORT APPLY ERROR:", importApplyErr);
+      try {
+        await withRLSContext(user.id, async (tx) => {
+          await tx.farmImportRun.create({
+            data: {
+              userId: user.id,
+              completedAt: new Date(),
+              sourceType,
+              fileName,
+              totalRows: body.rows.length,
+              createdCount: 0,
+              updatedCount: 0,
+              skippedCount: 0,
+              failedCount: body.rows.length,
+              status: "FAILED",
+              errorSummary: truncateFarmImportErrorSummary(
+                importApplyErr instanceof Error
+                  ? importApplyErr.message
+                  : String(importApplyErr)
+              ),
+            },
+          });
+        });
+      } catch (auditErr) {
+        console.error("FARM_IMPORT_AUDIT_WRITE_FAILED:", auditErr);
+      }
       const exposeApplyDebug =
         process.env.FARM_IMPORT_APPLY_DEBUG === "1" ||
         process.env.NODE_ENV === "development";
