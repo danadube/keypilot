@@ -1,6 +1,11 @@
 /**
  * KeyPilot product roadmap — static v1.
  * Edit categories and items here; icons are resolved in the roadmap page by key.
+ *
+ * Milestone chips use one vocabulary:
+ * - Now — generally available
+ * - Preview — early / partial access (pairs with Beta status)
+ * - H1 2026 / H2 2026 / 2027+ — target windows for planned & in-flight work
  */
 
 export type RoadmapStatus = "planned" | "in_progress" | "beta" | "live";
@@ -29,7 +34,7 @@ export type RoadmapItemConfig = {
   icon: RoadmapIconKey;
   title: string;
   description: string;
-  /** Version or timeframe hint, e.g. "v1.2" or "2026 H1" */
+  /** Target window — use Now / Preview / H1 2026 / H2 2026 / 2027+ for consistency */
   milestone: string;
   status: RoadmapStatus;
 };
@@ -45,42 +50,43 @@ export const KEYPILOT_ROADMAP_CATEGORIES: RoadmapCategoryConfig[] = [
   {
     id: "core-modules",
     title: "Core Modules",
-    description: "Foundational workflows across listings, pipeline, and daily operations.",
+    description:
+      "Listings, pipeline, and day-to-day operations — so fewer handoffs and less context switching.",
     items: [
       {
         id: "mls-listing-sync",
         icon: "Building2",
-        title: "MLS / Listing Sync",
+        title: "MLS & listing alignment",
         description:
-          "Deeper listing ingestion, photo sync, and field mapping so PropertyVault stays aligned with the MLS.",
-        milestone: "2026 H1",
+          "Keep PropertyVault truthful to the MLS: photos, fields, and status updates without manual double entry.",
+        milestone: "H1 2026",
         status: "planned",
       },
       {
         id: "transaction-pipeline",
         icon: "GitBranch",
-        title: "Transaction Pipeline",
+        title: "Visual transaction pipeline",
         description:
-          "Visual deal stages, checkpoints, and handoffs from offer through close inside KeyPilot.",
-        milestone: "v1.x",
+          "See every deal stage from offer to close with clear checkpoints — fewer dropped balls between agents and staff.",
+        milestone: "H1 2026",
         status: "in_progress",
       },
       {
         id: "task-reminders",
         icon: "CheckSquare",
-        title: "Task Management & Reminders",
+        title: "Tasks & reminders",
         description:
-          "Cross-module tasks, due dates, and lightweight accountability tied to contacts and deals.",
-        milestone: "Live",
+          "Turn follow-ups and deal to-dos into accountable work tied to contacts and transactions, not sticky notes.",
+        milestone: "Now",
         status: "live",
       },
       {
         id: "mobile-app",
         icon: "Smartphone",
-        title: "Mobile App",
+        title: "Mobile-first field workflows",
         description:
-          "Native-quality mobile experience for showings check-in, quick CRM updates, and notifications.",
-        milestone: "2026+",
+          "Check in showings, log touches, and get nudges on the go so the office isn’t the only place work happens.",
+        milestone: "2027+",
         status: "planned",
       },
     ],
@@ -88,42 +94,42 @@ export const KEYPILOT_ROADMAP_CATEGORIES: RoadmapCategoryConfig[] = [
   {
     id: "communication-google",
     title: "Communication & Google",
-    description: "Email, calendar, and workspace connectivity.",
+    description: "Meet agents where they already work — inbox, calendar, and files.",
     items: [
       {
         id: "gmail-integration",
         icon: "Mail",
-        title: "Gmail Integration",
+        title: "Gmail in the loop",
         description:
-          "Secure Gmail connectivity for parsing, threading, and operational workflows (e.g. showing-related mail).",
-        milestone: "Live",
+          "Operational email (e.g. Supra and showing-related threads) lands in workflows instead of getting lost in the inbox.",
+        milestone: "Now",
         status: "live",
       },
       {
         id: "google-calendar",
         icon: "Calendar",
-        title: "Google Calendar Integration",
+        title: "Google Calendar sync",
         description:
-          "Two-way sync for showings, open houses, and follow-ups with conflict-aware scheduling.",
-        milestone: "2026 H1",
+          "Showings, open houses, and follow-ups stay two-way with Google Calendar so conflicts surface before they cost a deal.",
+        milestone: "H1 2026",
         status: "in_progress",
       },
       {
         id: "google-contacts",
         icon: "Contact",
-        title: "Google Contacts Sync",
+        title: "Google Contacts bridge",
         description:
-          "Optional sync paths between Google contacts and ClientKeep with clear merge rules.",
-        milestone: "2026 H2",
+          "Optional, rule-based sync into ClientKeep so prospect data doesn’t fork across Google and KeyPilot.",
+        milestone: "H2 2026",
         status: "planned",
       },
       {
         id: "google-drive",
         icon: "Cloud",
-        title: "Google Drive Integration",
+        title: "Google Drive attachments",
         description:
-          "Attach and link Drive files to properties, transactions, and shared deal rooms.",
-        milestone: "2026 H2",
+          "Link deals and properties to the right Drive folders and files — one trail for the team.",
+        milestone: "H2 2026",
         status: "planned",
       },
     ],
@@ -131,24 +137,24 @@ export const KEYPILOT_ROADMAP_CATEGORIES: RoadmapCategoryConfig[] = [
   {
     id: "transactions-forms",
     title: "Transactions & Forms",
-    description: "Deal paperwork, e-sign, and brokerage-ready exports.",
+    description: "Paperwork, signatures, and numbers your brokerage can defend.",
     items: [
       {
         id: "forms-docusign-zipforms",
         icon: "FileSignature",
-        title: "Forms / DocuSign / ZIPForms",
+        title: "Forms, e-sign & ZIPforms",
         description:
-          "Templates, packet assembly, and e-sign handoffs with audit-friendly status in the deal record.",
-        milestone: "2026 H1",
+          "Assemble packets, send for signature, and see status on the deal record — less chasing and fewer “where’s that doc?” moments.",
+        milestone: "H1 2026",
         status: "planned",
       },
       {
         id: "commissions-exports",
         icon: "Wallet",
-        title: "Commission & Brokerage Exports",
+        title: "Commission & brokerage exports",
         description:
-          "Richer commission splits, export formats, and reconciliation helpers for back-office teams.",
-        milestone: "Beta",
+          "Splits and export formats your back office can reconcile — fewer spreadsheets between KeyPilot and accounting.",
+        milestone: "Preview",
         status: "beta",
       },
     ],
@@ -156,24 +162,24 @@ export const KEYPILOT_ROADMAP_CATEGORIES: RoadmapCategoryConfig[] = [
   {
     id: "marketing-automation",
     title: "Marketing & Automation",
-    description: "Campaigns, nurture, and intelligent assistance.",
+    description: "Reach the right people and spend less time deciding what to do next.",
     items: [
       {
         id: "marketing-module",
         icon: "Megaphone",
-        title: "Marketing Module",
+        title: "Campaigns tied to the CRM",
         description:
-          "MarketPilot-style campaigns, audiences, and performance summaries tied to your CRM.",
-        milestone: "v1",
+          "Audiences and sends that respect your contact truth — so marketing isn’t a separate island from ClientKeep.",
+        milestone: "Preview",
         status: "beta",
       },
       {
         id: "ai-briefings",
         icon: "Sparkles",
-        title: "AI Briefings / Suggested Actions",
+        title: "AI briefings & suggested actions",
         description:
-          "Contextual summaries and next-best-action hints across ShowingHQ, ClientKeep, and open houses.",
-        milestone: "Live",
+          "Morning-style summaries and next steps across ShowingHQ and CRM surfaces — triage faster, miss less.",
+        milestone: "Now",
         status: "live",
       },
     ],
@@ -181,42 +187,42 @@ export const KEYPILOT_ROADMAP_CATEGORIES: RoadmapCategoryConfig[] = [
   {
     id: "platform-security",
     title: "Platform / Security / Admin",
-    description: "Trust, branding, and operator controls.",
+    description: "Identity, scale, and the polish clients see on the way in.",
     items: [
       {
         id: "branding-white-label",
         icon: "Palette",
-        title: "Branding & White Label",
+        title: "Branding & white-label surfaces",
         description:
-          "Logo, colors, and outbound identity so client-facing pages feel like your brokerage.",
-        milestone: "v1",
+          "Sign-in and client-facing pages feel like your brokerage, not a generic app — trust before the first click.",
+        milestone: "H1 2026",
         status: "in_progress",
       },
       {
         id: "security-permissions",
         icon: "Shield",
-        title: "Security & Permissions",
+        title: "Roles, permissions & audit",
         description:
-          "Role-based access, audit logs, and finer-grained controls for teams and assistants.",
-        milestone: "2026",
+          "Team-sized controls: who sees what, and a trail when it matters for compliance or disputes.",
+        milestone: "H2 2026",
         status: "in_progress",
       },
       {
         id: "imports-exports",
         icon: "Import",
-        title: "Enhanced Imports / Exports",
+        title: "Imports, exports & bulk ops",
         description:
-          "CSV/XLSX pipelines, mailing labels, and bulk operations across farms and contacts.",
-        milestone: "Live",
+          "CSV, labels, and farm-scale updates without leaving KeyPilot — less copy-paste between tools.",
+        milestone: "Now",
         status: "live",
       },
       {
         id: "platform-foundation",
         icon: "LayoutGrid",
-        title: "Modular Platform Architecture",
+        title: "Modular platform core",
         description:
-          "Consistent APIs, RLS-backed data access, and module boundaries that scale new surfaces safely.",
-        milestone: "Ongoing",
+          "Consistent APIs and RLS-backed access so new modules ship safely as KeyPilot grows.",
+        milestone: "Now",
         status: "live",
       },
     ],
@@ -226,8 +232,8 @@ export const KEYPILOT_ROADMAP_CATEGORIES: RoadmapCategoryConfig[] = [
 export const ROADMAP_ABOUT_COPY = {
   title: "About the Roadmap",
   body: [
-    "This page is a directional view of what we are building across KeyPilot. Timelines and scope can shift as we learn from agents and brokerages in production.",
-    "Items marked Live are available today in some form; Beta means early access or partial coverage; In Progress is actively under development; Planned is committed direction without a fixed ship date.",
-    "Have a priority or partnership in mind? Use Feedback from the sidebar or reach out — we weigh every signal when we sequence the platform.",
+    "This page is directional: we sequence work based on production feedback from agents and brokerages. Dates can move when we learn something important.",
+    "Milestones use a single scale — Now (generally available), Preview (early access), and H1 / H2 / 2027+ windows. Status chips add nuance: Live, Beta, In Progress, and Planned.",
+    "Want something prioritized? Use Feedback in the sidebar or reach out directly — it shapes what we build next.",
   ],
 } as const;
