@@ -200,18 +200,16 @@ export function FarmAreaMembersBulkPanel({
     }
   }, [expanded]);
 
+  // Keep bulk* busy flags out of this effect so clearing selection cannot race in-flight fetches.
   useEffect(() => {
     if (selectedMemberContactIds.size === 0) {
       setTagPanelOpen(false);
       setTagPickerId("");
       setNewTagName("");
-      setBulkTagBusy(false);
       setFollowUpPanelOpen(false);
       setFollowUpTitle("");
       setFollowUpDueDate("");
       setFollowUpNotes("");
-      setBulkFollowUpBusy(false);
-      setBulkExportLabelsBusy(false);
     }
   }, [selectedMemberContactIds.size]);
 
