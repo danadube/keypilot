@@ -11,7 +11,7 @@
  *   - AITodoItem — uses BrandBadge; migrate in a later Home phase
  *   - PriorityEmailCard — uses BrandBadge + SuggestedReplySection; defer
  *
- * Route: app/(dashboard)/page.tsx → DashboardLanding → HomePage → HomePageView
+ * Route: legacy generic home (e.g. HomePage); app entry is `/dashboard`.
  */
 
 import { useEffect, useState } from "react";
@@ -541,7 +541,7 @@ export function HomePageView() {
           label="Needs Reply"
           value={needsReply}
           icon={Mail}
-          href="/"
+          href="/dashboard"
           accent={needsReply > 0 ? "gold" : "default"}
         />
         <KpiCard

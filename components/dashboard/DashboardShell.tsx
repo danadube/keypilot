@@ -67,7 +67,7 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/settings/integrations")) return "Integrations";
   if (pathname.startsWith("/settings")) return "Settings";
   if (base === "/roadmap") return "Roadmap";
-  if (pathname === "/") return "Overview";
+  if (base === "/dashboard" || pathname === "/") return "Dashboard";
   return "KeyPilot";
 }
 

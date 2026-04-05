@@ -47,8 +47,8 @@ export default function RootLayout({
       publishableKey={publishableKey}
       signInUrl={signInUrl}
       signUpUrl={signUpUrl}
-      afterSignInUrl="/"
-      afterSignUpUrl="/"
+      afterSignInUrl="/dashboard"
+      afterSignUpUrl="/dashboard"
     >
       <html lang="en" className={`${inter.variable} ${newsreader.variable}`}>
         <body className="font-sans antialiased">

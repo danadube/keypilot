@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { MODULES, MODULE_ORDER, getModuleFromPath } from "@/lib/modules";
+import { MODULES, MODULE_ORDER, getModuleFromPath, pathMatchesHref } from "@/lib/modules";
 import { useProductTier } from "@/components/ProductTierProvider";
 
 export function TopModuleNav() {
@@ -12,7 +12,6 @@ export function TopModuleNav() {
   const { hasModuleAccess, isLoading } = useProductTier();
 
   let enabledModules = MODULE_ORDER.filter((id) => {
-    if (id === "home" && hasModuleAccess("showing-hq")) return false;
     return hasModuleAccess(id) && MODULES[id]?.available && !isLoading;
   });
 
@@ -31,8 +30,9 @@ export function TopModuleNav() {
           const mod = MODULES[id];
           if (!mod?.available) return null;
           const isActive =
-            (id === "home" ? pathname === "/" : activeId === id) ||
-            pathname === `/upgrade/${id}`;
+            (id === "home"
+              ? pathMatchesHref(pathname ?? "", "/dashboard") || pathname === "/"
+              : activeId === id) || pathname === `/upgrade/${id}`;
           const href = mod.href;
 
           return (

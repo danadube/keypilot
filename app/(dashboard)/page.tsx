@@ -1,5 +1,6 @@
-import { DashboardLanding } from "@/components/dashboard/DashboardLanding";
+import { redirect } from "next/navigation";
 
+/** App entry: operational dashboard (not ShowingHQ-first redirect). */
 export default function HomeRoute() {
-  return <DashboardLanding />;
+  redirect("/dashboard");
 }

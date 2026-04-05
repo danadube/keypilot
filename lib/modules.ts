@@ -62,10 +62,10 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
   home: {
     id: "home",
     name: "Home",
-    href: "/",
+    href: "/dashboard",
     available: true,
     sidebar: [
-      { label: "Overview", href: "/", icon: LayoutDashboard, section: "OVERVIEW" },
+      { label: "Overview", href: "/dashboard", icon: LayoutDashboard, section: "OVERVIEW" },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
     ],
   },
@@ -205,7 +205,7 @@ export function pathMatchesHref(pathname: string, href: string): boolean {
 
 /** Derive active module from pathname */
 export function getModuleFromPath(pathname: string): ModuleId {
-  if (pathMatchesHref(pathname, "/")) return "home";
+  if (pathMatchesHref(pathname, "/dashboard") || pathname === "/") return "home";
   if (pathMatchesHref(pathname, "/upgrade")) return "showing-hq";
   if (pathMatchesHref(pathname, "/settings")) return "settings";
   if (pathMatchesHref(pathname, "/properties") || pathMatchesHref(pathname, "/property-vault")) {

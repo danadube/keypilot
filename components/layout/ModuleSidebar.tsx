@@ -160,7 +160,7 @@ export function ModuleSidebar() {
   const settingsMod = MODULES.settings;
   const settingsChildItems = getModuleChildNavItems(settingsMod);
 
-  const dashboardActive = pathname === "/";
+  const dashboardActive = pathname === "/dashboard" || pathname === "/";
 
   return (
     <aside
@@ -178,7 +178,7 @@ export function ModuleSidebar() {
         )}
       >
         <Link
-          href="/"
+          href="/dashboard"
           className="flex min-w-0 items-center transition-opacity hover:opacity-90"
           aria-label="KeyPilot home"
         >
@@ -203,7 +203,7 @@ export function ModuleSidebar() {
           <ul className="space-y-0.5">
             <li>
               <Link
-                href="/"
+                href="/dashboard"
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                   "text-slate-400 hover:bg-white/5 hover:text-white",
