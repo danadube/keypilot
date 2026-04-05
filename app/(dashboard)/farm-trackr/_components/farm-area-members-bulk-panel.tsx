@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -204,6 +204,19 @@ export function FarmAreaMembersBulkPanel({
   const allMembersSelected =
     members.length > 0 && members.every((m) => selectedMemberContactIds.has(m.contact.id));
 
+  const someMembersSelected = useMemo(
+    () => members.some((m) => selectedMemberContactIds.has(m.contact.id)),
+    [members, selectedMemberContactIds]
+  );
+
+  const memberSelectAllRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const el = memberSelectAllRef.current;
+    if (!el) return;
+    el.indeterminate =
+      members.length > 0 && someMembersSelected && !allMembersSelected;
+  }, [members.length, someMembersSelected, allMembersSelected]);
+
   const toggleSelectAllMembers = () => {
     if (allMembersSelected) {
       setSelectedMemberContactIds(new Set());
@@ -293,6 +306,7 @@ export function FarmAreaMembersBulkPanel({
                   <tr>
                     <th className="w-10 px-2 py-1.5">
                       <input
+                        ref={memberSelectAllRef}
                         type="checkbox"
                         checked={allMembersSelected}
                         onChange={toggleSelectAllMembers}
@@ -361,61 +375,74 @@ export function FarmAreaMembersBulkPanel({
           )}
 
           {selectedMemberCount > 0 ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-kp-outline bg-kp-surface-high px-2 py-2 text-xs">
-              <span className="text-kp-on-surface">{selectedMemberCount} selected</span>
-              <select
-                value={moveTargetId}
-                onChange={(e) => setMoveTargetId(e.target.value)}
-                className="h-8 max-w-[200px] rounded border border-kp-outline bg-kp-surface px-2 text-xs text-kp-on-surface"
+            <div className="space-y-2">
+              <div
+                className="flex flex-wrap items-center gap-2 rounded-md border border-kp-outline bg-kp-surface-high/80 px-2 py-2 text-xs"
+                role="status"
+                aria-live="polite"
               >
-                <option value="">Move to…</option>
-                {otherAreas.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.territoryName} — {a.name}
-                  </option>
-                ))}
-              </select>
-              <Button
-                type="button"
-                size="sm"
-                className={cn(kpBtnSecondary, "h-8 px-2 text-xs")}
-                disabled={bulkBusy || !moveTargetId}
-                onClick={() =>
-                  void runBulk({
-                    action: "move",
-                    contactIds: Array.from(selectedMemberContactIds),
-                    targetFarmAreaId: moveTargetId,
-                  })
-                }
-              >
-                Move
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-8 px-2 text-xs text-red-300 hover:text-red-200"
-                disabled={bulkBusy}
-                onClick={() => {
-                  if (!confirm(`Remove ${selectedMemberCount} contact(s) from this area?`)) return;
-                  void runBulk({
-                    action: "archive",
-                    contactIds: Array.from(selectedMemberContactIds),
-                  });
-                }}
-              >
-                Remove from area
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="h-8 px-2 text-xs"
-                disabled={bulkBusy}
-                onClick={() => setSelectedMemberContactIds(new Set())}
-              >
-                Clear
-              </Button>
+                <span className="font-medium text-kp-on-surface">
+                  {selectedMemberCount} selected
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-2 text-xs"
+                  disabled={bulkBusy}
+                  onClick={() => setSelectedMemberContactIds(new Set())}
+                >
+                  Clear selection
+                </Button>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-kp-outline bg-kp-surface-high px-2 py-2 text-xs">
+                <span className="sr-only">Farm area membership</span>
+                <select
+                  value={moveTargetId}
+                  onChange={(e) => setMoveTargetId(e.target.value)}
+                  className="h-8 max-w-[200px] rounded border border-kp-outline bg-kp-surface px-2 text-xs text-kp-on-surface"
+                  aria-label="Move selected members to farm area"
+                >
+                  <option value="">Move to…</option>
+                  {otherAreas.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.territoryName} — {a.name}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  size="sm"
+                  className={cn(kpBtnSecondary, "h-8 px-2 text-xs")}
+                  disabled={bulkBusy || !moveTargetId}
+                  onClick={() =>
+                    void runBulk({
+                      action: "move",
+                      contactIds: Array.from(selectedMemberContactIds),
+                      targetFarmAreaId: moveTargetId,
+                    })
+                  }
+                >
+                  Move
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-2 text-xs text-red-300 hover:text-red-200"
+                  disabled={bulkBusy}
+                  onClick={() => {
+                    if (!confirm(`Remove ${selectedMemberCount} contact(s) from this area?`))
+                      return;
+                    void runBulk({
+                      action: "archive",
+                      contactIds: Array.from(selectedMemberContactIds),
+                    });
+                  }}
+                >
+                  Remove from area
+                </Button>
+              </div>
             </div>
           ) : null}
 
