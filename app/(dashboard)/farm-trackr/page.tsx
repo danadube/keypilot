@@ -239,6 +239,68 @@ export default function FarmTrackrPage() {
     }
   };
 
+  const deleteTerritory = async (territoryId: string) => {
+    if (
+      !confirm(
+        "Permanently delete this territory? This removes the territory, all farm areas in it, and all farm memberships for those areas. Contacts are not deleted—only farm structure and associations."
+      )
+    ) {
+      return;
+    }
+    setBusyTerritoryId(territoryId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/farm-territories/${territoryId}`, {
+        method: "DELETE",
+      });
+      const json = (await res.json()) as { error?: { message?: string } };
+      if (!res.ok || json.error) {
+        throw new Error(json.error?.message ?? "Failed to delete territory");
+      }
+      setTerritories((prev) => prev.filter((t) => t.id !== territoryId));
+      setAreas((prev) => prev.filter((a) => a.territoryId !== territoryId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete territory");
+    } finally {
+      setBusyTerritoryId(null);
+    }
+  };
+
+  const deleteArea = async (areaId: string) => {
+    if (
+      !confirm(
+        "Permanently delete this farm area? This removes the area and all memberships in it. Contacts are not deleted—only farm associations."
+      )
+    ) {
+      return;
+    }
+    const area = areas.find((entry) => entry.id === areaId);
+    if (!area) return;
+    setBusyAreaId(areaId);
+    setError(null);
+    try {
+      const res = await fetch(`/api/v1/farm-areas/${areaId}`, {
+        method: "DELETE",
+      });
+      const json = (await res.json()) as { error?: { message?: string } };
+      if (!res.ok || json.error) {
+        throw new Error(json.error?.message ?? "Failed to delete farm area");
+      }
+      setAreas((prev) => prev.filter((entry) => entry.id !== areaId));
+      setTerritories((prev) =>
+        prev.map((territory) =>
+          territory.id === area.territoryId
+            ? { ...territory, areaCount: Math.max(0, territory.areaCount - 1) }
+            : territory
+        )
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete farm area");
+    } finally {
+      setBusyAreaId(null);
+    }
+  };
+
   const mailingQuerySuffix =
     mailingScope === "territory"
       ? mailingTerritoryId
@@ -570,6 +632,15 @@ export default function FarmTrackrPage() {
                       >
                         Archive
                       </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        className="h-8 px-2 text-xs"
+                        onClick={() => void deleteTerritory(territory.id)}
+                        disabled={busyTerritoryId === territory.id}
+                      >
+                        Delete
+                      </Button>
                     </div>
                   </div>
 
@@ -650,6 +721,15 @@ export default function FarmTrackrPage() {
                                 disabled={busyAreaId === area.id}
                               >
                                 Archive
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                className="h-8 px-2 text-xs"
+                                onClick={() => void deleteArea(area.id)}
+                                disabled={busyAreaId === area.id}
+                              >
+                                Delete
                               </Button>
                             </div>
                             </div>

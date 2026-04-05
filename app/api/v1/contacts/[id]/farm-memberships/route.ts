@@ -138,7 +138,6 @@ export async function POST(
             data: {
               userId: user.id,
               status: ContactFarmMembershipStatus.ACTIVE,
-              archivedAt: null,
               notes: parsed.data.notes ?? null,
             },
             select: {

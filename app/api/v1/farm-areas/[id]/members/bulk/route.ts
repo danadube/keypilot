@@ -95,7 +95,6 @@ export async function POST(
               data: {
                 userId: user.id,
                 status: ContactFarmMembershipStatus.ACTIVE,
-                archivedAt: null,
               },
             });
             reactivated += 1;
@@ -133,7 +132,6 @@ export async function POST(
           },
           data: {
             status: ContactFarmMembershipStatus.ARCHIVED,
-            archivedAt: new Date(),
           },
         });
         return {
@@ -182,7 +180,6 @@ export async function POST(
           where: { id: sourceMembership.id },
           data: {
             status: ContactFarmMembershipStatus.ARCHIVED,
-            archivedAt: new Date(),
           },
         });
 
@@ -200,7 +197,6 @@ export async function POST(
             data: {
               userId: user.id,
               status: ContactFarmMembershipStatus.ACTIVE,
-              archivedAt: null,
             },
           });
         } else {

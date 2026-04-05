@@ -63,7 +63,6 @@ export async function PATCH(
           },
           data: {
             status: ContactFarmMembershipStatus.ARCHIVED,
-            archivedAt: now,
           },
         });
       });
@@ -102,6 +101,52 @@ export async function PATCH(
     });
 
     return NextResponse.json({ data: { ...updated, membershipCount } });
+  } catch (err) {
+    return apiErrorFromCaught(err);
+  }
+}
+
+/** Permanent removal: memberships for this area, then the area row (contacts unchanged). */
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    if (!id) {
+      return apiError("Farm area not found", 404);
+    }
+
+    const user = await getCurrentUser();
+    if (!hasCrmAccess(user.productTier)) {
+      return apiError("CRM features require Full CRM tier", 403);
+    }
+
+    const deleted = await withRLSContext(user.id, async (tx) => {
+      const area = await tx.farmArea.findFirst({
+        where: {
+          id,
+          userId: user.id,
+          deletedAt: null,
+          territory: { deletedAt: null },
+        },
+        select: { id: true },
+      });
+      if (!area) {
+        return false;
+      }
+      await tx.contactFarmMembership.deleteMany({
+        where: { farmAreaId: id, userId: user.id },
+      });
+      await tx.farmArea.delete({ where: { id } });
+      return true;
+    });
+
+    if (!deleted) {
+      return apiError("Farm area not found", 404);
+    }
+
+    return NextResponse.json({ data: { deleted: true, id } });
   } catch (err) {
     return apiErrorFromCaught(err);
   }
