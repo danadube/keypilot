@@ -250,6 +250,7 @@ export function FarmAreaMembersBulkPanel({
   }, [tagsForPicker.length, loadTagsForPanel]);
 
   const cancelTagPanel = useCallback(() => {
+    setToast(null);
     setTagPanelOpen(false);
     setTagPickerId("");
     setNewTagName("");
@@ -297,6 +298,7 @@ export function FarmAreaMembersBulkPanel({
   }, [selectedMemberContactIds, tagPickerId, newTagName]);
 
   const cancelFollowUpPanel = useCallback(() => {
+    setToast(null);
     setFollowUpPanelOpen(false);
     setFollowUpTitle("");
     setFollowUpDueDate("");
@@ -448,8 +450,11 @@ export function FarmAreaMembersBulkPanel({
   useEffect(() => {
     const el = memberSelectAllRef.current;
     if (!el) return;
-    el.indeterminate =
-      members.length > 0 && someMembersSelected && !allMembersSelected;
+    if (members.length > 0 && someMembersSelected && !allMembersSelected) {
+      el.indeterminate = true;
+    } else {
+      el.indeterminate = false;
+    }
   }, [members.length, someMembersSelected, allMembersSelected]);
 
   const toggleSelectAllMembers = () => {

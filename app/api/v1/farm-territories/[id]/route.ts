@@ -139,7 +139,7 @@ export async function DELETE(
         return false;
       }
       const areaRows = await tx.farmArea.findMany({
-        where: { territoryId: id, userId: user.id },
+        where: { territoryId: id, userId: user.id, deletedAt: null },
         select: { id: true },
       });
       const areaIds = areaRows.map((a) => a.id);

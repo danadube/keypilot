@@ -18,7 +18,7 @@ export const BulkTagContactsSchema = z
       .min(1, "Select at least one contact")
       .max(BULK_TAG_MAX_CONTACTS),
     tagId: z.string().min(1).optional(),
-    tagName: z.string().max(50).optional(),
+    tagName: z.string().trim().max(50).optional(),
   })
   .superRefine((val, ctx) => {
     const name = val.tagName?.trim() ?? "";
