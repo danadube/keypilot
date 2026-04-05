@@ -85,14 +85,16 @@ function TodayMetricCard({
   label,
   href,
   icon: Icon,
-  primary,
+  count,
+  zeroPrimaryText,
   secondary,
   loading,
 }: {
   label: string;
   href: string;
   icon: ComponentType<{ className?: string }>;
-  primary: ReactNode;
+  count: number;
+  zeroPrimaryText: string;
   secondary: string;
   loading: boolean;
 }) {
@@ -107,7 +109,20 @@ function TodayMetricCard({
         </span>
         <Icon className="h-4 w-4 shrink-0 text-kp-on-surface-muted opacity-80 group-hover:text-kp-teal" />
       </div>
-      <PrimaryValue loading={loading}>{primary}</PrimaryValue>
+      {loading ? (
+        <span
+          className="inline-block h-10 w-28 max-w-full animate-pulse rounded-md bg-kp-surface-high/90"
+          aria-hidden
+        />
+      ) : count === 0 ? (
+        <p className="font-headline text-base font-semibold leading-snug text-kp-on-surface">
+          {zeroPrimaryText}
+        </p>
+      ) : (
+        <span className="font-headline text-2xl font-semibold tabular-nums text-kp-on-surface">
+          {count}
+        </span>
+      )}
       <p className="mt-2 text-xs leading-relaxed text-kp-on-surface-variant">{secondary}</p>
     </Link>
   );
@@ -284,17 +299,18 @@ export function OperationalDashboardView() {
   const todayShowingsSecondary = loading
     ? "Loading your schedule."
     : showingsToday === 0
-      ? "No showings scheduled today."
+      ? "Add a showing or open ShowingHQ."
       : showingsOverdueToday > 0
         ? `${showingsOverdueToday} overdue`
         : `${showingsToday} scheduled today`;
 
-  const todayTasksSecondary = "No tasks today";
+  const todayTasksSecondary =
+    "Tasks with due dates surface in Task Pilot when connected.";
 
   const todayFollowUpsSecondary = loading
     ? "Loading follow-ups."
     : followUpsDueCount === 0
-      ? "All caught up"
+      ? "Nothing overdue or due today."
       : overdueFollowUpCount > 0
         ? `${overdueFollowUpCount} overdue`
         : `${dueTodayFollowUpCount} due today`;
@@ -344,7 +360,7 @@ export function OperationalDashboardView() {
     : `${propertiesCount} active listing${propertiesCount === 1 ? "" : "s"}`;
 
   return (
-    <div className="space-y-6 pb-8">
+    <div className="space-y-5 pb-8">
       <header className="max-w-3xl">
         <h1 className="font-headline text-2xl font-semibold tracking-tight text-kp-on-surface md:text-3xl">
           Dashboard
@@ -355,37 +371,10 @@ export function OperationalDashboardView() {
         </p>
       </header>
 
-      <section aria-labelledby="dash-quick">
-        <h2
-          id="dash-quick"
-          className="mb-3 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
-        >
-          Quick actions
-        </h2>
-        <div className="flex flex-wrap gap-4 md:gap-5">
-          <QuickActionLink href="/contacts?new=1">
-            <UserPlus className="h-5 w-5 shrink-0" />
-            New Contact
-          </QuickActionLink>
-          <QuickActionLink href="/showing-hq/showings/new">
-            <Calendar className="h-5 w-5 shrink-0" />
-            New Showing
-          </QuickActionLink>
-          <QuickActionLink href="/task-pilot">
-            <CheckSquare className="h-5 w-5 shrink-0" />
-            New Task
-          </QuickActionLink>
-          <QuickActionLink href="/farm-trackr">
-            <MapPin className="h-5 w-5 shrink-0" />
-            Import Farm
-          </QuickActionLink>
-        </div>
-      </section>
-
       <section aria-labelledby="dash-today">
         <h2
           id="dash-today"
-          className="mb-3 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
+          className="mb-2 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
         >
           Today
         </h2>
@@ -393,13 +382,14 @@ export function OperationalDashboardView() {
           showings={showings}
           loading={loading}
           todayStats={
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
               <TodayMetricCard
                 label="Showings today"
                 href="/showing-hq/showings"
                 icon={Calendar}
                 loading={loading}
-                primary={showingsToday}
+                count={showingsToday}
+                zeroPrimaryText="No showings today"
                 secondary={todayShowingsSecondary}
               />
               <TodayMetricCard
@@ -407,7 +397,8 @@ export function OperationalDashboardView() {
                 href="/task-pilot"
                 icon={CheckSquare}
                 loading={loading}
-                primary={0}
+                count={0}
+                zeroPrimaryText="You're clear on tasks"
                 secondary={todayTasksSecondary}
               />
               <TodayMetricCard
@@ -415,7 +406,8 @@ export function OperationalDashboardView() {
                 href="/showing-hq/follow-ups"
                 icon={MessageSquare}
                 loading={loading}
-                primary={followUpsDueCount}
+                count={followUpsDueCount}
+                zeroPrimaryText="All follow-ups handled"
                 secondary={todayFollowUpsSecondary}
               />
             </div>
@@ -426,11 +418,11 @@ export function OperationalDashboardView() {
       <section aria-labelledby="dash-pipeline">
         <h2
           id="dash-pipeline"
-          className="mb-3 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
+          className="mb-2 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
         >
           Pipeline snapshot
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           <PipelineCard
             label="Active deals"
             href="/transactions/pipeline"
@@ -461,7 +453,7 @@ export function OperationalDashboardView() {
       <section aria-labelledby="dash-focus">
         <h2
           id="dash-focus"
-          className="mb-3 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
+          className="mb-2 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
         >
           Focus
         </h2>
@@ -481,11 +473,11 @@ export function OperationalDashboardView() {
       <section aria-labelledby="dash-modules">
         <h2
           id="dash-modules"
-          className="mb-3 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
+          className="mb-2 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
         >
           Modules
         </h2>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
           <ModuleShortcut
             title="ShowingHQ"
             contextLine={moduleShowing}
@@ -514,6 +506,35 @@ export function OperationalDashboardView() {
             icon={Building2}
             ctaLabel="Open vault"
           />
+        </div>
+      </section>
+
+      <section aria-labelledby="dash-quick">
+        <h2
+          id="dash-quick"
+          className="mb-2 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
+        >
+          Quick actions
+        </h2>
+        <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm transition-colors">
+          <div className="flex flex-wrap gap-3 md:gap-4">
+            <QuickActionLink href="/contacts?new=1">
+              <UserPlus className="h-5 w-5 shrink-0" />
+              New Contact
+            </QuickActionLink>
+            <QuickActionLink href="/showing-hq/showings/new">
+              <Calendar className="h-5 w-5 shrink-0" />
+              New Showing
+            </QuickActionLink>
+            <QuickActionLink href="/task-pilot">
+              <CheckSquare className="h-5 w-5 shrink-0" />
+              New Task
+            </QuickActionLink>
+            <QuickActionLink href="/farm-trackr">
+              <MapPin className="h-5 w-5 shrink-0" />
+              Import Farm
+            </QuickActionLink>
+          </div>
         </div>
       </section>
     </div>
