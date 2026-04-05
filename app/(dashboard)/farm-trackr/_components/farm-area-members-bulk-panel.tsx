@@ -395,6 +395,23 @@ export function FarmAreaMembersBulkPanel({
                   Clear selection
                 </Button>
               </div>
+              <div
+                className="flex flex-wrap items-center gap-x-2 gap-y-1.5 rounded-md border border-dashed border-kp-outline/80 bg-kp-surface-high/30 px-2 py-2 text-xs"
+                aria-label="Bulk actions for selected farm members"
+              >
+                <span className="w-full shrink-0 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted sm:w-auto sm:pr-1">
+                  Actions
+                </span>
+                <Button type="button" size="sm" className={cn(kpBtnSecondary, "h-8 px-2 text-xs")} disabled>
+                  Add tag
+                </Button>
+                <Button type="button" size="sm" className={cn(kpBtnSecondary, "h-8 px-2 text-xs")} disabled>
+                  Create follow-up
+                </Button>
+                <Button type="button" size="sm" className={cn(kpBtnSecondary, "h-8 px-2 text-xs")} disabled>
+                  Export labels
+                </Button>
+              </div>
               <div className="flex flex-wrap items-center gap-2 rounded-md border border-kp-outline bg-kp-surface-high px-2 py-2 text-xs">
                 <span className="sr-only">Farm area membership</span>
                 <select
