@@ -3,6 +3,7 @@
  */
 
 import {
+  EMPTY_FARM_IMPORT_MAPPING_FIELDS,
   FARMTRACKR_IMPORT_MAPPING_TEMPLATES_KEY,
   addImportMappingTemplate,
   applyTemplateMappingToHeaders,
@@ -47,11 +48,9 @@ describe("import-mapping-templates-storage", () => {
 
   it("applyTemplateMappingToHeaders keeps matches and reports unmatched", () => {
     const template = {
+      ...EMPTY_FARM_IMPORT_MAPPING_FIELDS,
       email: "Email",
       phone: "Mobile",
-      firstName: null,
-      lastName: null,
-      fullName: null,
       territory: "Territory",
       area: "MissingCol",
     };
@@ -75,13 +74,8 @@ describe("import-mapping-templates-storage", () => {
     const add = addImportMappingTemplate({
       name: "  MLS  ",
       mapping: {
+        ...EMPTY_FARM_IMPORT_MAPPING_FIELDS,
         email: "e",
-        phone: null,
-        firstName: null,
-        lastName: null,
-        fullName: null,
-        territory: null,
-        area: null,
       },
       defaultTerritoryName: "T",
       defaultAreaName: "A",
@@ -103,15 +97,7 @@ describe("import-mapping-templates-storage", () => {
     const rec = {
       id: "x",
       name: "n",
-      mapping: {
-        email: null,
-        phone: null,
-        firstName: null,
-        lastName: null,
-        fullName: null,
-        territory: null,
-        area: null,
-      },
+      mapping: { ...EMPTY_FARM_IMPORT_MAPPING_FIELDS },
       defaultTerritoryName: "",
       defaultAreaName: "",
       updatedAt: new Date().toISOString(),

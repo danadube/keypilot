@@ -6,6 +6,20 @@ export type FarmImportColumnMapping = {
   fullName?: string | null;
   territory?: string | null;
   area?: string | null;
+  mailingStreet1?: string | null;
+  mailingStreet2?: string | null;
+  mailingCity?: string | null;
+  mailingState?: string | null;
+  mailingZip?: string | null;
+  siteStreet1?: string | null;
+  siteStreet2?: string | null;
+  siteCity?: string | null;
+  siteState?: string | null;
+  siteZip?: string | null;
+  email2?: string | null;
+  email3?: string | null;
+  email4?: string | null;
+  phone2?: string | null;
 };
 
 export type FarmImportRawRow = Record<string, string>;

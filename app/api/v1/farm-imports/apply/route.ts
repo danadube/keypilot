@@ -5,22 +5,13 @@ import { hasModuleAccess, type ModuleAccessMap } from "@/lib/module-access";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { withRLSContext } from "@/lib/db-context";
 import { applyFarmImport } from "@/lib/farm/import/pipeline";
+import { FarmImportMappingSchema } from "@/lib/farm/import/mapping-schema";
 
 export const dynamic = "force-dynamic";
 
-const MappingSchema = z.object({
-  email: z.string().nullish(),
-  phone: z.string().nullish(),
-  firstName: z.string().nullish(),
-  lastName: z.string().nullish(),
-  fullName: z.string().nullish(),
-  territory: z.string().nullish(),
-  area: z.string().nullish(),
-});
-
 const ApplyBodySchema = z.object({
   rows: z.array(z.record(z.string(), z.string())).max(1000),
-  mapping: MappingSchema,
+  mapping: FarmImportMappingSchema,
   defaultTerritoryName: z.string().nullish(),
   defaultAreaName: z.string().nullish(),
 });

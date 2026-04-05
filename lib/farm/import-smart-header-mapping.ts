@@ -1,9 +1,6 @@
 /**
  * Deterministic header → FarmTrackr import column mapping (alias dictionary).
  * Extend IMPORT_HEADER_ALIASES with new normalized keys only; keep matches exact after normalize.
- *
- * Columns like address / city / state / zip are not import targets today — omit from aliases until the
- * API supports them.
  */
 
 export type ImportFieldKey =
@@ -13,7 +10,21 @@ export type ImportFieldKey =
   | "lastName"
   | "fullName"
   | "territory"
-  | "area";
+  | "area"
+  | "mailingStreet1"
+  | "mailingStreet2"
+  | "mailingCity"
+  | "mailingState"
+  | "mailingZip"
+  | "siteStreet1"
+  | "siteStreet2"
+  | "siteCity"
+  | "siteState"
+  | "siteZip"
+  | "email2"
+  | "email3"
+  | "email4"
+  | "phone2";
 
 export type ImportMappingLike = Record<ImportFieldKey, string | null>;
 
@@ -25,6 +36,20 @@ export const EMPTY_IMPORT_MAPPING: ImportMappingLike = {
   fullName: null,
   territory: null,
   area: null,
+  mailingStreet1: null,
+  mailingStreet2: null,
+  mailingCity: null,
+  mailingState: null,
+  mailingZip: null,
+  siteStreet1: null,
+  siteStreet2: null,
+  siteCity: null,
+  siteState: null,
+  siteZip: null,
+  email2: null,
+  email3: null,
+  email4: null,
+  phone2: null,
 };
 
 /**
@@ -51,26 +76,34 @@ export const IMPORT_HEADER_ALIASES: Readonly<Record<string, ImportFieldKey>> = {
   "e-mail address": "email",
   "primary email": "email",
 
-  // Phone
+  // Phone (primary / landline-style labels)
   phone: "phone",
-  mobile: "phone",
-  cell: "phone",
   telephone: "phone",
   tel: "phone",
   "phone number": "phone",
   "phone #": "phone",
-  "mobile phone": "phone",
-  "cell phone": "phone",
-  "cellphone": "phone",
   "home phone": "phone",
   "work phone": "phone",
+  "office phone": "phone",
+
+  // Phone 2 (mobile / alternate)
+  mobile: "phone2",
+  cell: "phone2",
+  cellphone: "phone2",
+  "mobile phone": "phone2",
+  "cell phone": "phone2",
+  "phone 2": "phone2",
+  "phone2": "phone2",
+  "second phone": "phone2",
+  "alternate phone": "phone2",
+  "alt phone": "phone2",
 
   // First name
   "first name": "firstName",
   firstname: "firstName",
   fname: "firstName",
   "given name": "firstName",
-  "first": "firstName",
+  first: "firstName",
 
   // Last name
   "last name": "lastName",
@@ -78,7 +111,7 @@ export const IMPORT_HEADER_ALIASES: Readonly<Record<string, ImportFieldKey>> = {
   lname: "lastName",
   surname: "lastName",
   "family name": "lastName",
-  "last": "lastName",
+  last: "lastName",
 
   // Full name (avoid short tokens shared with other meanings)
   "full name": "fullName",
@@ -100,6 +133,73 @@ export const IMPORT_HEADER_ALIASES: Readonly<Record<string, ImportFieldKey>> = {
   neighborhood: "area",
   neighbourhood: "area",
   "farm name": "area",
+
+  // Mailing address
+  "mailing street 1": "mailingStreet1",
+  "mailing street": "mailingStreet1",
+  "mail street 1": "mailingStreet1",
+  "mail street": "mailingStreet1",
+  "mailing address": "mailingStreet1",
+  "mailing address line 1": "mailingStreet1",
+  "mail address": "mailingStreet1",
+  "mail addr 1": "mailingStreet1",
+  address: "mailingStreet1",
+  "street address": "mailingStreet1",
+  "mailing line 1": "mailingStreet1",
+
+  "mailing street 2": "mailingStreet2",
+  "mail street 2": "mailingStreet2",
+  "mailing address line 2": "mailingStreet2",
+  "mail addr 2": "mailingStreet2",
+
+  "mailing city": "mailingCity",
+  "mail city": "mailingCity",
+  city: "mailingCity",
+
+  "mailing state": "mailingState",
+  "mail state": "mailingState",
+  state: "mailingState",
+  st: "mailingState",
+
+  "mailing zip": "mailingZip",
+  "mail zip": "mailingZip",
+  zip: "mailingZip",
+  "zip code": "mailingZip",
+  postal: "mailingZip",
+
+  // Site / property address
+  "site street 1": "siteStreet1",
+  "site address": "siteStreet1",
+  "property address": "siteStreet1",
+  "situs address": "siteStreet1",
+  "property street": "siteStreet1",
+  "site line 1": "siteStreet1",
+
+  "site street 2": "siteStreet2",
+  "site address line 2": "siteStreet2",
+
+  "site city": "siteCity",
+  "property city": "siteCity",
+
+  "site state": "siteState",
+  "property state": "siteState",
+
+  "site zip": "siteZip",
+  "property zip": "siteZip",
+
+  // Alternate emails
+  "email 2": "email2",
+  email2: "email2",
+  "alternate email": "email2",
+  "secondary email": "email2",
+  "second email": "email2",
+  "alt email": "email2",
+
+  "email 3": "email3",
+  email3: "email3",
+
+  "email 4": "email4",
+  email4: "email4",
 };
 
 /**

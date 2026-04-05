@@ -19,6 +19,20 @@ export type FarmImportMappingTemplateFields = {
   fullName: string | null;
   territory: string | null;
   area: string | null;
+  mailingStreet1: string | null;
+  mailingStreet2: string | null;
+  mailingCity: string | null;
+  mailingState: string | null;
+  mailingZip: string | null;
+  siteStreet1: string | null;
+  siteStreet2: string | null;
+  siteCity: string | null;
+  siteState: string | null;
+  siteZip: string | null;
+  email2: string | null;
+  email3: string | null;
+  email4: string | null;
+  phone2: string | null;
 };
 
 export type FarmImportMappingTemplateRecord = {
@@ -30,7 +44,8 @@ export type FarmImportMappingTemplateRecord = {
   updatedAt: string;
 };
 
-const EMPTY_MAPPING: FarmImportMappingTemplateFields = {
+/** Default column mapping (all unmapped). Safe to spread for mutable state. */
+export const EMPTY_FARM_IMPORT_MAPPING_FIELDS: FarmImportMappingTemplateFields = {
   email: null,
   phone: null,
   firstName: null,
@@ -38,7 +53,23 @@ const EMPTY_MAPPING: FarmImportMappingTemplateFields = {
   fullName: null,
   territory: null,
   area: null,
+  mailingStreet1: null,
+  mailingStreet2: null,
+  mailingCity: null,
+  mailingState: null,
+  mailingZip: null,
+  siteStreet1: null,
+  siteStreet2: null,
+  siteCity: null,
+  siteState: null,
+  siteZip: null,
+  email2: null,
+  email3: null,
+  email4: null,
+  phone2: null,
 };
+
+const EMPTY_MAPPING = EMPTY_FARM_IMPORT_MAPPING_FIELDS;
 
 const MAPPING_KEYS: (keyof FarmImportMappingTemplateFields)[] = [
   "email",
@@ -48,6 +79,20 @@ const MAPPING_KEYS: (keyof FarmImportMappingTemplateFields)[] = [
   "fullName",
   "territory",
   "area",
+  "mailingStreet1",
+  "mailingStreet2",
+  "mailingCity",
+  "mailingState",
+  "mailingZip",
+  "siteStreet1",
+  "siteStreet2",
+  "siteCity",
+  "siteState",
+  "siteZip",
+  "email2",
+  "email3",
+  "email4",
+  "phone2",
 ];
 
 function isRecord(v: unknown): v is Record<string, unknown> {

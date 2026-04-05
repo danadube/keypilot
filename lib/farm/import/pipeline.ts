@@ -16,6 +16,20 @@ type PreparedImportRow = {
   territoryName: string | null;
   areaName: string | null;
   identityKey: string | null;
+  mailingStreet1: string | null;
+  mailingStreet2: string | null;
+  mailingCity: string | null;
+  mailingState: string | null;
+  mailingZip: string | null;
+  siteStreet1: string | null;
+  siteStreet2: string | null;
+  siteCity: string | null;
+  siteState: string | null;
+  siteZip: string | null;
+  email2: string | null;
+  email3: string | null;
+  email4: string | null;
+  phone2: string | null;
 };
 
 type ExistingTerritory = { id: string; name: string; deletedAt: Date | null };
@@ -30,7 +44,11 @@ type ExistingArea = {
 type ExistingContact = {
   id: string;
   email: string | null;
+  email2: string | null;
+  email3: string | null;
+  email4: string | null;
   phone: string | null;
+  phone2: string | null;
   firstName: string | null;
   lastName: string | null;
   deletedAt: Date | null;
@@ -216,6 +234,34 @@ export async function previewFarmImport(
   return { rows, summary: summarizePreview(rows, contacts) };
 }
 
+function contactImportCreateAugment(
+  prep: PreparedImportRow | undefined
+): Partial<Prisma.ContactUncheckedCreateInput> {
+  if (!prep) return {};
+  const out: Partial<Prisma.ContactUncheckedCreateInput> = {};
+  if (prep.mailingStreet1) out.mailingStreet1 = prep.mailingStreet1;
+  if (prep.mailingStreet2) out.mailingStreet2 = prep.mailingStreet2;
+  if (prep.mailingCity) out.mailingCity = prep.mailingCity;
+  if (prep.mailingState) out.mailingState = prep.mailingState;
+  if (prep.mailingZip) out.mailingZip = prep.mailingZip;
+  if (prep.siteStreet1) out.siteStreet1 = prep.siteStreet1;
+  if (prep.siteStreet2) out.siteStreet2 = prep.siteStreet2;
+  if (prep.siteCity) out.siteCity = prep.siteCity;
+  if (prep.siteState) out.siteState = prep.siteState;
+  if (prep.siteZip) out.siteZip = prep.siteZip;
+  if (prep.email2) out.email2 = prep.email2;
+  if (prep.email3) out.email3 = prep.email3;
+  if (prep.email4) out.email4 = prep.email4;
+  if (prep.phone2) out.phone2 = prep.phone2;
+  return out;
+}
+
+function contactImportUpdateAugment(
+  prep: PreparedImportRow | undefined
+): Prisma.ContactUpdateInput {
+  return contactImportCreateAugment(prep) as Prisma.ContactUpdateInput;
+}
+
 export async function applyFarmImport(
   db: PrismaClient | Prisma.TransactionClient,
   userId: string,
@@ -227,6 +273,12 @@ export async function applyFarmImport(
   }
 ): Promise<{ summary: FarmImportSummary; rows: FarmImportPreviewRow[] }> {
   const preview = await previewFarmImport(db, userId, input);
+  const prepByRow = new Map(
+    prepareRows(input.rows, input.mapping, {
+      defaultTerritoryName: input.defaultTerritoryName,
+      defaultAreaName: input.defaultAreaName,
+    }).map((p) => [p.rowNumber, p])
+  );
   const actionableRows = preview.rows.filter((row) => row.status !== "skipped");
   if (actionableRows.length === 0) {
     return preview;
@@ -308,6 +360,7 @@ export async function applyFarmImport(
     }
 
     let contact: ExistingContact | null = null;
+    let contactJustCreated = false;
     if (row.matchedContactId) {
       contact = contactCache.get(row.matchedContactId) ?? null;
       if (!contact) {
@@ -326,8 +379,10 @@ export async function applyFarmImport(
       if (!userId) {
         throw new Error("Farm import apply requires a user id for new contacts.");
       }
+      const prepRow = prepByRow.get(row.rowNumber);
       const created = await db.contact.create({
         data: {
+          ...contactImportCreateAugment(prepRow),
           firstName: row.firstName?.trim() || "Unknown",
           lastName: row.lastName?.trim() || "",
           email: row.email,
@@ -340,6 +395,7 @@ export async function applyFarmImport(
       contact = created;
       contactCache.set(created.id, created);
       summary.createdContacts += 1;
+      contactJustCreated = true;
     } else if (contact.deletedAt) {
       const reactivated = await db.contact.update({
         where: { id: contact.id },
@@ -389,6 +445,15 @@ export async function applyFarmImport(
     } else {
       summary.skippedRows += 1;
     }
+
+    const prepForPatch = prepByRow.get(row.rowNumber);
+    const importPatch = contactImportUpdateAugment(prepForPatch);
+    if (!contactJustCreated && Object.keys(importPatch).length > 0) {
+      await db.contact.update({
+        where: { id: contact.id },
+        data: importPatch,
+      });
+    }
   }
 
   return { rows: preview.rows, summary };
@@ -419,7 +484,11 @@ function contactScopeForUser(userId: string): Prisma.ContactWhereInput {
 const contactSelect = {
   id: true,
   email: true,
+  email2: true,
+  email3: true,
+  email4: true,
   phone: true,
+  phone2: true,
   firstName: true,
   lastName: true,
   deletedAt: true,
@@ -451,6 +520,20 @@ function prepareRows(
       territoryName,
       areaName,
       identityKey,
+      mailingStreet1: cleanText(getMapped(raw, mapping.mailingStreet1)),
+      mailingStreet2: cleanText(getMapped(raw, mapping.mailingStreet2)),
+      mailingCity: cleanText(getMapped(raw, mapping.mailingCity)),
+      mailingState: cleanText(getMapped(raw, mapping.mailingState)),
+      mailingZip: cleanText(getMapped(raw, mapping.mailingZip)),
+      siteStreet1: cleanText(getMapped(raw, mapping.siteStreet1)),
+      siteStreet2: cleanText(getMapped(raw, mapping.siteStreet2)),
+      siteCity: cleanText(getMapped(raw, mapping.siteCity)),
+      siteState: cleanText(getMapped(raw, mapping.siteState)),
+      siteZip: cleanText(getMapped(raw, mapping.siteZip)),
+      email2: normalizeEmail(getMapped(raw, mapping.email2)),
+      email3: normalizeEmail(getMapped(raw, mapping.email3)),
+      email4: normalizeEmail(getMapped(raw, mapping.email4)),
+      phone2: normalizePhone(getMapped(raw, mapping.phone2)),
     };
   });
 }
@@ -465,8 +548,12 @@ function collectKeys(rows: PreparedImportRow[]) {
   const phones = new Set<string>();
   const namePairs = new Set<string>();
   for (const row of rows) {
-    if (row.email) emails.add(row.email);
-    if (row.phone) phones.add(row.phone);
+    for (const em of [row.email, row.email2, row.email3, row.email4]) {
+      if (em) emails.add(em);
+    }
+    for (const ph of [row.phone, row.phone2]) {
+      if (ph) phones.add(ph);
+    }
     if (row.firstName && row.lastName) {
       namePairs.add(`${normalizeNameKey(row.firstName)}|${normalizeNameKey(row.lastName)}`);
     }
@@ -487,10 +574,14 @@ function buildContactLookup(contacts: ExistingContact[]) {
   const byPhone = new Map<string, ExistingContact>();
   const byName = new Map<string, ExistingContact[]>();
   for (const contact of contacts) {
-    const email = normalizeEmail(contact.email);
-    if (email && !byEmail.has(email)) byEmail.set(email, contact);
-    const phone = normalizePhone(contact.phone);
-    if (phone && !byPhone.has(phone)) byPhone.set(phone, contact);
+    for (const rawEm of [contact.email, contact.email2, contact.email3, contact.email4]) {
+      const email = normalizeEmail(rawEm);
+      if (email && !byEmail.has(email)) byEmail.set(email, contact);
+    }
+    for (const rawPh of [contact.phone, contact.phone2]) {
+      const phone = normalizePhone(rawPh);
+      if (phone && !byPhone.has(phone)) byPhone.set(phone, contact);
+    }
     if (contact.firstName && contact.lastName) {
       const key = `${normalizeNameKey(contact.firstName)}|${normalizeNameKey(contact.lastName)}`;
       byName.set(key, (byName.get(key) ?? []).concat(contact));
@@ -522,13 +613,17 @@ function matchContact(
   row: PreparedImportRow,
   lookup: ReturnType<typeof buildContactLookup>
 ): { contact: ExistingContact | null; by: "email" | "phone" | "name" | null } {
-  if (row.email) {
-    const byEmail = lookup.byEmail.get(row.email);
-    if (byEmail) return { contact: byEmail, by: "email" };
+  for (const em of [row.email, row.email2, row.email3, row.email4]) {
+    if (em) {
+      const byEmail = lookup.byEmail.get(em);
+      if (byEmail) return { contact: byEmail, by: "email" };
+    }
   }
-  if (row.phone) {
-    const byPhone = lookup.byPhone.get(row.phone);
-    if (byPhone) return { contact: byPhone, by: "phone" };
+  for (const ph of [row.phone, row.phone2]) {
+    if (ph) {
+      const byPhone = lookup.byPhone.get(ph);
+      if (byPhone) return { contact: byPhone, by: "phone" };
+    }
   }
   if (row.firstName && row.lastName) {
     const key = `${normalizeNameKey(row.firstName)}|${normalizeNameKey(row.lastName)}`;

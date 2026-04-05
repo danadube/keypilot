@@ -140,6 +140,16 @@ model Contact {
   mailingCity        String?
   mailingState       String?
   mailingZip         String?
+  /** Property / site (situs) address for farming; distinct from mailing. */
+  siteStreet1        String?
+  siteStreet2        String?
+  siteCity           String?
+  siteState          String?
+  siteZip            String?
+  email2             String?
+  email3             String?
+  email4             String?
+  phone2             String?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   deletedAt          DateTime?
@@ -156,7 +166,9 @@ model Contact {
   farmMemberships   ContactFarmMembership[]
 
   @@index([email])
+  @@index([email2])
   @@index([phone])
+  @@index([phone2])
   @@index([source, createdAt, deletedAt])
   @@index([status])
   @@index([assignedToUserId])

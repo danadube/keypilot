@@ -27,7 +27,7 @@ describe("buildImportMappingFromHeaders", () => {
     const headers = ["E-mail", "Mobile", "FName", "LNAME", "Territory", "Farm Area"];
     const { mapping, smartMappedFieldCount } = buildImportMappingFromHeaders(headers);
     expect(mapping.email).toBe("E-mail");
-    expect(mapping.phone).toBe("Mobile");
+    expect(mapping.phone2).toBe("Mobile");
     expect(mapping.firstName).toBe("FName");
     expect(mapping.lastName).toBe("LNAME");
     expect(mapping.territory).toBe("Territory");

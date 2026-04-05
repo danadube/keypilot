@@ -54,11 +54,26 @@ const optionalTrimmedNullable = z.preprocess(
   z.union([z.null(), z.string()]).optional()
 );
 
+const optionalEmailTrimmed = z.preprocess(
+  (v) => {
+    if (v === undefined) return undefined;
+    if (v === null) return null;
+    if (typeof v !== "string") return v;
+    const t = v.trim();
+    return t === "" ? null : t.toLowerCase();
+  },
+  z.union([z.null(), z.string().email("Enter a valid email")]).optional()
+);
+
 export const UpdateContactSchema = z.object({
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).optional(),
   email: z.string().email().optional().nullable(),
   phone: z.string().optional().nullable(),
+  email2: optionalEmailTrimmed,
+  email3: optionalEmailTrimmed,
+  email4: optionalEmailTrimmed,
+  phone2: optionalTrimmedNullable,
   hasAgent: z.boolean().optional().nullable(),
   timeline: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
@@ -69,6 +84,11 @@ export const UpdateContactSchema = z.object({
   mailingCity: optionalTrimmedNullable,
   mailingState: optionalTrimmedNullable,
   mailingZip: optionalTrimmedNullable,
+  siteStreet1: optionalTrimmedNullable,
+  siteStreet2: optionalTrimmedNullable,
+  siteCity: optionalTrimmedNullable,
+  siteState: optionalTrimmedNullable,
+  siteZip: optionalTrimmedNullable,
 });
 
 export type UpdateContactInput = z.infer<typeof UpdateContactSchema>;

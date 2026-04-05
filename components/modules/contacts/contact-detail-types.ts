@@ -8,6 +8,10 @@ export type ContactDetailContact = {
   lastName: string;
   email: string | null;
   phone: string | null;
+  email2?: string | null;
+  email3?: string | null;
+  email4?: string | null;
+  phone2?: string | null;
   hasAgent: boolean | null;
   timeline: string | null;
   notes: string | null;
@@ -19,6 +23,11 @@ export type ContactDetailContact = {
   mailingCity?: string | null;
   mailingState?: string | null;
   mailingZip?: string | null;
+  siteStreet1?: string | null;
+  siteStreet2?: string | null;
+  siteCity?: string | null;
+  siteState?: string | null;
+  siteZip?: string | null;
   contactTags?: { tag: ContactTag }[];
   followUpReminders?: Reminder[];
 };

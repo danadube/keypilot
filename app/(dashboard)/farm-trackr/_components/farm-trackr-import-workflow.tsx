@@ -22,8 +22,10 @@ import {
   addImportMappingTemplate,
   applyTemplateMappingToHeaders,
   deleteImportMappingTemplateById,
+  EMPTY_FARM_IMPORT_MAPPING_FIELDS,
   loadImportMappingTemplates,
   type FarmImportMappingTemplateRecord,
+  type FarmImportMappingTemplateFields,
   renameImportMappingTemplate,
 } from "@/lib/farm/import-mapping-templates-storage";
 import { buildImportMappingFromHeaders } from "@/lib/farm/import-smart-header-mapping";
@@ -34,15 +36,7 @@ export type ImportDataSet = {
   rowCount: number;
 };
 
-export type ImportMapping = {
-  email: string | null;
-  phone: string | null;
-  firstName: string | null;
-  lastName: string | null;
-  fullName: string | null;
-  territory: string | null;
-  area: string | null;
-};
+export type ImportMapping = FarmImportMappingTemplateFields;
 
 export type ImportPreviewRow = {
   rowNumber: number;
@@ -100,24 +94,30 @@ export type ImportWorkflowState = {
   importBusy: "parse" | "preview" | "apply" | null;
 };
 
-const EMPTY_MAPPING: ImportMapping = {
-  email: null,
-  phone: null,
-  firstName: null,
-  lastName: null,
-  fullName: null,
-  territory: null,
-  area: null,
-};
+const EMPTY_MAPPING: ImportMapping = { ...EMPTY_FARM_IMPORT_MAPPING_FIELDS };
 
 const MAPPING_FIELDS: { key: keyof ImportMapping; label: string }[] = [
-  { key: "email", label: "Email (preferred)" },
-  { key: "phone", label: "Phone (secondary)" },
+  { key: "email", label: "Email (primary)" },
+  { key: "phone", label: "Phone (primary)" },
+  { key: "phone2", label: "Phone 2 / mobile" },
+  { key: "email2", label: "Email 2" },
+  { key: "email3", label: "Email 3" },
+  { key: "email4", label: "Email 4" },
   { key: "firstName", label: "First name" },
   { key: "lastName", label: "Last name" },
   { key: "fullName", label: "Full name" },
   { key: "territory", label: "Territory" },
   { key: "area", label: "Farm area" },
+  { key: "mailingStreet1", label: "Mailing street 1" },
+  { key: "mailingStreet2", label: "Mailing street 2" },
+  { key: "mailingCity", label: "Mailing city" },
+  { key: "mailingState", label: "Mailing state" },
+  { key: "mailingZip", label: "Mailing ZIP" },
+  { key: "siteStreet1", label: "Site / property street 1" },
+  { key: "siteStreet2", label: "Site street 2" },
+  { key: "siteCity", label: "Site city" },
+  { key: "siteState", label: "Site state" },
+  { key: "siteZip", label: "Site ZIP" },
 ];
 
 function renderRowStatus(status: ImportPreviewRow["status"]): string {

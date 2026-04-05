@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/kp-dashboard-button-tiers";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronRight, Loader2, Users } from "lucide-react";
+import { formatSiteAddressLine } from "@/lib/contacts/format-site-address";
 import { UI_COPY } from "@/lib/ui-copy";
 
 type MemberRow = {
@@ -19,6 +20,11 @@ type MemberRow = {
     lastName: string;
     email: string | null;
     phone: string | null;
+    siteStreet1: string | null;
+    siteStreet2: string | null;
+    siteCity: string | null;
+    siteState: string | null;
+    siteZip: string | null;
   };
 };
 
@@ -295,7 +301,9 @@ export function FarmAreaMembersBulkPanel({
                       />
                     </th>
                     <th className="px-2 py-1.5">Contact</th>
-                    <th className="px-2 py-1.5">Email / phone</th>
+                    <th className="px-2 py-1.5">Email</th>
+                    <th className="px-2 py-1.5">Phone</th>
+                    <th className="min-w-[10rem] px-2 py-1.5">Site address</th>
                   </tr>
                 </thead>
                 <tbody className="text-kp-on-surface">
@@ -318,8 +326,32 @@ export function FarmAreaMembersBulkPanel({
                           {row.contact.firstName} {row.contact.lastName}
                         </Link>
                       </td>
-                      <td className="px-2 py-1.5 align-top text-kp-on-surface-variant">
-                        {row.contact.email || row.contact.phone || "—"}
+                      <td className="max-w-[10rem] break-words px-2 py-1.5 align-top text-kp-on-surface-variant">
+                        {row.contact.email ? (
+                          <a
+                            href={`mailto:${row.contact.email}`}
+                            className="text-kp-teal hover:underline"
+                          >
+                            {row.contact.email}
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-1.5 align-top text-kp-on-surface-variant">
+                        {row.contact.phone ? (
+                          <a
+                            href={`tel:${row.contact.phone}`}
+                            className="text-kp-teal hover:underline"
+                          >
+                            {row.contact.phone}
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="max-w-[14rem] px-2 py-1.5 align-top text-kp-on-surface-variant">
+                        {formatSiteAddressLine(row.contact) || "—"}
                       </td>
                     </tr>
                   ))}

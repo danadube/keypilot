@@ -10,6 +10,7 @@ import { ContactNotesCard } from "./contact-notes-card";
 import { ContactActivityTimeline } from "./contact-activity-timeline";
 import { ContactFollowUpsPanel } from "./contact-follow-ups-panel";
 import { ContactMailingAddressCard } from "./contact-mailing-address-card";
+import { ContactSiteAddressCard } from "./contact-site-address-card";
 import { ContactFarmMembershipsPanel } from "./contact-farm-memberships-panel";
 import type {
   ContactDetailActivity,
@@ -50,6 +51,12 @@ export function ContactDetailView({ id }: { id: string }) {
   const [mailState, setMailState] = useState("");
   const [mailZip, setMailZip] = useState("");
   const [savingMailing, setSavingMailing] = useState(false);
+  const [siteStreet1, setSiteStreet1] = useState("");
+  const [siteStreet2, setSiteStreet2] = useState("");
+  const [siteCity, setSiteCity] = useState("");
+  const [siteState, setSiteState] = useState("");
+  const [siteZip, setSiteZip] = useState("");
+  const [savingSite, setSavingSite] = useState(false);
   const { hasCrm: hasCrmAccess } = useProductTier();
 
   const refreshActivities = useCallback(() => {
@@ -364,6 +371,11 @@ export function ContactDetailView({ id }: { id: string }) {
     setMailCity(contact.mailingCity ?? "");
     setMailState(contact.mailingState ?? "");
     setMailZip(contact.mailingZip ?? "");
+    setSiteStreet1(contact.siteStreet1 ?? "");
+    setSiteStreet2(contact.siteStreet2 ?? "");
+    setSiteCity(contact.siteCity ?? "");
+    setSiteState(contact.siteState ?? "");
+    setSiteZip(contact.siteZip ?? "");
   }, [contact]);
 
   const saveMailingAddress = useCallback(() => {
@@ -396,6 +408,38 @@ export function ContactDetailView({ id }: { id: string }) {
     mailState,
     mailZip,
     savingMailing,
+  ]);
+
+  const saveSiteAddress = useCallback(() => {
+    if (!contact || savingSite) return;
+    setSavingSite(true);
+    fetch(`/api/v1/contacts/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        siteStreet1: siteStreet1.trim() || null,
+        siteStreet2: siteStreet2.trim() || null,
+        siteCity: siteCity.trim() || null,
+        siteState: siteState.trim() || null,
+        siteZip: siteZip.trim() || null,
+      }),
+    })
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.error) throw new Error(json.error.message);
+        setContact(json.data);
+      })
+      .catch(() => {})
+      .finally(() => setSavingSite(false));
+  }, [
+    contact,
+    id,
+    siteStreet1,
+    siteStreet2,
+    siteCity,
+    siteState,
+    siteZip,
+    savingSite,
   ]);
 
   /** Open schedule panel when linked from Contacts list (`#schedule-follow-up`). */
@@ -499,6 +543,20 @@ export function ContactDetailView({ id }: { id: string }) {
             onStateChange={setMailState}
             onZipChange={setMailZip}
             onSave={saveMailingAddress}
+          />
+          <ContactSiteAddressCard
+            street1={siteStreet1}
+            street2={siteStreet2}
+            city={siteCity}
+            state={siteState}
+            zip={siteZip}
+            saving={savingSite}
+            onStreet1Change={setSiteStreet1}
+            onStreet2Change={setSiteStreet2}
+            onCityChange={setSiteCity}
+            onStateChange={setSiteState}
+            onZipChange={setSiteZip}
+            onSave={saveSiteAddress}
           />
           {hasCrmAccess ? (
             <ContactFarmMembershipsPanel

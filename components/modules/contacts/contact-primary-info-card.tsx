@@ -82,38 +82,62 @@ export function ContactPrimaryInfoCard({
         ) : null}
 
         <div className="space-y-2.5">
-          <InfoRow
-            label="Email"
-            value={
-              contact.email ? (
-                <a
-                  href={`mailto:${contact.email}`}
-                  className="inline-flex items-center gap-1 break-all text-kp-teal hover:underline"
-                >
-                  <Mail className="h-3 w-3 shrink-0" />
-                  {contact.email}
-                </a>
-              ) : (
-                <span className="text-kp-on-surface-variant">—</span>
-              )
-            }
-          />
-          <InfoRow
-            label="Phone"
-            value={
-              contact.phone ? (
-                <a
-                  href={`tel:${contact.phone}`}
-                  className="inline-flex items-center gap-1 text-kp-teal hover:underline"
-                >
-                  <Phone className="h-3 w-3 shrink-0" />
-                  {contact.phone}
-                </a>
-              ) : (
-                <span className="text-kp-on-surface-variant">—</span>
-              )
-            }
-          />
+          {(
+            [
+              ["Email", contact.email],
+              ["Email 2", contact.email2 ?? null],
+              ["Email 3", contact.email3 ?? null],
+              ["Email 4", contact.email4 ?? null],
+            ] as const
+          ).map(([label, value]) => {
+            if (!value && label !== "Email") return null;
+            return (
+              <InfoRow
+                key={label}
+                label={label}
+                value={
+                  value ? (
+                    <a
+                      href={`mailto:${value}`}
+                      className="inline-flex items-center gap-1 break-all text-kp-teal hover:underline"
+                    >
+                      <Mail className="h-3 w-3 shrink-0" />
+                      {value}
+                    </a>
+                  ) : (
+                    <span className="text-kp-on-surface-variant">—</span>
+                  )
+                }
+              />
+            );
+          })}
+          {(
+            [
+              ["Phone", contact.phone],
+              ["Phone 2", contact.phone2 ?? null],
+            ] as const
+          ).map(([label, value]) => {
+            if (!value && label !== "Phone") return null;
+            return (
+              <InfoRow
+                key={label}
+                label={label}
+                value={
+                  value ? (
+                    <a
+                      href={`tel:${value}`}
+                      className="inline-flex items-center gap-1 text-kp-teal hover:underline"
+                    >
+                      <Phone className="h-3 w-3 shrink-0" />
+                      {value}
+                    </a>
+                  ) : (
+                    <span className="text-kp-on-surface-variant">—</span>
+                  )
+                }
+              />
+            );
+          })}
           {contact.hasAgent != null ? (
             <InfoRow
               label="Has agent"
