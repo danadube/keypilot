@@ -66,15 +66,31 @@ const STATUS_LABEL: Record<RoadmapStatus, string> = {
 function statusChipClass(status: RoadmapStatus): string {
   switch (status) {
     case "planned":
-      return "border-slate-500/35 bg-slate-500/[0.12] text-slate-300";
+      return "border-zinc-500/30 bg-zinc-500/[0.10] text-zinc-400";
     case "in_progress":
-      return "border-[color:var(--roadmap-gold)]/45 bg-[color:var(--roadmap-gold)]/12 text-[color:var(--roadmap-gold)]";
+      return "border-[color:var(--roadmap-gold)]/40 bg-[color:var(--roadmap-gold)]/[0.09] text-[color:var(--roadmap-gold)]";
     case "beta":
-      return "border-sky-500/30 bg-sky-500/10 text-sky-200/95";
+      return "border-slate-400/25 bg-slate-500/10 text-slate-300";
     case "live":
-      return "border-emerald-500/35 bg-emerald-500/10 text-emerald-300";
+      return "border-stone-400/30 bg-stone-400/[0.08] text-stone-300";
     default:
       return "";
+  }
+}
+
+/** Lucide stroke color — anchors scan by status without loud chrome. */
+function roadmapIconClass(status: RoadmapStatus): string {
+  switch (status) {
+    case "planned":
+      return "text-zinc-400";
+    case "in_progress":
+      return "text-[color:var(--roadmap-gold)]";
+    case "beta":
+      return "text-slate-300";
+    case "live":
+      return "text-white";
+    default:
+      return "text-white/80";
   }
 }
 
@@ -89,10 +105,13 @@ function RoadmapCard({ item }: { item: RoadmapItemConfig }) {
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-kp-outline/80 bg-kp-surface-high/50 text-[color:var(--roadmap-gold)] transition-colors group-hover:border-[color:var(--roadmap-gold)]/30"
+          className={cn(
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 transition-colors",
+            "group-hover:border-white/[0.14] group-hover:bg-white/[0.07]"
+          )}
           aria-hidden
         >
-          <Icon className="h-5 w-5" strokeWidth={1.75} />
+          <Icon className={cn("h-5 w-5", roadmapIconClass(item.status))} strokeWidth={1.75} />
         </div>
         <div className="flex flex-wrap justify-end gap-1.5">
           <span

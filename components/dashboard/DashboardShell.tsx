@@ -89,7 +89,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       >
         <header
           className={cn(
-            "z-20 flex w-full shrink-0 border-b border-kp-outline bg-kp-surface",
+            "z-20 flex w-full shrink-0 border-b border-kp-outline bg-[var(--brand-sidebar-bg,#0B1A3C)]",
             workspaceShell ? "items-center" : "items-stretch",
             shellTopRowHeightClass(pathname)
           )}
@@ -144,7 +144,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
               )}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5 border-l border-kp-outline bg-kp-surface px-2.5 md:gap-2 md:px-3.5">
+          <div className="flex shrink-0 items-center gap-1.5 border-l border-kp-outline bg-[var(--brand-sidebar-bg,#0B1A3C)] px-2.5 md:gap-2 md:px-3.5">
             <ShowingHQWorkbenchHeaderActions showNewMenu={showHeaderNewMenu} />
           </div>
         </header>
