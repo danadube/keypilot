@@ -113,11 +113,13 @@ function ModuleChildNavList({
   pathname,
   searchParams,
   ariaLabel,
+  onLinkClick,
 }: {
   items: ModuleSidebarItem[];
   pathname: string;
   searchParams: ReadonlyURLSearchParams;
   ariaLabel: string;
+  onLinkClick?: () => void;
 }) {
   if (items.length === 0) return null;
   return (
@@ -132,6 +134,7 @@ function ModuleChildNavList({
           <li key={item.href + item.label}>
             <Link
               href={item.href}
+              onClick={onLinkClick}
               className={cn(
                 "flex items-center gap-2 rounded-md py-1.5 pl-2 pr-2 text-[13px] transition-colors",
                 "text-slate-400 hover:bg-white/5 hover:text-slate-100",
@@ -151,7 +154,11 @@ function ModuleChildNavList({
   );
 }
 
-export function ModuleSidebar() {
+/**
+ * SidebarContents — the full nav tree, reused in both the desktop aside and mobile drawer.
+ * `onLinkClick` is called when any nav link is clicked (mobile: closes the drawer).
+ */
+export function SidebarContents({ onLinkClick }: { onLinkClick?: () => void }) {
   const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
   const activeId = getModuleFromPath(pathname);
@@ -163,14 +170,8 @@ export function ModuleSidebar() {
   const dashboardActive = pathname === "/dashboard" || pathname === "/";
 
   return (
-    <aside
-      className="fixed left-0 top-0 z-10 flex h-screen flex-col border-r border-kp-outline text-slate-100"
-      style={{
-        width: DASHBOARD_SIDEBAR_WIDTH_PX,
-        backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)",
-      }}
-      aria-label="Platform navigation"
-    >
+    <>
+      {/* Logo */}
       <div
         className={cn(
           "flex shrink-0 items-center border-b border-white/[0.08] px-4",
@@ -179,6 +180,7 @@ export function ModuleSidebar() {
       >
         <Link
           href="/dashboard"
+          onClick={onLinkClick}
           className="flex min-w-0 items-center transition-opacity hover:opacity-90"
           aria-label="KeyPilot home"
         >
@@ -192,6 +194,7 @@ export function ModuleSidebar() {
         </Link>
       </div>
 
+      {/* Nav */}
       <nav
         className="min-h-0 flex-1 overflow-y-auto py-3"
         aria-label="Module navigation"
@@ -204,6 +207,7 @@ export function ModuleSidebar() {
             <li>
               <Link
                 href="/dashboard"
+                onClick={onLinkClick}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                   "text-slate-400 hover:bg-white/5 hover:text-white",
@@ -232,6 +236,7 @@ export function ModuleSidebar() {
                   <li key={id}>
                     <Link
                       href={`/upgrade/${id}`}
+                      onClick={onLinkClick}
                       className={cn(
                         "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                         "text-slate-500 hover:bg-white/5 hover:text-slate-400",
@@ -250,6 +255,7 @@ export function ModuleSidebar() {
                 <li key={id} className="space-y-0.5">
                   <Link
                     href={cfg.href}
+                    onClick={onLinkClick}
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                       "text-slate-400 hover:bg-white/5 hover:text-white",
@@ -271,6 +277,7 @@ export function ModuleSidebar() {
                       pathname={pathname}
                       searchParams={searchParams}
                       ariaLabel={`${cfg.name} pages`}
+                      onLinkClick={onLinkClick}
                     />
                   ) : null}
                 </li>
@@ -295,6 +302,7 @@ export function ModuleSidebar() {
                 <li key={orphan.id} className="space-y-0.5">
                   <Link
                     href={orphan.href}
+                    onClick={onLinkClick}
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                       "text-slate-400 hover:bg-white/5 hover:text-white",
@@ -309,6 +317,7 @@ export function ModuleSidebar() {
                     pathname={pathname}
                     searchParams={searchParams}
                     ariaLabel={`${orphan.name} pages`}
+                    onLinkClick={onLinkClick}
                   />
                 </li>
               );
@@ -324,6 +333,7 @@ export function ModuleSidebar() {
             <li>
               <Link
                 href="/task-pilot"
+                onClick={onLinkClick}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                   "text-slate-400 hover:bg-white/5 hover:text-white",
@@ -338,6 +348,7 @@ export function ModuleSidebar() {
             <li>
               <Link
                 href="/showing-hq/activity"
+                onClick={onLinkClick}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                   "text-slate-400 hover:bg-white/5 hover:text-white",
@@ -353,6 +364,7 @@ export function ModuleSidebar() {
             <li>
               <Link
                 href="/insight/performance"
+                onClick={onLinkClick}
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                   "text-slate-400 hover:bg-white/5 hover:text-white",
@@ -368,6 +380,7 @@ export function ModuleSidebar() {
         </div>
       </nav>
 
+      {/* System */}
       <div
         className="shrink-0 border-t border-white/10 px-2 py-2"
         aria-label="System navigation"
@@ -379,6 +392,7 @@ export function ModuleSidebar() {
           <li>
             <Link
               href="/roadmap"
+              onClick={onLinkClick}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                 "text-slate-400 hover:bg-white/5 hover:text-white",
@@ -393,6 +407,7 @@ export function ModuleSidebar() {
           <li className="space-y-0.5">
             <Link
               href="/settings"
+              onClick={onLinkClick}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                 "text-slate-400 hover:bg-white/5 hover:text-white",
@@ -410,6 +425,7 @@ export function ModuleSidebar() {
                 pathname={pathname}
                 searchParams={searchParams}
                 ariaLabel="Settings pages"
+                onLinkClick={onLinkClick}
               />
             ) : null}
           </li>
@@ -428,6 +444,22 @@ export function ModuleSidebar() {
           Request feedback
         </a>
       </footer>
+    </>
+  );
+}
+
+/** Desktop-only fixed sidebar. Hidden on mobile — mobile nav is via MobileDrawer in DashboardShell. */
+export function ModuleSidebar() {
+  return (
+    <aside
+      className="fixed left-0 top-0 z-10 hidden h-screen flex-col border-r border-kp-outline text-slate-100 lg:flex"
+      style={{
+        width: DASHBOARD_SIDEBAR_WIDTH_PX,
+        backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)",
+      }}
+      aria-label="Platform navigation"
+    >
+      <SidebarContents />
     </aside>
   );
 }

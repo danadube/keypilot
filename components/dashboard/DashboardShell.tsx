@@ -2,10 +2,12 @@
 
 import * as React from "react";
 import { usePathname } from "next/navigation";
+import { Menu } from "lucide-react";
 import { ProductTierProvider } from "@/components/ProductTierProvider";
 import {
   DASHBOARD_SIDEBAR_WIDTH_PX,
   ModuleSidebar,
+  SidebarContents,
 } from "@/components/layout/ModuleSidebar";
 import { ShowingHQWorkbenchHeaderActions } from "@/components/dashboard/ShowingHQWorkbenchHeaderActions";
 import { cn } from "@/lib/utils";
@@ -76,6 +78,62 @@ function getPageTitle(pathname: string): string {
   return "KeyPilot";
 }
 
+const MOBILE_DRAWER_TRANSITION_MS = 200;
+
+function MobileDrawer({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [show, setShow] = React.useState(false);
+  const [animate, setAnimate] = React.useState(false);
+
+  React.useEffect(() => {
+    if (open) {
+      setShow(true);
+      const raf = requestAnimationFrame(() => setAnimate(true));
+      return () => cancelAnimationFrame(raf);
+    } else {
+      setAnimate(false);
+      const t = setTimeout(() => setShow(false), MOBILE_DRAWER_TRANSITION_MS);
+      return () => clearTimeout(t);
+    }
+  }, [open]);
+
+  if (!show) return null;
+
+  return (
+    <div className="fixed inset-0 z-40 lg:hidden">
+      {/* Backdrop */}
+      <div
+        className={cn(
+          "absolute inset-0 bg-black/60 transition-opacity duration-200",
+          animate ? "opacity-100" : "opacity-0"
+        )}
+        onClick={onClose}
+        aria-hidden
+      />
+      {/* Drawer panel */}
+      <aside
+        className={cn(
+          "absolute left-0 top-0 flex h-full flex-col border-r border-kp-outline text-slate-100",
+          "transition-transform duration-200",
+          animate ? "translate-x-0" : "-translate-x-full"
+        )}
+        style={{
+          width: DASHBOARD_SIDEBAR_WIDTH_PX,
+          backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)",
+        }}
+        aria-label="Mobile navigation"
+      >
+        <SidebarContents onLinkClick={onClose} />
+      </aside>
+    </div>
+  );
+}
+
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
   const base = (pathname.split("?")[0] ?? "").replace(/\/$/, "") || "/";
@@ -84,15 +142,23 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const showHeaderNewMenu = true;
   const workspaceShell = isWorkspaceContext(pathname);
   const pageTitle = getPageTitle(pathname);
+  const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
+
+  // Close mobile nav on route change
+  React.useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
 
   return (
     <ProductTierProvider>
     <div className="kp-dashboard-app flex h-screen min-h-0 overflow-hidden bg-kp-bg">
+      {/* Desktop fixed sidebar */}
       <ModuleSidebar />
+      {/* Mobile slide-in drawer */}
+      <MobileDrawer open={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
 
       <div
-        className="flex min-h-0 min-w-0 flex-1 flex-col"
-        style={{ marginLeft: DASHBOARD_SIDEBAR_WIDTH_PX }}
+        className="flex min-h-0 min-w-0 flex-1 flex-col lg:ml-[200px]"
       >
         {/* Single scroll region so the header can use sticky top-0 and stay pinned. */}
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
@@ -104,7 +170,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             )}
             style={SHELL_CHROME_BG_STYLE}
           >
-            <div className="flex min-w-0 flex-1 items-center overflow-hidden pl-6 pr-3 md:pl-8 md:pr-4 lg:pl-10">
+            <div className="flex min-w-0 flex-1 items-center overflow-hidden pl-3 pr-3 md:pl-6 md:pr-4 lg:pl-10">
+              {/* Hamburger — mobile only */}
+              <button
+                type="button"
+                onClick={() => setMobileNavOpen(true)}
+                className="mr-3 shrink-0 rounded-md p-1.5 text-slate-400 transition-colors hover:bg-white/5 hover:text-white lg:hidden"
+                aria-label="Open navigation"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
               <div className="min-w-0">
                 {workspaceShell ? (
                   <>
