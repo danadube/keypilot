@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import useSWR from "swr";
+import { apiFetcher } from "@/lib/fetcher";
+import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -112,9 +114,13 @@ function LoadingState() {
 
 export function PropertyDetailView({ id }: { id: string }) {
   const router = useRouter();
-  const [property, setProperty] = useState<Property | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: property, error: loadError, isLoading, mutate: reloadProperty } = useSWR<Property>(
+    id ? `/api/v1/properties/${id}` : null,
+    apiFetcher,
+    { errorRetryCount: 2, errorRetryInterval: 500 }
+  );
+  const loading = isLoading && !property;
+  const error = loadError instanceof Error ? loadError.message : loadError ? String(loadError) : null;
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -161,15 +167,7 @@ export function PropertyDetailView({ id }: { id: string }) {
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      setProperty((p) =>
-        p
-          ? {
-              ...p,
-              ...json.data,
-              usage: p.usage,
-            }
-          : p
-      );
+      await reloadProperty({ ...property!, ...json.data, usage: property!.usage }, false);
       setIsEditing(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Save failed");
@@ -177,21 +175,6 @@ export function PropertyDetailView({ id }: { id: string }) {
       setSaving(false);
     }
   }
-
-  const loadData = useCallback(() => {
-    setError(null);
-    setLoading(true);
-    fetch(`/api/v1/properties/${id}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) setError(json.error.message);
-        else setProperty(json.data);
-      })
-      .catch(() => setError(UI_COPY.errors.load("property")))
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  useEffect(() => { loadData(); }, [loadData]);
 
   const handleArchiveProperty = useCallback(async () => {
     setLifecycleBusy("archive");
@@ -254,8 +237,8 @@ export function PropertyDetailView({ id }: { id: string }) {
   }, [id, property, router]);
 
   const patchFlyer = useCallback((patch: Partial<PropertyFlyerFields>) => {
-    setProperty((p) => (p ? { ...p, ...patch } : p));
-  }, []);
+    void reloadProperty((current) => current ? { ...current, ...patch } : current, false);
+  }, [reloadProperty]);
 
   const handlePhotoUpload = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -269,7 +252,7 @@ export function PropertyDetailView({ id }: { id: string }) {
         .then((res) => res.json())
         .then((json) => {
           if (json.error) throw new Error(json.error.message);
-          setProperty((p) => (p ? { ...p, imageUrl: json.data.imageUrl } : p));
+          void reloadProperty((current) => current ? { ...current, imageUrl: json.data.imageUrl } : current, false);
         })
         .catch((err) =>
           toast.error(err instanceof Error ? err.message : "Photo upload failed")
@@ -295,7 +278,7 @@ export function PropertyDetailView({ id }: { id: string }) {
       .then((res) => res.json())
       .then((json) => {
         if (json.error) throw new Error(json.error.message);
-        setProperty((p) => (p ? { ...p, imageUrl: null } : p));
+        void reloadProperty((current) => current ? { ...current, imageUrl: null } : current, false);
       })
       .catch((err) =>
         toast.error(err instanceof Error ? err.message : "Could not remove photo")
@@ -305,7 +288,7 @@ export function PropertyDetailView({ id }: { id: string }) {
 
   if (loading) return <LoadingState />;
   if (error || !property)
-    return <ErrorMessage message={error || "Not found"} onRetry={loadData} />;
+    return <ErrorMessage message={error || "Not found"} onRetry={() => void reloadProperty()} />;
 
   const hasHeroImage = !!property.imageUrl?.trim();
   const fullAddress = [property.address1, property.address2].filter(Boolean).join(" ");

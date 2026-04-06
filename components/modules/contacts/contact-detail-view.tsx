@@ -1,5 +1,7 @@
 "use client";
 
+import useSWR from "swr";
+import { apiFetcher } from "@/lib/fetcher";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { BrandSkeleton } from "@/components/ui/BrandSkeleton";
@@ -42,20 +44,41 @@ function LoadingState() {
 }
 
 export function ContactDetailView({ id }: { id: string }) {
-  const [contact, setContact] = useState<ContactDetailContact | null>(null);
-  const [activities, setActivities] = useState<ContactDetailActivity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { hasCrm: hasCrmAccess } = useProductTier();
+
+  const { data: contact, error: contactError, isLoading: contactLoading, mutate: reloadContact } = useSWR<ContactDetailContact>(
+    id ? `/api/v1/contacts/${id}` : null,
+    apiFetcher,
+    { errorRetryCount: 2, errorRetryInterval: 500 }
+  );
+  const { data: activities = [], mutate: reloadActivities } = useSWR<ContactDetailActivity[]>(
+    id ? `/api/v1/contacts/${id}/activities` : null,
+    apiFetcher
+  );
+  const { data: me } = useSWR<{ id: string }>(
+    '/api/v1/me',
+    apiFetcher
+  );
+  const { data: farmMemberships = [], mutate: reloadFarmMemberships } = useSWR<FarmMembership[]>(
+    hasCrmAccess && id ? `/api/v1/contacts/${id}/farm-memberships` : null,
+    apiFetcher
+  );
+  const { data: farmAreas = [] } = useSWR<FarmAreaOption[]>(
+    hasCrmAccess ? '/api/v1/farm-areas' : null,
+    apiFetcher
+  );
+
+  const loading = contactLoading && !contact;
+  const error = contactError instanceof Error ? contactError.message : contactError ? String(contactError) : null;
+  const currentUserId = me?.id ?? null;
+
   const [noteBody, setNoteBody] = useState("");
   const [addingNote, setAddingNote] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [tagName, setTagName] = useState("");
   const [addingTag, setAddingTag] = useState(false);
   const [reminderBody, setReminderBody] = useState("");
   const [reminderDue, setReminderDue] = useState("");
   const [addingReminder, setAddingReminder] = useState(false);
-  const [farmAreas, setFarmAreas] = useState<FarmAreaOption[]>([]);
-  const [farmMemberships, setFarmMemberships] = useState<FarmMembership[]>([]);
   const [selectedFarmAreaId, setSelectedFarmAreaId] = useState("");
   const [addingFarmMembership, setAddingFarmMembership] = useState(false);
 
@@ -78,16 +101,10 @@ export function ContactDetailView({ id }: { id: string }) {
   const [siteZip, setSiteZip] = useState("");
   const [savingSite, setSavingSite] = useState(false);
   const [promotingFromFarm, setPromotingFromFarm] = useState(false);
-  const { hasCrm: hasCrmAccess } = useProductTier();
 
   const refreshActivities = useCallback(() => {
-    return fetch(`/api/v1/contacts/${id}/activities`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (!json.error) setActivities(json.data || []);
-      })
-      .catch(() => {});
-  }, [id]);
+    return reloadActivities();
+  }, [reloadActivities]);
 
   const assignToMe = useCallback(() => {
     if (!contact || !currentUserId) return;
@@ -98,10 +115,10 @@ export function ContactDetailView({ id }: { id: string }) {
     })
       .then((res) => res.json())
       .then((json) => {
-        if (!json.error) setContact(json.data);
+        if (!json.error) void reloadContact(json.data, false);
       })
       .catch(() => {});
-  }, [id, contact, currentUserId]);
+  }, [id, contact, currentUserId, reloadContact]);
 
   const unassign = useCallback(() => {
     if (!contact) return;
@@ -112,10 +129,10 @@ export function ContactDetailView({ id }: { id: string }) {
     })
       .then((res) => res.json())
       .then((json) => {
-        if (!json.error) setContact(json.data);
+        if (!json.error) void reloadContact(json.data, false);
       })
       .catch(() => {});
-  }, [id, contact]);
+  }, [id, contact, reloadContact]);
 
   const updateStatus = useCallback(
     (status: string) => {
@@ -127,11 +144,11 @@ export function ContactDetailView({ id }: { id: string }) {
       })
         .then((res) => res.json())
         .then((json) => {
-          if (!json.error) setContact(json.data);
+          if (!json.error) void reloadContact(json.data, false);
         })
         .catch(() => {});
     },
-    [id, contact]
+    [id, contact, reloadContact]
   );
 
   const addTag = useCallback(() => {
@@ -146,26 +163,26 @@ export function ContactDetailView({ id }: { id: string }) {
       .then((res) => res.json())
       .then((json) => {
         if (json.error) throw new Error(json.error.message);
-        setContact((prev) =>
+        void reloadContact((prev) =>
           prev
             ? {
                 ...prev,
                 contactTags: [...(prev.contactTags || []), { tag: json.data }],
               }
-            : null
-        );
+            : prev
+        , false);
         setTagName("");
       })
       .catch(() => {})
       .finally(() => setAddingTag(false));
-  }, [id, tagName, addingTag]);
+  }, [id, tagName, addingTag, reloadContact]);
 
   const removeTag = useCallback((tagId: string) => {
     fetch(`/api/v1/contacts/${id}/tags/${tagId}`, { method: "DELETE" })
       .then((res) => res.json())
       .then((json) => {
         if (!json.error)
-          setContact((prev) =>
+          void reloadContact((prev) =>
             prev
               ? {
                   ...prev,
@@ -173,11 +190,11 @@ export function ContactDetailView({ id }: { id: string }) {
                     (ct) => ct.tag.id !== tagId
                   ),
                 }
-              : null
-          );
+              : prev
+          , false);
       })
       .catch(() => {});
-  }, [id]);
+  }, [id, reloadContact]);
 
   const addReminder = useCallback(() => {
     const body = reminderBody.trim();
@@ -192,8 +209,8 @@ export function ContactDetailView({ id }: { id: string }) {
       .then((res) => res.json())
       .then((json) => {
         if (json.error) throw new Error(json.error.message);
-        setContact((prev) => {
-          if (!prev) return null;
+        void reloadContact((prev) => {
+          if (!prev) return prev;
           const merged = [
             ...(prev.followUpReminders || []),
             json.data,
@@ -202,13 +219,13 @@ export function ContactDetailView({ id }: { id: string }) {
               new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()
           );
           return { ...prev, followUpReminders: merged };
-        });
+        }, false);
         setReminderBody("");
         setReminderDue("");
       })
       .catch(() => {})
       .finally(() => setAddingReminder(false));
-  }, [id, reminderBody, reminderDue, addingReminder]);
+  }, [id, reminderBody, reminderDue, addingReminder, reloadContact]);
 
   const addFarmMembership = useCallback(() => {
     if (!selectedFarmAreaId || addingFarmMembership) return;
@@ -222,21 +239,21 @@ export function ContactDetailView({ id }: { id: string }) {
       .then((json) => {
         if (json.error) throw new Error(json.error.message);
         const created = json.data as FarmMembership;
-        setFarmMemberships((prev) => {
-          const withoutExisting = prev.filter((m) => m.id !== created.id);
+        void reloadFarmMemberships((prev) => {
+          const withoutExisting = (prev ?? []).filter((m) => m.id !== created.id);
           return [...withoutExisting, created].sort((a, b) =>
             `${a.farmArea.territory.name} ${a.farmArea.name}`.localeCompare(
               `${b.farmArea.territory.name} ${b.farmArea.name}`
             )
           );
-        });
+        }, false);
         setSelectedFarmAreaId("");
       })
       .catch((err) =>
         toast.error(err instanceof Error ? err.message : "Failed to add membership")
       )
       .finally(() => setAddingFarmMembership(false));
-  }, [id, selectedFarmAreaId, addingFarmMembership]);
+  }, [id, selectedFarmAreaId, addingFarmMembership, reloadFarmMemberships]);
 
   const archiveFarmMembership = useCallback(
     (membershipId: string) => {
@@ -246,13 +263,13 @@ export function ContactDetailView({ id }: { id: string }) {
         .then((res) => res.json())
         .then((json) => {
           if (json.error) throw new Error(json.error.message);
-          setFarmMemberships((prev) => prev.filter((m) => m.id !== membershipId));
+          void reloadFarmMemberships((prev) => (prev ?? []).filter((m) => m.id !== membershipId), false);
         })
         .catch((err) =>
           toast.error(err instanceof Error ? err.message : "Failed to archive membership")
         );
     },
-    [id]
+    [id, reloadFarmMemberships]
   );
 
   const updateReminderStatus = useCallback(
@@ -266,7 +283,7 @@ export function ContactDetailView({ id }: { id: string }) {
         .then((res) => res.json())
         .then((json) => {
           if (!json.error) {
-            setContact((prev) =>
+            void reloadContact((prev) =>
               prev
                 ? {
                     ...prev,
@@ -274,15 +291,15 @@ export function ContactDetailView({ id }: { id: string }) {
                       (r) => r.id !== reminderId
                     ),
                   }
-                : null
-            );
+                : prev
+            , false);
             void refreshActivities();
           }
         })
         .catch(() => {})
         .finally(() => setPatchingReminderId(null));
     },
-    [refreshActivities]
+    [refreshActivities, reloadContact]
   );
 
   const logCommunication = useCallback(() => {
@@ -323,57 +340,6 @@ export function ContactDetailView({ id }: { id: string }) {
       .finally(() => setAddingNote(false));
   }, [id, noteBody, addingNote, refreshActivities]);
 
-  const loadData = useCallback(() => {
-    setError(null);
-    setLoading(true);
-    const baseRequests = [
-      fetch(`/api/v1/contacts/${id}`),
-      fetch(`/api/v1/contacts/${id}/activities`),
-      fetch("/api/v1/me"),
-    ];
-    const crmRequests = hasCrmAccess
-      ? [
-          fetch(`/api/v1/contacts/${id}/farm-memberships`),
-          fetch("/api/v1/farm-areas"),
-        ]
-      : [];
-
-    Promise.all([...baseRequests, ...crmRequests])
-      .then(async (responses) => {
-        const [cRes, aRes, meRes, membershipsRes, farmAreasRes] = responses;
-        const cJson = await cRes.json();
-        const aJson = await aRes.json();
-        if (cJson.error) throw new Error(cJson.error.message);
-        setContact(cJson.data);
-        setActivities(aJson.data || []);
-        if (hasCrmAccess && membershipsRes && farmAreasRes) {
-          const membershipsJson = await membershipsRes.json();
-          const farmAreasJson = await farmAreasRes.json();
-          if (membershipsJson.error) {
-            throw new Error(membershipsJson.error.message);
-          }
-          if (farmAreasJson.error) {
-            throw new Error(farmAreasJson.error.message);
-          }
-          setFarmMemberships(membershipsJson.data || []);
-          setFarmAreas(farmAreasJson.data || []);
-        } else {
-          setFarmMemberships([]);
-          setFarmAreas([]);
-        }
-        try {
-          const meJson = await meRes.json();
-          if (meJson.data?.id) setCurrentUserId(meJson.data.id);
-        } catch {
-          // optional
-        }
-      })
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : "Failed")
-      )
-      .finally(() => setLoading(false));
-  }, [id, hasCrmAccess]);
-
   const promoteFromFarmToLead = useCallback(() => {
     if (!hasCrmAccess) return;
     if (!confirm("Promote this contact from Farm to Lead?")) return;
@@ -391,22 +357,13 @@ export function ContactDetailView({ id }: { id: string }) {
           toast.error("No change — contact is not in Farm stage.");
           return;
         }
-        return fetch(`/api/v1/contacts/${id}`)
-          .then((r) => r.json())
-          .then((cj) => {
-            if (cj.error) throw new Error(cj.error.message);
-            setContact(cj.data);
-          });
+        return reloadContact();
       })
       .catch((err) =>
         toast.error(err instanceof Error ? err.message : "Promote failed")
       )
       .finally(() => setPromotingFromFarm(false));
-  }, [hasCrmAccess, id]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  }, [hasCrmAccess, id, reloadContact]);
 
   useEffect(() => {
     if (!contact) return;
@@ -439,7 +396,7 @@ export function ContactDetailView({ id }: { id: string }) {
       .then((res) => res.json())
       .then((json) => {
         if (json.error) throw new Error(json.error.message);
-        setContact(json.data);
+        void reloadContact(json.data, false);
       })
       .catch(() => {})
       .finally(() => setSavingMailing(false));
@@ -452,6 +409,7 @@ export function ContactDetailView({ id }: { id: string }) {
     mailState,
     mailZip,
     savingMailing,
+    reloadContact,
   ]);
 
   const saveSiteAddress = useCallback(() => {
@@ -471,7 +429,7 @@ export function ContactDetailView({ id }: { id: string }) {
       .then((res) => res.json())
       .then((json) => {
         if (json.error) throw new Error(json.error.message);
-        setContact(json.data);
+        void reloadContact(json.data, false);
       })
       .catch(() => {})
       .finally(() => setSavingSite(false));
@@ -484,6 +442,7 @@ export function ContactDetailView({ id }: { id: string }) {
     siteState,
     siteZip,
     savingSite,
+    reloadContact,
   ]);
 
   /** Open schedule panel when linked from Contacts list (`#schedule-follow-up`). */
@@ -513,7 +472,7 @@ export function ContactDetailView({ id }: { id: string }) {
 
   if (loading) return <LoadingState />;
   if (error || !contact)
-    return <ErrorMessage message={error || "Not found"} onRetry={loadData} />;
+    return <ErrorMessage message={error || "Not found"} onRetry={() => void reloadContact()} />;
 
   const fullName = [contact.firstName, contact.lastName]
     .filter(Boolean)

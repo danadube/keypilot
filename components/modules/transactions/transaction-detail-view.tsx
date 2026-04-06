@@ -1,7 +1,9 @@
 "use client";
 
+import useSWR from "swr";
+import { apiFetcher } from "@/lib/fetcher";
 import type { ComponentProps } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -24,7 +26,6 @@ import {
   getTransactionSetupGaps,
   setupGapLabel,
 } from "./transactions-shared";
-import { UI_COPY } from "@/lib/ui-copy";
 import { toast } from "sonner";
 import { BrandSkeleton } from "@/components/ui/BrandSkeleton";
 
@@ -263,9 +264,19 @@ function LoadingState() {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function TransactionDetailView({ transactionId }: { transactionId: string }) {
-  const [txn, setTxn] = useState<TransactionDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: txn, error: loadError, isLoading, mutate: reloadTxn } = useSWR<TransactionDetail>(
+    transactionId ? `/api/v1/transactions/${transactionId}` : null,
+    apiFetcher,
+    { errorRetryCount: 2, errorRetryInterval: 500 }
+  );
+  const loading = isLoading && !txn;
+  const error = loadError instanceof Error ? loadError.message : loadError ? String(loadError) : null;
+
+  const { data: linkedDeals, isLoading: dealCandidatesLoading } = useSWR<DealCandidateRow[]>(
+    txn && !txn.dealId && txn.property?.id ? `/api/v1/deals?propertyId=${encodeURIComponent(txn.property.id)}` : null,
+    apiFetcher
+  );
+  const dealCandidates = linkedDeals ?? [];
 
   const [status, setStatus] = useState<TxStatus>("PENDING");
   const [salePriceInput, setSalePriceInput] = useState("");
@@ -289,8 +300,6 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
   const [editNotes, setEditNotes] = useState("");
   const [editSaving, setEditSaving] = useState(false);
 
-  const [dealCandidates, setDealCandidates] = useState<DealCandidateRow[]>([]);
-  const [dealCandidatesLoading, setDealCandidatesLoading] = useState(false);
   const [selectedDealId, setSelectedDealId] = useState("");
   const [dealLinkError, setDealLinkError] = useState<string | null>(null);
   const [dealLinkBusy, setDealLinkBusy] = useState(false);
@@ -311,59 +320,16 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     [txn]
   );
 
-  const load = useCallback(() => {
-    setError(null);
-    setLoading(true);
-    fetch(`/api/v1/transactions/${transactionId}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) {
-          setError(json.error.message ?? UI_COPY.errors.load("transaction"));
-          setTxn(null);
-        } else {
-          const t: TransactionDetail = json.data;
-          setTxn(t);
-          setStatus(t.status);
-          setSalePriceInput(salePriceToInput(t.salePrice));
-          setClosingInput(isoToDateInput(t.closingDate));
-          setBrokerageInput(t.brokerageName ?? "");
-          setNotesInput(t.notes ?? "");
-          setDirty(false);
-        }
-      })
-      .catch(() => setError(UI_COPY.errors.load("transaction")))
-      .finally(() => setLoading(false));
-  }, [transactionId]);
-
   useEffect(() => {
-    load();
-  }, [load]);
-
-  useEffect(() => {
-    if (!txn || txn.dealId) {
-      setDealCandidates([]);
-      setSelectedDealId("");
-      return;
-    }
-    let cancelled = false;
-    setDealCandidatesLoading(true);
-    fetch(`/api/v1/deals?propertyId=${encodeURIComponent(txn.property.id)}`)
-      .then((r) => r.json())
-      .then((json) => {
-        if (cancelled) return;
-        if (json.data) setDealCandidates(json.data as DealCandidateRow[]);
-        else setDealCandidates([]);
-      })
-      .catch(() => {
-        if (!cancelled) setDealCandidates([]);
-      })
-      .finally(() => {
-        if (!cancelled) setDealCandidatesLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [transactionId, txn]);
+    if (!txn) return;
+    setStatus(txn.status);
+    setSalePriceInput(salePriceToInput(txn.salePrice));
+    setClosingInput(isoToDateInput(txn.closingDate));
+    setBrokerageInput(txn.brokerageName ?? "");
+    setNotesInput(txn.notes ?? "");
+    setDirty(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [txn?.id]);
 
   useEffect(() => {
     if (!txn) return;
@@ -387,7 +353,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message ?? "Update failed");
-      await load();
+      await reloadTxn();
       setSelectedDealId("");
     } catch (e) {
       setDealLinkError(e instanceof Error ? e.message : "Link update failed");
@@ -427,7 +393,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
       const t: TransactionDetail = json.data;
-      setTxn(t);
+      await reloadTxn(t, false);
       setStatus(t.status);
       setSalePriceInput(salePriceToInput(t.salePrice));
       setClosingInput(isoToDateInput(t.closingDate));
@@ -477,7 +443,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       setNewAmount("");
       setNewPercent("");
       setNewNotes("");
-      await load();
+      await reloadTxn();
     } catch (err) {
       setCommissionError(err instanceof Error ? err.message : "Failed to add");
     } finally {
@@ -537,7 +503,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
       setEditingId(null);
-      await load();
+      await reloadTxn();
     } catch (err) {
       setCommissionError(err instanceof Error ? err.message : "Failed to update");
     } finally {
@@ -555,7 +521,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       );
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      await load();
+      await reloadTxn();
     } catch (err) {
       setCommissionError(err instanceof Error ? err.message : "Failed to delete");
     }
@@ -571,7 +537,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message ?? "Archive failed");
-      await load();
+      await reloadTxn();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Archive failed");
     } finally {
@@ -589,7 +555,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message ?? "Restore failed");
-      await load();
+      await reloadTxn();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Restore failed");
     } finally {
