@@ -259,7 +259,7 @@ export function PropertyDetailView({ id }: { id: string }) {
         )
         .finally(() => setPhotoUploading(false));
     },
-    [id]
+    [id, reloadProperty]
   );
 
   const handleRemovePhoto = useCallback(() => {
@@ -284,7 +284,7 @@ export function PropertyDetailView({ id }: { id: string }) {
         toast.error(err instanceof Error ? err.message : "Could not remove photo")
       )
       .finally(() => setPhotoUploading(false));
-  }, [id]);
+  }, [id, reloadProperty]);
 
   if (loading) return <LoadingState />;
   if (error || !property)

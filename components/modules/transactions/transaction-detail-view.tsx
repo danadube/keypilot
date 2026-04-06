@@ -276,7 +276,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     txn && !txn.dealId && txn.property?.id ? `/api/v1/deals?propertyId=${encodeURIComponent(txn.property.id)}` : null,
     apiFetcher
   );
-  const dealCandidates = linkedDeals ?? [];
+  const dealCandidates = useMemo(() => linkedDeals ?? [], [linkedDeals]);
 
   const [status, setStatus] = useState<TxStatus>("PENDING");
   const [salePriceInput, setSalePriceInput] = useState("");

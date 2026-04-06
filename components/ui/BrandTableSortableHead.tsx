@@ -39,8 +39,15 @@ export function BrandTableSortableHead({
     }
   }
 
+  const ariaSortValue: React.AriaAttributes["aria-sort"] = isActive
+    ? direction === "asc"
+      ? "ascending"
+      : "descending"
+    : "none";
+
   return (
     <th
+      aria-sort={ariaSortValue}
       className={cn(
         "border-b border-kp-outline bg-kp-surface-high text-left font-medium",
         compact
@@ -59,13 +66,6 @@ export function BrandTableSortableHead({
             ? "text-kp-on-surface"
             : "text-kp-on-surface-variant hover:text-kp-on-surface"
         )}
-        aria-sort={
-          isActive
-            ? direction === "asc"
-              ? "ascending"
-              : "descending"
-            : "none"
-        }
       >
         {children}
         {isActive && direction === "asc" ? (

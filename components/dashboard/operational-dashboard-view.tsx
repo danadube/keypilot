@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { useMemo, type ComponentType, type ReactNode } from "react";
+import useSWR from "swr";
+import { apiFetcher } from "@/lib/fetcher";
 import Link from "next/link";
 import {
   Building2,
@@ -205,72 +207,46 @@ function QuickActionLink({ href, children }: { href: string; children: React.Rea
   );
 }
 
+type FarmAreasResponse = { items: FarmAreaRow[]; unavailable: boolean };
+
+async function farmAreasFetcher(url: string): Promise<FarmAreasResponse> {
+  const res = await fetch(url);
+  if (res.status === 403) return { items: [], unavailable: true };
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((json?.error?.message as string) ?? "Failed to load farm areas");
+  return { items: (json.data as FarmAreaRow[]) ?? [], unavailable: false };
+}
+
+type FollowUpsData = { overdue: FollowRow[]; dueToday: FollowRow[] };
+
 export function OperationalDashboardView() {
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [showings, setShowings] = useState<ShowingRow[]>([]);
-  const [overdue, setOverdue] = useState<FollowRow[]>([]);
-  const [dueToday, setDueToday] = useState<FollowRow[]>([]);
-  const [deals, setDeals] = useState<DealRow[]>([]);
-  const [farmAreas, setFarmAreas] = useState<FarmAreaRow[]>([]);
-  const [farmUnavailable, setFarmUnavailable] = useState(false);
+  const { data: stats, isLoading: statsLoading } = useSWR<DashboardStats>(
+    "/api/v1/dashboard/stats",
+    apiFetcher,
+    { errorRetryCount: 2, errorRetryInterval: 500 }
+  );
+  const { data: showings = [], isLoading: showingsLoading } = useSWR<ShowingRow[]>(
+    "/api/v1/showing-hq/showings",
+    apiFetcher
+  );
+  const { data: followData, isLoading: followLoading } = useSWR<FollowUpsData>(
+    "/api/v1/follow-ups",
+    apiFetcher
+  );
+  const { data: deals = [], isLoading: dealsLoading } = useSWR<DealRow[]>(
+    "/api/v1/deals",
+    apiFetcher
+  );
+  const { data: farmData } = useSWR<FarmAreasResponse>(
+    "/api/v1/farm-areas?visibility=active",
+    farmAreasFetcher
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      try {
-        const [statsRes, showRes, followRes, dealsRes, farmRes] = await Promise.all([
-          fetch("/api/v1/dashboard/stats"),
-          fetch("/api/v1/showing-hq/showings"),
-          fetch("/api/v1/follow-ups"),
-          fetch("/api/v1/deals"),
-          fetch("/api/v1/farm-areas?visibility=active"),
-        ]);
-
-        const parse = async <T,>(res: Response): Promise<T | null> => {
-          try {
-            const j = (await res.json()) as { data?: T; error?: unknown };
-            if (!res.ok) return null;
-            return j.data ?? null;
-          } catch {
-            return null;
-          }
-        };
-
-        const statsData = await parse<DashboardStats>(statsRes);
-        const showingsData = await parse<ShowingRow[]>(showRes);
-        const followData = await parse<{ overdue: FollowRow[]; dueToday: FollowRow[] }>(followRes);
-        const dealsData = await parse<DealRow[]>(dealsRes);
-
-        let farms: FarmAreaRow[] = [];
-        let farmBlock = false;
-        if (farmRes.status === 403) {
-          farmBlock = true;
-        } else {
-          const fd = await parse<FarmAreaRow[]>(farmRes);
-          if (fd) farms = fd;
-        }
-
-        if (cancelled) return;
-        if (statsData) setStats(statsData);
-        setShowings(showingsData ?? []);
-        setOverdue(followData?.overdue ?? []);
-        setDueToday(followData?.dueToday ?? []);
-        setDeals(dealsData ?? []);
-        setFarmAreas(farms);
-        setFarmUnavailable(farmBlock);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const loading = statsLoading || showingsLoading || followLoading || dealsLoading;
+  const overdue = useMemo(() => followData?.overdue ?? [], [followData]);
+  const dueToday = useMemo(() => followData?.dueToday ?? [], [followData]);
+  const farmAreas = useMemo(() => farmData?.items ?? [], [farmData]);
+  const farmUnavailable = farmData?.unavailable ?? false;
 
   const now = useMemo(() => new Date(), []);
 
