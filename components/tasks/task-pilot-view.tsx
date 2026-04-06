@@ -1,95 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import useSWR from "swr";
 import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import { apiFetcher } from "@/lib/fetcher";
 import { CheckSquare, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary } from "@/components/ui/kp-dashboard-button-tiers";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
+import { TaskPilotRow, type TaskRowBucket } from "@/components/tasks/task-pilot-row";
 import type { SerializedTask } from "@/lib/tasks/task-serialize";
-
-type TasksPayload = {
-  counts: {
-    openOverdue: number;
-    openDueToday: number;
-    openUpcoming: number;
-    completedShown: number;
-  };
-  overdue: SerializedTask[];
-  dueToday: SerializedTask[];
-  upcoming: SerializedTask[];
-  completed: SerializedTask[];
-};
-
-function formatDueAtLabel(iso: string | null) {
-  if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
-  const datePart = d.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  const h = d.getHours();
-  const m = d.getMinutes();
-  if (h !== 0 || m !== 0) {
-    const timePart = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-    return `${datePart} · ${timePart}`;
-  }
-  return datePart;
-}
-
-function propertyShort(p: NonNullable<SerializedTask["property"]>) {
-  return `${p.address1}, ${p.city}, ${p.state}`.trim();
-}
-
-function TaskRow({
-  task,
-  onToggle,
-  busy,
-}: {
-  task: SerializedTask;
-  onToggle: (id: string, nextCompleted: boolean) => void;
-  busy: boolean;
-}) {
-  const done = task.status === "COMPLETED";
-  const contactLine = task.contact
-    ? `${task.contact.firstName} ${task.contact.lastName}`.trim()
-    : null;
-  const propertyLine = task.property ? propertyShort(task.property) : null;
-  const due = formatDueAtLabel(task.dueAt);
-
-  return (
-    <li className="flex items-start gap-3 rounded-lg border border-kp-outline/80 bg-kp-surface-high/15 px-3 py-2.5">
-      <input
-        type="checkbox"
-        checked={done}
-        disabled={busy}
-        onChange={() => onToggle(task.id, !done)}
-        className="mt-1 h-4 w-4 shrink-0 rounded border-kp-outline text-kp-teal focus:ring-kp-teal/40"
-        aria-label={done ? "Mark incomplete" : "Mark complete"}
-      />
-      <div className="min-w-0 flex-1">
-        <p
-          className={cn(
-            "text-sm font-medium text-kp-on-surface",
-            done && "text-kp-on-surface-muted line-through"
-          )}
-        >
-          {task.title}
-        </p>
-        {(due || contactLine || propertyLine) && (
-          <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-            {[due ? `Due ${due}` : null, contactLine, propertyLine].filter(Boolean).join(" · ")}
-          </p>
-        )}
-      </div>
-    </li>
-  );
-}
+import {
+  optimisticSetDueAt,
+  optimisticSetPriority,
+  optimisticToggleStatus,
+  type TaskPilotPayload,
+} from "@/lib/tasks/task-pilot-payload-mutate";
 
 function Section({
   title,
@@ -98,27 +26,47 @@ function Section({
 }: {
   title: string;
   subtitle?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
-    <section className="space-y-2">
+    <section className="space-y-1.5">
       <div>
-        <h2 className="font-headline text-base font-semibold text-kp-on-surface">{title}</h2>
-        {subtitle ? <p className="text-xs text-kp-on-surface-muted">{subtitle}</p> : null}
+        <h2 className="font-headline text-[15px] font-semibold leading-tight text-kp-on-surface">
+          {title}
+        </h2>
+        {subtitle ? <p className="text-[11px] leading-snug text-kp-on-surface-muted">{subtitle}</p> : null}
       </div>
       {children}
     </section>
   );
 }
 
+async function patchTask(id: string, body: Record<string, unknown>) {
+  const res = await fetch(`/api/v1/tasks/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((json as { error?: { message?: string } }).error?.message ?? "Update failed");
+}
+
 export function TaskPilotView() {
   const searchParams = useSearchParams();
-  const { data, isLoading, mutate } = useSWR<{ data: TasksPayload }>("/api/v1/tasks", apiFetcher, {
+  const { data: payload, isLoading, mutate } = useSWR<TaskPilotPayload>("/api/v1/tasks", apiFetcher, {
     revalidateOnFocus: true,
   });
-  const payload = data?.data;
   const [modalOpen, setModalOpen] = useState(false);
-  const [patchingId, setPatchingId] = useState<string | null>(null);
+  const [patching, setPatching] = useState<Set<string>>(() => new Set());
+
+  const setBusy = useCallback((id: string, on: boolean) => {
+    setPatching((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     if (searchParams.get("new") === "1") {
@@ -126,49 +74,112 @@ export function TaskPilotView() {
     }
   }, [searchParams]);
 
-  const todayCombined = useMemo(() => {
-    if (!payload) return [];
-    return [...payload.overdue, ...payload.dueToday];
-  }, [payload]);
+  const runMutate = useCallback(
+    async (optimistic: (p: TaskPilotPayload) => TaskPilotPayload | null, patch: () => Promise<void>) => {
+      const snapshot = payload;
+      mutate(
+        (curr) => {
+          if (!curr) return curr;
+          const next = optimistic(curr);
+          return next ?? curr;
+        },
+        { revalidate: false }
+      );
+      try {
+        await patch();
+        toast.success("Saved");
+        await mutate();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Couldn't save");
+        await mutate(snapshot, { revalidate: true });
+      }
+    },
+    [payload, mutate]
+  );
 
   const handleToggle = useCallback(
     async (id: string, nextCompleted: boolean) => {
-      setPatchingId(id);
+      const snapshot = payload;
+      mutate(
+        (curr) => {
+          if (!curr) return curr;
+          const next = optimisticToggleStatus(curr, id, nextCompleted);
+          return next ?? curr;
+        },
+        { revalidate: false }
+      );
+      setBusy(id, true);
       try {
-        const res = await fetch(`/api/v1/tasks/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: nextCompleted ? "COMPLETED" : "OPEN",
-          }),
-        });
-        const json = await res.json();
-        if (!res.ok) throw new Error(json.error?.message ?? "Update failed");
+        await patchTask(id, { status: nextCompleted ? "COMPLETED" : "OPEN" });
+        toast.success(nextCompleted ? "Completed" : "Reopened");
         await mutate();
-      } catch {
-        /* toast optional — keep minimal */
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Couldn't update task");
+        await mutate(snapshot, { revalidate: true });
       } finally {
-        setPatchingId(null);
+        setBusy(id, false);
       }
     },
-    [mutate]
+    [payload, mutate, setBusy]
+  );
+
+  const handlePriorityChange = useCallback(
+    async (id: string, priority: SerializedTask["priority"]) => {
+      setBusy(id, true);
+      try {
+        await runMutate(
+          (p) => optimisticSetPriority(p, id, priority),
+          () => patchTask(id, { priority })
+        );
+      } finally {
+        setBusy(id, false);
+      }
+    },
+    [runMutate, setBusy]
+  );
+
+  const handleDueAtSave = useCallback(
+    async (id: string, dueAtIso: string | null) => {
+      setBusy(id, true);
+      try {
+        await runMutate(
+          (p) => optimisticSetDueAt(p, id, dueAtIso),
+          () => patchTask(id, { dueAt: dueAtIso })
+        );
+      } finally {
+        setBusy(id, false);
+      }
+    },
+    [runMutate, setBusy]
+  );
+
+  const todayEmpty = useMemo(() => {
+    if (!payload) return true;
+    return payload.overdue.length === 0 && payload.dueToday.length === 0;
+  }, [payload]);
+
+  const renderRow = (task: SerializedTask, bucket: TaskRowBucket) => (
+    <TaskPilotRow
+      key={task.id}
+      task={task}
+      bucket={bucket}
+      busy={patching.has(task.id)}
+      onToggle={handleToggle}
+      onPriorityChange={handlePriorityChange}
+      onDueAtSave={handleDueAtSave}
+    />
   );
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-kp-on-surface">TaskPilot</h1>
-          <p className="mt-1 text-sm text-kp-on-surface-variant">
-            Your operational tasks — tied to contacts when you need context.
+          <p className="mt-0.5 text-sm leading-snug text-kp-on-surface-variant">
+            Fast checks, due times, and priority — without leaving the list.
           </p>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          className={cn(kpBtnPrimary)}
-          onClick={() => setModalOpen(true)}
-        >
+        <Button type="button" size="sm" className={cn(kpBtnPrimary)} onClick={() => setModalOpen(true)}>
           <CheckSquare className="mr-1.5 h-4 w-4" />
           New task
         </Button>
@@ -179,64 +190,54 @@ export function TaskPilotView() {
       ) : null}
 
       {payload ? (
-        <div className="space-y-8">
-          <Section title="Today" subtitle="Overdue and due today (open tasks)">
-            {todayCombined.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-kp-outline/70 bg-kp-surface-high/10 px-4 py-6 text-center text-sm text-kp-on-surface-muted">
+        <div className="space-y-6">
+          <Section title="Today" subtitle="Overdue first, then due today">
+            {todayEmpty ? (
+              <p className="rounded-md border border-dashed border-kp-outline/60 bg-kp-surface-high/[0.06] px-3 py-4 text-center text-xs text-kp-on-surface-muted">
                 Nothing overdue or due today — you&apos;re clear.
               </p>
             ) : (
-              <ul className="space-y-2">
-                {todayCombined.map((t) => (
-                  <TaskRow
-                    key={t.id}
-                    task={t}
-                    onToggle={handleToggle}
-                    busy={patchingId === t.id}
-                  />
-                ))}
-              </ul>
+              <div className="space-y-3">
+                {payload.overdue.length > 0 ? (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-gold/90">
+                      Overdue ({payload.overdue.length})
+                    </p>
+                    <ul className="space-y-1">{payload.overdue.map((t) => renderRow(t, "overdue"))}</ul>
+                  </div>
+                ) : null}
+                {payload.dueToday.length > 0 ? (
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-teal/90">
+                      Due today ({payload.dueToday.length})
+                    </p>
+                    <ul className="space-y-1">{payload.dueToday.map((t) => renderRow(t, "dueToday"))}</ul>
+                  </div>
+                ) : null}
+              </div>
             )}
           </Section>
 
-          <Section title="Upcoming" subtitle="Later due dates and tasks without a date">
+          <Section title="Upcoming" subtitle="Later dates and tasks without a due time">
             {payload.upcoming.length === 0 ? (
-              <p className="rounded-lg border border-dashed border-kp-outline/70 bg-kp-surface-high/10 px-4 py-6 text-center text-sm text-kp-on-surface-muted">
+              <p className="rounded-md border border-dashed border-kp-outline/60 bg-kp-surface-high/[0.06] px-3 py-4 text-center text-xs text-kp-on-surface-muted">
                 No upcoming tasks.
               </p>
             ) : (
-              <ul className="space-y-2">
-                {payload.upcoming.map((t) => (
-                  <TaskRow
-                    key={t.id}
-                    task={t}
-                    onToggle={handleToggle}
-                    busy={patchingId === t.id}
-                  />
-                ))}
-              </ul>
+              <ul className="space-y-1">{payload.upcoming.map((t) => renderRow(t, "upcoming"))}</ul>
             )}
           </Section>
 
-          <details className="group rounded-xl border border-kp-outline bg-kp-surface-high/10">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 font-headline text-sm font-semibold text-kp-on-surface marker:hidden">
+          <details className="group rounded-lg border border-kp-outline/70 bg-kp-surface-high/[0.06]">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 font-headline text-xs font-semibold text-kp-on-surface-muted marker:hidden hover:text-kp-on-surface-variant">
               <span>Completed ({payload.completed.length})</span>
-              <ChevronDown className="h-4 w-4 shrink-0 text-kp-on-surface-muted transition-transform group-open:rotate-180" />
+              <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70 transition-transform group-open:rotate-180" />
             </summary>
-            <div className="border-t border-kp-outline/80 px-4 py-3">
+            <div className="border-t border-kp-outline/50 px-2 py-2">
               {payload.completed.length === 0 ? (
-                <p className="text-sm text-kp-on-surface-muted">No completed tasks yet.</p>
+                <p className="px-1 py-2 text-xs text-kp-on-surface-muted">No completed tasks yet.</p>
               ) : (
-                <ul className="space-y-2">
-                  {payload.completed.map((t) => (
-                    <TaskRow
-                      key={t.id}
-                      task={t}
-                      onToggle={handleToggle}
-                      busy={patchingId === t.id}
-                    />
-                  ))}
-                </ul>
+                <ul className="space-y-1">{payload.completed.map((t) => renderRow(t, "completed"))}</ul>
               )}
             </div>
           </details>

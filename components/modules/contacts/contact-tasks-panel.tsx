@@ -8,23 +8,15 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
-import type { SerializedTask } from "@/lib/tasks/task-serialize";
+import type { TaskPilotPayload } from "@/lib/tasks/task-pilot-payload-mutate";
 import { useCallback, useState } from "react";
 
-type TasksPayload = {
-  overdue: SerializedTask[];
-  dueToday: SerializedTask[];
-  upcoming: SerializedTask[];
-  completed: SerializedTask[];
-};
-
 export function ContactTasksPanel({ contactId }: { contactId: string }) {
-  const { data, mutate } = useSWR<{ data: TasksPayload }>(
+  const { data: payload, mutate } = useSWR<TaskPilotPayload>(
     `/api/v1/tasks?contactId=${encodeURIComponent(contactId)}`,
     apiFetcher,
     { revalidateOnFocus: true }
   );
-  const payload = data?.data;
   const [modalOpen, setModalOpen] = useState(false);
   const [patchingId, setPatchingId] = useState<string | null>(null);
 

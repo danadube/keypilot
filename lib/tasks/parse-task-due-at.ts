@@ -38,3 +38,13 @@ export function buildDueAtIsoFromDateAndTimeLocal(
   if (Number.isNaN(local.getTime())) return null;
   return local.toISOString();
 }
+
+/** Values for `<input type="date">` and `<input type="time">` from a stored ISO dueAt. */
+export function isoToDueFormValues(iso: string | null): { date: string; time: string } {
+  if (!iso) return { date: "", time: "" };
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return { date: "", time: "" };
+  const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const time = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  return { date, time };
+}

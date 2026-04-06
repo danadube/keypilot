@@ -37,6 +37,7 @@ import {
   type FocusSignals,
 } from "@/lib/dashboard-focus-queue";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
+import type { TaskPilotPayload } from "@/lib/tasks/task-pilot-payload-mutate";
 
 type DashboardStats = {
   propertiesCount: number;
@@ -275,15 +276,6 @@ async function farmAreasFetcher(url: string): Promise<FarmAreasResponse> {
 
 type FollowUpsData = { overdue: FollowRow[]; dueToday: FollowRow[] };
 
-type TasksApiEnvelope = {
-  data: {
-    counts: {
-      openOverdue: number;
-      openDueToday: number;
-    };
-  };
-};
-
 export function OperationalDashboardView() {
   const { data: stats, isLoading: statsLoading } = useSWR<DashboardStats>(
     "/api/v1/dashboard/stats",
@@ -306,7 +298,7 @@ export function OperationalDashboardView() {
     "/api/v1/farm-areas?visibility=active",
     farmAreasFetcher
   );
-  const { data: tasksApi, isLoading: tasksLoading, mutate: mutateTasks } = useSWR<TasksApiEnvelope>(
+  const { data: tasksApi, isLoading: tasksLoading, mutate: mutateTasks } = useSWR<TaskPilotPayload>(
     "/api/v1/tasks",
     apiFetcher,
     { errorRetryCount: 2, errorRetryInterval: 500 }
@@ -351,8 +343,8 @@ export function OperationalDashboardView() {
         ? `${dueTodayFollowUpCount} due today`
         : "Nothing overdue or due today";
 
-  const tasksOverdueCount = tasksApi?.data.counts.openOverdue ?? 0;
-  const tasksDueTodayCount = tasksApi?.data.counts.openDueToday ?? 0;
+  const tasksOverdueCount = tasksApi?.counts.openOverdue ?? 0;
+  const tasksDueTodayCount = tasksApi?.counts.openDueToday ?? 0;
   const tasksDueCount = tasksOverdueCount + tasksDueTodayCount;
   const tasksNextAction = loading
     ? "Loading tasks…"
