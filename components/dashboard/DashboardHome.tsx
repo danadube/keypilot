@@ -12,7 +12,7 @@ import { BrandPageHeader } from "@/components/ui/BrandPageHeader";
 import { BrandStatCard } from "@/components/ui/BrandStatCard";
 import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
 import { BrandSectionHeader } from "@/components/ui/BrandSectionHeader";
-import { PageLoading } from "@/components/shared/PageLoading";
+import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { UI_COPY } from "@/lib/ui-copy";
 
@@ -86,7 +86,7 @@ export function DashboardHome() {
     loadData();
   }, [isLoaded, loadData]);
 
-  if (loading && !stats) return <PageLoading message="Loading dashboard..." />;
+  if (loading && !stats) return <DashboardSkeleton />;
   if (error) {
     const isUserNotFound = error.toLowerCase().includes("user not found");
     return (

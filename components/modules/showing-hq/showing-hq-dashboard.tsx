@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+import { ShowingHQSkeleton } from "@/components/modules/showing-hq/ShowingHQSkeleton";
 import {
   GettingStartedCard,
   buildGettingStartedSteps,
@@ -134,11 +135,7 @@ type DashboardData = {
 const GETTING_STARTED_DISMISSED_KEY = "showinghq-getting-started-dismissed";
 
 function LoadingState() {
-  return (
-    <div className="flex min-h-[400px] items-center justify-center">
-      <Loader2 className="h-5 w-5 animate-spin text-kp-on-surface-variant" />
-    </div>
-  );
+  return <ShowingHQSkeleton />;
 }
 
 function ErrorState({
