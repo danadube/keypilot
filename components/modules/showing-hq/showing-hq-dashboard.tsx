@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import useSWR from "swr";
 import { AlertCircle } from "lucide-react";
+import { apiFetcher } from "@/lib/fetcher";
 import { ShowingHQSkeleton } from "@/components/modules/showing-hq/ShowingHQSkeleton";
 import {
   GettingStartedCard,
@@ -170,9 +172,6 @@ function propLine(p: { address1?: string | null; city?: string; state?: string }
  * ShowingHQ operational workbench — workflow-first, not a marketing home.
  */
 export function ShowingHQDashboardView() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [gettingStartedDismissed, setGettingStartedDismissed] = useState(false);
 
   useEffect(() => {
@@ -190,33 +189,25 @@ export function ShowingHQDashboardView() {
     }
   };
 
-  const refetchDashboard = () =>
-    fetch("/api/v1/showing-hq/dashboard")
-      .then(async (res) => {
-        const json = (await res.json()) as {
-          error?: { message?: string };
-          data?: DashboardData;
-        };
-        if (!res.ok) {
-          setError(json.error?.message ?? `Request failed (${res.status})`);
-          return;
-        }
-        if (json.error?.message) {
-          setError(json.error.message);
-          return;
-        }
-        setError(null);
-        if (json.data) setData(json.data);
-      })
-      .catch(() => setError(UI_COPY.errors.load("dashboard")));
+  const {
+    data,
+    error,
+    isLoading,
+    mutate: refetchDashboard,
+  } = useSWR<DashboardData>(
+    "/api/v1/showing-hq/dashboard",
+    apiFetcher,
+    { errorRetryCount: 2, errorRetryInterval: 500 }
+  );
 
-  useEffect(() => {
-    refetchDashboard().finally(() => setLoading(false));
-  }, []);
-
-  if (loading) return <LoadingState />;
+  if (isLoading && !data) return <LoadingState />;
   if (error)
-    return <ErrorState message={error} onRetry={() => window.location.reload()} />;
+    return (
+      <ErrorState
+        message={error instanceof Error ? error.message : UI_COPY.errors.load("dashboard")}
+        onRetry={() => refetchDashboard()}
+      />
+    );
   if (!data) return <LoadingState />;
 
   const stats = data.stats ?? {
