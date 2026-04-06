@@ -36,6 +36,7 @@ import {
   type FocusPersistedState,
   type FocusSignals,
 } from "@/lib/dashboard-focus-queue";
+import { NewTaskModal } from "@/components/tasks/new-task-modal";
 
 type DashboardStats = {
   propertiesCount: number;
@@ -274,6 +275,15 @@ async function farmAreasFetcher(url: string): Promise<FarmAreasResponse> {
 
 type FollowUpsData = { overdue: FollowRow[]; dueToday: FollowRow[] };
 
+type TasksApiEnvelope = {
+  data: {
+    counts: {
+      openOverdue: number;
+      openDueToday: number;
+    };
+  };
+};
+
 export function OperationalDashboardView() {
   const { data: stats, isLoading: statsLoading } = useSWR<DashboardStats>(
     "/api/v1/dashboard/stats",
@@ -296,8 +306,14 @@ export function OperationalDashboardView() {
     "/api/v1/farm-areas?visibility=active",
     farmAreasFetcher
   );
+  const { data: tasksApi, isLoading: tasksLoading, mutate: mutateTasks } = useSWR<TasksApiEnvelope>(
+    "/api/v1/tasks",
+    apiFetcher,
+    { errorRetryCount: 2, errorRetryInterval: 500 }
+  );
+  const [newTaskModalOpen, setNewTaskModalOpen] = useState(false);
 
-  const loading = statsLoading || showingsLoading || followLoading || dealsLoading;
+  const loading = statsLoading || showingsLoading || followLoading || dealsLoading || tasksLoading;
   const overdue = useMemo(() => followData?.overdue ?? [], [followData]);
   const dueToday = useMemo(() => followData?.dueToday ?? [], [followData]);
   const farmAreas = useMemo(() => farmData?.items ?? [], [farmData]);
@@ -335,15 +351,21 @@ export function OperationalDashboardView() {
         ? `${dueTodayFollowUpCount} due today`
         : "Nothing overdue or due today";
 
-  /** TaskPilot page is placeholder-only; no task API to aggregate yet. */
-  const tasksDueCount = 0;
-  const tasksNextAction =
-    tasksDueCount > 0
-      ? `${tasksDueCount} open in TaskPilot`
-      : "TaskPilot isn’t tracking deadlines yet — follow-ups cover what’s due";
+  const tasksOverdueCount = tasksApi?.data.counts.openOverdue ?? 0;
+  const tasksDueTodayCount = tasksApi?.data.counts.openDueToday ?? 0;
+  const tasksDueCount = tasksOverdueCount + tasksDueTodayCount;
+  const tasksNextAction = loading
+    ? "Loading tasks…"
+    : tasksOverdueCount > 0 && tasksDueTodayCount > 0
+      ? `${tasksOverdueCount} overdue, ${tasksDueTodayCount} due today`
+      : tasksOverdueCount > 0
+        ? `${tasksOverdueCount} overdue task${tasksOverdueCount === 1 ? "" : "s"}`
+        : tasksDueTodayCount > 0
+          ? `${tasksDueTodayCount} due today`
+          : "No tasks due today or overdue";
 
   const todayClear =
-    !loading && showingsToday === 0 && followUpsDueCount === 0;
+    !loading && showingsToday === 0 && followUpsDueCount === 0 && tasksDueCount === 0;
 
   const pipelineDealsSecondary =
     activeDeals === 0 ? "No active deals — add one when you’re ready." : "Open pipeline for detail.";
@@ -364,8 +386,16 @@ export function OperationalDashboardView() {
       overdue: overdueFollowUpCount,
       showings: showingsToday,
       contacts: contactsAttention,
+      tasksOverdue: tasksOverdueCount,
+      tasksDueToday: tasksDueTodayCount,
     }),
-    [overdueFollowUpCount, showingsToday, contactsAttention]
+    [
+      overdueFollowUpCount,
+      showingsToday,
+      contactsAttention,
+      tasksOverdueCount,
+      tasksDueTodayCount,
+    ]
   );
 
   const focusCandidates = useMemo(
@@ -375,8 +405,17 @@ export function OperationalDashboardView() {
         overdueFollowUpCount,
         showingsToday,
         contactsAttention,
+        tasksOverdue: tasksOverdueCount,
+        tasksDueToday: tasksDueTodayCount,
       }),
-    [loading, overdueFollowUpCount, showingsToday, contactsAttention]
+    [
+      loading,
+      overdueFollowUpCount,
+      showingsToday,
+      contactsAttention,
+      tasksOverdueCount,
+      tasksDueTodayCount,
+    ]
   );
 
   const [focusStored, setFocusStored] = useState<FocusPersistedState>({ items: [] });
@@ -480,7 +519,7 @@ export function OperationalDashboardView() {
             <>
               {todayClear ? (
                 <p className="mb-2 text-sm font-semibold text-kp-on-surface">
-                  Nothing due today — showings and follow-ups are clear
+                  Nothing due today — showings, follow-ups, and tasks are clear
                 </p>
               ) : null}
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
@@ -512,9 +551,15 @@ export function OperationalDashboardView() {
                       icon={CheckSquare}
                       loading={loading}
                       count={tasksDueCount}
-                      zeroPrimaryText="No TaskPilot tasks yet"
+                      zeroPrimaryText="No tasks due today or overdue"
                       nextActionLine={tasksNextAction}
-                      emphasis="none"
+                      emphasis={
+                        tasksOverdueCount > 0
+                          ? "elevated"
+                          : tasksDueTodayCount > 0
+                            ? "accent"
+                            : "none"
+                      }
                     />
                   </>
                 ) : (
@@ -535,9 +580,15 @@ export function OperationalDashboardView() {
                       icon={CheckSquare}
                       loading={loading}
                       count={tasksDueCount}
-                      zeroPrimaryText="No TaskPilot tasks yet"
+                      zeroPrimaryText="No tasks due today or overdue"
                       nextActionLine={tasksNextAction}
-                      emphasis="none"
+                      emphasis={
+                        tasksOverdueCount > 0
+                          ? "elevated"
+                          : tasksDueTodayCount > 0
+                            ? "accent"
+                            : "none"
+                      }
                     />
                     <TodayMetricCard
                       label="Follow-ups due"
@@ -756,10 +807,18 @@ export function OperationalDashboardView() {
               <Calendar className="h-4 w-4 shrink-0 opacity-90" />
               New Showing
             </QuickActionLink>
-            <QuickActionLink href="/task-pilot">
+            <Button
+              type="button"
+              variant="outline"
+              className={cn(
+                kpBtnTertiary,
+                "h-9 min-h-9 justify-center gap-2 border border-kp-outline/70 px-4 text-xs font-semibold text-kp-on-surface-variant hover:border-kp-outline hover:text-kp-on-surface"
+              )}
+              onClick={() => setNewTaskModalOpen(true)}
+            >
               <CheckSquare className="h-4 w-4 shrink-0 opacity-90" />
               New Task
-            </QuickActionLink>
+            </Button>
             <QuickActionLink href="/farm-trackr">
               <MapPin className="h-4 w-4 shrink-0 opacity-90" />
               Import Farm
@@ -767,6 +826,12 @@ export function OperationalDashboardView() {
           </div>
         </div>
       </section>
+
+      <NewTaskModal
+        open={newTaskModalOpen}
+        onOpenChange={setNewTaskModalOpen}
+        onCreated={() => void mutateTasks()}
+      />
     </div>
   );
 }

@@ -2,7 +2,13 @@
  * Client-only Focus queue for /dashboard. Persisted in localStorage.
  */
 
-export type FocusItemType = "followups" | "showings" | "contacts" | "pipeline";
+export type FocusItemType =
+  | "followups"
+  | "showings"
+  | "contacts"
+  | "pipeline"
+  | "tasksOverdue"
+  | "tasksDueToday";
 
 export type FocusPersistedItem = {
   id: string;
@@ -14,7 +20,7 @@ export type FocusPersistedItem = {
   /** Count when user hid the item; show again when candidate count differs */
   frozenCount?: number;
   /** Pipeline only: metrics when user hid; show again when any differ */
-  frozenSignals?: { overdue: number; showings: number; contacts: number };
+  frozenSignals?: FocusSignals;
 };
 
 export type FocusPersistedState = {
@@ -30,12 +36,15 @@ export type FocusDisplayItem = {
   href: string;
 };
 
-export const FOCUS_STORAGE_KEY = "kp_focus_state_v1";
+/** Bumped when signal shape changes so stale frozen pipeline rows do not mis-compare. */
+export const FOCUS_STORAGE_KEY = "kp_focus_state_v2";
 
 export type FocusSignals = {
   overdue: number;
   showings: number;
   contacts: number;
+  tasksOverdue: number;
+  tasksDueToday: number;
 };
 
 export function loadFocusState(): FocusPersistedState {
@@ -73,6 +82,8 @@ export function buildFocusCandidates(input: {
   overdueFollowUpCount: number;
   showingsToday: number;
   contactsAttention: number;
+  tasksOverdue: number;
+  tasksDueToday: number;
 }): FocusDisplayItem[] | null {
   if (input.loading) return null;
   const out: FocusDisplayItem[] = [];
@@ -84,6 +95,26 @@ export function buildFocusCandidates(input: {
       count: input.overdueFollowUpCount,
       subtext: "Work the ShowingHQ queue",
       href: "/showing-hq/follow-ups",
+    });
+  }
+  if (input.tasksOverdue > 0) {
+    out.push({
+      id: "tasksOverdue",
+      type: "tasksOverdue",
+      label: `${input.tasksOverdue} overdue task${input.tasksOverdue === 1 ? "" : "s"}`,
+      count: input.tasksOverdue,
+      subtext: "TaskPilot",
+      href: "/task-pilot",
+    });
+  }
+  if (input.tasksDueToday > 0) {
+    out.push({
+      id: "tasksDueToday",
+      type: "tasksDueToday",
+      label: `${input.tasksDueToday} task${input.tasksDueToday === 1 ? "" : "s"} due today`,
+      count: input.tasksDueToday,
+      subtext: "TaskPilot",
+      href: "/task-pilot",
     });
   }
   if (input.showingsToday > 0) {
@@ -122,6 +153,20 @@ function findEntry(items: FocusPersistedItem[], id: string): FocusPersistedItem 
   return items.find((i) => i.id === id);
 }
 
+function pipelineSignalsDiffer(
+  f: FocusSignals | undefined,
+  signals: FocusSignals
+): boolean {
+  if (!f) return true;
+  return (
+    f.overdue !== signals.overdue ||
+    f.showings !== signals.showings ||
+    f.contacts !== signals.contacts ||
+    f.tasksOverdue !== signals.tasksOverdue ||
+    f.tasksDueToday !== signals.tasksDueToday
+  );
+}
+
 export function shouldShowFocusItem(
   candidate: FocusDisplayItem,
   entry: FocusPersistedItem | undefined,
@@ -129,13 +174,7 @@ export function shouldShowFocusItem(
 ): boolean {
   if (!entry || (!entry.dismissed && !entry.completed)) return true;
   if (candidate.type === "pipeline") {
-    const f = entry.frozenSignals;
-    if (!f) return true;
-    return (
-      f.overdue !== signals.overdue ||
-      f.showings !== signals.showings ||
-      f.contacts !== signals.contacts
-    );
+    return pipelineSignalsDiffer(entry.frozenSignals, signals);
   }
   const n = candidate.count ?? 0;
   return entry.frozenCount !== n;
@@ -190,7 +229,7 @@ export function filterVisibleFocusCandidates(
 export function focusPersistedListsEqual(a: FocusPersistedItem[], b: FocusPersistedItem[]): boolean {
   if (a.length !== b.length) return false;
   const sortKey = (x: FocusPersistedItem) =>
-    `${x.id}|${x.dismissed ? 1 : 0}|${x.completed ? 1 : 0}|${x.frozenCount ?? ""}|${x.frozenSignals ? `${x.frozenSignals.overdue},${x.frozenSignals.showings},${x.frozenSignals.contacts}` : ""}`;
+    `${x.id}|${x.dismissed ? 1 : 0}|${x.completed ? 1 : 0}|${x.frozenCount ?? ""}|${x.frozenSignals ? `${x.frozenSignals.overdue},${x.frozenSignals.showings},${x.frozenSignals.contacts},${x.frozenSignals.tasksOverdue},${x.frozenSignals.tasksDueToday}` : ""}`;
   const sa = [...a].map(sortKey).sort().join(";");
   const sb = [...b].map(sortKey).sort().join(";");
   return sa === sb;

@@ -15,6 +15,7 @@ import { ContactFollowUpsPanel } from "./contact-follow-ups-panel";
 import { ContactMailingAddressCard } from "./contact-mailing-address-card";
 import { ContactSiteAddressCard } from "./contact-site-address-card";
 import { ContactFarmMembershipsPanel } from "./contact-farm-memberships-panel";
+import { ContactTasksPanel } from "./contact-tasks-panel";
 import type {
   ContactDetailActivity,
   ContactDetailContact,
@@ -577,6 +578,7 @@ export function ContactDetailView({ id }: { id: string }) {
             />
           ) : null}
           <ContactNotesCard notes={contact.notes} />
+          <ContactTasksPanel contactId={id} />
           {hasCrmAccess ? (
             <ContactFollowUpsPanel
               reminders={reminders}

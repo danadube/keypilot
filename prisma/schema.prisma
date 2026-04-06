@@ -55,6 +55,7 @@ model User {
   farmTerritories           FarmTerritory[]
   farmAreas                 FarmArea[]
   contactFarmMemberships    ContactFarmMembership[]
+  tasks                     Task[]
 
   @@index([clerkId])
   @@map("users")
@@ -164,6 +165,7 @@ model Contact {
   deals             Deal[]
   userActivities    UserActivity[]
   farmMemberships   ContactFarmMembership[]
+  tasks             Task[]
 
   @@index([email])
   @@index([email2])
@@ -906,6 +908,41 @@ enum FollowUpTaskPriority {
   LOW
   MEDIUM
   HIGH
+}
+
+enum TaskStatus {
+  OPEN
+  COMPLETED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+/**
+ * TaskPilot — user-owned operational tasks (optional contact link).
+ */
+model Task {
+  id          String        @id @default(uuid())
+  userId      String
+  title       String
+  description String?       @db.Text
+  status      TaskStatus    @default(OPEN)
+  dueDate     DateTime?
+  priority    TaskPriority  @default(MEDIUM)
+  contactId   String?
+  createdAt   DateTime      @default(now())
+  completedAt DateTime?
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([userId, dueDate])
+  @@index([contactId])
+  @@map("tasks")
 }
 
 model Deal {

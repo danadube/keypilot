@@ -14,7 +14,7 @@ const DEFAULT_ACCESS: ModuleAccessMap = {
   "client-keep": false,
   "farm-trackr": false,
   "seller-pulse": false,
-  "task-pilot": false,
+  "task-pilot": true,
   "market-pilot": false,
   "insight": false,
   "property-vault": true,

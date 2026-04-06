@@ -114,7 +114,7 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     id: "task-pilot",
     name: "TaskPilot",
     href: "/task-pilot",
-    available: false,
+    available: true,
     sidebar: [
       { label: "Overview", href: "/task-pilot", icon: LayoutDashboard },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
