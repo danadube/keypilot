@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
@@ -16,7 +17,6 @@ import {
 import { HOST_FEEDBACK_TAGS, TRAFFIC_LEVELS } from "@/lib/validations/open-house";
 import { AF, afError } from "@/lib/ui/action-feedback";
 import {
-  InlineErrorText,
   InlineSuccessText,
   useFlashSuccess,
 } from "@/components/ui/action-feedback";
@@ -66,7 +66,6 @@ export function HostFeedbackForm({
   const [hostNotes, setHostNotes] = useState(initialData.hostNotes ?? "");
   const [saving, setSaving] = useState(false);
   const [saveIntent, setSaveIntent] = useState<"save" | "clear" | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const { visible: showSaved, flash: flashSaved } = useFlashSuccess();
   const [successLine, setSuccessLine] = useState<string>(AF.debriefSaved);
 
@@ -81,7 +80,6 @@ export function HostFeedbackForm({
   const handleClear = async () => {
     if (!canEdit) return;
     setSaving(true);
-    setError(null);
     try {
       const res = await fetch(`/api/v1/open-houses/${openHouseId}`, {
         method: "PUT",
@@ -101,7 +99,7 @@ export function HostFeedbackForm({
       flashSaved();
       onSave();
     } catch (err) {
-      setError(afError(err, AF.couldntSave));
+      toast.error(afError(err, AF.couldntSave));
     } finally {
       setSaving(false);
       setSaveIntent(null);
@@ -113,7 +111,6 @@ export function HostFeedbackForm({
     if (!canEdit) return;
     setSaveIntent("save");
     setSaving(true);
-    setError(null);
     try {
       const payload = {
         trafficLevel: trafficLevel ?? null,
@@ -131,7 +128,7 @@ export function HostFeedbackForm({
       flashSaved();
       onSave();
     } catch (err) {
-      setError(afError(err, AF.couldntSave));
+      toast.error(afError(err, AF.couldntSave));
     } finally {
       setSaving(false);
       setSaveIntent(null);
@@ -144,12 +141,6 @@ export function HostFeedbackForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error ? (
-        <InlineErrorText className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-          {error}
-        </InlineErrorText>
-      ) : null}
-
       <div className="space-y-2">
         <Label>Traffic level</Label>
         <Select

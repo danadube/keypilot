@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,11 +41,9 @@ export function CreateVisitorFollowUpInline({
   });
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setSaving(true);
     try {
       const dueIso = datetimeLocalInputValueToIso(dueAt);
@@ -67,7 +66,7 @@ export function CreateVisitorFollowUpInline({
       setOpen(false);
       onCreated();
     } catch (err) {
-      setError(afError(err, AF.couldntCreateFollowUp));
+      toast.error(afError(err, AF.couldntCreateFollowUp));
     } finally {
       setSaving(false);
     }
@@ -121,11 +120,6 @@ export function CreateVisitorFollowUpInline({
         placeholder="Notes (optional)"
         className="min-h-[56px] border-kp-outline bg-kp-surface text-xs"
       />
-      {error ? (
-        <p className="text-[11px] text-red-400" role="alert">
-          {error} {AF.tryAgain}
-        </p>
-      ) : null}
       <div className="flex gap-1">
         <Button
           type="submit"

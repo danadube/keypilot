@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -55,12 +56,10 @@ export function InviteHostDialog({
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"HOST_AGENT" | "ASSISTANT">("HOST_AGENT");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setLoading(true);
     try {
       const res = await fetch(`/api/v1/open-houses/${openHouseId}/host-invites`, {
@@ -79,7 +78,7 @@ export function InviteHostDialog({
         setOpen(false);
       }, 1500);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send invite");
+      toast.error(err instanceof Error ? err.message : "Failed to send invite");
     } finally {
       setLoading(false);
     }
@@ -133,11 +132,6 @@ export function InviteHostDialog({
           <p className="py-4 text-center text-sm font-medium text-emerald-400">Invite sent successfully.</p>
         ) : (
           <form id="invite-host-form" onSubmit={handleSubmit} className="space-y-4">
-            {error ? (
-              <p className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-                {error}
-              </p>
-            ) : null}
             <div className="space-y-2">
               <Label htmlFor="invite-email" className="text-sm font-medium text-kp-on-surface">
                 Email

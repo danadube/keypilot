@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -44,16 +45,14 @@ export function SignInFormFields({
   const [interestLevel, setInterestLevel] = useState<string>("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email?.trim() && !phone?.trim()) {
-      setError("Please provide at least email or phone");
+      toast.error("Please provide at least email or phone");
       return;
     }
     setSubmitting(true);
-    setError(null);
     try {
       const res = await fetch("/api/v1/visitor-signin", {
         method: "POST",
@@ -90,7 +89,7 @@ export function SignInFormFields({
       setNotes("");
       onSuccess?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign-in failed");
+      toast.error(err instanceof Error ? err.message : "Sign-in failed");
     } finally {
       setSubmitting(false);
     }
@@ -101,11 +100,6 @@ export function SignInFormFields({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-[var(--brand-text)]">
-      {error && (
-        <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="firstName" className="text-sm font-medium text-[var(--brand-text)]">

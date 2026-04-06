@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { pdf } from "@react-pdf/renderer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -44,7 +45,7 @@ export function OpenHouseSellerReportView({ openHouseId }: { openHouseId: string
   const [report, setReport] = useState<ReportData | null>(null);
   const [openHouse, setOpenHouse] = useState<OpenHouseInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
@@ -54,12 +55,12 @@ export function OpenHouseSellerReportView({ openHouseId }: { openHouseId: string
       .then((json) => {
         if (json.error) {
           if (json.error.message === "No report found") setReport(null);
-          else setError(json.error.message);
+          else setLoadError(json.error.message);
         } else {
           setReport(json.data);
         }
       })
-      .catch(() => setError(UI_COPY.errors.load("report")))
+      .catch(() => setLoadError(UI_COPY.errors.load("report")))
       .finally(() => setLoading(false));
   }, [openHouseId]);
 
@@ -98,7 +99,7 @@ export function OpenHouseSellerReportView({ openHouseId }: { openHouseId: string
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to download PDF");
+      toast.error(err instanceof Error ? err.message : "Failed to download PDF");
     } finally {
       setDownloading(false);
     }
@@ -106,14 +107,13 @@ export function OpenHouseSellerReportView({ openHouseId }: { openHouseId: string
 
   const handleGenerate = async () => {
     setGenerating(true);
-    setError(null);
     try {
       const res = await fetch(`/api/v1/open-houses/${openHouseId}/report`, { method: "POST" });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
       setReport(json.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate");
+      toast.error(err instanceof Error ? err.message : "Failed to generate");
     } finally {
       setGenerating(false);
     }
@@ -153,9 +153,9 @@ export function OpenHouseSellerReportView({ openHouseId }: { openHouseId: string
           )}
         </div>
 
-        {error && (
+        {loadError && (
           <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-            {error}
+            {loadError}
           </div>
         )}
 

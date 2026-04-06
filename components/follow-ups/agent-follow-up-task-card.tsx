@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -80,7 +81,6 @@ export function AgentFollowUpTaskCard({
   const [notesDraft, setNotesDraft] = useState(task.notes ?? "");
   const [busy, setBusy] = useState(false);
   const [mutation, setMutation] = useState<"complete" | "reopen" | "save" | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const { visible: showSavedFlash, flash: flashSaved } = useFlashSuccess();
 
   useEffect(() => {
@@ -104,7 +104,6 @@ export function AgentFollowUpTaskCard({
   );
 
   const run = async (kind: "complete" | "reopen" | "save", fn: () => Promise<void>) => {
-    setError(null);
     setBusy(true);
     setMutation(kind);
     try {
@@ -113,7 +112,7 @@ export function AgentFollowUpTaskCard({
       flashSaved();
       onUpdated();
     } catch (e) {
-      setError(afError(e, AF.couldntSave));
+      toast.error(afError(e, AF.couldntSave));
     } finally {
       setBusy(false);
       setMutation(null);
@@ -229,7 +228,6 @@ export function AgentFollowUpTaskCard({
                 disabled={busy}
                 onClick={() => {
                   setEditing((v) => !v);
-                  setError(null);
                 }}
               >
                 {editing ? "Close" : "Edit"}
@@ -272,11 +270,6 @@ export function AgentFollowUpTaskCard({
               placeholder="Call context, next step, etc."
             />
           </div>
-          {error ? (
-            <p className="text-[11px] text-red-400" role="alert">
-              {error} {AF.tryAgain}
-            </p>
-          ) : null}
           <InlineSuccessText show={showSavedFlash} className="block">
             {AF.saved}
           </InlineSuccessText>
@@ -310,17 +303,12 @@ export function AgentFollowUpTaskCard({
                 setDueLocal(isoToDatetimeLocalInputValue(task.dueAt));
                 setNotesDraft(task.notes ?? "");
                 setEditing(false);
-                setError(null);
               }}
             >
               Reset
             </Button>
           </div>
         </div>
-      ) : error && !editing ? (
-        <p className="mt-2 text-[11px] text-red-400" role="alert">
-          {error} {AF.tryAgain}
-        </p>
       ) : null}
     </div>
   );

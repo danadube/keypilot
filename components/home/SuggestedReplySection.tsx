@@ -7,6 +7,7 @@
  */
 
 import { useState, useCallback } from "react";
+import { toast } from "sonner";
 import { ChevronDown, ChevronUp, Copy, Loader2, MessageSquare } from "lucide-react";
 import { BrandButton } from "@/components/ui/BrandButton";
 import { cn } from "@/lib/utils";
@@ -40,12 +41,10 @@ export function SuggestedReplySection({ email, className }: SuggestedReplySectio
   const [expanded, setExpanded] = useState(false);
   const [drafts, setDrafts] = useState<SuggestedReplyDraft[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const fetchDrafts = useCallback(async () => {
     setLoading(true);
-    setError(null);
     try {
       const res = await fetch("/api/v1/ai/reply-drafts", {
         method: "POST",
@@ -63,7 +62,7 @@ export function SuggestedReplySection({ email, className }: SuggestedReplySectio
       if (json.error) throw new Error(json.error.message);
       setDrafts(json.data?.drafts ?? []);
     } catch (err) {
-      setError((err as Error).message ?? "Failed to generate");
+      toast.error((err as Error).message ?? "Failed to generate");
     } finally {
       setLoading(false);
     }
@@ -102,11 +101,7 @@ export function SuggestedReplySection({ email, className }: SuggestedReplySectio
             </div>
           )}
 
-          {error && (
-            <p className="text-xs text-[var(--brand-danger)]">{error}</p>
-          )}
-
-          {!loading && drafts.length === 0 && !error && (
+          {!loading && drafts.length === 0 && (
             <p className="text-xs text-[var(--brand-text-muted)]">No drafts generated.</p>
           )}
 

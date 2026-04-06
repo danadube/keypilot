@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { trackEvent } from "@/lib/track-usage-client";
 import {
   Calendar,
@@ -166,7 +167,6 @@ export function OpenHouseHostConsole({ openHouseId }: { openHouseId: string }) {
   const handleMarkLive = async () => {
     if (!data || data.status !== "SCHEDULED") return;
     setMarkingLive(true);
-    setError(null);
     try {
       const res = await fetch(`/api/v1/open-houses/${openHouseId}`, {
         method: "PUT",
@@ -177,7 +177,7 @@ export function OpenHouseHostConsole({ openHouseId }: { openHouseId: string }) {
       if (json.error) throw new Error(json.error.message);
       setData((prev) => (prev ? { ...prev, status: "ACTIVE" } : prev));
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not start open house");
+      toast.error(e instanceof Error ? e.message : "Could not start open house");
     } finally {
       setMarkingLive(false);
     }
@@ -191,7 +191,7 @@ export function OpenHouseHostConsole({ openHouseId }: { openHouseId: string }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      setError("Could not copy link");
+      toast.error("Could not copy link");
     }
   };
 

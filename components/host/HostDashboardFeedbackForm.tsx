@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary } from "@/components/ui/kp-dashboard-button-tiers";
@@ -55,7 +56,6 @@ export function HostDashboardFeedbackForm({
     (initialData.hostNotes as string) ?? ""
   );
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const toggleTag = (tag: string) => {
     setFeedbackTags((prev) =>
@@ -66,7 +66,6 @@ export function HostDashboardFeedbackForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setError(null);
     try {
       const res = await fetch(`/api/v1/host/invite/${token}/feedback`, {
         method: "PUT",
@@ -81,7 +80,7 @@ export function HostDashboardFeedbackForm({
       if (json.error) throw new Error(json.error.message);
       onSave();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      toast.error(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setSaving(false);
     }
@@ -89,12 +88,6 @@ export function HostDashboardFeedbackForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
-
       <div className="space-y-2">
         <Label>Traffic level</Label>
         <Select

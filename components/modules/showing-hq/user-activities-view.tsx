@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
@@ -229,8 +230,6 @@ export function UserActivitiesView() {
   const [formOpen, setFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
-  const [completeError, setCompleteError] = useState<string | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
 
   const [templateId, setTemplateId] = useState<string>(TEMPLATE_SELECT_NONE);
   const [duePresetFromTemplateDays, setDuePresetFromTemplateDays] = useState<number | null>(null);
@@ -250,13 +249,11 @@ export function UserActivitiesView() {
   const [linkEditRowId, setLinkEditRowId] = useState<string | null>(null);
   const [editPropertyId, setEditPropertyId] = useState<string>(LINK_SELECT_NONE);
   const [editContactId, setEditContactId] = useState<string>(LINK_SELECT_NONE);
-  const [linkEditError, setLinkEditError] = useState<string | null>(null);
   const [linkSavingId, setLinkSavingId] = useState<string | null>(null);
 
   const [applyTemplateRowId, setApplyTemplateRowId] = useState<string | null>(null);
   const [applyTemplatePickId, setApplyTemplatePickId] =
     useState<string>(TEMPLATE_SELECT_NONE);
-  const [applyTemplateError, setApplyTemplateError] = useState<string | null>(null);
   const [applyTemplateSubmitting, setApplyTemplateSubmitting] = useState(false);
 
   const editingRow = useMemo(
@@ -417,12 +414,10 @@ export function UserActivitiesView() {
     setDueLocal("");
     setCreatePropertyId(LINK_SELECT_NONE);
     setCreateContactId(LINK_SELECT_NONE);
-    setFormError(null);
   };
 
   const handleTemplateSelect = (value: string) => {
     setTemplateId(value);
-    setFormError(null);
     if (value === TEMPLATE_SELECT_NONE) {
       setType("TASK");
       setTitle("");
@@ -437,9 +432,8 @@ export function UserActivitiesView() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError(null);
     if (!title.trim()) {
-      setFormError("Title is required");
+      toast.error("Title is required");
       return;
     }
     setSubmitting(true);
@@ -460,7 +454,7 @@ export function UserActivitiesView() {
       });
       const json = await res.json();
       if (!res.ok) {
-        setFormError(json.error?.message ?? "Could not create activity");
+        toast.error(json.error?.message ?? "Could not create activity");
         return;
       }
       resetForm();
@@ -472,7 +466,6 @@ export function UserActivitiesView() {
   };
 
   const handleComplete = async (id: string) => {
-    setCompleteError(null);
     setCompletingId(id);
     try {
       const res = await fetch(`/api/v1/activities/${id}/complete`, {
@@ -484,20 +477,19 @@ export function UserActivitiesView() {
       if (res.ok) {
         await load();
       } else {
-        setCompleteError(
+        toast.error(
           (json as { error?: { message?: string } }).error?.message ??
             "Could not mark complete"
         );
       }
     } catch {
-      setCompleteError("Could not mark complete");
+      toast.error("Could not mark complete");
     } finally {
       setCompletingId(null);
     }
   };
 
   const openLinkEditor = (row: UserActivityRow) => {
-    setLinkEditError(null);
     setLinkEditRowId(row.id);
     setEditPropertyId(row.propertyId ?? LINK_SELECT_NONE);
     setEditContactId(row.contactId ?? LINK_SELECT_NONE);
@@ -505,12 +497,10 @@ export function UserActivitiesView() {
 
   const closeLinkEditor = () => {
     setLinkEditRowId(null);
-    setLinkEditError(null);
   };
 
   const handleSaveLinks = async (activityId: string) => {
     setLinkSavingId(activityId);
-    setLinkEditError(null);
     try {
       const res = await fetch(`/api/v1/activities/${activityId}`, {
         method: "PATCH",
@@ -524,13 +514,13 @@ export function UserActivitiesView() {
         error?: { message?: string };
       };
       if (!res.ok) {
-        setLinkEditError(json.error?.message ?? "Could not update links");
+        toast.error(json.error?.message ?? "Could not update links");
         return;
       }
       closeLinkEditor();
       await load();
     } catch {
-      setLinkEditError("Could not update links");
+      toast.error("Could not update links");
     } finally {
       setLinkSavingId(null);
     }
@@ -538,7 +528,6 @@ export function UserActivitiesView() {
 
   const handleClearLinks = async (activityId: string) => {
     setLinkSavingId(activityId);
-    setLinkEditError(null);
     try {
       const res = await fetch(`/api/v1/activities/${activityId}`, {
         method: "PATCH",
@@ -549,13 +538,13 @@ export function UserActivitiesView() {
         error?: { message?: string };
       };
       if (!res.ok) {
-        setLinkEditError(json.error?.message ?? "Could not clear links");
+        toast.error(json.error?.message ?? "Could not clear links");
         return;
       }
       closeLinkEditor();
       await load();
     } catch {
-      setLinkEditError("Could not clear links");
+      toast.error("Could not clear links");
     } finally {
       setLinkSavingId(null);
     }
@@ -564,26 +553,23 @@ export function UserActivitiesView() {
   const openApplyTemplate = (rowId: string) => {
     setApplyTemplateRowId(rowId);
     setApplyTemplatePickId(TEMPLATE_SELECT_NONE);
-    setApplyTemplateError(null);
   };
 
   const closeApplyTemplate = () => {
     if (applyTemplateSubmitting) return;
     setApplyTemplateRowId(null);
     setApplyTemplatePickId(TEMPLATE_SELECT_NONE);
-    setApplyTemplateError(null);
   };
 
   const handleConfirmApplyTemplate = async () => {
     if (!applyTemplateRowId || applyTemplatePickId === TEMPLATE_SELECT_NONE) return;
     const tpl = templates.find((t) => t.id === applyTemplatePickId);
     if (!tpl) {
-      setApplyTemplateError("Template not found");
+      toast.error("Template not found");
       return;
     }
 
     setApplyTemplateSubmitting(true);
-    setApplyTemplateError(null);
     try {
       const descTrimmed = tpl.descriptionTemplate?.trim();
       const body: Record<string, unknown> = {
@@ -600,17 +586,14 @@ export function UserActivitiesView() {
         error?: { message?: string };
       };
       if (!res.ok) {
-        setApplyTemplateError(
-          json.error?.message ?? "Could not apply template"
-        );
+        toast.error(json.error?.message ?? "Could not apply template");
         return;
       }
       setApplyTemplateRowId(null);
       setApplyTemplatePickId(TEMPLATE_SELECT_NONE);
-      setApplyTemplateError(null);
       await load();
     } catch {
-      setApplyTemplateError("Could not apply template");
+      toast.error("Could not apply template");
     } finally {
       setApplyTemplateSubmitting(false);
     }
@@ -658,12 +641,6 @@ export function UserActivitiesView() {
           {formOpen ? "Close" : "New activity"}
         </Button>
       </div>
-
-      {completeError && (
-        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-400">
-          {completeError}
-        </p>
-      )}
 
       {formOpen && (
         <form
@@ -808,9 +785,6 @@ export function UserActivitiesView() {
               </p>
             </div>
           </div>
-          {formError && (
-            <p className="mt-2 text-xs font-medium text-red-400">{formError}</p>
-          )}
           <div className="mt-4 flex justify-end gap-2">
             <Button
               type="button"
@@ -992,9 +966,6 @@ export function UserActivitiesView() {
                             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-kp-on-surface-variant">
                               Edit property / contact links
                             </p>
-                            {linkEditError && (
-                              <p className="mb-2 text-xs font-medium text-red-400">{linkEditError}</p>
-                            )}
                             <div className="grid gap-3 sm:grid-cols-2">
                               <div className="space-y-1.5 sm:col-span-2">
                                 <Label className="text-kp-on-surface/90">Property</Label>
@@ -1121,11 +1092,6 @@ export function UserActivitiesView() {
         }
       >
         <div className="space-y-4">
-          {applyTemplateError && (
-            <p className="rounded-md bg-destructive/10 p-2 text-sm text-destructive">
-              {applyTemplateError}
-            </p>
-          )}
           <div className="space-y-2 text-sm leading-snug text-kp-on-surface/88">
             <p>
               This replaces the activity{" "}
@@ -1162,7 +1128,6 @@ export function UserActivitiesView() {
                 value={applyTemplatePickId}
                 onValueChange={(v) => {
                   setApplyTemplatePickId(v);
-                  setApplyTemplateError(null);
                 }}
               >
                 <SelectTrigger className="border-kp-outline bg-kp-surface text-kp-on-surface">

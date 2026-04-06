@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,6 @@ export function ActivityTemplatesView() {
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
   const [type, setType] = useState<string>("FOLLOW_UP");
@@ -74,14 +74,12 @@ export function ActivityTemplatesView() {
     setTitleTemplate("");
     setDescriptionTemplate("");
     setOffsetDays("");
-    setFormError(null);
   };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormError(null);
     if (!name.trim() || !titleTemplate.trim()) {
-      setFormError("Name and title template are required");
+      toast.error("Name and title template are required");
       return;
     }
     setSubmitting(true);
@@ -106,7 +104,7 @@ export function ActivityTemplatesView() {
       });
       const json = await res.json();
       if (!res.ok) {
-        setFormError(json.error?.message ?? "Could not create template");
+        toast.error(json.error?.message ?? "Could not create template");
         return;
       }
       resetForm();
@@ -223,9 +221,6 @@ export function ActivityTemplatesView() {
               </p>
             </div>
           </div>
-          {formError && (
-            <p className="mt-2 text-xs font-medium text-red-400">{formError}</p>
-          )}
           <div className="mt-4 flex justify-end gap-2">
             <Button
               type="button"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnDangerSecondary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
@@ -18,7 +19,6 @@ type PropertyKeyPhotoPanelProps = {
 export function PropertyKeyPhotoPanel({ propertyId, imageUrl, onImagePatch }: PropertyKeyPhotoPanelProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const hasImage = !!imageUrl?.trim();
 
   const handleUpload = useCallback(
@@ -26,7 +26,6 @@ export function PropertyKeyPhotoPanel({ propertyId, imageUrl, onImagePatch }: Pr
       const file = e.target.files?.[0];
       if (!file) return;
       e.target.value = "";
-      setError(null);
       setBusy(true);
       const formData = new FormData();
       formData.set("file", file);
@@ -36,7 +35,7 @@ export function PropertyKeyPhotoPanel({ propertyId, imageUrl, onImagePatch }: Pr
           if (json.error) throw new Error(json.error.message);
           onImagePatch(json.data.imageUrl);
         })
-        .catch((err) => setError(err instanceof Error ? err.message : "Photo upload failed"))
+        .catch((err) => toast.error(err instanceof Error ? err.message : "Photo upload failed"))
         .finally(() => setBusy(false));
     },
     [propertyId, onImagePatch]
@@ -49,7 +48,6 @@ export function PropertyKeyPhotoPanel({ propertyId, imageUrl, onImagePatch }: Pr
       )
     )
       return;
-    setError(null);
     setBusy(true);
     fetch(`/api/v1/properties/${propertyId}`, {
       method: "PUT",
@@ -61,7 +59,7 @@ export function PropertyKeyPhotoPanel({ propertyId, imageUrl, onImagePatch }: Pr
         if (json.error) throw new Error(json.error.message);
         onImagePatch(null);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "Could not remove photo"))
+      .catch((err) => toast.error(err instanceof Error ? err.message : "Could not remove photo"))
       .finally(() => setBusy(false));
   }, [propertyId, onImagePatch]);
 
@@ -73,8 +71,6 @@ export function PropertyKeyPhotoPanel({ propertyId, imageUrl, onImagePatch }: Pr
           One image for this property — shown on the overview and open house sign-in.
         </p>
       </div>
-
-      {error && <p className="mb-3 text-sm text-red-400">{error}</p>}
 
       <input
         ref={inputRef}
