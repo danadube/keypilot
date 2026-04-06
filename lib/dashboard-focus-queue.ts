@@ -61,6 +61,13 @@ export function saveFocusState(state: FocusPersistedState): void {
   }
 }
 
+/** Clear persisted dismiss/complete rows so all focus candidates show again. */
+export function resetFocusPersistedState(): FocusPersistedState {
+  const next: FocusPersistedState = { items: [] };
+  saveFocusState(next);
+  return next;
+}
+
 export function buildFocusCandidates(input: {
   loading: boolean;
   overdueFollowUpCount: number;

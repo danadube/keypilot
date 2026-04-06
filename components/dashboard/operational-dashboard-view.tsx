@@ -29,6 +29,7 @@ import {
   focusPersistedListsEqual,
   loadFocusState,
   reconcileFocusStorage,
+  resetFocusPersistedState,
   saveFocusState,
   upsertFocusHide,
   type FocusDisplayItem,
@@ -88,7 +89,7 @@ function nextShowingTodayActionLine(showings: ShowingRow[], now: Date): string {
       return !Number.isNaN(d.getTime()) && isSameLocalCalendarDay(d, now);
     })
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
-  if (todayList.length === 0) return "No showings scheduled";
+  if (todayList.length === 0) return "No showings today";
   const nowMs = now.getTime();
   const upcoming = todayList.find((s) => new Date(s.scheduledAt).getTime() > nowMs);
   if (upcoming) {
@@ -205,8 +206,8 @@ function PipelineCard({
       className="group flex flex-col rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm transition-colors hover:border-kp-teal/25 hover:bg-kp-surface-high/40"
     >
       <div className="mb-2 flex items-center gap-2">
-        <Icon className="h-4 w-4 text-kp-teal/90" />
-        <span className="text-sm font-semibold text-kp-on-surface">{label}</span>
+        <Icon className="h-4 w-4 shrink-0 text-kp-on-surface-muted opacity-90 group-hover:text-kp-teal" />
+        <span className="font-headline text-sm font-semibold text-kp-on-surface">{label}</span>
       </div>
       <PrimaryValue loading={loading}>{primary}</PrimaryValue>
       <span className="mt-2 text-xs text-kp-on-surface-variant group-hover:text-kp-teal">
@@ -232,7 +233,7 @@ function ModuleShortcut({
   return (
     <Link
       href={href}
-      className="group flex flex-col rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm transition-colors hover:border-kp-gold/30 hover:bg-kp-surface-high/40"
+      className="group flex flex-col rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm transition-colors hover:border-kp-teal/25 hover:bg-kp-surface-high/40"
     >
       <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-kp-outline/80 bg-kp-surface-high/30 text-kp-gold">
         <Icon className="h-5 w-5" />
@@ -332,23 +333,28 @@ export function OperationalDashboardView() {
       ? `${overdueFollowUpCount} follow-up${overdueFollowUpCount === 1 ? "" : "s"} overdue`
       : dueTodayFollowUpCount > 0
         ? `${dueTodayFollowUpCount} due today`
-        : "No urgent items";
+        : "Nothing overdue or due today";
 
-  const tasksNextAction = "No urgent items";
+  /** TaskPilot page is placeholder-only; no task API to aggregate yet. */
+  const tasksDueCount = 0;
+  const tasksNextAction =
+    tasksDueCount > 0
+      ? `${tasksDueCount} open in TaskPilot`
+      : "TaskPilot isn’t tracking deadlines yet — follow-ups cover what’s due";
 
   const todayClear =
     !loading && showingsToday === 0 && followUpsDueCount === 0;
 
   const pipelineDealsSecondary =
-    activeDeals === 0 ? "No active deals in pipeline." : "Open pipeline for detail.";
+    activeDeals === 0 ? "No active deals — add one when you’re ready." : "Open pipeline for detail.";
 
   const pipelineListingsSecondary =
-    propertiesCount === 0 ? "Add your first listing." : "In PropertyVault.";
+    propertiesCount === 0 ? "No listings yet — add your first in PropertyVault." : "In PropertyVault.";
 
   const pipelineContactsSecondary = loading
-    ? "Loading attention signals."
+    ? "Loading attention signals…"
     : contactsAttention === 0
-      ? "All caught up"
+      ? "No contacts need follow-up right now"
       : overdueFollowUpCount > 0
         ? `${overdueFollowUpCount} overdue`
         : `${dueTodayFollowUpCount} due today`;
@@ -412,6 +418,10 @@ export function OperationalDashboardView() {
     });
   };
 
+  const handleFocusReset = () => {
+    setFocusStored(resetFocusPersistedState());
+  };
+
   const moduleShowing = loading
     ? "Loading schedule…"
     : showingsToday === 0
@@ -452,8 +462,8 @@ export function OperationalDashboardView() {
   return (
     <div className="space-y-3 pb-8 sm:space-y-4">
       <p className="max-w-xl text-[13px] leading-snug text-kp-on-surface-muted">
-        What should you do right now? Today&apos;s work, pipeline snapshot, and module shortcuts —
-        operational, not analytics.
+        Today&apos;s work, a pipeline snapshot, and shortcuts into each module — built for doing, not
+        reporting.
       </p>
 
       <section aria-labelledby="dash-today" className="scroll-mt-2">
@@ -469,8 +479,8 @@ export function OperationalDashboardView() {
           todayStats={
             <>
               {todayClear ? (
-                <p className="mb-2 text-sm font-medium text-kp-on-surface-muted">
-                  You&apos;re clear for today
+                <p className="mb-2 text-sm font-semibold text-kp-on-surface">
+                  Nothing due today — showings and follow-ups are clear
                 </p>
               ) : null}
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
@@ -482,7 +492,7 @@ export function OperationalDashboardView() {
                       icon={MessageSquare}
                       loading={loading}
                       count={followUpsDueCount}
-                      zeroPrimaryText="All follow-ups handled"
+                      zeroPrimaryText="No follow-ups due"
                       nextActionLine={followUpsNextAction}
                       emphasis="elevated"
                     />
@@ -501,9 +511,10 @@ export function OperationalDashboardView() {
                       href="/task-pilot"
                       icon={CheckSquare}
                       loading={loading}
-                      count={0}
-                      zeroPrimaryText="You're clear on tasks"
+                      count={tasksDueCount}
+                      zeroPrimaryText="No TaskPilot tasks yet"
                       nextActionLine={tasksNextAction}
+                      emphasis="none"
                     />
                   </>
                 ) : (
@@ -523,9 +534,10 @@ export function OperationalDashboardView() {
                       href="/task-pilot"
                       icon={CheckSquare}
                       loading={loading}
-                      count={0}
-                      zeroPrimaryText="You're clear on tasks"
+                      count={tasksDueCount}
+                      zeroPrimaryText="No TaskPilot tasks yet"
                       nextActionLine={tasksNextAction}
+                      emphasis="none"
                     />
                     <TodayMetricCard
                       label="Follow-ups due"
@@ -533,7 +545,7 @@ export function OperationalDashboardView() {
                       icon={MessageSquare}
                       loading={loading}
                       count={followUpsDueCount}
-                      zeroPrimaryText="All follow-ups handled"
+                      zeroPrimaryText="No follow-ups due"
                       nextActionLine={followUpsNextAction}
                       emphasis={followUpsDueCount > 0 ? "accent" : "none"}
                     />
@@ -581,13 +593,29 @@ export function OperationalDashboardView() {
       </section>
 
       <section aria-labelledby="dash-focus">
-        <h2
-          id="dash-focus"
-          className="mb-2 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
-        >
-          Focus
-        </h2>
-        <div className="rounded-xl border border-kp-outline bg-kp-surface p-3 shadow-sm sm:p-4">
+        <div className="mb-2 flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
+          <h2
+            id="dash-focus"
+            className="font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
+          >
+            Focus
+          </h2>
+          {focusHydrated && !loading && focusStored.items.length > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={cn(
+                kpBtnTertiary,
+                "h-8 shrink-0 px-2.5 text-xs font-semibold text-kp-on-surface-variant hover:text-kp-on-surface"
+              )}
+              onClick={handleFocusReset}
+            >
+              Reset focus
+            </Button>
+          ) : null}
+        </div>
+        <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm transition-colors">
           {loading || !focusHydrated ? (
             <ul className="space-y-1.5" aria-busy="true">
               {[0, 1, 2].map((k) => (
@@ -599,9 +627,21 @@ export function OperationalDashboardView() {
               ))}
             </ul>
           ) : focusVisible.length === 0 ? (
-            <p className="text-sm leading-snug text-kp-on-surface-muted">
-              Nothing in your Focus queue right now.
-            </p>
+            focusStored.items.length > 0 ? (
+              <div className="space-y-1.5">
+                <p className="text-sm font-semibold text-kp-on-surface">
+                  You&apos;ve cleared your focus queue
+                </p>
+                <p className="text-xs leading-relaxed text-kp-on-surface-muted">
+                  Use <span className="font-medium text-kp-on-surface-variant">Reset focus</span> to bring
+                  suggestions back, or they&apos;ll return when your counts change.
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm leading-snug text-kp-on-surface-muted">
+                Nothing suggested for Focus right now.
+              </p>
+            )
           ) : (
             <ul className="space-y-1.5" aria-label="Focus queue">
               {focusVisible.map((item, index) => (

@@ -193,8 +193,8 @@ export function DashboardTodayCalendarScheduleGrid({
               ) : itemsForSelected.length === 0 ? (
                 <p className="text-sm leading-relaxed text-kp-on-surface-muted">
                   {selectedIsToday
-                    ? "No appointments today — you're clear"
-                    : "No appointments for this day."}
+                    ? "No private showings today — add one or pick another day on the calendar."
+                    : "No showings on this day — pick another date or add an appointment."}
                 </p>
               ) : (
                 <ul className="space-y-2 pb-1">
