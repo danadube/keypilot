@@ -13,6 +13,7 @@ import { AlertCircle, Loader2, Mail, MapPinned, Printer } from "lucide-react";
 import type { FarmStructureVisibility } from "@/lib/validations/farm-structure-visibility";
 import { buildMailingListCsv } from "@/lib/farm/mailing/mailing-list-csv";
 import { FarmAreaMembersBulkPanel } from "./_components/farm-area-members-bulk-panel";
+import { FarmTrackrHealthSummaryStrip } from "./_components/farm-trackr-health-summary-strip";
 import { FarmTrackrImportWorkflow } from "./_components/farm-trackr-import-workflow";
 import { FarmTrackrStructureVisibilityToggle } from "./_components/farm-trackr-structure-visibility";
 import { UI_COPY } from "@/lib/ui-copy";
@@ -427,6 +428,8 @@ export default function FarmTrackrPage() {
             {error}
           </div>
         ) : null}
+
+        <FarmTrackrHealthSummaryStrip visibility={structureVisibility} />
 
         <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
           <div className="flex flex-wrap items-start gap-3">

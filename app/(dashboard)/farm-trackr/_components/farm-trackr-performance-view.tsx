@@ -7,6 +7,11 @@ import { AlertCircle, Loader2 } from "lucide-react";
 import { ModuleGate } from "@/components/shared/ModuleGate";
 import { useFarmTrackrStructure } from "@/components/modules/farm-trackr/use-farm-trackr-structure";
 import { fetchFarmMailingSummary } from "@/lib/farm/mailing/farm-mailing-browser";
+import {
+  fetchFarmPerformanceHealth,
+  type FarmPerformanceHealthAreaRow,
+  type FarmPerformanceHealthPayload,
+} from "@/lib/farm/farm-performance-health-browser";
 import { UI_COPY } from "@/lib/ui-copy";
 
 function StatCard({
@@ -29,11 +34,41 @@ function StatCard({
   );
 }
 
+function gapScore(row: FarmPerformanceHealthAreaRow): number {
+  return (
+    row.missingEmail +
+    row.missingPhone +
+    row.missingMailingAddress +
+    row.missingSiteAddress
+  );
+}
+
+function HealthMetricPill({ label, pct }: { label: string; pct: number }) {
+  const low = pct < 50;
+  return (
+    <span
+      className={
+        low
+          ? "rounded-md bg-amber-500/15 px-2 py-0.5 text-amber-100/95"
+          : "rounded-md bg-kp-surface-high px-2 py-0.5 text-kp-on-surface-variant"
+      }
+    >
+      {label}{" "}
+      <span className="font-semibold tabular-nums text-kp-on-surface">{pct}%</span>
+    </span>
+  );
+}
+
 export function FarmTrackrPerformanceView() {
-  const { territories, areas, loading, error, areasByTerritoryId } = useFarmTrackrStructure();
+  const { territories, areas, loading, error, areasByTerritoryId, structureVisibility } =
+    useFarmTrackrStructure();
   const [mailTerritory, setMailTerritory] = useState<Record<string, number>>({});
   const [mailLoading, setMailLoading] = useState(false);
   const [mailError, setMailError] = useState<string | null>(null);
+
+  const [health, setHealth] = useState<FarmPerformanceHealthPayload | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [healthError, setHealthError] = useState<string | null>(null);
 
   const totals = useMemo(() => {
     const territoryCount = territories.length;
@@ -43,6 +78,20 @@ export function FarmTrackrPerformanceView() {
     const emptyFarms = areas.filter((a) => a.membershipCount === 0).length;
     return { territoryCount, areaCount, assignments, activeFarms, emptyFarms };
   }, [territories, areas]);
+
+  const sortedHealthAreas = useMemo(() => {
+    if (!health) return [];
+    return [...health.areas].sort((a, b) => {
+      if (a.totalContacts === 0 && b.totalContacts === 0) {
+        return a.farmAreaName.localeCompare(b.farmAreaName);
+      }
+      if (a.totalContacts === 0) return 1;
+      if (b.totalContacts === 0) return -1;
+      const d = gapScore(b) - gapScore(a);
+      if (d !== 0) return d;
+      return a.farmAreaName.localeCompare(b.farmAreaName);
+    });
+  }, [health]);
 
   useEffect(() => {
     if (loading) return;
@@ -79,6 +128,28 @@ export function FarmTrackrPerformanceView() {
     };
   }, [loading, territories]);
 
+  useEffect(() => {
+    if (loading) return;
+    let cancelled = false;
+    setHealthLoading(true);
+    setHealthError(null);
+    void (async () => {
+      try {
+        const data = await fetchFarmPerformanceHealth(structureVisibility);
+        if (!cancelled) setHealth(data);
+      } catch (e) {
+        if (!cancelled) {
+          setHealthError(e instanceof Error ? e.message : UI_COPY.errors.load("farm health"));
+        }
+      } finally {
+        if (!cancelled) setHealthLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [loading, structureVisibility]);
+
   const mailingReadySum = useMemo(
     () => Object.values(mailTerritory).reduce((s, n) => s + n, 0),
     [mailTerritory]
@@ -95,6 +166,9 @@ export function FarmTrackrPerformanceView() {
         <p className="max-w-2xl text-xs text-kp-on-surface-variant">
           {UI_COPY.farmTrackr.performanceBlurb}
         </p>
+        <p className="max-w-2xl text-xs text-kp-on-surface-variant">
+          {UI_COPY.farmTrackr.performanceHealthNote}
+        </p>
 
         {error ? (
           <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
@@ -103,6 +177,12 @@ export function FarmTrackrPerformanceView() {
           </div>
         ) : null}
         {mailError ? <p className="text-xs text-amber-200/90">{mailError}</p> : null}
+        {healthError ? (
+          <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {healthError}
+          </div>
+        ) : null}
 
         {loading ? (
           <div className="flex items-center gap-2 text-sm text-kp-on-surface-variant">
@@ -140,7 +220,131 @@ export function FarmTrackrPerformanceView() {
                 }
                 sub={UI_COPY.farmTrackr.mailingReadySumNote}
               />
+              <StatCard
+                label="Ready to promote"
+                value={
+                  healthLoading ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-kp-on-surface-muted" />
+                  ) : (
+                    (health?.summary.farmStageReadyToPromote ?? "—")
+                  )
+                }
+                sub="FARM-stage contacts with email or phone (visible in member panel)."
+              />
+              <StatCard
+                label="Farms with gaps"
+                value={
+                  healthLoading ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-kp-on-surface-muted" />
+                  ) : (
+                    (health?.summary.areasNeedingCleanup ?? "—")
+                  )
+                }
+                sub="Areas with at least one missing field among visible contacts."
+              />
+              <StatCard
+                label="Workspace email coverage"
+                value={
+                  healthLoading ? (
+                    <Loader2 className="h-6 w-6 animate-spin text-kp-on-surface-muted" />
+                  ) : (
+                    `${health?.summary.pctWithEmail ?? 0}%`
+                  )
+                }
+                sub="Across all visible farm contacts in the current structure filter."
+              />
             </div>
+
+            <section className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
+              <div className="border-b border-kp-outline bg-kp-surface-high/40 px-4 py-3">
+                <h2 className="text-sm font-semibold text-kp-on-surface">Farm data health</h2>
+                <p className="mt-1 text-xs text-kp-on-surface-variant">
+                  Sorted with the neediest farms first. Mailing and site use export-ready bars (street +
+                  city + state + zip). Email includes alternate fields; phone includes second number.
+                </p>
+              </div>
+              <div className="divide-y divide-kp-outline">
+                {healthLoading ? (
+                  <div className="flex items-center gap-2 px-4 py-6 text-sm text-kp-on-surface-variant">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading health metrics…
+                  </div>
+                ) : sortedHealthAreas.length === 0 ? (
+                  <p className="px-4 py-6 text-xs text-kp-on-surface-variant">
+                    No farm areas in this view.{" "}
+                    <Link href="/farm-trackr" className="font-medium text-kp-teal hover:underline">
+                      Create structure on Overview
+                    </Link>
+                    .
+                  </p>
+                ) : (
+                  sortedHealthAreas.map((row) => (
+                    <div key={row.farmAreaId} className="px-4 py-3">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-medium text-kp-on-surface">{row.farmAreaName}</p>
+                          <p className="text-xs text-kp-on-surface-variant">
+                            {row.territoryName} ·{" "}
+                            <span className="tabular-nums">{row.totalContacts}</span> contacts
+                          </p>
+                        </div>
+                        <Link
+                          href={`/farm-trackr/lists?scope=area&id=${encodeURIComponent(row.farmAreaId)}`}
+                          className="shrink-0 text-xs font-medium text-kp-teal hover:underline"
+                        >
+                          Open lists
+                        </Link>
+                      </div>
+                      {row.totalContacts === 0 ? (
+                        <p className="mt-2 text-xs text-kp-on-surface-variant">
+                          No visible contacts in this area (or empty farm).
+                        </p>
+                      ) : (
+                        <>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <HealthMetricPill label="Email" pct={row.pctWithEmail} />
+                            <HealthMetricPill label="Phone" pct={row.pctWithPhone} />
+                            <HealthMetricPill label="Mailing" pct={row.pctWithMailingAddress} />
+                            <HealthMetricPill label="Site" pct={row.pctWithSiteAddress} />
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-kp-on-surface-variant">
+                            <span>
+                              Missing email:{" "}
+                              <span className="font-medium tabular-nums text-kp-on-surface">
+                                {row.missingEmail}
+                              </span>
+                            </span>
+                            <span>
+                              Missing phone:{" "}
+                              <span className="font-medium tabular-nums text-kp-on-surface">
+                                {row.missingPhone}
+                              </span>
+                            </span>
+                            <span>
+                              Missing mailing:{" "}
+                              <span className="font-medium tabular-nums text-kp-on-surface">
+                                {row.missingMailingAddress}
+                              </span>
+                            </span>
+                            <span>
+                              Missing site:{" "}
+                              <span className="font-medium tabular-nums text-kp-on-surface">
+                                {row.missingSiteAddress}
+                              </span>
+                            </span>
+                          </div>
+                          {row.farmStageReadyToPromote > 0 ? (
+                            <p className="mt-2 text-xs font-medium text-kp-teal/95">
+                              {row.farmStageReadyToPromote} contacts ready to promote
+                            </p>
+                          ) : null}
+                        </>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </section>
 
             <section className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
               <div className="border-b border-kp-outline bg-kp-surface-high/40 px-4 py-3">

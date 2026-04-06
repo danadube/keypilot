@@ -38,7 +38,9 @@ export const UI_COPY = {
     scopeKindTerritory: "Territory",
     scopeKindArea: "Farm area",
     performanceBlurb:
-      "Live structure and mailing-ready totals — not campaign or import analytics.",
+      "Structure, mailing-ready totals, and per-farm contact completeness — operational signals, not campaign analytics.",
+    performanceHealthNote:
+      "Health uses the same contacts you see in each area’s member panel (your CRM access rules).",
     mailingReadySumNote: "Sum of territory mail-ready counts (deduped per territory).",
     totalMembersNote: "Assignment rows; same contact in multiple areas counts more than once.",
   },
