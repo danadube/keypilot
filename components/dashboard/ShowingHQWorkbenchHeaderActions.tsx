@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useClerk, useUser } from "@clerk/nextjs";
-import { ChevronDown, Plus } from "lucide-react";
+import { CheckSquare, ChevronDown, Plus } from "lucide-react";
+import { mutate as swrMutate } from "swr";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import { NewTaskModal } from "@/components/tasks/new-task-modal";
 
 const menuItemClass =
   "block w-full px-3 py-2 text-left text-xs text-kp-on-surface transition-colors hover:bg-kp-surface-high";
@@ -41,6 +43,7 @@ export function ShowingHQWorkbenchHeaderActions({
   showNewMenu = true,
 }: ShowingHQWorkbenchHeaderActionsProps) {
   const [newOpen, setNewOpen] = useState(false);
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [brandingProfile, setBrandingProfile] = useState<BrandingProfile | null>(null);
   const [avatarFailIndex, setAvatarFailIndex] = useState(0);
@@ -165,10 +168,32 @@ export function ShowingHQWorkbenchHeaderActions({
               >
                 New Contact
               </Link>
+              <button
+                type="button"
+                className={cn(menuItemClass, "flex w-full items-center gap-2")}
+                role="menuitem"
+                onClick={() => {
+                  setNewOpen(false);
+                  setTaskModalOpen(true);
+                }}
+              >
+                <CheckSquare className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                New Task
+              </button>
             </div>
           ) : null}
         </div>
       ) : null}
+
+      <NewTaskModal
+        open={taskModalOpen}
+        onOpenChange={setTaskModalOpen}
+        defaultContactId={null}
+        defaultPropertyId={null}
+        initialTitle=""
+        initialDescription=""
+        onCreated={() => void swrMutate("/api/v1/tasks")}
+      />
 
       <div className="relative" ref={accountRef}>
         <button
