@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import useSWR from "swr";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -115,6 +116,36 @@ type ContactsApiFarmScopeMeta = {
   name: string;
 };
 
+type ContactsApiResponse = {
+  contacts: Contact[];
+  farmScopeMeta: ContactsApiFarmScopeMeta | null;
+};
+
+class ContactsApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string
+  ) {
+    super(message);
+  }
+}
+
+async function contactsFetcher(url: string): Promise<ContactsApiResponse> {
+  const res = await fetch(url);
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new ContactsApiError(
+      res.status,
+      (json.error?.message as string) ?? UI_COPY.errors.load("contacts")
+    );
+  }
+  return {
+    contacts: (json.data as Contact[]) ?? [],
+    farmScopeMeta:
+      (json.meta?.farmScope as ContactsApiFarmScopeMeta | undefined) ?? null,
+  };
+}
+
 function useContacts(
   statusFilter: StatusTabValue,
   tagIdFilter: string | null,
@@ -122,70 +153,53 @@ function useContacts(
   sortMode: ContactsListSortMode,
   farmScope: ContactsFarmScopeInput
 ) {
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [farmScopeMeta, setFarmScopeMeta] =
-    useState<ContactsApiFarmScopeMeta | null>(null);
+  const url = buildContactsApiUrl(
+    statusFilter,
+    tagIdFilter,
+    needsFollowUp,
+    sortMode,
+    farmScope
+  );
 
-  function load(
-    status: StatusTabValue,
-    tagId: string | null,
-    followUp: boolean,
-    sort: ContactsListSortMode,
-    scope: ContactsFarmScopeInput
-  ) {
-    setError(null);
-    setLoading(true);
-    fetch(buildContactsApiUrl(status, tagId, followUp, sort, scope))
-      .then((res) => res.json().then((json) => ({ res, json })))
-      .then(({ res, json }) => {
-        if (!res.ok) {
-          let msg =
-            (json.error?.message as string) ?? UI_COPY.errors.load("contacts");
-          if (
-            res.status === 404 &&
-            tagId &&
-            /tag not found/i.test(String(msg))
-          ) {
-            msg =
-              "Tag not found — it may have been deleted. Clear the tag filter (above) or remove this shortcut from ClientKeep → Segments.";
-          }
-          if (
-            res.status === 404 &&
-            (scope.farmAreaId || scope.farmTerritoryId) &&
-            /(farm area|territory) not found/i.test(String(msg))
-          ) {
-            msg =
-              "That farm area or territory was not found. Clear the farm filter or return to FarmTrackr.";
-          }
-          setError(msg);
-          setContacts([]);
-          setFarmScopeMeta(null);
-          return;
-        }
-        setContacts((json.data as Contact[]) ?? []);
-        const meta = json.meta?.farmScope as ContactsApiFarmScopeMeta | undefined;
-        setFarmScopeMeta(meta ?? null);
-      })
-      .catch(() => {
-        setError(UI_COPY.errors.load("contacts"));
-        setFarmScopeMeta(null);
-      })
-      .finally(() => setLoading(false));
+  const {
+    data,
+    error: rawError,
+    isLoading,
+    mutate,
+  } = useSWR<ContactsApiResponse>(url, contactsFetcher, {
+    errorRetryCount: 2,
+    errorRetryInterval: 500,
+  });
+
+  let error: string | null = null;
+  if (rawError) {
+    const msg =
+      rawError instanceof Error
+        ? rawError.message
+        : UI_COPY.errors.load("contacts");
+    const is404 =
+      rawError instanceof ContactsApiError && rawError.status === 404;
+    if (is404 && tagIdFilter && /tag not found/i.test(msg)) {
+      error =
+        "Tag not found — it may have been deleted. Clear the tag filter (above) or remove this shortcut from ClientKeep → Segments.";
+    } else if (
+      is404 &&
+      (farmScope.farmAreaId || farmScope.farmTerritoryId) &&
+      /(farm area|territory) not found/i.test(msg)
+    ) {
+      error =
+        "That farm area or territory was not found. Clear the farm filter or return to FarmTrackr.";
+    } else {
+      error = msg;
+    }
   }
 
-  useEffect(() => {
-    load(statusFilter, tagIdFilter, needsFollowUp, sortMode, farmScope);
-  }, [statusFilter, tagIdFilter, needsFollowUp, sortMode, farmScope]);
-
   return {
-    contacts,
-    loading,
+    contacts: data?.contacts ?? [],
+    loading: isLoading && !data,
     error,
-    farmScopeMeta,
-    reload: () =>
-      load(statusFilter, tagIdFilter, needsFollowUp, sortMode, farmScope),
+    farmScopeMeta: data?.farmScopeMeta ?? null,
+    reload: () => mutate(),
   };
 }
 
