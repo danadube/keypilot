@@ -38,6 +38,21 @@ import {
 } from "@/lib/dashboard-focus-queue";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import type { TaskPilotPayload } from "@/lib/tasks/task-pilot-payload-mutate";
+import { contactIdFromAppHref, propertyIdFromAppHref } from "@/lib/tasks/entity-id-from-href";
+
+type DashboardTaskModalCtx = {
+  defaultContactId: string | null;
+  defaultPropertyId: string | null;
+  initialTitle: string;
+  initialDescription: string;
+};
+
+const EMPTY_DASH_TASK_CTX: DashboardTaskModalCtx = {
+  defaultContactId: null,
+  defaultPropertyId: null,
+  initialTitle: "",
+  initialDescription: "",
+};
 
 type DashboardStats = {
   propertiesCount: number;
@@ -304,6 +319,27 @@ export function OperationalDashboardView() {
     { errorRetryCount: 2, errorRetryInterval: 500 }
   );
   const [newTaskModalOpen, setNewTaskModalOpen] = useState(false);
+  const [taskModalCtx, setTaskModalCtx] = useState<DashboardTaskModalCtx>(EMPTY_DASH_TASK_CTX);
+
+  const handleTaskModalOpenChange = (open: boolean) => {
+    setNewTaskModalOpen(open);
+    if (!open) setTaskModalCtx({ ...EMPTY_DASH_TASK_CTX });
+  };
+
+  const openBlankTaskModal = () => {
+    setTaskModalCtx({ ...EMPTY_DASH_TASK_CTX });
+    setNewTaskModalOpen(true);
+  };
+
+  const openFocusTaskModal = (item: FocusDisplayItem) => {
+    setTaskModalCtx({
+      defaultContactId: contactIdFromAppHref(item.href),
+      defaultPropertyId: propertyIdFromAppHref(item.href),
+      initialTitle: `Focus: ${item.label}`,
+      initialDescription: [item.subtext, `Link: ${item.href}`].filter(Boolean).join("\n"),
+    });
+    setNewTaskModalOpen(true);
+  };
 
   const loading = statsLoading || showingsLoading || followLoading || dealsLoading || tasksLoading;
   const overdue = useMemo(() => followData?.overdue ?? [], [followData]);
@@ -717,6 +753,17 @@ export function OperationalDashboardView() {
                         variant="ghost"
                         size="sm"
                         className="h-7 gap-1 px-1.5 text-xs font-medium text-kp-on-surface-variant hover:bg-kp-surface-high/50 hover:text-kp-on-surface"
+                        aria-label={`Add task from focus: ${item.label}`}
+                        onClick={() => openFocusTaskModal(item)}
+                      >
+                        <CheckSquare className="h-3.5 w-3.5 text-kp-teal/90" aria-hidden />
+                        <span className="hidden sm:inline">Task</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 px-1.5 text-xs font-medium text-kp-on-surface-variant hover:bg-kp-surface-high/50 hover:text-kp-on-surface"
                         aria-label={`Complete: ${item.label}`}
                         onClick={() => handleFocusComplete(item)}
                       >
@@ -806,7 +853,7 @@ export function OperationalDashboardView() {
                 kpBtnTertiary,
                 "h-9 min-h-9 justify-center gap-2 border border-kp-outline/70 px-4 text-xs font-semibold text-kp-on-surface-variant hover:border-kp-outline hover:text-kp-on-surface"
               )}
-              onClick={() => setNewTaskModalOpen(true)}
+              onClick={() => openBlankTaskModal()}
             >
               <CheckSquare className="h-4 w-4 shrink-0 opacity-90" />
               New Task
@@ -821,7 +868,11 @@ export function OperationalDashboardView() {
 
       <NewTaskModal
         open={newTaskModalOpen}
-        onOpenChange={setNewTaskModalOpen}
+        onOpenChange={handleTaskModalOpenChange}
+        defaultContactId={taskModalCtx.defaultContactId}
+        defaultPropertyId={taskModalCtx.defaultPropertyId}
+        initialTitle={taskModalCtx.initialTitle}
+        initialDescription={taskModalCtx.initialDescription}
         onCreated={() => void mutateTasks()}
       />
     </div>

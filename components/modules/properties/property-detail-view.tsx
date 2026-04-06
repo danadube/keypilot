@@ -21,6 +21,7 @@ import {
   DollarSign,
   Pencil,
   ImagePlus,
+  CheckSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
@@ -33,6 +34,7 @@ import {
 } from "@/components/ui/kp-dashboard-button-tiers";
 import { UI_COPY } from "@/lib/ui-copy";
 import { toast } from "sonner";
+import { NewTaskModal } from "@/components/tasks/new-task-modal";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -132,6 +134,7 @@ export function PropertyDetailView({ id }: { id: string }) {
   const [saving, setSaving] = useState(false);
   const [lifecycleModalOpen, setLifecycleModalOpen] = useState(false);
   const [lifecycleBusy, setLifecycleBusy] = useState<"archive" | "delete" | null>(null);
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
 
   function startEditing(p: Property) {
     setEditForm({
@@ -328,6 +331,29 @@ export function PropertyDetailView({ id }: { id: string }) {
       </Button>
     ) : null;
 
+  const listingTaskTitle = `Listing follow-up: ${property.address1}`;
+  const listingTaskDescription = [fullAddressForReport, property.mlsNumber ? `MLS ${property.mlsNumber}` : null]
+    .filter(Boolean)
+    .join("\n");
+
+  const addTaskButton = !isEditing ? (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className={cn(
+        kpBtnSecondary,
+        "h-8 gap-1.5 text-xs",
+        hasHeroImage &&
+          "border-white/35 bg-black/35 text-white backdrop-blur-sm hover:border-white/50 hover:bg-black/50 hover:text-white"
+      )}
+      onClick={() => setTaskModalOpen(true)}
+    >
+      <CheckSquare className="h-3.5 w-3.5" />
+      Add task
+    </Button>
+  ) : null;
+
   return (
     <div className="flex flex-col gap-6">
       <input
@@ -395,6 +421,7 @@ export function PropertyDetailView({ id }: { id: string }) {
                 </div>
                 <div className="pointer-events-auto flex flex-wrap items-center gap-2">
                   {priceBadge}
+                  {addTaskButton}
                   {editButton}
                 </div>
               </div>
@@ -437,10 +464,19 @@ export function PropertyDetailView({ id }: { id: string }) {
               <p className="mt-0.5 text-sm text-kp-on-surface-variant">{locationLine}</p>
             </div>
             {priceBadge}
+            {addTaskButton}
             {editButton}
           </div>
         )}
       </div>
+
+      <NewTaskModal
+        open={taskModalOpen}
+        onOpenChange={setTaskModalOpen}
+        defaultPropertyId={property.id}
+        initialTitle={listingTaskTitle}
+        initialDescription={listingTaskDescription}
+      />
 
       <p className="-mt-2 text-xs text-kp-on-surface-variant">
         <Link href={`/properties/${id}/media`} className="font-medium text-kp-teal hover:underline">

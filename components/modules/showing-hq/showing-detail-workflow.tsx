@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -41,6 +41,7 @@ import {
 import { AF, afError } from "@/lib/ui/action-feedback";
 import { InlineSuccessText, useFlashSuccess } from "@/components/ui/action-feedback";
 import { toast } from "sonner";
+import { NewTaskModal } from "@/components/tasks/new-task-modal";
 
 type ShowingDetail = {
   id: string;
@@ -58,7 +59,7 @@ type ShowingDetail = {
   buyerAgentEmailReplyFrom?: string | null;
   buyerAgentEmailReplyRaw?: string | null;
   buyerAgentEmailReplyParsed?: unknown;
-  property: { address1: string; city: string; state: string; zip?: string | null };
+  property: { id?: string; address1: string; city: string; state: string; zip?: string | null };
   usage?: { feedbackRequests: number; feedbackRequestsPending: number };
 };
 
@@ -133,6 +134,7 @@ export function ShowingDetailWorkflow() {
   const { visible: detailsSavedVisible, flash: flashDetailsSaved } = useFlashSuccess();
   const [lifecycleModalOpen, setLifecycleModalOpen] = useState(false);
   const [lifecycleBusy, setLifecycleBusy] = useState<"archive" | "delete" | null>(null);
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
 
   const load = useCallback(() => {
     if (!id) return;
@@ -370,6 +372,16 @@ export function ShowingDetailWorkflow() {
     data.feedbackRequestStatus === "RECEIVED" || Boolean(data.buyerAgentEmailReplyAt);
   const showNextSendCta = hasDraft && !feedbackSent && !feedbackReceived;
 
+  const showingTaskTitle = `Showing follow-up: ${addressLine}`;
+  const showingTaskDescription = [
+    `Showing ID: ${data.id}`,
+    `Scheduled: ${scheduledLabel}`,
+    buyerLine,
+    data.buyerAgentName?.trim() ? `Buyer agent: ${data.buyerAgentName.trim()}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -392,7 +404,25 @@ export function ShowingDetailWorkflow() {
             </p>
           </div>
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={cn(kpBtnSecondary, "h-9 gap-1.5 text-xs shrink-0")}
+          onClick={() => setTaskModalOpen(true)}
+        >
+          <CheckSquare className="h-4 w-4" />
+          Add task
+        </Button>
       </div>
+
+      <NewTaskModal
+        open={taskModalOpen}
+        onOpenChange={setTaskModalOpen}
+        defaultPropertyId={data.property.id ?? null}
+        initialTitle={showingTaskTitle}
+        initialDescription={showingTaskDescription}
+      />
 
       <ShowingHqWorkflowTabStrip tab={tab} onTabChange={setTab} />
 

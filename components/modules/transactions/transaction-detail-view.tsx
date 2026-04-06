@@ -18,8 +18,11 @@ import {
   Briefcase,
   ExternalLink,
   User,
+  CheckSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
   getImportProvenance,
@@ -306,6 +309,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
   const [lifecycleBusy, setLifecycleBusy] = useState<"archive" | "unarchive" | "delete" | null>(
     null
   );
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
 
   const selectableDeals = useMemo(
     () =>
@@ -601,6 +605,17 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
   const importSession = txn.committedImportSessions?.[0] ?? null;
   const importedAt = formatTimestamp(importSession?.createdAt);
 
+  const txnTaskTitle = `Transaction: ${STATUS_LABELS[txn.status]} — ${txn.property.address1}`;
+  const txnTaskDescription = [
+    `Transaction ID: ${txn.id}`,
+    `${txn.property.address1}, ${txn.property.city}, ${txn.property.state} ${txn.property.zip}`,
+    txn.deal
+      ? `Deal: ${DEAL_STATUS_LABELS[txn.deal.status]} — ${[txn.deal.contact.firstName, txn.deal.contact.lastName].filter(Boolean).join(" ") || "Contact"}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
       <div className="px-6 pt-3 sm:px-8">
@@ -612,27 +627,39 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           Transactions
         </Link>
 
-        <div className="mt-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-headline text-[1.5rem] font-semibold text-kp-on-surface">
-              Transaction
-            </h1>
-            <StatusBadge variant={statusBadgeVariant(txn.status)}>
-              {STATUS_LABELS[txn.status]}
-            </StatusBadge>
-          </div>
-          <p className="mt-1 text-sm font-medium text-kp-on-surface">
-            {txn.property.address1}
-            <span className="font-normal text-kp-on-surface-variant">
-              {" "}
-              · {txn.property.city}, {txn.property.state} {txn.property.zip}
-            </span>
-          </p>
-          {txn.deletedAt && (
-            <p className="mt-2 inline-flex rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-300">
-              Archived transaction
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="font-headline text-[1.5rem] font-semibold text-kp-on-surface">
+                Transaction
+              </h1>
+              <StatusBadge variant={statusBadgeVariant(txn.status)}>
+                {STATUS_LABELS[txn.status]}
+              </StatusBadge>
+            </div>
+            <p className="mt-1 text-sm font-medium text-kp-on-surface">
+              {txn.property.address1}
+              <span className="font-normal text-kp-on-surface-variant">
+                {" "}
+                · {txn.property.city}, {txn.property.state} {txn.property.zip}
+              </span>
             </p>
-          )}
+            {txn.deletedAt && (
+              <p className="mt-2 inline-flex rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-300">
+                Archived transaction
+              </p>
+            )}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 shrink-0 gap-1.5 text-xs"
+            onClick={() => setTaskModalOpen(true)}
+          >
+            <CheckSquare className="h-4 w-4" />
+            Add task
+          </Button>
         </div>
       </div>
 
@@ -1210,6 +1237,15 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           </form>
         </section>
       </div>
+
+      <NewTaskModal
+        open={taskModalOpen}
+        onOpenChange={setTaskModalOpen}
+        defaultPropertyId={txn.property.id}
+        defaultContactId={txn.deal?.contact.id ?? null}
+        initialTitle={txnTaskTitle}
+        initialDescription={txnTaskDescription}
+      />
     </div>
   );
 }

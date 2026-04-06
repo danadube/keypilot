@@ -27,6 +27,12 @@ export type NewTaskModalProps = {
   onOpenChange: (open: boolean) => void;
   /** When set, contact select defaults to this id (e.g. contact detail). */
   defaultContactId?: string | null;
+  /** When set, property select defaults to this id (e.g. property / transaction context). */
+  defaultPropertyId?: string | null;
+  /** Prefilled title when the modal opens (user can edit). */
+  initialTitle?: string;
+  /** Optional notes / context stored on the task. */
+  initialDescription?: string | null;
   onCreated?: () => void;
 };
 
@@ -42,9 +48,13 @@ export function NewTaskModal({
   open,
   onOpenChange,
   defaultContactId,
+  defaultPropertyId,
+  initialTitle = "",
+  initialDescription = "",
   onCreated,
 }: NewTaskModalProps) {
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [dueDatePart, setDueDatePart] = useState("");
   const [dueTimePart, setDueTimePart] = useState("");
   const [contactId, setContactId] = useState<string>("");
@@ -57,11 +67,12 @@ export function NewTaskModal({
 
   useEffect(() => {
     if (!open) return;
-    setTitle("");
+    setTitle(initialTitle.trim());
+    setDescription((initialDescription ?? "").trim());
     setDueDatePart("");
     setDueTimePart("");
     setContactId(defaultContactId ?? "");
-    setPropertyId("");
+    setPropertyId(defaultPropertyId ?? "");
     setSubmitting(false);
     setLoadingContacts(true);
     fetch("/api/v1/contacts")
@@ -75,7 +86,7 @@ export function NewTaskModal({
       .then((j) => setProperties(Array.isArray(j.data) ? j.data : []))
       .catch(() => setProperties([]))
       .finally(() => setLoadingProperties(false));
-  }, [open, defaultContactId]);
+  }, [open, defaultContactId, defaultPropertyId, initialTitle, initialDescription]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,6 +100,7 @@ export function NewTaskModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: t,
+          description: description.trim() ? description.trim() : null,
           dueAt: dueAtIso,
           contactId: contactId || null,
           propertyId: propertyId || null,
@@ -114,7 +126,7 @@ export function NewTaskModal({
       open={open}
       onOpenChange={onOpenChange}
       title="New task"
-      description="Optional due date and time, contact, and listing."
+      description="Optional notes, due date, contact, and listing."
       size="md"
       footer={
         <>
@@ -154,6 +166,23 @@ export function NewTaskModal({
             autoFocus
             maxLength={500}
             required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label
+            htmlFor="task-description"
+            className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
+          >
+            Notes (optional)
+          </label>
+          <textarea
+            id="task-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={2}
+            maxLength={20000}
+            className={cn(inputClass, "min-h-[2.75rem] resize-y")}
+            placeholder="Context for you — e.g. why this task exists"
           />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">

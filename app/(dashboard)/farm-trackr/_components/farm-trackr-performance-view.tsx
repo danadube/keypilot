@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertCircle, CheckSquare, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import { ModuleGate } from "@/components/shared/ModuleGate";
 import { useFarmTrackrStructure } from "@/components/modules/farm-trackr/use-farm-trackr-structure";
 import { fetchFarmMailingSummary } from "@/lib/farm/mailing/farm-mailing-browser";
@@ -69,6 +71,24 @@ export function FarmTrackrPerformanceView() {
   const [health, setHealth] = useState<FarmPerformanceHealthPayload | null>(null);
   const [healthLoading, setHealthLoading] = useState(false);
   const [healthError, setHealthError] = useState<string | null>(null);
+
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const [taskInitialTitle, setTaskInitialTitle] = useState("");
+  const [taskInitialDescription, setTaskInitialDescription] = useState("");
+
+  const openFarmTask = useCallback((title: string, description: string) => {
+    setTaskInitialTitle(title);
+    setTaskInitialDescription(description);
+    setTaskModalOpen(true);
+  }, []);
+
+  const closeFarmTaskModal = useCallback((open: boolean) => {
+    setTaskModalOpen(open);
+    if (!open) {
+      setTaskInitialTitle("");
+      setTaskInitialDescription("");
+    }
+  }, []);
 
   const totals = useMemo(() => {
     const territoryCount = territories.length;
@@ -155,6 +175,20 @@ export function FarmTrackrPerformanceView() {
     [mailTerritory]
   );
 
+  const overviewHealthTaskDescription = useMemo(() => {
+    if (!health) {
+      return "FarmTrackr → Performance & health. Review farm data gaps and mailing readiness.";
+    }
+    const s = health.summary;
+    return [
+      "FarmTrackr performance & health (overview)",
+      `Territories: ${totals.territoryCount}, farm areas: ${totals.areaCount}, active farms: ${totals.activeFarms}`,
+      `Farms with data gaps: ${s.areasNeedingCleanup} of ${s.areasWithContacts}`,
+      `Workspace email coverage: ${s.pctWithEmail}%`,
+      `Ready to promote (FARM stage): ${s.farmStageReadyToPromote}`,
+    ].join("\n");
+  }, [health, totals]);
+
   return (
     <ModuleGate
       moduleId="farm-trackr"
@@ -181,6 +215,23 @@ export function FarmTrackrPerformanceView() {
           <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
             <AlertCircle className="h-4 w-4 shrink-0" />
             {healthError}
+          </div>
+        ) : null}
+
+        {!loading ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 text-xs"
+              onClick={() =>
+                openFarmTask("FarmTrackr: data health follow-up", overviewHealthTaskDescription)
+              }
+            >
+              <CheckSquare className="h-4 w-4" />
+              Add task
+            </Button>
           </div>
         ) : null}
 
@@ -288,12 +339,37 @@ export function FarmTrackrPerformanceView() {
                             <span className="tabular-nums">{row.totalContacts}</span> contacts
                           </p>
                         </div>
-                        <Link
-                          href={`/farm-trackr/lists?scope=area&id=${encodeURIComponent(row.farmAreaId)}`}
-                          className="shrink-0 text-xs font-medium text-kp-teal hover:underline"
-                        >
-                          Open lists
-                        </Link>
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            className="text-xs font-medium text-kp-on-surface-variant underline-offset-2 hover:text-kp-teal hover:underline"
+                            onClick={() =>
+                              openFarmTask(
+                                `Farm health: ${row.farmAreaName}`,
+                                [
+                                  `Territory: ${row.territoryName}`,
+                                  `Contacts: ${row.totalContacts}`,
+                                  `Email ${row.pctWithEmail}% · Phone ${row.pctWithPhone}% · Mailing ${row.pctWithMailingAddress}% · Site ${row.pctWithSiteAddress}%`,
+                                  `Missing — email: ${row.missingEmail}, phone: ${row.missingPhone}, mailing: ${row.missingMailingAddress}, site: ${row.missingSiteAddress}`,
+                                  row.farmStageReadyToPromote > 0
+                                    ? `Ready to promote: ${row.farmStageReadyToPromote}`
+                                    : null,
+                                  `Lists: /farm-trackr/lists?scope=area&id=${row.farmAreaId}`,
+                                ]
+                                  .filter(Boolean)
+                                  .join("\n")
+                              )
+                            }
+                          >
+                            Add task
+                          </button>
+                          <Link
+                            href={`/farm-trackr/lists?scope=area&id=${encodeURIComponent(row.farmAreaId)}`}
+                            className="text-xs font-medium text-kp-teal hover:underline"
+                          >
+                            Open lists
+                          </Link>
+                        </div>
                       </div>
                       {row.totalContacts === 0 ? (
                         <p className="mt-2 text-xs text-kp-on-surface-variant">
@@ -404,6 +480,13 @@ export function FarmTrackrPerformanceView() {
           </>
         )}
       </div>
+
+      <NewTaskModal
+        open={taskModalOpen}
+        onOpenChange={closeFarmTaskModal}
+        initialTitle={taskInitialTitle}
+        initialDescription={taskInitialDescription}
+      />
     </ModuleGate>
   );
 }
