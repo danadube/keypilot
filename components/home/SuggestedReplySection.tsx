@@ -41,10 +41,12 @@ export function SuggestedReplySection({ email, className }: SuggestedReplySectio
   const [expanded, setExpanded] = useState(false);
   const [drafts, setDrafts] = useState<SuggestedReplyDraft[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const fetchDrafts = useCallback(async () => {
     setLoading(true);
+    setLoadFailed(false);
     try {
       const res = await fetch("/api/v1/ai/reply-drafts", {
         method: "POST",
@@ -62,6 +64,7 @@ export function SuggestedReplySection({ email, className }: SuggestedReplySectio
       if (json.error) throw new Error(json.error.message);
       setDrafts(json.data?.drafts ?? []);
     } catch (err) {
+      setLoadFailed(true);
       toast.error((err as Error).message ?? "Failed to generate");
     } finally {
       setLoading(false);
@@ -101,7 +104,7 @@ export function SuggestedReplySection({ email, className }: SuggestedReplySectio
             </div>
           )}
 
-          {!loading && drafts.length === 0 && (
+          {!loading && drafts.length === 0 && !loadFailed && (
             <p className="text-xs text-[var(--brand-text-muted)]">No drafts generated.</p>
           )}
 
