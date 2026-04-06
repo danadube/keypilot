@@ -1,26 +1,40 @@
 "use client";
 
-import { useMemo, type ComponentType, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import useSWR from "swr";
 import { apiFetcher } from "@/lib/fetcher";
 import Link from "next/link";
 import {
   Building2,
   Calendar,
+  Check,
   CheckSquare,
   Handshake,
   MapPin,
   MessageSquare,
   UserPlus,
   Users,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { kpBtnPrimary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
+import { kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import {
   DashboardTodayCalendarScheduleGrid,
   type DashboardScheduleShowing,
 } from "@/components/dashboard/dashboard-calendar-rail";
+import {
+  buildFocusCandidates,
+  filterVisibleFocusCandidates,
+  focusPersistedListsEqual,
+  loadFocusState,
+  reconcileFocusStorage,
+  saveFocusState,
+  upsertFocusHide,
+  type FocusDisplayItem,
+  type FocusPersistedState,
+  type FocusSignals,
+} from "@/lib/dashboard-focus-queue";
 
 type DashboardStats = {
   propertiesCount: number;
@@ -339,27 +353,64 @@ export function OperationalDashboardView() {
         ? `${overdueFollowUpCount} overdue`
         : `${dueTodayFollowUpCount} due today`;
 
-  const focusBody = loading
-    ? "Checking your day…"
-    : overdueFollowUpCount > 0
-      ? `You have ${overdueFollowUpCount} overdue follow-up${overdueFollowUpCount === 1 ? "" : "s"}.`
-      : showingsToday > 0
-        ? `You have ${showingsToday} showing${showingsToday === 1 ? "" : "s"} today.`
-        : "You're caught up — plan your next move.";
+  const focusSignals = useMemo(
+    (): FocusSignals => ({
+      overdue: overdueFollowUpCount,
+      showings: showingsToday,
+      contacts: contactsAttention,
+    }),
+    [overdueFollowUpCount, showingsToday, contactsAttention]
+  );
 
-  const focusHref =
-    overdueFollowUpCount > 0
-      ? "/showing-hq/follow-ups"
-      : showingsToday > 0
-        ? "/showing-hq/showings"
-        : "/transactions/pipeline";
+  const focusCandidates = useMemo(
+    () =>
+      buildFocusCandidates({
+        loading,
+        overdueFollowUpCount,
+        showingsToday,
+        contactsAttention,
+      }),
+    [loading, overdueFollowUpCount, showingsToday, contactsAttention]
+  );
 
-  const focusCta =
-    overdueFollowUpCount > 0
-      ? "Start follow-ups"
-      : showingsToday > 0
-        ? "View schedule"
-        : "Review pipeline";
+  const [focusStored, setFocusStored] = useState<FocusPersistedState>({ items: [] });
+  const [focusHydrated, setFocusHydrated] = useState(false);
+
+  useEffect(() => {
+    setFocusStored(loadFocusState());
+    setFocusHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!focusHydrated || focusCandidates === null) return;
+    setFocusStored((prev) => {
+      const next = reconcileFocusStorage(focusCandidates, prev.items, focusSignals);
+      if (focusPersistedListsEqual(prev.items, next)) return prev;
+      saveFocusState({ items: next });
+      return { items: next };
+    });
+  }, [focusHydrated, focusCandidates, focusSignals]);
+
+  const focusVisible = useMemo(() => {
+    if (focusCandidates === null) return [];
+    return filterVisibleFocusCandidates(focusCandidates, focusStored.items, focusSignals);
+  }, [focusCandidates, focusStored.items, focusSignals]);
+
+  const handleFocusComplete = (item: FocusDisplayItem) => {
+    setFocusStored((prev) => {
+      const next = { items: upsertFocusHide(prev.items, item, "completed", focusSignals) };
+      saveFocusState(next);
+      return next;
+    });
+  };
+
+  const handleFocusDismiss = (item: FocusDisplayItem) => {
+    setFocusStored((prev) => {
+      const next = { items: upsertFocusHide(prev.items, item, "dismissed", focusSignals) };
+      saveFocusState(next);
+      return next;
+    });
+  };
 
   const moduleShowing = loading
     ? "Loading schedule…"
@@ -536,16 +587,76 @@ export function OperationalDashboardView() {
         >
           Focus
         </h2>
-        <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
-          <p className="text-sm leading-relaxed text-kp-on-surface md:text-[0.9375rem]">
-            {focusBody}
-          </p>
-          <Button
-            asChild
-            className={cn(kpBtnPrimary, "mt-4 h-11 min-h-11 px-6 text-sm font-semibold")}
-          >
-            <Link href={focusHref}>{focusCta}</Link>
-          </Button>
+        <div className="rounded-xl border border-kp-outline bg-kp-surface p-3 shadow-sm sm:p-4">
+          {loading || !focusHydrated ? (
+            <ul className="space-y-1.5" aria-busy="true">
+              {[0, 1, 2].map((k) => (
+                <li
+                  key={k}
+                  className="h-14 animate-pulse rounded-lg bg-kp-surface-high/40"
+                  aria-hidden
+                />
+              ))}
+            </ul>
+          ) : focusVisible.length === 0 ? (
+            <p className="text-sm leading-snug text-kp-on-surface-muted">
+              Nothing in your Focus queue right now.
+            </p>
+          ) : (
+            <ul className="space-y-1.5" aria-label="Focus queue">
+              {focusVisible.map((item, index) => (
+                <li
+                  key={item.id}
+                  className={cn(
+                    "rounded-lg border px-2.5 py-2 sm:px-3",
+                    index === 0
+                      ? "border-kp-teal/40 bg-kp-teal/[0.06]"
+                      : "border-kp-outline/80 bg-kp-surface-high/15"
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        href={item.href}
+                        className="text-sm font-semibold leading-snug text-kp-on-surface hover:text-kp-teal hover:underline"
+                      >
+                        {item.label}
+                      </Link>
+                      {item.subtext ? (
+                        <p className="mt-0.5 text-xs leading-snug text-kp-on-surface-muted">
+                          {item.subtext}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 px-1.5 text-xs font-medium text-kp-on-surface-variant hover:bg-kp-surface-high/50 hover:text-kp-on-surface"
+                        aria-label={`Complete: ${item.label}`}
+                        onClick={() => handleFocusComplete(item)}
+                      >
+                        <Check className="h-3.5 w-3.5 text-kp-teal/90" aria-hidden />
+                        <span className="hidden sm:inline">Complete</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 px-1.5 text-xs font-medium text-kp-on-surface-variant hover:bg-kp-surface-high/50 hover:text-kp-on-surface"
+                        aria-label={`Dismiss: ${item.label}`}
+                        onClick={() => handleFocusDismiss(item)}
+                      >
+                        <X className="h-3.5 w-3.5 opacity-80" aria-hidden />
+                        <span className="hidden sm:inline">Dismiss</span>
+                      </Button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </section>
 
