@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import useSWR from "swr";
 import Link from "next/link";
 import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 import { useAuth } from "@clerk/nextjs";
@@ -14,10 +15,9 @@ import { BrandEmptyState } from "@/components/ui/BrandEmptyState";
 import { BrandSectionHeader } from "@/components/ui/BrandSectionHeader";
 import { DashboardSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
+import { apiFetcher } from "@/lib/fetcher";
 import { UI_COPY } from "@/lib/ui-copy";
 
-const RETRY_DELAY_MS = 500;
-const MAX_RETRIES = 2;
 const AUTH_WAIT_MS = 2500; // If Clerk isLoaded stays false, try loading anyway
 
 type Stats = {
@@ -36,67 +36,41 @@ type Stats = {
 
 export function DashboardHome() {
   const { isLoaded } = useAuth();
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const loadData = useCallback((retryCount = 0) => {
-    setError(null);
-    setLoading(true);
-    fetch("/api/v1/dashboard/stats")
-      .then(async (res) => {
-        const json = await res.json();
-        if (!res.ok) {
-          throw new Error(json?.error?.message ?? `Request failed (${res.status})`);
-        }
-        return json;
-      })
-      .then((json) => {
-        if (json.error) {
-          if (retryCount < MAX_RETRIES) {
-            setTimeout(() => loadData(retryCount + 1), RETRY_DELAY_MS);
-          } else {
-            setError(json.error.message);
-            setLoading(false);
-          }
-        } else if (json.data) {
-          setStats(json.data);
-          setLoading(false);
-        } else {
-          setError("Invalid response from server");
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (retryCount < MAX_RETRIES) {
-          setTimeout(() => loadData(retryCount + 1), RETRY_DELAY_MS);
-        } else {
-          setError(UI_COPY.errors.load("dashboard"));
-          setLoading(false);
-        }
-      });
-  }, []);
-
+  // Fallback: Clerk sometimes delays isLoaded; enable fetch after a timeout anyway.
+  const [clerkReady, setClerkReady] = useState(false);
   useEffect(() => {
-    if (!isLoaded) {
-      // Fallback: Clerk sometimes delays isLoaded; try loading after delay
-      const t = setTimeout(() => loadData(), AUTH_WAIT_MS);
-      return () => clearTimeout(t);
+    if (isLoaded) {
+      setClerkReady(true);
+      return;
     }
-    loadData();
-  }, [isLoaded, loadData]);
+    const t = setTimeout(() => setClerkReady(true), AUTH_WAIT_MS);
+    return () => clearTimeout(t);
+  }, [isLoaded]);
 
-  if (loading && !stats) return <DashboardSkeleton />;
+  const {
+    data: stats,
+    error,
+    isLoading,
+    mutate,
+  } = useSWR<Stats>(
+    clerkReady ? "/api/v1/dashboard/stats" : null,
+    apiFetcher,
+    { errorRetryCount: 2, errorRetryInterval: 500 }
+  );
+
+  if (isLoading && !stats) return <DashboardSkeleton />;
   if (error) {
-    const isUserNotFound = error.toLowerCase().includes("user not found");
+    const msg = error instanceof Error ? error.message : UI_COPY.errors.load("dashboard");
+    const isUserNotFound = msg.toLowerCase().includes("user not found");
     return (
       <ErrorMessage
         message={
           isUserNotFound
             ? "Your account is still syncing. If you just signed up, wait a moment and try again. (In production, ensure the Clerk webhook is configured.)"
-            : error
+            : msg
         }
-        onRetry={loadData}
+        onRetry={() => mutate()}
       />
     );
   }
@@ -104,7 +78,7 @@ export function DashboardHome() {
     return (
       <ErrorMessage
         message="Unable to load dashboard"
-        onRetry={() => loadData()}
+        onRetry={() => mutate()}
       />
     );
   }
