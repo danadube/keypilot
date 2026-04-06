@@ -92,10 +92,13 @@ The **RLS isolation tests** job runs **`npx prisma migrate deploy`** against the
 
 | Secret | Role in CI | Must be |
 |--------|------------|---------|
-| **`DATABASE_URL`** | Used when resolving the migrate URL; can be your normal app/pooled URL for detection | Any valid project URL (often transaction pooler `:6543`) |
-| **`DIRECT_URL`** | **Preferred** for the resolved URL used by `prisma migrate deploy` and isolation tests | **Direct** Postgres: host **`db.<project-ref>.supabase.co`**, port **5432** — from Supabase Dashboard → **Project Settings → Database → Connection string → URI** (direct connection, **not** “Pooler” or “Session pooler”) |
+| **`DATABASE_URL`** | Used when resolving the migrate URL; can be your normal app/pooled URL | Any valid project URL (often transaction pooler `:6543`) |
+| **`PRISMA_MIGRATE_DATABASE_URL`** | **Optional, highest priority** — use when `DIRECT_URL` is still a pooler or you want CI-only direct URL | **Direct** Postgres URI only (same as below) |
+| **`DIRECT_URL`** | Used for migrate if non-pooler and `PRISMA_MIGRATE_DATABASE_URL` is unset | **Direct** Postgres: host **`db.<project-ref>.supabase.co`**, port **5432** |
 
-The workflow picks the first URL that is **not** on port `6543` and **not** hosted on **`*.pooler.supabase.com`**. If both secrets are pooler-only, the job fails with an actionable error.
+In Supabase: **Project Settings → Database → Connection string**. Switch the method to **Direct connection** (not **Session pooler** or **Transaction pooler**), then copy the URI. That string is what belongs in **`PRISMA_MIGRATE_DATABASE_URL`** or **`DIRECT_URL`**.
+
+The workflow picks the first URL that is **not** on port `6543` and **not** hosted on **`*.pooler.supabase.com`**, in order: **`PRISMA_MIGRATE_DATABASE_URL`** → **`DIRECT_URL`** → **`DATABASE_URL`**. If all configured values are pooler-only, the job fails with an actionable error.
 
 **Vercel / runtime (unchanged):** Keep **`DATABASE_URL`** as the **transaction pooler** (`:6543`, `pgbouncer=true`) for serverless-friendly pooling. Set **`DIRECT_URL`** in Vercel to the **same direct** `db.*.supabase.co` string Prisma expects for introspection/migrate if your deploy runs migrations there — **do not** use the session pooler URI as `DIRECT_URL` if migrate runs in CI or build.
 

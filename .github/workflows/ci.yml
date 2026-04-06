@@ -96,7 +96,7 @@ jobs:
 
       # Single direct Postgres URL for prisma migrate deploy + prismaAdmin in Jest (both env vars set the same).
       # Must NOT be Supabase pooler (6543 or *.pooler.supabase.com) — those exhaust MaxClientsInSessionMode.
-      # Prefer secret DIRECT_URL when it is direct (db.*.supabase.co); else DATABASE_URL if already direct.
+      # Resolution order: PRISMA_MIGRATE_DATABASE_URL (CI-only override) → DIRECT_URL → DATABASE_URL.
       # Use GITHUB_OUTPUT + step env so passwords with $/# do not break parsing.
       - name: Resolve Prisma URLs for isolation job (direct DB only for migrate)
         if: steps.isolation_db_config.outputs.skip != 'true'
@@ -104,8 +104,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          raw_db="${DATABASE_URL_RAW:?DATABASE_URL secret is not set}"
-          raw_direct="${DIRECT_URL_RAW:-}"
+          trim() {
+            local s="${1:-}"
+            s="${s#"${s%%[![:space:]]*}"}"
+            s="${s%"${s##*[![:space:]]}"}"
+            printf '%s' "$s"
+          }
+
+          raw_db="$(trim "${DATABASE_URL_RAW:?DATABASE_URL secret is not set}")"
+          raw_direct="$(trim "${DIRECT_URL_RAW:-}")"
+          raw_migrate="$(trim "${PRISMA_MIGRATE_DATABASE_URL_RAW:-}")"
 
           uses_6543() {
             case "$1" in
@@ -116,7 +124,7 @@ jobs:
           # Session + transaction poolers share this host; both are unsuitable for prisma migrate deploy.
           uses_pooler_host() {
             case "$1" in
-              *pooler.supabase.com*) return 0 ;;
+              *pooler.supabase.com* | *POOLER.SUPABASE.COM*) return 0 ;;
               *) return 1 ;;
             esac
           }
@@ -129,14 +137,20 @@ jobs:
           }
 
           resolved=""
-          if [ -n "$raw_direct" ] && ! is_unsuitable_for_migrate "$raw_direct"; then
+          if [ -n "$raw_migrate" ] && ! is_unsuitable_for_migrate "$raw_migrate"; then
+            resolved="$raw_migrate"
+            echo "Using PRISMA_MIGRATE_DATABASE_URL for migrate / RLS tests (direct Postgres)."
+          elif [ -n "$raw_direct" ] && ! is_unsuitable_for_migrate "$raw_direct"; then
             resolved="$raw_direct"
+            echo "Using DIRECT_URL for migrate / RLS tests."
           elif ! is_unsuitable_for_migrate "$raw_db"; then
             resolved="$raw_db"
+            echo "Using DATABASE_URL for migrate / RLS tests (already non-pooler)."
           fi
 
           if [ -z "$resolved" ]; then
-            err_resolve "No direct Postgres URL for migrate. Supabase poolers (port 6543 or host *.pooler.supabase.com, including session mode :5432) hit connection limits. Set repository secret DIRECT_URL to the direct connection string from Supabase → Database → Connection string (host db.<project>.supabase.co, not pooler). See docs/platform/database-migrations.md § GitHub Actions."
+            echo "::notice::DATABASE_URL is pooler or :6543: $(if is_unsuitable_for_migrate "$raw_db"; then echo yes; else echo no; fi). DIRECT_URL set: $([ -n "$raw_direct" ] && echo yes || echo no). PRISMA_MIGRATE_DATABASE_URL set: $([ -n "$raw_migrate" ] && echo yes || echo no)."
+            err_resolve "No direct Postgres URL for migrate. Your DATABASE_URL/DIRECT_URL look like Supabase poolers (port 6543 or host *.pooler.supabase.com). Add repository secret PRISMA_MIGRATE_DATABASE_URL with the direct URI from Supabase → Project Settings → Database → Connection string: choose \"Direct connection\" (host db.<project-ref>.supabase.co), not Session or Transaction pooler. Alternatively set DIRECT_URL to that same direct URI. See docs/platform/database-migrations.md § GitHub Actions."
           fi
 
           if is_unsuitable_for_migrate "$resolved"; then
@@ -152,6 +166,7 @@ jobs:
         env:
           DATABASE_URL_RAW: ${{ secrets.DATABASE_URL }}
           DIRECT_URL_RAW: ${{ secrets.DIRECT_URL }}
+          PRISMA_MIGRATE_DATABASE_URL_RAW: ${{ secrets.PRISMA_MIGRATE_DATABASE_URL }}
 
       # Keep preview DB in sync with prisma/migrations (e.g. new columns). RLS tests
       # seed via Prisma and fail if the schema lags (P2022 column does not exist).
