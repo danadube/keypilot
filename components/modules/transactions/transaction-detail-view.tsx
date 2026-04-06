@@ -25,6 +25,7 @@ import {
   setupGapLabel,
 } from "./transactions-shared";
 import { UI_COPY } from "@/lib/ui-copy";
+import { toast } from "sonner";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -243,7 +244,6 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
   const [brokerageInput, setBrokerageInput] = useState("");
   const [notesInput, setNotesInput] = useState("");
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
 
   const [newRole, setNewRole] = useState("");
@@ -300,7 +300,6 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           setBrokerageInput(t.brokerageName ?? "");
           setNotesInput(t.notes ?? "");
           setDirty(false);
-          setSaveError(null);
         }
       })
       .catch(() => setError(UI_COPY.errors.load("transaction")))
@@ -375,7 +374,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
 
     const price = parseOptionalPrice(salePriceInput);
     if (price === undefined) {
-      setSaveError("Enter a valid sale price or leave blank to clear.");
+      toast.error("Enter a valid sale price or leave blank to clear.");
       return;
     }
     body.salePrice = price;
@@ -390,7 +389,6 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     body.notes = notesInput.trim() ? notesInput.trim() : null;
 
     setSaving(true);
-    setSaveError(null);
     try {
       const res = await fetch(`/api/v1/transactions/${transactionId}`, {
         method: "PATCH",
@@ -408,7 +406,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       setNotesInput(t.notes ?? "");
       setDirty(false);
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Save failed");
+      toast.error(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }
@@ -546,7 +544,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       if (json.error) throw new Error(json.error.message ?? "Archive failed");
       await load();
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Archive failed");
+      toast.error(e instanceof Error ? e.message : "Archive failed");
     } finally {
       setLifecycleBusy(null);
     }
@@ -564,7 +562,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       if (json.error) throw new Error(json.error.message ?? "Restore failed");
       await load();
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Restore failed");
+      toast.error(e instanceof Error ? e.message : "Restore failed");
     } finally {
       setLifecycleBusy(null);
     }
@@ -583,7 +581,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       if (json.error) throw new Error(json.error.message ?? "Delete failed");
       window.location.href = "/transactions";
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Delete failed");
+      toast.error(e instanceof Error ? e.message : "Delete failed");
       setLifecycleBusy(null);
     }
   };
@@ -990,13 +988,6 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             </div>
           </div>
 
-          {saveError && (
-            <div className="mt-3 flex items-center gap-2 text-sm text-red-400">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              {saveError}
-            </div>
-          )}
-
           <div className="mt-4 flex justify-end gap-2">
             <button
               type="button"
@@ -1007,7 +998,6 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
                 setClosingInput(isoToDateInput(txn.closingDate));
                 setBrokerageInput(txn.brokerageName ?? "");
                 setNotesInput(txn.notes ?? "");
-                setSaveError(null);
               }}
               className={cn(
                 "rounded-lg px-4 py-2 text-sm text-kp-on-surface-variant",

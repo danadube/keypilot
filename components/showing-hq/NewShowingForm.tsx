@@ -41,6 +41,7 @@ import {
 import { AF, afError } from "@/lib/ui/action-feedback";
 import { showingWorkflowTabHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 import { UI_COPY } from "@/lib/ui-copy";
+import { toast } from "sonner";
 
 type Property = {
   id: string;
@@ -82,11 +83,10 @@ export function NewShowingForm() {
     e.preventDefault();
     const scheduledIso = combineLocalDateAndTimeToIso(scheduledDate, scheduledTime);
     if (!propertyId?.trim() || !scheduledIso) {
-      setError("Property and a valid date and time are required.");
+      toast.error("Property and a valid date and time are required.");
       return;
     }
     setSubmitting(true);
-    setError(null);
     try {
       const res = await fetch("/api/v1/showing-hq/showings", {
         method: "POST",
@@ -105,7 +105,7 @@ export function NewShowingForm() {
       if (json.error) throw new Error(json.error.message);
       router.push(showingWorkflowTabHref(json.data.id, "prep"));
     } catch (err) {
-      setError(afError(err, AF.couldntCreate));
+      toast.error(afError(err, AF.couldntCreate));
     } finally {
       setSubmitting(false);
     }
@@ -137,12 +137,6 @@ export function NewShowingForm() {
         onSubmit={handleSubmit}
         className="mx-auto flex w-full max-w-2xl flex-col gap-3 pb-8"
       >
-        {error ? (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-            {error}
-          </div>
-        ) : null}
-
         <EditableBlock className="space-y-2.5 !p-3.5 sm:!p-4">
           <EditableBlockHeader
             title="Property & time"

@@ -22,6 +22,7 @@ import { ShowingHQPageHero } from "@/components/showing-hq/ShowingHQPageHero";
 import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 import { AF, afError, FLASH_QUERY } from "@/lib/ui/action-feedback";
 import { UI_COPY } from "@/lib/ui-copy";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -121,7 +122,6 @@ export function NewOpenHouseForm() {
     const file = e.target.files?.[0];
     if (!file || !propertyId) return;
     setPhotoUploading(true);
-    setError(null);
     try {
       const formData = new FormData();
       formData.set("file", file);
@@ -137,7 +137,7 @@ export function NewOpenHouseForm() {
         )
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Photo upload failed");
+      toast.error(err instanceof Error ? err.message : "Photo upload failed");
     } finally {
       setPhotoUploading(false);
       e.target.value = "";
@@ -149,11 +149,11 @@ export function NewOpenHouseForm() {
     const startIso = combineLocalDateAndTimeToIso(startDate, startTime);
     const endIso = combineLocalDateAndTimeToIso(endDate, endTime);
     if (!propertyId || !title || !startIso || !endIso) {
-      setError("Please fill in all required fields with valid date and time.");
+      toast.error("Please fill in all required fields with valid date and time.");
       return;
     }
     if (new Date(endIso) <= new Date(startIso)) {
-      setError("End time must be after start time.");
+      toast.error("End time must be after start time.");
       return;
     }
     const name =
@@ -165,7 +165,6 @@ export function NewOpenHouseForm() {
         ? agents.find((a) => a.id === "me")?.email ?? agentEmail
         : agentEmail;
     setSubmitting(true);
-    setError(null);
     try {
       const res = await fetch("/api/v1/open-houses", {
         method: "POST",
@@ -186,7 +185,7 @@ export function NewOpenHouseForm() {
       const href = showingHqOpenHouseWorkspaceHref(json.data.id);
       router.push(`${href}?flash=${FLASH_QUERY.openHouseCreated}`);
     } catch (err) {
-      setError(afError(err, AF.couldntCreate));
+      toast.error(afError(err, AF.couldntCreate));
     } finally {
       setSubmitting(false);
     }
@@ -249,12 +248,6 @@ export function NewOpenHouseForm() {
           onSubmit={handleSubmit}
           className="mx-auto flex w-full max-w-2xl flex-col gap-3 pb-8"
         >
-          {error ? (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {error}
-            </div>
-          ) : null}
-
           <EditableBlock className="space-y-2.5 !p-3.5 sm:!p-4">
             <EditableBlockHeader
               title="Event details"

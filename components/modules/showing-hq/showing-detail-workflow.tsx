@@ -40,6 +40,7 @@ import {
 } from "@/lib/datetime/local-scheduling";
 import { AF, afError } from "@/lib/ui/action-feedback";
 import { InlineSuccessText, useFlashSuccess } from "@/components/ui/action-feedback";
+import { toast } from "sonner";
 
 type ShowingDetail = {
   id: string;
@@ -164,7 +165,6 @@ export function ShowingDetailWorkflow() {
   const handleArchiveShowing = useCallback(async () => {
     if (!id) return;
     setLifecycleBusy("archive");
-    setError(null);
     try {
       const res = await fetch(`/api/v1/showing-hq/showings/${id}`, {
         method: "PATCH",
@@ -175,7 +175,7 @@ export function ShowingDetailWorkflow() {
       if (!res.ok) throw new Error(json.error?.message ?? "Could not archive showing");
       router.push("/showing-hq/showings");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Archive failed");
+      toast.error(e instanceof Error ? e.message : "Archive failed");
     } finally {
       setLifecycleBusy(null);
       setLifecycleModalOpen(false);
@@ -185,14 +185,13 @@ export function ShowingDetailWorkflow() {
   const handleDeleteShowingForce = useCallback(async () => {
     if (!id) return;
     setLifecycleBusy("delete");
-    setError(null);
     try {
       const res = await fetch(`/api/v1/showing-hq/showings/${id}?force=1`, { method: "DELETE" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message ?? "Could not delete showing");
       router.push("/showing-hq/showings");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Delete failed");
+      toast.error(e instanceof Error ? e.message : "Delete failed");
     } finally {
       setLifecycleBusy(null);
       setLifecycleModalOpen(false);
@@ -213,29 +212,27 @@ export function ShowingDetailWorkflow() {
     )
       return;
     setLifecycleBusy("delete");
-    setError(null);
     fetch(`/api/v1/showing-hq/showings/${id}`, { method: "DELETE" })
       .then(async (res) => {
         const json = await res.json();
         if (!res.ok) throw new Error(json.error?.message ?? "Delete failed");
         router.push("/showing-hq/showings");
       })
-      .catch((e) => setError(e instanceof Error ? e.message : "Delete failed"))
+      .catch((e) => toast.error(e instanceof Error ? e.message : "Delete failed"))
       .finally(() => setLifecycleBusy(null));
   }, [data, id, router]);
 
   async function saveDetails() {
     if (!data || !dateStr || !timeStr) {
-      setError("Date and time are required.");
+      toast.error("Date and time are required.");
       return;
     }
     const scheduledIso = combineLocalDateAndTimeToIso(dateStr, timeStr);
     if (!scheduledIso) {
-      setError("Invalid date or time.");
+      toast.error("Invalid date or time.");
       return;
     }
     setDetailsSaving(true);
-    setError(null);
     try {
       const res = await fetch(`/api/v1/showing-hq/showings/${data.id}`, {
         method: "PATCH",
@@ -254,7 +251,7 @@ export function ShowingDetailWorkflow() {
       );
       flashDetailsSaved();
     } catch (e) {
-      setError(afError(e, AF.couldntSave));
+      toast.error(afError(e, AF.couldntSave));
     } finally {
       setDetailsSaving(false);
     }
@@ -275,18 +272,17 @@ export function ShowingDetailWorkflow() {
   async function sendFeedbackRequest() {
     setSendAttempted(true);
     if (!data || !dateStr || !timeStr) {
-      setError("Date and time are required.");
+      toast.error("Date and time are required.");
       return;
     }
     if (!validateFeedbackSend()) return;
     const scheduledIso = combineLocalDateAndTimeToIso(dateStr, timeStr);
     if (!scheduledIso) {
-      setError("Invalid date or time.");
+      toast.error("Invalid date or time.");
       return;
     }
 
     setSendSaving(true);
-    setError(null);
     try {
       const res = await fetch(`/api/v1/showing-hq/showings/${data.id}`, {
         method: "PATCH",
@@ -309,7 +305,7 @@ export function ShowingDetailWorkflow() {
       );
       setFieldErrors({});
     } catch (e) {
-      setError(afError(e, AF.couldntSave));
+      toast.error(afError(e, AF.couldntSave));
     } finally {
       setSendSaving(false);
     }
@@ -370,12 +366,6 @@ export function ShowingDetailWorkflow() {
           </div>
         </div>
       </div>
-
-      {error ? (
-        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-          {error}
-        </div>
-      ) : null}
 
       <ShowingHqWorkflowTabStrip tab={tab} onTabChange={setTab} />
 

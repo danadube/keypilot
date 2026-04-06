@@ -44,6 +44,7 @@ import {
 } from "@/lib/showing-hq/saved-views-storage";
 import { normalizeShowingHqListSearchQ } from "@/lib/showing-hq/list-search-q";
 import { UI_COPY } from "@/lib/ui-copy";
+import { toast } from "sonner";
 
 type Visitor = {
   id: string;
@@ -98,7 +99,6 @@ export function VisitorsListView() {
 
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (skipNextSearchSync.current) {
@@ -182,7 +182,6 @@ export function VisitorsListView() {
   const canSaveView = hasVisitorsSaveableFiltersInSearchParams(searchParams);
 
   function openSaveModal() {
-    setSaveError(null);
     setSaveName("");
     setSaveModalOpen(true);
   }
@@ -190,7 +189,7 @@ export function VisitorsListView() {
   function handleConfirmSave() {
     const name = saveName.trim();
     if (!name) {
-      setSaveError("Enter a name");
+      toast.error("Enter a name");
       return;
     }
     const qSave = normalizeShowingHqListSearchQ(qInput);
@@ -202,21 +201,20 @@ export function VisitorsListView() {
     });
     if (!result.ok) {
       if (result.reason === "duplicate") {
-        setSaveError(
+        toast.error(
           "A shortcut with the same filters and search already exists. Open ShowingHQ → Saved views (/showing-hq/saved-views) to rename or remove it, or change filters here first."
         );
       } else if (result.reason === "limit") {
-        setSaveError(
+        toast.error(
           "You can save up to 50 views. Remove one on Saved views and try again."
         );
       } else {
-        setSaveError("Enter a name");
+        toast.error("Enter a name");
       }
       return;
     }
     setSaveModalOpen(false);
     setSaveName("");
-    setSaveError(null);
   }
 
   const formatDateTime = (d: string) =>
@@ -529,7 +527,6 @@ export function VisitorsListView() {
         onOpenChange={(open) => {
           setSaveModalOpen(open);
           if (!open) {
-            setSaveError(null);
             setSaveName("");
           }
         }}
@@ -565,10 +562,7 @@ export function VisitorsListView() {
           <input
             type="text"
             value={saveName}
-            onChange={(e) => {
-              setSaveName(e.target.value);
-              setSaveError(null);
-            }}
+            onChange={(e) => setSaveName(e.target.value)}
             placeholder="e.g. Last weekend’s sign-ins"
             maxLength={MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH}
             className={cn(
@@ -577,9 +571,6 @@ export function VisitorsListView() {
             )}
             autoFocus
           />
-          {saveError && (
-            <p className="text-xs text-red-400">{saveError}</p>
-          )}
         </div>
       </BrandModal>
     </div>

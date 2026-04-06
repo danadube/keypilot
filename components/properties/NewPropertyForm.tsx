@@ -21,16 +21,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { AF } from "@/lib/ui/action-feedback";
+import { toast } from "sonner";
 
 export function NewPropertyForm() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const [mlsNumber, setMlsNumber] = useState("");
   const [addressLookup, setAddressLookup] = useState("");
   const [lookupLoading, setLookupLoading] = useState(false);
-  const [lookupError, setLookupError] = useState<string | null>(null);
   const [address1, setAddress1] = useState("");
   const [address2, setAddress2] = useState("");
   const [city, setCity] = useState("");
@@ -40,7 +39,6 @@ export function NewPropertyForm() {
   const [notes, setNotes] = useState("");
 
   const runLookup = async (url: string) => {
-    setLookupError(null);
     setLookupLoading(true);
     try {
       const res = await fetch(url);
@@ -54,7 +52,7 @@ export function NewPropertyForm() {
       setZip(d.zip);
       setListingPrice(d.listingPrice ? String(d.listingPrice) : "");
     } catch (err) {
-      setLookupError(err instanceof Error ? err.message : "Lookup failed");
+      toast.error(err instanceof Error ? err.message : "Lookup failed");
     } finally {
       setLookupLoading(false);
     }
@@ -63,7 +61,7 @@ export function NewPropertyForm() {
   const handleMlsLookup = async () => {
     const mls = mlsNumber.trim();
     if (!mls) {
-      setLookupError("Enter an MLS number");
+      toast.error("Enter an MLS number");
       return;
     }
     await runLookup(`/api/v1/properties/lookup?mls=${encodeURIComponent(mls)}`);
@@ -72,7 +70,7 @@ export function NewPropertyForm() {
   const handleAddressLookup = async () => {
     const addr = addressLookup.trim();
     if (!addr) {
-      setLookupError("Enter a full address");
+      toast.error("Enter a full address");
       return;
     }
     await runLookup(`/api/v1/properties/lookup?address=${encodeURIComponent(addr)}`);
@@ -81,11 +79,10 @@ export function NewPropertyForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!address1.trim() || !city.trim() || !state.trim() || !zip.trim()) {
-      setError("Please fill in required fields (address, city, state, zip)");
+      toast.error("Please fill in required fields (address, city, state, zip)");
       return;
     }
     setSubmitting(true);
-    setError(null);
     try {
       const price = listingPrice.trim()
         ? parseFloat(listingPrice.replace(/[^0-9.]/g, ""))
@@ -108,7 +105,7 @@ export function NewPropertyForm() {
       if (json.error) throw new Error(json.error.message);
       router.push(`/properties/${json.data.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create");
+      toast.error(err instanceof Error ? err.message : "Failed to create");
     } finally {
       setSubmitting(false);
     }
@@ -133,12 +130,6 @@ export function NewPropertyForm() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-                {error}
-              </div>
-            )}
-
             <div className="space-y-4 rounded-lg border border-dashed p-4">
               <p className="text-sm font-medium text-muted-foreground">
                 Look up by address or MLS number
@@ -147,10 +138,7 @@ export function NewPropertyForm() {
                 <Input
                   placeholder="Address (e.g. 123 Main St, Palm Desert, CA 92260)"
                   value={addressLookup}
-                  onChange={(e) => {
-                    setAddressLookup(e.target.value);
-                    setLookupError(null);
-                  }}
+                  onChange={(e) => setAddressLookup(e.target.value)}
                 />
                 <Button
                   type="button"
@@ -166,10 +154,7 @@ export function NewPropertyForm() {
                 <Input
                   placeholder="MLS # (e.g. 12345678)"
                   value={mlsNumber}
-                  onChange={(e) => {
-                    setMlsNumber(e.target.value);
-                    setLookupError(null);
-                  }}
+                  onChange={(e) => setMlsNumber(e.target.value)}
                 />
                 <Button
                   type="button"
@@ -181,9 +166,6 @@ export function NewPropertyForm() {
                   {lookupLoading ? "Looking up…" : "By MLS #"}
                 </Button>
               </div>
-              {lookupError && (
-                <p className="text-sm text-destructive">{lookupError}</p>
-              )}
             </div>
 
             <div className="space-y-2">

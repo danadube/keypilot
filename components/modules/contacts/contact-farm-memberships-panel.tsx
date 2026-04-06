@@ -19,7 +19,6 @@ type ContactFarmMembershipsPanelProps = {
   farmAreas: FarmAreaOption[];
   selectedFarmAreaId: string;
   addingFarmMembership: boolean;
-  farmMembershipError: string | null;
   onSelectedFarmAreaIdChange: (v: string) => void;
   onAddFarmMembership: () => void;
   onArchiveFarmMembership: (membershipId: string) => void;
@@ -30,7 +29,6 @@ export function ContactFarmMembershipsPanel({
   farmAreas,
   selectedFarmAreaId,
   addingFarmMembership,
-  farmMembershipError,
   onSelectedFarmAreaIdChange,
   onAddFarmMembership,
   onArchiveFarmMembership,
@@ -41,9 +39,6 @@ export function ContactFarmMembershipsPanel({
       description="Assign this contact to a farm area for segmentation."
       icon={<MapPinned className="h-3.5 w-3.5" />}
     >
-      {farmMembershipError ? (
-        <p className="mb-3 text-xs text-red-400">{farmMembershipError}</p>
-      ) : null}
 
       {memberships.length > 0 ? (
         <ul className="mb-3 space-y-2">

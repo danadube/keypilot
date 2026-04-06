@@ -21,6 +21,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { UI_COPY } from "@/lib/ui-copy";
+import { toast } from "sonner";
 
 type Task =
   | {
@@ -298,7 +299,7 @@ export function FollowUpsView({ compact = false }: { compact?: boolean } = {}) {
         if (json.error) throw new Error(json.error.message);
         load();
       } catch {
-        setError("Could not update reminder");
+        toast.error("Could not update reminder");
       } finally {
         setReminderPatchingId(null);
       }
@@ -320,12 +321,6 @@ export function FollowUpsView({ compact = false }: { compact?: boolean } = {}) {
 
   return (
     <div className="flex flex-col gap-6">
-      {error ? (
-        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error}
-        </p>
-      ) : null}
-
       {attentionTotal > 0 ? (
         <div className="rounded-xl border border-kp-teal/25 bg-kp-teal/[0.07] px-4 py-3 sm:px-5">
           {compact ? (

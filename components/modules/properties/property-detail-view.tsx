@@ -30,6 +30,7 @@ import {
   kpBtnTertiary,
 } from "@/components/ui/kp-dashboard-button-tiers";
 import { UI_COPY } from "@/lib/ui-copy";
+import { toast } from "sonner";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -98,7 +99,6 @@ export function PropertyDetailView({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
-  const [photoError, setPhotoError] = useState<string | null>(null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   // ── Edit state ──────────────────────────────────────────────────────────────
@@ -107,7 +107,6 @@ export function PropertyDetailView({ id }: { id: string }) {
     mlsNumber: "", address1: "", address2: "", city: "", state: "", zip: "", listingPrice: "", notes: "",
   });
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [lifecycleModalOpen, setLifecycleModalOpen] = useState(false);
   const [lifecycleBusy, setLifecycleBusy] = useState<"archive" | "delete" | null>(null);
 
@@ -122,14 +121,12 @@ export function PropertyDetailView({ id }: { id: string }) {
       listingPrice: p.listingPrice != null ? String(p.listingPrice) : "",
       notes: p.notes ?? "",
     });
-    setSaveError(null);
     setIsEditing(true);
   }
 
   async function handleSaveEdit() {
     if (!property) return;
     setSaving(true);
-    setSaveError(null);
     try {
       const res = await fetch(`/api/v1/properties/${id}`, {
         method: "PUT",
@@ -158,7 +155,7 @@ export function PropertyDetailView({ id }: { id: string }) {
       );
       setIsEditing(false);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Save failed");
+      toast.error(err instanceof Error ? err.message : "Save failed");
     } finally {
       setSaving(false);
     }
@@ -181,7 +178,6 @@ export function PropertyDetailView({ id }: { id: string }) {
 
   const handleArchiveProperty = useCallback(async () => {
     setLifecycleBusy("archive");
-    setError(null);
     try {
       const res = await fetch(`/api/v1/properties/${id}`, {
         method: "PUT",
@@ -192,7 +188,7 @@ export function PropertyDetailView({ id }: { id: string }) {
       if (!res.ok) throw new Error(json.error?.message ?? "Could not archive property");
       router.push("/properties");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Archive failed");
+      toast.error(e instanceof Error ? e.message : "Archive failed");
     } finally {
       setLifecycleBusy(null);
       setLifecycleModalOpen(false);
@@ -201,14 +197,13 @@ export function PropertyDetailView({ id }: { id: string }) {
 
   const handleDeletePropertyForce = useCallback(async () => {
     setLifecycleBusy("delete");
-    setError(null);
     try {
       const res = await fetch(`/api/v1/properties/${id}?force=1`, { method: "DELETE" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message ?? "Could not delete property");
       router.push("/properties");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Delete failed");
+      toast.error(e instanceof Error ? e.message : "Delete failed");
     } finally {
       setLifecycleBusy(null);
       setLifecycleModalOpen(false);
@@ -231,14 +226,13 @@ export function PropertyDetailView({ id }: { id: string }) {
       return;
     }
     setLifecycleBusy("delete");
-    setError(null);
     fetch(`/api/v1/properties/${id}`, { method: "DELETE" })
       .then(async (res) => {
         const json = await res.json();
         if (!res.ok) throw new Error(json.error?.message ?? "Delete failed");
         router.push("/properties");
       })
-      .catch((e) => setError(e instanceof Error ? e.message : "Delete failed"))
+      .catch((e) => toast.error(e instanceof Error ? e.message : "Delete failed"))
       .finally(() => setLifecycleBusy(null));
   }, [id, property, router]);
 
@@ -251,7 +245,6 @@ export function PropertyDetailView({ id }: { id: string }) {
       const file = e.target.files?.[0];
       if (!file) return;
       e.target.value = "";
-      setPhotoError(null);
       setPhotoUploading(true);
       const formData = new FormData();
       formData.set("file", file);
@@ -262,7 +255,7 @@ export function PropertyDetailView({ id }: { id: string }) {
           setProperty((p) => (p ? { ...p, imageUrl: json.data.imageUrl } : p));
         })
         .catch((err) =>
-          setPhotoError(err instanceof Error ? err.message : "Photo upload failed")
+          toast.error(err instanceof Error ? err.message : "Photo upload failed")
         )
         .finally(() => setPhotoUploading(false));
     },
@@ -276,7 +269,6 @@ export function PropertyDetailView({ id }: { id: string }) {
       )
     )
       return;
-    setPhotoError(null);
     setPhotoUploading(true);
     fetch(`/api/v1/properties/${id}`, {
       method: "PUT",
@@ -289,7 +281,7 @@ export function PropertyDetailView({ id }: { id: string }) {
         setProperty((p) => (p ? { ...p, imageUrl: null } : p));
       })
       .catch((err) =>
-        setPhotoError(err instanceof Error ? err.message : "Could not remove photo")
+        toast.error(err instanceof Error ? err.message : "Could not remove photo")
       )
       .finally(() => setPhotoUploading(false));
   }, [id]);
@@ -378,7 +370,6 @@ export function PropertyDetailView({ id }: { id: string }) {
               <p className="text-center text-sm text-kp-on-surface-variant">
                 Add a key photo for this listing. It appears here and on open house sign-in.
               </p>
-              {photoError && <p className="text-center text-sm text-red-400">{photoError}</p>}
               <Button
                 variant="outline"
                 size="sm"
@@ -408,11 +399,6 @@ export function PropertyDetailView({ id }: { id: string }) {
                 </div>
               </div>
               <div className="absolute right-2 top-2 flex flex-wrap justify-end gap-1.5">
-                {photoError && (
-                  <p className="w-full max-w-[240px] rounded-md bg-red-950/90 px-2 py-1 text-right text-xs text-red-200">
-                    {photoError}
-                  </p>
-                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -475,7 +461,6 @@ export function PropertyDetailView({ id }: { id: string }) {
 
             {isEditing ? (
               <div className="space-y-3">
-                {saveError && <p className="text-sm text-red-400">{saveError}</p>}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Address</label>

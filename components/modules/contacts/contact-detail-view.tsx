@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { useProductTier } from "@/components/ProductTierProvider";
@@ -36,9 +37,7 @@ export function ContactDetailView({ id }: { id: string }) {
   const [farmMemberships, setFarmMemberships] = useState<FarmMembership[]>([]);
   const [selectedFarmAreaId, setSelectedFarmAreaId] = useState("");
   const [addingFarmMembership, setAddingFarmMembership] = useState(false);
-  const [farmMembershipError, setFarmMembershipError] = useState<string | null>(
-    null
-  );
+
   const [commChannel, setCommChannel] = useState<"CALL" | "EMAIL">("CALL");
   const [commBody, setCommBody] = useState("");
   const [loggingComm, setLoggingComm] = useState(false);
@@ -193,7 +192,6 @@ export function ContactDetailView({ id }: { id: string }) {
   const addFarmMembership = useCallback(() => {
     if (!selectedFarmAreaId || addingFarmMembership) return;
     setAddingFarmMembership(true);
-    setFarmMembershipError(null);
     fetch(`/api/v1/contacts/${id}/farm-memberships`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -214,9 +212,7 @@ export function ContactDetailView({ id }: { id: string }) {
         setSelectedFarmAreaId("");
       })
       .catch((err) =>
-        setFarmMembershipError(
-          err instanceof Error ? err.message : "Failed to add membership"
-        )
+        toast.error(err instanceof Error ? err.message : "Failed to add membership")
       )
       .finally(() => setAddingFarmMembership(false));
   }, [id, selectedFarmAreaId, addingFarmMembership]);
@@ -232,9 +228,7 @@ export function ContactDetailView({ id }: { id: string }) {
           setFarmMemberships((prev) => prev.filter((m) => m.id !== membershipId));
         })
         .catch((err) =>
-          setFarmMembershipError(
-            err instanceof Error ? err.message : "Failed to archive membership"
-          )
+          toast.error(err instanceof Error ? err.message : "Failed to archive membership")
         );
     },
     [id]
@@ -285,7 +279,7 @@ export function ContactDetailView({ id }: { id: string }) {
         setCommBody("");
         void refreshActivities();
       })
-      .catch(() => setError("Failed to log"))
+      .catch(() => toast.error("Failed to log communication"))
       .finally(() => setLoggingComm(false));
   }, [id, commChannel, commBody, loggingComm, refreshActivities]);
 
@@ -304,7 +298,7 @@ export function ContactDetailView({ id }: { id: string }) {
         setNoteBody("");
         void refreshActivities();
       })
-      .catch(() => setError("Failed to add note"))
+      .catch(() => toast.error("Failed to add note"))
       .finally(() => setAddingNote(false));
   }, [id, noteBody, addingNote, refreshActivities]);
 
@@ -342,11 +336,9 @@ export function ContactDetailView({ id }: { id: string }) {
           }
           setFarmMemberships(membershipsJson.data || []);
           setFarmAreas(farmAreasJson.data || []);
-          setFarmMembershipError(null);
         } else {
           setFarmMemberships([]);
           setFarmAreas([]);
-          setFarmMembershipError(null);
         }
         try {
           const meJson = await meRes.json();
@@ -365,7 +357,6 @@ export function ContactDetailView({ id }: { id: string }) {
     if (!hasCrmAccess) return;
     if (!confirm("Promote this contact from Farm to Lead?")) return;
     setPromotingFromFarm(true);
-    setError(null);
     fetch("/api/v1/contacts/promote-farm-to-lead", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -376,7 +367,7 @@ export function ContactDetailView({ id }: { id: string }) {
         if (json.error) throw new Error(json.error.message);
         const promoted = (json.data?.promotedCount as number) ?? 0;
         if (promoted === 0) {
-          setError("No change — contact is not in Farm stage.");
+          toast.error("No change — contact is not in Farm stage.");
           return;
         }
         return fetch(`/api/v1/contacts/${id}`)
@@ -387,7 +378,7 @@ export function ContactDetailView({ id }: { id: string }) {
           });
       })
       .catch((err) =>
-        setError(err instanceof Error ? err.message : "Promote failed")
+        toast.error(err instanceof Error ? err.message : "Promote failed")
       )
       .finally(() => setPromotingFromFarm(false));
   }, [hasCrmAccess, id]);
@@ -600,7 +591,6 @@ export function ContactDetailView({ id }: { id: string }) {
               farmAreas={farmAreas}
               selectedFarmAreaId={selectedFarmAreaId}
               addingFarmMembership={addingFarmMembership}
-              farmMembershipError={farmMembershipError}
               onSelectedFarmAreaIdChange={setSelectedFarmAreaId}
               onAddFarmMembership={addFarmMembership}
               onArchiveFarmMembership={archiveFarmMembership}

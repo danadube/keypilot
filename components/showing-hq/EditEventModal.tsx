@@ -25,6 +25,7 @@ import {
   localDateTimeFromParts,
 } from "@/lib/datetime/local-scheduling";
 import { UI_COPY } from "@/lib/ui-copy";
+import { toast } from "sonner";
 import { Copy, Check, ClipboardCheck } from "lucide-react";
 
 type Property = { id: string; address1: string; city: string; state: string };
@@ -49,7 +50,6 @@ export function EditEventModal({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [properties, setProperties] = useState<Property[]>([]);
 
   const [propertyId, setPropertyId] = useState("");
@@ -74,7 +74,6 @@ export function EditEventModal({
 
   useEffect(() => {
     if (!open) return;
-    setError(null);
     setSubmitting(false);
     setDeleting(false);
     setMarkingFeedbackSent(false);
@@ -84,16 +83,15 @@ export function EditEventModal({
     fetch("/api/v1/properties")
       .then((res) => res.json())
       .then((json) => {
-        if (json.error) setError(json.error.message);
+        if (json.error) toast.error(json.error.message);
         else setProperties(json.data || []);
       })
-      .catch(() => setError(UI_COPY.errors.load("properties")));
+      .catch(() => toast.error(UI_COPY.errors.load("properties")));
   }, [open]);
 
   useEffect(() => {
     if (!open || !eventId) return;
     setLoading(true);
-    setError(null);
     setBuyerAgentFeedbackDraft(null);
     const url = isOpenHouse
       ? `/api/v1/open-houses/${eventId}`
@@ -102,7 +100,7 @@ export function EditEventModal({
       .then((res) => res.json())
       .then((json) => {
         if (json.error) {
-          setError(json.error.message);
+          toast.error(json.error.message);
           return;
         }
         const d = json.data;
@@ -162,7 +160,7 @@ export function EditEventModal({
           }
         }
       })
-      .catch(() => setError(UI_COPY.errors.load("event")))
+      .catch(() => toast.error(UI_COPY.errors.load("event")))
       .finally(() => setLoading(false));
   }, [open, eventId, isOpenHouse]);
 
@@ -172,22 +170,21 @@ export function EditEventModal({
     if (!isOpenHouse && buyerAgentFeedbackDraft) return;
     const startAt = localDateTimeFromParts(dateStr, startTimeStr);
     if (Number.isNaN(startAt.getTime())) {
-      setError("Invalid date or start time.");
+      toast.error("Invalid date or start time.");
       return;
     }
 
     setSubmitting(true);
-    setError(null);
     try {
       if (isOpenHouse) {
         const endAt = localDateTimeFromParts(dateStr, endTimeStr);
         if (Number.isNaN(endAt.getTime())) {
-          setError("Invalid end time.");
+          toast.error("Invalid end time.");
           setSubmitting(false);
           return;
         }
         if (endAt <= startAt) {
-          setError("End time must be after start time.");
+          toast.error("End time must be after start time.");
           setSubmitting(false);
           return;
         }
@@ -220,7 +217,7 @@ export function EditEventModal({
       onSaved();
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      toast.error(err instanceof Error ? err.message : "Failed to save");
     } finally {
       setSubmitting(false);
     }
@@ -230,11 +227,10 @@ export function EditEventModal({
     if (!eventId || !buyerAgentFeedbackDraft) return;
     const startAt = localDateTimeFromParts(dateStr, startTimeStr);
     if (Number.isNaN(startAt.getTime())) {
-      setError("Invalid date or start time.");
+      toast.error("Invalid date or start time.");
       return;
     }
     setMarkingFeedbackSent(true);
-    setError(null);
     try {
       const res = await fetch(`/api/v1/showing-hq/showings/${eventId}`, {
         method: "PATCH",
@@ -251,7 +247,7 @@ export function EditEventModal({
       onSaved();
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update");
+      toast.error(err instanceof Error ? err.message : "Failed to update");
     } finally {
       setMarkingFeedbackSent(false);
     }
@@ -266,7 +262,6 @@ export function EditEventModal({
     )
       return;
     setDeleting(true);
-    setError(null);
     try {
       const res = await fetch(`/api/v1/open-houses/${eventId}`, {
         method: "PUT",
@@ -278,7 +273,7 @@ export function EditEventModal({
       onDeleted();
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete");
+      toast.error(err instanceof Error ? err.message : "Failed to delete");
     } finally {
       setDeleting(false);
     }
@@ -379,12 +374,6 @@ export function EditEventModal({
         <p className={kpCalendarModalField.mutedHelp}>Loading event…</p>
       ) : (
         <form id="edit-event-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
-          {error && (
-            <p className={kpCalendarModalField.error} role="alert">
-              {error}
-            </p>
-          )}
-
           <div
             className={cn(
               "space-y-4 rounded-lg border border-[var(--brand-border)]/50 bg-[var(--brand-surface-alt)]/15 p-3",

@@ -16,6 +16,7 @@ import { OpenHouseSupportPageFrame } from "@/components/showing-hq/OpenHouseSupp
 import { AgentFollowUpTaskCard } from "@/components/follow-ups/agent-follow-up-task-card";
 import { useOpenHouseContextSubtitle } from "@/components/showing-hq/useOpenHouseContextSubtitle";
 import { UI_COPY } from "@/lib/ui-copy";
+import { toast } from "sonner";
 
 type FollowUpDraft = {
   id: string;
@@ -117,7 +118,7 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
       if (json.error) throw new Error(json.error.message);
       loadDrafts();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to generate");
+      toast.error(err instanceof Error ? err.message : "Failed to generate");
     } finally {
       setGenerating(false);
     }
@@ -125,14 +126,13 @@ export function OpenHouseFollowUpsView({ openHouseId }: { openHouseId: string })
 
   const handleSend = async (draftId: string) => {
     setSendingId(draftId);
-    setError(null);
     try {
       const res = await fetch(`/api/v1/follow-up-drafts/${draftId}/send`, { method: "POST" });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
       loadDrafts();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send email");
+      toast.error(err instanceof Error ? err.message : "Failed to send email");
     } finally {
       setSendingId(null);
     }

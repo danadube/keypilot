@@ -31,6 +31,7 @@ import {
 } from "@/components/modules/showing-hq/supra-inbox-button-tiers";
 import { cn } from "@/lib/utils";
 import { UI_COPY } from "@/lib/ui-copy";
+import { toast } from "sonner";
 import {
   pastedBlobHasDetectedFields,
   splitPastedEmailBlob,
@@ -851,7 +852,6 @@ export function SupraInboxView() {
     );
     if (!ok) return;
     setDeletingRowId(row.id);
-    setError(null);
     try {
       const res = await fetch(`/api/v1/showing-hq/supra-queue/${row.id}`, {
         method: "DELETE",
@@ -869,7 +869,7 @@ export function SupraInboxView() {
       await load();
       setSuccessInfo({ message: "Queue row deleted." });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Delete failed");
+      toast.error(e instanceof Error ? e.message : "Delete failed");
     } finally {
       setDeletingRowId(null);
     }
@@ -882,7 +882,6 @@ export function SupraInboxView() {
 
   const patchGmailAutomationEnabled = async (enabled: boolean) => {
     setGmailAutomationToggleLoading(true);
-    setError(null);
     try {
       const res = await fetch("/api/v1/showing-hq/supra-gmail-import-settings", {
         method: "PATCH",
@@ -891,13 +890,13 @@ export function SupraInboxView() {
       });
       const json = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
       if (!res.ok) {
-        setError(json.error?.message ?? "Couldn’t update import settings");
+        toast.error(json.error?.message ?? "Couldn’t update import settings");
         return;
       }
       setAutomationEnabledLocal(enabled);
       await loadGmailAutomation();
     } catch {
-      setError("Couldn’t update import settings");
+      toast.error("Couldn’t update import settings");
     } finally {
       setGmailAutomationToggleLoading(false);
     }
@@ -905,14 +904,13 @@ export function SupraInboxView() {
 
   const importFromGmail = async () => {
     setGmailImporting(true);
-    setError(null);
     try {
       const res = await fetch("/api/v1/showing-hq/supra-queue/import-gmail", {
         method: "POST",
       });
       const json = await res.json();
       if (!res.ok) {
-        setError(json.error?.message ?? "Gmail import failed");
+        toast.error(json.error?.message ?? "Gmail import failed");
         return;
       }
       const { imported, refreshed = 0, skipped, scanned, autoParsed = 0 } = json.data as {
@@ -929,7 +927,7 @@ export function SupraInboxView() {
         message: `Gmail: ${imported} new, ${refreshed} refreshed, ${autoParsed} auto-parsed to NEEDS_REVIEW, ${skipped} skipped (${scanned} scanned, last ~14 days, Supra senders).`,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Gmail import failed");
+      toast.error(e instanceof Error ? e.message : "Gmail import failed");
     } finally {
       setGmailImporting(false);
     }
@@ -942,12 +940,11 @@ export function SupraInboxView() {
     );
     if (!confirmed) return;
     setClearingTestInbox(true);
-    setError(null);
     try {
       const res = await fetch("/api/v1/showing-hq/supra-queue/clear", { method: "POST" });
       const json = await res.json();
       if (!res.ok) {
-        setError(json.error?.message ?? "Failed to clear queue");
+        toast.error(json.error?.message ?? "Failed to clear queue");
         return;
       }
       const deletedCount =
@@ -958,7 +955,7 @@ export function SupraInboxView() {
         message: `Removed ${deletedCount} queue row(s). Applied rows were kept. Properties and showings were not changed.`,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to clear queue");
+      toast.error(e instanceof Error ? e.message : "Failed to clear queue");
     } finally {
       setClearingTestInbox(false);
     }
@@ -996,7 +993,6 @@ export function SupraInboxView() {
     }
     setPasting(true);
     setPasteModalError(null);
-    setError(null);
     try {
       const body: Record<string, unknown> = {
         subject: pasteSubject.trim(),
@@ -1092,7 +1088,6 @@ export function SupraInboxView() {
   const handleParseDraft = async () => {
     if (!detail) return;
     setParseDrafting(true);
-    setError(null);
     try {
       const res = await fetch(`/api/v1/showing-hq/supra-queue/${detail.id}/parse-draft`, {
         method: "POST",
@@ -1113,7 +1108,7 @@ export function SupraInboxView() {
             : "Supra parser filled draft fields — review before apply.",
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Parse draft failed");
+      toast.error(e instanceof Error ? e.message : "Parse draft failed");
     } finally {
       setParseDrafting(false);
     }
@@ -1136,7 +1131,6 @@ export function SupraInboxView() {
     const prop = conflict.property ?? bundle.context.property;
     if (!prop || !detail) return;
     setDupLinkShowingId(conflict.id);
-    setError(null);
     try {
       const updated = await performPatchQueueItem(detail.id, {
         matchedPropertyId: prop.id,
@@ -1152,7 +1146,7 @@ export function SupraInboxView() {
       });
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not link showing");
+      toast.error(e instanceof Error ? e.message : "Could not link showing");
     } finally {
       setDupLinkShowingId(null);
     }
@@ -1161,7 +1155,6 @@ export function SupraInboxView() {
   const handleApply = async () => {
     if (!detail || !applyReadiness.ok) return;
     setApplying(true);
-    setError(null);
     try {
       let d = detail;
       if (
@@ -1180,7 +1173,7 @@ export function SupraInboxView() {
         }
         const afterSave = getApplyReadiness(d);
         if (!afterSave.ok) {
-          setError(
+          toast.error(
             afterSave.reasons.length > 0
               ? afterSave.reasons.join(" ")
               : "Saved, but this item is not ready to apply yet."
@@ -1194,7 +1187,7 @@ export function SupraInboxView() {
         const dup = parseApplyDuplicate409(json as Record<string, unknown>, d);
         if (dup) setApplyDuplicate(dup);
         else setApplyDuplicate(null);
-        setError(
+        toast.error(
           "Apply paused: another showing falls in the duplicate time window. Use the details below to link or override."
         );
         return;
@@ -1227,7 +1220,7 @@ export function SupraInboxView() {
         applyShowingId: draftReady ? sid : undefined,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Apply failed");
+      toast.error(e instanceof Error ? e.message : "Apply failed");
     } finally {
       setApplying(false);
     }
@@ -1236,7 +1229,6 @@ export function SupraInboxView() {
   const handleApplyFromList = async (row: ItemWithRelations) => {
     if (!getApplyReadiness(row).ok) return;
     setApplyingRowId(row.id);
-    setError(null);
     try {
       const { res, json } = await postApplyRequest(row, false);
       if (res.status === 409 && json.error?.code === "DUPLICATE_SHOWING_WINDOW") {
@@ -1247,7 +1239,7 @@ export function SupraInboxView() {
         const dup = parseApplyDuplicate409(json as Record<string, unknown>, normalized);
         if (dup) setApplyDuplicate(dup);
         else setApplyDuplicate(null);
-        setError(
+        toast.error(
           "Apply paused: another showing falls in the duplicate time window. Use the details below to link or override."
         );
         return;
@@ -1277,7 +1269,7 @@ export function SupraInboxView() {
         applyShowingId: draftReady ? sid : undefined,
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Apply failed");
+      toast.error(e instanceof Error ? e.message : "Apply failed");
     } finally {
       setApplyingRowId(null);
     }
@@ -1285,7 +1277,6 @@ export function SupraInboxView() {
 
   const patchItem = async (id: string, body: Record<string, unknown>) => {
     setSaving(true);
-    setError(null);
     try {
       const updated = await performPatchQueueItem(id, body);
       setApplyDuplicate(null);
@@ -1299,7 +1290,7 @@ export function SupraInboxView() {
         setSavedModalFingerprint(null);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Update failed");
+      toast.error(e instanceof Error ? e.message : "Update failed");
     } finally {
       setSaving(false);
     }
@@ -1333,7 +1324,6 @@ export function SupraInboxView() {
   const addSampleRow = async (kind: SampleKind) => {
     setSeeding(true);
     setSampleMenuOpen(false);
-    setError(null);
     const ts = Date.now();
     const base = {
       externalMessageId: `manual-test-${kind}-${ts}@keypilot.local`,
@@ -1454,7 +1444,7 @@ export function SupraInboxView() {
                 : "Ready-to-apply sample added (still no auto-create).",
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to add sample");
+      toast.error(e instanceof Error ? e.message : "Failed to add sample");
     } finally {
       setSeeding(false);
     }

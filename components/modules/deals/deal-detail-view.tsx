@@ -18,6 +18,7 @@ import {
   Handshake,
   DollarSign,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
 import {
@@ -173,7 +174,6 @@ export function DealDetailView({ dealId }: { dealId: string }) {
   const [status, setStatus] = useState<DealStatus>("INTERESTED");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
 
   // Delete state
@@ -211,7 +211,6 @@ export function DealDetailView({ dealId }: { dealId: string }) {
   const handleSave = async () => {
     if (!deal) return;
     setSaving(true);
-    setSaveError(null);
     try {
       const res = await fetch(`/api/v1/deals/${dealId}`, {
         method: "PATCH",
@@ -227,7 +226,7 @@ export function DealDetailView({ dealId }: { dealId: string }) {
       setNotes(d.notes ?? "");
       setDirty(false);
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Failed to save");
+      toast.error(e instanceof Error ? e.message : "Failed to save");
     } finally {
       setSaving(false);
     }
@@ -241,7 +240,7 @@ export function DealDetailView({ dealId }: { dealId: string }) {
       if (json.error) throw new Error(json.error.message);
       router.push("/deals");
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Failed to delete");
+      toast.error(e instanceof Error ? e.message : "Failed to delete");
       setDeleting(false);
       setDeleteConfirm(false);
     }
@@ -310,14 +309,6 @@ export function DealDetailView({ dealId }: { dealId: string }) {
           </div>
         </div>
       </div>
-
-      {/* ── Error banner ─────────────────────────────────────────────────── */}
-      {saveError && (
-        <div className="mx-6 mb-4 flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 sm:mx-8">
-          <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-          <p className="text-sm text-red-400">{saveError}</p>
-        </div>
-      )}
 
       {/* ── Two-column layout ─────────────────────────────────────────────── */}
       <div className="grid gap-4 px-6 pb-4 sm:px-8 lg:grid-cols-[1fr_360px]">

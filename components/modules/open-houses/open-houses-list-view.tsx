@@ -48,6 +48,7 @@ import {
 } from "@/lib/showing-hq/open-houses-view-query";
 import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 import { UI_COPY } from "@/lib/ui-copy";
+import { toast } from "sonner";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 // Mirrors the shape returned by GET /api/v1/open-houses (with full property include)
@@ -482,7 +483,6 @@ export function OpenHousesListView() {
 
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   const replaceListView = useCallback(
     (next: NormalizedOpenHousesListView) => {
@@ -608,7 +608,6 @@ export function OpenHousesListView() {
   const isFiltered = hasListFilters;
 
   function openSaveModal() {
-    setSaveError(null);
     setSaveName("");
     setSaveModalOpen(true);
   }
@@ -616,7 +615,7 @@ export function OpenHousesListView() {
   function handleConfirmSave() {
     const name = saveName.trim();
     if (!name) {
-      setSaveError("Enter a name");
+      toast.error("Enter a name");
       return;
     }
     const qSave = normalizeShowingHqListSearchQ(qInput);
@@ -627,21 +626,20 @@ export function OpenHousesListView() {
     });
     if (!result.ok) {
       if (result.reason === "duplicate") {
-        setSaveError(
+        toast.error(
           "A shortcut with the same filters and search already exists. Open ShowingHQ → Saved views, or change filters first."
         );
       } else if (result.reason === "limit") {
-        setSaveError(
+        toast.error(
           "You can save up to 50 views. Remove one on Saved views and try again."
         );
       } else {
-        setSaveError("Enter a name");
+        toast.error("Enter a name");
       }
       return;
     }
     setSaveModalOpen(false);
     setSaveName("");
-    setSaveError(null);
   }
 
   function setTabFromUi(nextTab: OpenHousesListTabValue) {
@@ -807,7 +805,6 @@ export function OpenHousesListView() {
         onOpenChange={(open) => {
           setSaveModalOpen(open);
           if (!open) {
-            setSaveError(null);
             setSaveName("");
           }
         }}
@@ -840,10 +837,7 @@ export function OpenHousesListView() {
           <input
             type="text"
             value={saveName}
-            onChange={(e) => {
-              setSaveName(e.target.value);
-              setSaveError(null);
-            }}
+            onChange={(e) => setSaveName(e.target.value)}
             placeholder="e.g. Live events — downtown"
             maxLength={MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH}
             className={cn(
@@ -852,7 +846,6 @@ export function OpenHousesListView() {
             )}
             autoFocus
           />
-          {saveError && <p className="text-xs text-red-400">{saveError}</p>}
         </div>
       </BrandModal>
     </div>

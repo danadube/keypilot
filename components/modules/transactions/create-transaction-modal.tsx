@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  AlertCircle,
   Briefcase,
   CheckCircle2,
   Loader2,
@@ -13,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   getCommitBlockReason,
   getLowConfidenceFields,
@@ -290,11 +290,9 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
   const [notes, setNotes] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const [parsing, setParsing] = useState(false);
   const [committing, setCommitting] = useState(false);
-  const [parseError, setParseError] = useState<string | null>(null);
   const [importSessionId, setImportSessionId] = useState<string | null>(null);
   const [parsedPayload, setParsedPayload] = useState<ParsedPayload | null>(null);
   const [editedPayload, setEditedPayload] = useState<ParsedPayload | null>(null);
@@ -312,10 +310,8 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
     setClosingDate("");
     setBrokerageName("");
     setNotes("");
-    setError(null);
     setParsing(false);
     setCommitting(false);
-    setParseError(null);
     setImportSessionId(null);
     setParsedPayload(null);
     setEditedPayload(null);
@@ -439,7 +435,6 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
 
   async function handleParse(file: File) {
     setParsing(true);
-    setParseError(null);
     setImportSessionId(null);
     setParsedPayload(null);
     setEditedPayload(null);
@@ -474,7 +469,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
         setSelectedBrokerage("");
       }
     } catch (err) {
-      setParseError(err instanceof Error ? err.message : "Failed to parse statement");
+      toast.error(err instanceof Error ? err.message : "Failed to parse statement");
     } finally {
       setParsing(false);
       if (importInputRef.current) importInputRef.current.value = "";
@@ -497,7 +492,6 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
     if (notes.trim()) body.notes = notes.trim();
 
     setSubmitting(true);
-    setError(null);
     try {
       const res = await fetch("/api/v1/transactions", {
         method: "POST",
@@ -511,7 +505,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
       onClose();
       router.push(`/transactions/${id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create transaction");
+      toast.error(err instanceof Error ? err.message : "Failed to create transaction");
       setSubmitting(false);
     }
   }
@@ -519,7 +513,6 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
   async function handleCommitImport() {
     if (!selectedProperty || !importSessionId || !editedPayload) return;
     setCommitting(true);
-    setParseError(null);
     try {
       const selectedBrokerageName = brokerageSelectionToName(selectedBrokerage);
       const finalBrokerageName =
@@ -547,7 +540,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
       onClose();
       router.push(`/transactions/${transactionId}`);
     } catch (err) {
-      setParseError(err instanceof Error ? err.message : "Failed to commit import");
+      toast.error(err instanceof Error ? err.message : "Failed to commit import");
     } finally {
       setCommitting(false);
     }
@@ -710,12 +703,6 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                   className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
                 />
               </div>
-              {error && (
-                <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3">
-                  <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-                  <p className="text-sm text-red-400">{error}</p>
-                </div>
-              )}
             </div>
             <div className="flex items-center justify-between gap-3 border-t border-kp-outline px-6 py-4">
               <p className="text-xs text-kp-on-surface-variant">
@@ -1088,12 +1075,6 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                 </>
               )}
 
-              {parseError && (
-                <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3">
-                  <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-                  <p className="text-sm text-red-400">{parseError}</p>
-                </div>
-              )}
             </div>
 
             <div className="flex items-center justify-between gap-3 border-t border-kp-outline px-6 py-4">

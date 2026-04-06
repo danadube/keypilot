@@ -20,6 +20,7 @@ import {
   localDateTimeFromParts,
 } from "@/lib/datetime/local-scheduling";
 import { UI_COPY } from "@/lib/ui-copy";
+import { toast } from "sonner";
 
 type Property = {
   id: string;
@@ -55,7 +56,6 @@ export function QuickCreateEventModal({
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const [eventType, setEventType] = useState<QuickCreateEventType>("showing");
   const [propertyId, setPropertyId] = useState("");
@@ -66,14 +66,13 @@ export function QuickCreateEventModal({
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    setError(null);
     fetch("/api/v1/properties")
       .then((res) => res.json())
       .then((json) => {
-        if (json.error) setError(json.error.message);
+        if (json.error) toast.error(json.error.message);
         else setProperties(json.data || []);
       })
-      .catch(() => setError(UI_COPY.errors.load("properties")))
+      .catch(() => toast.error(UI_COPY.errors.load("properties")))
       .finally(() => setLoading(false));
   }, [open]);
 
@@ -94,18 +93,17 @@ export function QuickCreateEventModal({
     const typeOpt = EVENT_TYPE_OPTIONS.find((o) => o.value === eventType);
     if (!typeOpt?.enabled) return;
     if (!propertyId?.trim() || !dateStr?.trim() || !startTimeStr?.trim()) {
-      setError("Property, date, and start time are required.");
+      toast.error("Property, date, and start time are required.");
       return;
     }
 
     const startAt = localDateTimeFromParts(dateStr, startTimeStr);
     if (Number.isNaN(startAt.getTime())) {
-      setError("Invalid date or start time.");
+      toast.error("Invalid date or start time.");
       return;
     }
 
     setSubmitting(true);
-    setError(null);
     try {
       if (eventType === "showing") {
         const res = await fetch("/api/v1/showing-hq/showings", {
@@ -121,12 +119,12 @@ export function QuickCreateEventModal({
       } else if (eventType === "open_house") {
         const endAt = localDateTimeFromParts(dateStr, endTimeStr || "11:00");
         if (Number.isNaN(endAt.getTime())) {
-          setError("Invalid end time.");
+          toast.error("Invalid end time.");
           setSubmitting(false);
           return;
         }
         if (endAt <= startAt) {
-          setError("End time must be after start time.");
+          toast.error("End time must be after start time.");
           setSubmitting(false);
           return;
         }
@@ -148,7 +146,7 @@ export function QuickCreateEventModal({
       onSaved();
       onOpenChange(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create event");
+      toast.error(err instanceof Error ? err.message : "Failed to create event");
     } finally {
       setSubmitting(false);
     }
@@ -187,12 +185,6 @@ export function QuickCreateEventModal({
       }
     >
       <form id="quick-create-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
-        {error && (
-          <p className={kpCalendarModalField.error} role="alert">
-            {error}
-          </p>
-        )}
-
         <div className="space-y-1.5">
           <Label className={kpCalendarModalField.label}>Event type</Label>
           <Select
