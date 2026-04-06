@@ -12,6 +12,11 @@ import { cn } from "@/lib/utils";
 import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
 import { isWorkspaceContext } from "@/lib/showing-hq/isShowingHQContext";
 
+/** Matches `ModuleSidebar` so header + rail read as one chrome surface. */
+const SHELL_CHROME_BG_STYLE = {
+  backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)",
+} as const;
+
 /**
  * Date + time under workspace shell title (ShowingHQ, FarmTrackr, PropertyVault, ClientKeep, etc.) — client-only
  * so locale and timezone match the user and avoid SSR hydration mismatches.
@@ -93,10 +98,11 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
           <header
             className={cn(
-              "sticky top-0 z-20 flex w-full shrink-0 border-b border-kp-outline bg-[var(--brand-sidebar-bg,#0B1A3C)]",
-              workspaceShell ? "items-center" : "items-stretch",
+              "sticky top-0 z-20 flex w-full shrink-0 border-b border-white/[0.08] shadow-none",
+              workspaceShell || isOperationalDashboard ? "items-center" : "items-stretch",
               shellTopRowHeightClass(pathname)
             )}
+            style={SHELL_CHROME_BG_STYLE}
           >
             <div className="flex min-w-0 flex-1 items-center overflow-hidden pl-6 pr-3 md:pl-8 md:pr-4 lg:pl-10">
               <div className="min-w-0">
@@ -142,18 +148,33 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     <WorkspaceShellDateTimeLine />
                   </>
                 ) : (
-                  <h1 className="truncate text-sm font-semibold leading-tight text-kp-on-surface md:text-base">
+                  <h1
+                    className={cn(
+                      "truncate font-semibold leading-tight text-kp-on-surface",
+                      isOperationalDashboard
+                        ? "text-[13px] md:text-sm"
+                        : "text-sm md:text-base"
+                    )}
+                  >
                     {pageTitle}
                   </h1>
                 )}
               </div>
             </div>
-            <div className="flex shrink-0 items-center gap-1.5 border-l border-kp-outline bg-[var(--brand-sidebar-bg,#0B1A3C)] px-2.5 md:gap-2 md:px-3.5">
+            <div
+              className="flex shrink-0 items-center gap-1.5 border-l border-white/10 px-2.5 md:gap-2 md:px-3.5"
+              style={SHELL_CHROME_BG_STYLE}
+            >
               <ShowingHQWorkbenchHeaderActions showNewMenu={showHeaderNewMenu} />
             </div>
           </header>
 
-          <main className="min-h-0 flex-1 bg-kp-bg px-6 pb-5 pt-2 md:px-8 md:pb-6 md:pt-3 lg:px-10">
+          <main
+            className={cn(
+              "min-h-0 flex-1 bg-kp-bg px-6 pb-5 md:px-8 md:pb-6 lg:px-10",
+              isOperationalDashboard ? "pt-1.5 md:pt-2" : "pt-2 md:pt-3"
+            )}
+          >
             <div
               className={cn(
                 "mx-auto min-h-[50vh] w-full",

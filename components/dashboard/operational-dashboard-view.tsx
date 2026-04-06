@@ -360,18 +360,12 @@ export function OperationalDashboardView() {
     : `${propertiesCount} active listing${propertiesCount === 1 ? "" : "s"}`;
 
   return (
-    <div className="space-y-5 pb-8">
-      <header className="max-w-3xl">
-        <h1 className="font-headline text-2xl font-semibold tracking-tight text-kp-on-surface md:text-3xl">
-          Dashboard
-        </h1>
-        <p className="mt-2 text-sm leading-relaxed text-kp-on-surface-variant md:text-[0.9375rem]">
-          Your operational home: today&apos;s work, pipeline snapshot, and shortcuts into KeyPilot.
-          This is a control center, not analytics.
-        </p>
-      </header>
+    <div className="space-y-3 pb-8 sm:space-y-4">
+      <p className="max-w-xl text-[13px] leading-snug text-kp-on-surface-muted">
+        Today&apos;s work, pipeline snapshot, and module shortcuts — operational, not analytics.
+      </p>
 
-      <section aria-labelledby="dash-today">
+      <section aria-labelledby="dash-today" className="scroll-mt-2">
         <h2
           id="dash-today"
           className="mb-2 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"

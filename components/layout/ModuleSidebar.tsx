@@ -173,7 +173,7 @@ export function ModuleSidebar() {
     >
       <div
         className={cn(
-          "flex shrink-0 items-center border-b border-kp-outline px-4",
+          "flex shrink-0 items-center border-b border-white/[0.08] px-4",
           shellTopRowHeightClass(pathname ?? "")
         )}
       >
