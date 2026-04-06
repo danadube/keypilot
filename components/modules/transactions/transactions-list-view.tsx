@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { apiFetcher } from "@/lib/fetcher";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SectionTabs } from "@/components/ui/section-tabs";
+import { BrandTablePagination } from "@/components/ui/BrandTablePagination";
 import { Button } from "@/components/ui/button";
 import { kpBtnSave } from "@/components/ui/kp-dashboard-button-tiers";
 import { CreateTransactionModal } from "./create-transaction-modal";
@@ -213,6 +214,15 @@ export function TransactionsListView() {
     return base.filter((t) => matchesSearch(t, search));
   }, [rows, search, needsSetupOnly]);
 
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  useEffect(() => { setPage(1); }, [visible]);
+  const pagedVisible = useMemo(
+    () => visible.slice((page - 1) * pageSize, page * pageSize),
+    [visible, page, pageSize]
+  );
+
   const summary = useMemo(() => {
     const active = rows.filter((t) => !t.deletedAt).length;
     const archived = rows.filter((t) => !!t.deletedAt).length;
@@ -354,7 +364,18 @@ export function TransactionsListView() {
             showArchived={showArchived}
           />
         ) : (
-          <TransactionsTable rows={visible} />
+          <>
+            <TransactionsTable rows={pagedVisible} />
+            {visible.length > pageSize && (
+              <BrandTablePagination
+                total={visible.length}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+              />
+            )}
+          </>
         )}
       </div>
 

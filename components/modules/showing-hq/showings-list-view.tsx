@@ -8,6 +8,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import useSWR from "swr";
+import { apiFetcher } from "@/lib/fetcher";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -33,6 +35,7 @@ import {
   kpBtnSecondary,
 } from "@/components/ui/kp-dashboard-button-tiers";
 import { BrandModal } from "@/components/ui/BrandModal";
+import { BrandTablePagination } from "@/components/ui/BrandTablePagination";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 import {
   Select,
@@ -92,44 +95,18 @@ type Showing = {
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
 function useShowingsList(view: NormalizedShowingsListView) {
-  const [showings, setShowings] = useState<Showing[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(() => {
-    setError(null);
-    setLoading(true);
-    const url = buildShowingsListApiUrl(view);
-    fetch(url)
-      .then(async (res) => {
-        const json = (await res.json().catch(() => ({}))) as {
-          error?: { message?: string };
-          data?: Showing[];
-        };
-        if (!res.ok) {
-          setError(
-            json.error?.message ??
-              (res.status === 401 || res.status === 403
-                ? "You may need to sign in again."
-                : UI_COPY.errors.load("showings"))
-          );
-          return;
-        }
-        if (json.error) {
-          setError(json.error.message ?? UI_COPY.errors.load("showings"));
-          return;
-        }
-        setShowings(json.data ?? []);
-      })
-      .catch(() => setError(UI_COPY.errors.load("showings")))
-      .finally(() => setLoading(false));
-  }, [view]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  return { showings, loading, error, reload: load };
+  const url = buildShowingsListApiUrl(view);
+  const { data, error: rawError, isLoading, mutate } = useSWR<Showing[]>(
+    url,
+    apiFetcher,
+    { errorRetryCount: 2, errorRetryInterval: 500 }
+  );
+  return {
+    showings: data ?? [],
+    loading: isLoading && !data,
+    error: rawError instanceof Error ? rawError.message : rawError ? String(rawError) : null,
+    reload: () => mutate(),
+  };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -593,6 +570,10 @@ export function ShowingsListView() {
 
   const [showScheduledBanner, setShowScheduledBanner] = useState(false);
 
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
   const replaceListView = useCallback(
     (next: NormalizedShowingsListView) => {
       router.replace(showingsHrefPreservingOpenShowing(next, searchParams), {
@@ -704,6 +685,14 @@ export function ShowingsListView() {
     () =>
       showings.filter((s) => s.feedbackRequestStatus === "SENT" && hasBuyerAgentEmailDraft(s)).length,
     [showings]
+  );
+
+  // Reset page when the list changes
+  useEffect(() => { setPage(1); }, [showings]);
+
+  const pagedShowings = useMemo(
+    () => showings.slice((page - 1) * pageSize, page * pageSize),
+    [showings, page, pageSize]
   );
 
   const isFiltered = hasListFilters;
@@ -931,7 +920,18 @@ export function ShowingsListView() {
         ) : showings.length === 0 ? (
           <EmptyState isFiltered={isFiltered} onReset={clearListFiltersAndSearch} />
         ) : (
-          <ShowingsTable showings={showings} onOpenWorkspace={openShowingWorkspace} />
+          <>
+            <ShowingsTable showings={pagedShowings} onOpenWorkspace={openShowingWorkspace} />
+            {showings.length > pageSize && (
+              <BrandTablePagination
+                total={showings.length}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+              />
+            )}
+          </>
         )}
 
         {showContent && showings.length > 0 && (

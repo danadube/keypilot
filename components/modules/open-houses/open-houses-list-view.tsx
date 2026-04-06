@@ -31,6 +31,7 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { SectionTabs } from "@/components/ui/section-tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { BrandModal } from "@/components/ui/BrandModal";
+import { BrandTablePagination } from "@/components/ui/BrandTablePagination";
 import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 import {
   MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH,
@@ -577,6 +578,15 @@ export function OpenHousesListView() {
     return openHouses.filter((oh) => oh.status === listView.status);
   }, [openHouses, listView.status]);
 
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  useEffect(() => { setPage(1); }, [filteredRows]);
+  const pagedRows = useMemo(
+    () => filteredRows.slice((page - 1) * pageSize, page * pageSize),
+    [filteredRows, page, pageSize]
+  );
+
   const tabs = useMemo(
     () => [
       { label: "All", value: "all" as const, count: openHouses.length },
@@ -788,7 +798,18 @@ export function OpenHousesListView() {
             }}
           />
         ) : (
-          <OpenHousesTable rows={filteredRows} />
+          <>
+            <OpenHousesTable rows={pagedRows} />
+            {filteredRows.length > pageSize && (
+              <BrandTablePagination
+                total={filteredRows.length}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+              />
+            )}
+          </>
         )}
       </div>
 

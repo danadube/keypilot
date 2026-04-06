@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import useSWR from "swr";
+import { apiFetcher } from "@/lib/fetcher";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Button } from "@/components/ui/button";
 import { BrandModal } from "@/components/ui/BrandModal";
+import { BrandTablePagination } from "@/components/ui/BrandTablePagination";
 import { cn } from "@/lib/utils";
 import { kpBtnSecondary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { Input } from "@/components/ui/input";
@@ -92,13 +95,33 @@ export function VisitorsListView() {
   const viewQ = view.q ?? "";
   const [qInput, setQInput] = useState(viewQ);
 
-  const [visitors, setVisitors] = useState<Visitor[]>([]);
-  const [openHouses, setOpenHouses] = useState<OpenHouse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const visitorsSWRUrl = buildVisitorsListApiUrl(view);
+  const {
+    data: visitorsData,
+    error: visitorsRawError,
+    isLoading: visitorsLoading,
+    mutate: reloadVisitors,
+  } = useSWR<{ visitors: Visitor[]; openHouses: OpenHouse[] }>(
+    visitorsSWRUrl,
+    apiFetcher,
+    { errorRetryCount: 2, errorRetryInterval: 500 }
+  );
+  const visitors = useMemo(() => visitorsData?.visitors ?? [], [visitorsData]);
+  const openHouses = useMemo(() => visitorsData?.openHouses ?? [], [visitorsData]);
+  const loading = visitorsLoading && !visitorsData;
+  const error = visitorsRawError instanceof Error
+    ? visitorsRawError.message
+    : visitorsRawError
+    ? String(visitorsRawError)
+    : null;
+  const loadData = () => reloadVisitors();
 
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   useEffect(() => {
     if (skipNextSearchSync.current) {
@@ -120,38 +143,8 @@ export function VisitorsListView() {
     return () => clearTimeout(t);
   }, [qInput, router, searchParams]);
 
-  const loadData = useCallback(() => {
-    setError(null);
-    setLoading(true);
-    const url = buildVisitorsListApiUrl(view);
-    fetch(url)
-      .then(async (res) => {
-        const json = (await res.json().catch(() => ({}))) as {
-          error?: { message?: string };
-          data?: { visitors?: Visitor[]; openHouses?: OpenHouse[] };
-        };
-        if (!res.ok) {
-          setError(
-            json.error?.message ??
-              (res.status === 401 || res.status === 403
-                ? "You may need to sign in again."
-                : UI_COPY.errors.load("visitors"))
-          );
-          return;
-        }
-        if (json.error) setError(json.error.message ?? UI_COPY.errors.load("visitors"));
-        else {
-          setVisitors(json.data?.visitors ?? []);
-          setOpenHouses(json.data?.openHouses ?? []);
-        }
-      })
-      .catch(() => setError(UI_COPY.errors.load("visitors")))
-      .finally(() => setLoading(false));
-  }, [view]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  // Reset page when visitors list changes
+  useEffect(() => { setPage(1); }, [visitors]);
 
   function committedSearchView(): NormalizedVisitorsView {
     return {
@@ -231,6 +224,11 @@ export function VisitorsListView() {
 
   const fullName = (c: Visitor["contact"]) =>
     [c.firstName, c.lastName].filter(Boolean).join(" ") || "Unknown";
+
+  const pagedVisitors = useMemo(
+    () => visitors.slice((page - 1) * pageSize, page * pageSize),
+    [visitors, page, pageSize]
+  );
 
   if (error) return <ErrorMessage message={error} onRetry={loadData} />;
 
@@ -394,6 +392,7 @@ export function VisitorsListView() {
               )}
             </div>
           ) : (
+            <>
             <div className="-mx-1 overflow-x-auto px-1">
               <table className="w-full text-sm">
                 <thead>
@@ -406,7 +405,7 @@ export function VisitorsListView() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-kp-outline">
-                  {visitors.map((v) => (
+                  {pagedVisitors.map((v) => (
                     <tr key={v.id} className="transition-colors hover:bg-kp-surface-high">
                       <td className="py-2.5 font-medium text-kp-on-surface">{fullName(v.contact)}</td>
                       <td className="py-2.5 text-kp-on-surface-variant">{v.contact.email ?? "—"}</td>
@@ -465,6 +464,16 @@ export function VisitorsListView() {
                 </tbody>
               </table>
             </div>
+            {visitors.length > pageSize && (
+              <BrandTablePagination
+                total={visitors.length}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+              />
+            )}
+            </>
           )}
         </div>
 
