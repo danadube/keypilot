@@ -14,7 +14,7 @@
  * Route: legacy generic home (e.g. HomePage); app entry is `/dashboard`.
  */
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import {
@@ -344,7 +344,7 @@ export function HomePageView() {
     return new Date(t.getFullYear(), t.getMonth(), t.getDate());
   });
 
-  const loadData = (retryCount = 0) => {
+  const loadData = useCallback((retryCount = 0) => {
     setError(null);
     setLoading(true);
     fetch("/api/v1/ai/home-briefing")
@@ -381,7 +381,7 @@ export function HomePageView() {
         }
       })
       .finally(() => setLoading(false));
-  };
+  }, []);
 
   useEffect(() => {
     if (!isLoaded) {
@@ -389,7 +389,7 @@ export function HomePageView() {
       return () => clearTimeout(t);
     }
     loadData();
-  }, [isLoaded]);
+  }, [isLoaded, loadData]);
 
   if (loading && !stats) return <LoadingState />;
   if (error && !stats)

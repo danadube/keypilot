@@ -335,7 +335,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     return () => {
       cancelled = true;
     };
-  }, [transactionId, txn?.dealId, txn?.property.id]);
+  }, [transactionId, txn]);
 
   useEffect(() => {
     if (!txn) return;

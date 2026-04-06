@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import {
   Card,
@@ -88,7 +88,7 @@ export default function HostDashboardPage() {
   const [linkCopied, setLinkCopied] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const fetchData = () => {
+  const fetchData = useCallback(() => {
     setBlocked(null);
     return fetch(`/api/v1/host/invite/${encodeURIComponent(token)}`)
       .then(async (res) => {
@@ -132,7 +132,7 @@ export default function HostDashboardPage() {
         })
       )
       .finally(() => setLoading(false));
-  };
+  }, [token]);
 
   useEffect(() => {
     if (token) {
@@ -140,7 +140,7 @@ export default function HostDashboardPage() {
       setBlocked(null);
       fetchData();
     }
-  }, [token]);
+  }, [token, fetchData]);
 
   const toggleTag = (tag: string) => {
     setFeedbackTags((prev) =>

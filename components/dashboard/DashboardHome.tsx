@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 import { useAuth } from "@clerk/nextjs";
@@ -40,7 +40,7 @@ export function DashboardHome() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = (retryCount = 0) => {
+  const loadData = useCallback((retryCount = 0) => {
     setError(null);
     setLoading(true);
     fetch("/api/v1/dashboard/stats")
@@ -75,7 +75,7 @@ export function DashboardHome() {
           setLoading(false);
         }
       });
-  };
+  }, []);
 
   useEffect(() => {
     if (!isLoaded) {
@@ -84,7 +84,7 @@ export function DashboardHome() {
       return () => clearTimeout(t);
     }
     loadData();
-  }, [isLoaded]);
+  }, [isLoaded, loadData]);
 
   if (loading && !stats) return <PageLoading message="Loading dashboard..." />;
   if (error) {

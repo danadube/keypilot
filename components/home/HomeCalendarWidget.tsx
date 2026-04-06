@@ -91,10 +91,13 @@ export function HomeCalendarWidget({
 }) {
   const [anchor, setAnchor] = useState(() => new Date());
   const today = new Date();
-  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
   const weekDays = useMemo(() => getWeekDays(anchor), [anchor]);
-  const events = useMemo(() => buildEvents(recentOpenHouses, todayStart), [recentOpenHouses]);
+  const events = useMemo(() => {
+    const t = new Date();
+    const start = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+    return buildEvents(recentOpenHouses, start);
+  }, [recentOpenHouses]);
 
   const eventsByDay = useMemo(() => {
     const map: Record<string, CalendarEvent[]> = {};
