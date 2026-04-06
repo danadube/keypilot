@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { PageLoading } from "@/components/shared/PageLoading";
+import { BrandSkeleton } from "@/components/ui/BrandSkeleton";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { useProductTier } from "@/components/ProductTierProvider";
 import { ContactDetailHero } from "./contact-detail-hero";
@@ -19,6 +19,27 @@ import type {
   FarmAreaOption,
   FarmMembership,
 } from "./contact-detail-types";
+
+function LoadingState() {
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Hero */}
+      <BrandSkeleton className="h-44 w-full rounded-xl" />
+      {/* Two-column */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_min(100%,340px)] lg:items-start">
+        <div className="flex flex-col gap-4">
+          <BrandSkeleton className="h-8 w-40" />
+          <BrandSkeleton className="h-24 w-full rounded-xl" />
+          <BrandSkeleton className="h-24 w-full rounded-xl" />
+        </div>
+        <div className="flex flex-col gap-4">
+          <BrandSkeleton className="h-48 w-full rounded-xl" />
+          <BrandSkeleton className="h-32 w-full rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function ContactDetailView({ id }: { id: string }) {
   const [contact, setContact] = useState<ContactDetailContact | null>(null);
@@ -490,7 +511,7 @@ export function ContactDetailView({ id }: { id: string }) {
     updateReminderStatus(r.id, "DONE");
   }, [nextReminder, updateReminderStatus]);
 
-  if (loading) return <PageLoading message="Loading contact…" />;
+  if (loading) return <LoadingState />;
   if (error || !contact)
     return <ErrorMessage message={error || "Not found"} onRetry={loadData} />;
 

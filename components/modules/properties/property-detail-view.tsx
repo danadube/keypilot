@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { BrandModal } from "@/components/ui/BrandModal";
-import { PageLoading } from "@/components/shared/PageLoading";
+import { BrandSkeleton } from "@/components/ui/BrandSkeleton";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { PropertyFeedbackSummaryView } from "./property-feedback-summary";
 import { PropertySellerReportView } from "./property-seller-report";
@@ -92,6 +92,23 @@ type EditForm = {
   listingPrice: string;
   notes: string;
 };
+
+function LoadingState() {
+  return (
+    <div className="flex flex-col gap-6">
+      <BrandSkeleton className="h-8 w-24 rounded-md" />
+      <BrandSkeleton className="h-10 w-full rounded-lg" />
+      <BrandSkeleton className="aspect-[2/1] max-h-[300px] w-full rounded-xl" />
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="flex flex-col gap-4">
+          <BrandSkeleton className="h-32 w-full rounded-xl" />
+          <BrandSkeleton className="h-24 w-full rounded-xl" />
+        </div>
+        <BrandSkeleton className="h-56 w-full rounded-xl" />
+      </div>
+    </div>
+  );
+}
 
 export function PropertyDetailView({ id }: { id: string }) {
   const router = useRouter();
@@ -286,7 +303,7 @@ export function PropertyDetailView({ id }: { id: string }) {
       .finally(() => setPhotoUploading(false));
   }, [id]);
 
-  if (loading) return <PageLoading message="Loading property…" />;
+  if (loading) return <LoadingState />;
   if (error || !property)
     return <ErrorMessage message={error || "Not found"} onRetry={loadData} />;
 

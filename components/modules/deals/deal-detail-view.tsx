@@ -27,6 +27,7 @@ import {
   type TxStatus,
 } from "@/components/modules/transactions/transactions-shared";
 import { UI_COPY } from "@/lib/ui-copy";
+import { BrandSkeleton } from "@/components/ui/BrandSkeleton";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -156,6 +157,34 @@ function InfoRow({
   );
 }
 
+// ── Skeleton loader ───────────────────────────────────────────────────────────
+
+function LoadingState() {
+  return (
+    <div className="min-h-full rounded-2xl bg-kp-bg">
+      <div className="px-6 pb-5 pt-6 sm:px-8">
+        <BrandSkeleton className="mb-4 h-4 w-20" />
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <BrandSkeleton className="h-8 w-48" />
+              <BrandSkeleton className="h-5 w-20 rounded-full" />
+            </div>
+            <BrandSkeleton className="h-4 w-64" />
+          </div>
+        </div>
+      </div>
+      <div className="grid gap-4 px-6 pb-4 sm:px-8 lg:grid-cols-[1fr_360px]">
+        <div className="flex flex-col gap-4">
+          <BrandSkeleton className="h-36 w-full rounded-xl" />
+          <BrandSkeleton className="h-28 w-full rounded-xl" />
+        </div>
+        <BrandSkeleton className="h-64 w-full rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 /**
@@ -248,15 +277,7 @@ export function DealDetailView({ dealId }: { dealId: string }) {
 
   // ── Loading / Error states ─────────────────────────────────────────────────
 
-  if (loading) {
-    return (
-      <div className="min-h-full rounded-2xl bg-kp-bg">
-        <div className="flex min-h-[320px] items-center justify-center">
-          <Loader2 className="h-5 w-5 animate-spin text-kp-on-surface-variant" />
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <LoadingState />;
 
   if (error || !deal) {
     return (

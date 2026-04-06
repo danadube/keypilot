@@ -26,6 +26,7 @@ import {
 } from "./transactions-shared";
 import { UI_COPY } from "@/lib/ui-copy";
 import { toast } from "sonner";
+import { BrandSkeleton } from "@/components/ui/BrandSkeleton";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -229,6 +230,34 @@ function formatTimestamp(iso: string | null | undefined) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+// ── Skeleton loader ───────────────────────────────────────────────────────────
+
+function LoadingState() {
+  return (
+    <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
+      <div className="px-6 pt-3 sm:px-8">
+        <BrandSkeleton className="h-4 w-24" />
+        <div className="mt-4 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <BrandSkeleton className="h-8 w-36" />
+            <BrandSkeleton className="h-5 w-24 rounded-full" />
+          </div>
+          <BrandSkeleton className="h-4 w-64" />
+        </div>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <BrandSkeleton className="h-28 w-full rounded-xl" />
+          <BrandSkeleton className="h-28 w-full rounded-xl" />
+          <BrandSkeleton className="h-28 w-full rounded-xl" />
+        </div>
+        <div className="mt-4 flex flex-col gap-4">
+          <BrandSkeleton className="h-40 w-full rounded-xl" />
+          <BrandSkeleton className="h-32 w-full rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
@@ -586,13 +615,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[320px] items-center justify-center rounded-2xl bg-kp-bg">
-        <Loader2 className="h-6 w-6 animate-spin text-kp-on-surface-variant" />
-      </div>
-    );
-  }
+  if (loading) return <LoadingState />;
 
   if (error || !txn) {
     return (

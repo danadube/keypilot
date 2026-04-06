@@ -13,7 +13,7 @@ import {
   kpBtnTertiary,
 } from "@/components/ui/kp-dashboard-button-tiers";
 import { BrandModal } from "@/components/ui/BrandModal";
-import { PageLoading } from "@/components/shared/PageLoading";
+import { BrandSkeleton } from "@/components/ui/BrandSkeleton";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { ShowingPrepWorkspace } from "@/components/showing-hq/showing-prep-workspace";
 import { mergePrepChecklistFlags } from "@/lib/showing-hq/prep-checklist-flags";
@@ -70,6 +70,33 @@ function emailReplyExcerpt(raw: string | null | undefined, max = 240): string {
   const t = (raw ?? "").trim();
   if (!t) return "";
   return t.length <= max ? t : `${t.slice(0, max)}…`;
+}
+
+function LoadingState() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center gap-2">
+        <BrandSkeleton className="h-8 w-24 rounded-md" />
+        <BrandSkeleton className="h-4 w-3" />
+        <BrandSkeleton className="h-5 w-32" />
+      </div>
+      <div className="flex flex-col gap-1">
+        <BrandSkeleton className="h-7 w-48" />
+        <BrandSkeleton className="h-4 w-64" />
+        <BrandSkeleton className="h-4 w-40" />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+        <div className="flex flex-col gap-4">
+          <BrandSkeleton className="h-48 w-full rounded-xl" />
+          <BrandSkeleton className="h-32 w-full rounded-xl" />
+        </div>
+        <div className="flex flex-col gap-4">
+          <BrandSkeleton className="h-40 w-full rounded-xl" />
+          <BrandSkeleton className="h-28 w-full rounded-xl" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function ShowingDetailWorkflow() {
@@ -311,7 +338,7 @@ export function ShowingDetailWorkflow() {
     }
   }
 
-  if (loading && !data) return <PageLoading message="Loading showing…" />;
+  if (loading && !data) return <LoadingState />;
   if (!data && error) {
     return (
       <ErrorMessage
