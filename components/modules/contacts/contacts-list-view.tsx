@@ -24,6 +24,7 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { SectionTabs } from "@/components/ui/section-tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { BrandModal } from "@/components/ui/BrandModal";
+import { BrandTablePagination } from "@/components/ui/BrandTablePagination";
 import { useProductTier } from "@/components/ProductTierProvider";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import {
@@ -694,6 +695,20 @@ export function ContactsListView() {
     return contacts.filter((c) => matchesSearch(c, search));
   }, [contacts, search]);
 
+  // Pagination
+  const [contactsPage, setContactsPage] = useState(1);
+  const [contactsPageSize, setContactsPageSize] = useState(25);
+
+  // Reset to page 1 whenever the visible set changes (search/filter)
+  useEffect(() => {
+    setContactsPage(1);
+  }, [visibleContacts]);
+
+  const pagedContacts = useMemo(
+    () => visibleContacts.slice((contactsPage - 1) * contactsPageSize, contactsPage * contactsPageSize),
+    [visibleContacts, contactsPage, contactsPageSize]
+  );
+
   // Metrics computed from current fetch (reflects active status filter)
   const farmCount = useMemo(
     () => contacts.filter((c) => c.status === "FARM").length,
@@ -1085,12 +1100,23 @@ export function ContactsListView() {
             farmFilterActive={farmFilterActive}
           />
         ) : (
-          <ContactsTable
-            contacts={visibleContacts}
-            hasCrm={hasCrm}
-            patchingReminderId={hasCrm ? patchingReminderId : null}
-            onMarkReminderDone={onMarkReminderDone}
-          />
+          <>
+            <ContactsTable
+              contacts={pagedContacts}
+              hasCrm={hasCrm}
+              patchingReminderId={hasCrm ? patchingReminderId : null}
+              onMarkReminderDone={onMarkReminderDone}
+            />
+            {visibleContacts.length > contactsPageSize && (
+              <BrandTablePagination
+                total={visibleContacts.length}
+                page={contactsPage}
+                pageSize={contactsPageSize}
+                onPageChange={setContactsPage}
+                onPageSizeChange={setContactsPageSize}
+              />
+            )}
+          </>
         )}
 
         {/* Footer: CRM legend for non-CRM users */}
