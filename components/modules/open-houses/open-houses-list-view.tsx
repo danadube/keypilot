@@ -7,6 +7,8 @@ import {
   useRef,
   useState,
 } from "react";
+import useSWR from "swr";
+import { apiFetcher } from "@/lib/fetcher";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -76,29 +78,19 @@ type OpenHouse = {
 // GET /api/v1/open-houses?q=… (all statuses); URL `status` applied client-side.
 
 function useOpenHousesList(view: Pick<NormalizedOpenHousesListView, "q">) {
-  const [openHouses, setOpenHouses] = useState<OpenHouse[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const url = buildOpenHousesListFetchApiUrl({ status: null, q: view.q });
 
-  const load = useCallback(() => {
-    setError(null);
-    setLoading(true);
-    const url = buildOpenHousesListFetchApiUrl({ status: null, q: view.q });
-    fetch(url)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) setError(json.error.message);
-        else setOpenHouses(json.data ?? []);
-      })
-      .catch(() => setError(UI_COPY.errors.load("open houses")))
-      .finally(() => setLoading(false));
-  }, [view.q]);
+  const { data, error: rawError, isLoading, mutate: reload } = useSWR<OpenHouse[]>(
+    url,
+    apiFetcher,
+    { errorRetryCount: 2, errorRetryInterval: 500 }
+  );
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const loading = isLoading && !data;
+  const error = rawError instanceof Error ? rawError.message : rawError ? String(rawError) : null;
+  const openHouses = data ?? [];
 
-  return { openHouses, loading, error, reload: load };
+  return { openHouses, loading, error, reload };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

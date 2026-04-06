@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
+import useSWR from "swr";
+import { apiFetcher } from "@/lib/fetcher";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -27,7 +29,6 @@ import {
   ExternalLink,
   Clock,
 } from "lucide-react";
-import { UI_COPY } from "@/lib/ui-copy";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -75,28 +76,17 @@ const formatTime = (d: string) =>
 // ── Component ──────────────────────────────────────────────────────────────────
 
 export function OpenHouseDetailView({ id }: { id: string }) {
-  const [oh, setOh] = useState<OpenHouseData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: oh, error: rawError, isLoading, mutate: reload } = useSWR<OpenHouseData>(
+    `/api/v1/open-houses/${id}`,
+    apiFetcher,
+    { errorRetryCount: 2, errorRetryInterval: 500 }
+  );
+
+  const loading = isLoading && !oh;
+  const error = rawError instanceof Error ? rawError.message : rawError ? String(rawError) : null;
+
   const [flyerUploading, setFlyerUploading] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-
-  const refresh = useCallback(() => {
-    return fetch(`/api/v1/open-houses/${id}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) setError(json.error.message);
-        else setOh(json.data);
-      })
-      .catch(() => setError(UI_COPY.errors.load("open house")))
-      .finally(() => setLoading(false));
-  }, [id]);
-
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    refresh();
-  }, [id, refresh]);
 
   const handleStatusChange = (newStatus: string) => {
     if (!id || newStatus === oh?.status) return;
@@ -109,11 +99,10 @@ export function OpenHouseDetailView({ id }: { id: string }) {
       .then((res) => res.json())
       .then((json) => {
         if (json.error) throw new Error(json.error.message);
-        setOh((prev) => (prev ? { ...prev, status: newStatus } : null));
         toast.success("Status updated");
+        return reload();
       })
       .catch(() => {
-        setError("Failed to update status");
         toast.error("Failed to update status");
       })
       .finally(() => setUpdatingStatus(false));
@@ -123,7 +112,7 @@ export function OpenHouseDetailView({ id }: { id: string }) {
     const file = e.target.files?.[0];
     if (!file || !oh) return;
     if (file.type !== "application/pdf") {
-      setError("Please upload a PDF file.");
+      toast.error("Please upload a PDF file.");
       return;
     }
     setFlyerUploading(true);
@@ -137,11 +126,9 @@ export function OpenHouseDetailView({ id }: { id: string }) {
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
       toast.success("Flyer uploaded");
-      await refresh();
-      setLoading(false);
+      await reload();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
-      setError(msg);
       toast.error(msg);
     } finally {
       setFlyerUploading(false);
@@ -154,11 +141,7 @@ export function OpenHouseDetailView({ id }: { id: string }) {
     return (
       <ErrorMessage
         message={error || "Open house not found"}
-        onRetry={() => {
-          setError(null);
-          setLoading(true);
-          refresh();
-        }}
+        onRetry={() => reload()}
       />
     );
 

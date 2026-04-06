@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import useSWR from "swr";
+import { apiFetcher } from "@/lib/fetcher";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Banknote,
@@ -37,32 +39,22 @@ const STATUS_TABS = [
 type StatusTabValue = (typeof STATUS_TABS)[number]["value"];
 
 function useTransactions(statusFilter: StatusTabValue, showArchived: boolean) {
-  const [rows, setRows] = useState<TransactionRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const params = new URLSearchParams();
+  if (statusFilter !== "__all__") params.set("status", statusFilter);
+  if (showArchived) params.set("showArchived", "1");
+  const url = params.size > 0 ? `/api/v1/transactions?${params.toString()}` : "/api/v1/transactions";
 
-  function load(status: StatusTabValue, includeArchived: boolean) {
-    setError(null);
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (status !== "__all__") params.set("status", status);
-    if (includeArchived) params.set("showArchived", "1");
-    const url = params.size > 0 ? `/api/v1/transactions?${params.toString()}` : "/api/v1/transactions";
-    fetch(url)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) setError(json.error.message ?? UI_COPY.errors.load("transactions"));
-        else setRows(json.data ?? []);
-      })
-      .catch(() => setError(UI_COPY.errors.load("transactions")))
-      .finally(() => setLoading(false));
-  }
+  const { data, error: rawError, isLoading, mutate: reload } = useSWR<TransactionRow[]>(
+    url,
+    apiFetcher,
+    { errorRetryCount: 2, errorRetryInterval: 500 }
+  );
 
-  useEffect(() => {
-    load(statusFilter, showArchived);
-  }, [statusFilter, showArchived]);
+  const loading = isLoading && !data;
+  const error = rawError instanceof Error ? rawError.message : rawError ? String(rawError) : null;
+  const rows = data ?? [];
 
-  return { rows, loading, error, reload: () => load(statusFilter, showArchived) };
+  return { rows, loading, error, reload };
 }
 
 function matchesSearch(t: TransactionRow, q: string): boolean {

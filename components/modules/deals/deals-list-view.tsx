@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import useSWR from "swr";
+import { apiFetcher } from "@/lib/fetcher";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -97,32 +99,22 @@ const ACTIVE_STAGES: DealStatus[] = ["INTERESTED", "SHOWING", "OFFER", "NEGOTIAT
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
 function useDeals(statusFilter: StatusTabValue) {
-  const [deals, setDeals] = useState<Deal[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const url =
+    statusFilter !== "__all__"
+      ? `/api/v1/deals?status=${encodeURIComponent(statusFilter)}`
+      : "/api/v1/deals";
 
-  function load(status: StatusTabValue) {
-    setError(null);
-    setLoading(true);
-    const url =
-      status !== "__all__"
-        ? `/api/v1/deals?status=${encodeURIComponent(status)}`
-        : "/api/v1/deals";
-    fetch(url)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) setError(json.error.message);
-        else setDeals(json.data ?? []);
-      })
-      .catch(() => setError(UI_COPY.errors.load("deals")))
-      .finally(() => setLoading(false));
-  }
+  const { data, error: rawError, isLoading, mutate: reload } = useSWR<Deal[]>(
+    url,
+    apiFetcher,
+    { errorRetryCount: 2, errorRetryInterval: 500 }
+  );
 
-  useEffect(() => {
-    load(statusFilter);
-  }, [statusFilter]);
+  const loading = isLoading && !data;
+  const error = rawError instanceof Error ? rawError.message : rawError ? String(rawError) : null;
+  const deals = data ?? [];
 
-  return { deals, loading, error, reload: () => load(statusFilter) };
+  return { deals, loading, error, reload };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

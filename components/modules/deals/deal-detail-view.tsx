@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
+import useSWR from "swr";
+import { apiFetcher } from "@/lib/fetcher";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -195,9 +197,15 @@ function LoadingState() {
  */
 export function DealDetailView({ dealId }: { dealId: string }) {
   const router = useRouter();
-  const [deal, setDeal] = useState<Deal | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const { data: deal, error: rawError, isLoading, mutate: reload } = useSWR<Deal>(
+    `/api/v1/deals/${dealId}`,
+    apiFetcher,
+    { errorRetryCount: 2, errorRetryInterval: 500 }
+  );
+
+  const loading = isLoading && !deal;
+  const error = rawError instanceof Error ? rawError.message : rawError ? String(rawError) : null;
 
   // Edit state — mirrors server state until saved
   const [status, setStatus] = useState<DealStatus>("INTERESTED");
@@ -209,33 +217,13 @@ export function DealDetailView({ dealId }: { dealId: string }) {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const loadDeal = useCallback(() => {
-    setError(null);
-    setLoading(true);
-    fetch(`/api/v1/deals/${dealId}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) {
-          setError(json.error.message ?? UI_COPY.errors.load("deal"));
-        } else {
-          const raw = json.data;
-          const d: Deal = {
-            ...raw,
-            linkedTransaction: raw.linkedTransaction ?? null,
-          };
-          setDeal(d);
-          setStatus(d.status);
-          setNotes(d.notes ?? "");
-          setDirty(false);
-        }
-      })
-      .catch(() => setError(UI_COPY.errors.load("deal")))
-      .finally(() => setLoading(false));
-  }, [dealId]);
-
+  // Sync SWR data into local edit state when first loaded (and not currently dirty)
   useEffect(() => {
-    loadDeal();
-  }, [loadDeal]);
+    if (deal && !dirty) {
+      setStatus(deal.status);
+      setNotes(deal.notes ?? "");
+    }
+  }, [deal, dirty]);
 
   const handleSave = async () => {
     if (!deal) return;
@@ -248,12 +236,8 @@ export function DealDetailView({ dealId }: { dealId: string }) {
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      const raw = json.data;
-      const d: Deal = { ...raw, linkedTransaction: raw.linkedTransaction ?? null };
-      setDeal(d);
-      setStatus(d.status);
-      setNotes(d.notes ?? "");
       setDirty(false);
+      await reload();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to save");
     } finally {
@@ -286,7 +270,7 @@ export function DealDetailView({ dealId }: { dealId: string }) {
           <AlertCircle className="h-5 w-5 text-red-400" />
           <p className="text-sm text-kp-on-surface-variant">{error ?? "Deal not found"}</p>
           <button
-            onClick={loadDeal}
+            onClick={() => reload()}
             className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
           >
             {UI_COPY.errors.retry}
