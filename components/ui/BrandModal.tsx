@@ -29,6 +29,8 @@ export interface BrandModalProps {
   className?: string;
 }
 
+const TRANSITION_MS = 180;
+
 export function BrandModal({
   open,
   onOpenChange,
@@ -44,10 +46,27 @@ export function BrandModal({
 }: BrandModalProps) {
   const panelRef = React.useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = React.useState(false);
+  /** Whether the portal is in the DOM (stays true briefly after open→false for exit animation). */
+  const [show, setShow] = React.useState(false);
+  /** Drives CSS transitions: false = start/end state, true = visible state. */
+  const [animate, setAnimate] = React.useState(false);
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
+
+  React.useEffect(() => {
+    if (open) {
+      setShow(true);
+      // One frame delay so the browser sees the initial (hidden) state before animating in.
+      const raf = requestAnimationFrame(() => setAnimate(true));
+      return () => cancelAnimationFrame(raf);
+    } else {
+      setAnimate(false);
+      const t = setTimeout(() => setShow(false), TRANSITION_MS);
+      return () => clearTimeout(t);
+    }
+  }, [open]);
 
   React.useEffect(() => {
     if (!open || !mounted) return;
@@ -67,7 +86,7 @@ export function BrandModal({
     if (closeOnBackdrop && e.target === e.currentTarget) onOpenChange?.(false);
   };
 
-  if (!open || !mounted || typeof document === "undefined") return null;
+  if (!show || !mounted || typeof document === "undefined") return null;
 
   const content = (
     <div
@@ -79,7 +98,10 @@ export function BrandModal({
       aria-label={title ? undefined : "Dialog"}
     >
       <div
-        className="fixed inset-0 bg-black/40 transition-opacity"
+        className={cn(
+          "fixed inset-0 bg-black/40 transition-opacity duration-[180ms]",
+          animate ? "opacity-100" : "opacity-0"
+        )}
         onClick={handleBackdrop}
         aria-hidden
       />
@@ -88,6 +110,8 @@ export function BrandModal({
         tabIndex={-1}
         className={cn(
           "relative z-10 w-full rounded-xl border border-kp-outline bg-kp-surface shadow-xl",
+          "transition-all duration-[180ms]",
+          animate ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-1",
           sizeClasses[size],
           className
         )}
