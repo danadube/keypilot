@@ -117,6 +117,25 @@ export function DashboardTodayCalendarScheduleGrid({
 
   const selectedIsToday = isSameLocalDay(selectedDay, today);
 
+  const nowMs = Date.now();
+  let scheduleNowIndex = -1;
+  let scheduleNextIndex = -1;
+  if (selectedIsToday && itemsForSelected.length > 0) {
+    const times = itemsForSelected.map((s) => new Date(s.scheduledAt).getTime());
+    for (let i = times.length - 1; i >= 0; i--) {
+      if (!Number.isNaN(times[i]) && times[i]! <= nowMs) {
+        scheduleNowIndex = i;
+        break;
+      }
+    }
+    for (let i = 0; i < times.length; i++) {
+      if (!Number.isNaN(times[i]) && times[i]! > nowMs) {
+        scheduleNextIndex = i;
+        break;
+      }
+    }
+  }
+
   const scheduleTitle = selectedIsToday
     ? "Today's schedule"
     : selectedDay.toLocaleDateString(undefined, {
@@ -154,7 +173,10 @@ export function DashboardTodayCalendarScheduleGrid({
             </div>
 
             <div
-              className="min-h-[180px] flex-1 overflow-y-auto overscroll-y-contain pr-0.5 lg:max-h-[min(480px,58vh)]"
+              className={cn(
+                "min-h-[180px] flex-1 overflow-y-auto overscroll-y-contain pr-0.5 lg:max-h-[min(480px,58vh)]",
+                selectedIsToday && "rounded-lg bg-kp-surface-high/20"
+              )}
               tabIndex={0}
               aria-label="Appointments list"
             >
@@ -170,11 +192,13 @@ export function DashboardTodayCalendarScheduleGrid({
                 </ul>
               ) : itemsForSelected.length === 0 ? (
                 <p className="text-sm leading-relaxed text-kp-on-surface-muted">
-                  No appointments for this day.
+                  {selectedIsToday
+                    ? "No appointments today — you're clear"
+                    : "No appointments for this day."}
                 </p>
               ) : (
                 <ul className="space-y-2 pb-1">
-                  {itemsForSelected.map((s) => {
+                  {itemsForSelected.map((s, index) => {
                     const t = new Date(s.scheduledAt);
                     const timeStr = Number.isNaN(t.getTime())
                       ? ""
@@ -183,16 +207,30 @@ export function DashboardTodayCalendarScheduleGrid({
                       ? `${s.property.address1}, ${s.property.city}`
                       : null;
                     const title = s.buyerName?.trim() || "Showing";
+                    const isNow = selectedIsToday && index === scheduleNowIndex;
+                    const isNext = selectedIsToday && index === scheduleNextIndex;
                     return (
                       <li key={s.id}>
                         <Link
                           href={`/showing-hq/showings/${s.id}`}
-                          className="block rounded-lg border border-kp-outline/80 bg-kp-surface-high/15 px-3 py-2.5 transition-colors hover:border-kp-teal/25 hover:bg-kp-surface-high/35"
+                          className={cn(
+                            "block rounded-lg border px-3 py-2.5 transition-colors",
+                            isNext
+                              ? "border-kp-teal/45 bg-kp-teal/[0.08] ring-1 ring-kp-teal/30 hover:border-kp-teal/55 hover:bg-kp-teal/[0.11]"
+                              : isNow
+                                ? "border-kp-teal/35 bg-kp-surface-high/35 hover:border-kp-teal/40 hover:bg-kp-surface-high/45"
+                                : "border-kp-outline/80 bg-kp-surface-high/15 hover:border-kp-teal/25 hover:bg-kp-surface-high/35"
+                          )}
                         >
                           <div className="flex items-baseline justify-between gap-2">
                             <span className="text-xs font-semibold tabular-nums text-kp-teal/85">
                               {timeStr}
                             </span>
+                            {isNow || isNext ? (
+                              <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">
+                                {isNow ? "Now" : "Next"}
+                              </span>
+                            ) : null}
                           </div>
                           <p className="mt-0.5 truncate text-sm font-medium text-kp-on-surface">
                             {title}

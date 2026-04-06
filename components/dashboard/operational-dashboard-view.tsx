@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import { kpBtnPrimary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import {
   DashboardTodayCalendarScheduleGrid,
   type DashboardScheduleShowing,
@@ -67,6 +67,27 @@ function uniqueContactIds(rows: FollowRow[]): number {
   return new Set(rows.map((r) => r.contactId)).size;
 }
 
+function nextShowingTodayActionLine(showings: ShowingRow[], now: Date): string {
+  const todayList = showings
+    .filter((s) => {
+      const d = new Date(s.scheduledAt);
+      return !Number.isNaN(d.getTime()) && isSameLocalCalendarDay(d, now);
+    })
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
+  if (todayList.length === 0) return "No showings scheduled";
+  const nowMs = now.getTime();
+  const upcoming = todayList.find((s) => new Date(s.scheduledAt).getTime() > nowMs);
+  if (upcoming) {
+    const t = new Date(upcoming.scheduledAt);
+    const timeStr = t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    return `Next showing at ${timeStr}`;
+  }
+  const last = todayList[todayList.length - 1]!;
+  const t = new Date(last.scheduledAt);
+  const timeStr = t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return `Last showing was at ${timeStr}`;
+}
+
 function PrimaryValue({ loading, children }: { loading: boolean; children: ReactNode }) {
   if (loading) {
     return (
@@ -83,27 +104,44 @@ function PrimaryValue({ loading, children }: { loading: boolean; children: React
   );
 }
 
+type TodayCardEmphasis = "elevated" | "accent" | "none";
+
+function todayCardEmphasisClass(emphasis: TodayCardEmphasis) {
+  if (emphasis === "elevated") {
+    return "border-kp-teal/45 bg-kp-teal/[0.07] shadow-sm hover:border-kp-teal/55 hover:bg-kp-teal/[0.1]";
+  }
+  if (emphasis === "accent") {
+    return "border-kp-gold/40 bg-kp-gold/[0.06] shadow-sm hover:border-kp-gold/50 hover:bg-kp-gold/[0.09]";
+  }
+  return "border-kp-outline bg-kp-surface shadow-sm hover:border-kp-teal/25 hover:bg-kp-surface-high/40";
+}
+
 function TodayMetricCard({
   label,
   href,
   icon: Icon,
   count,
   zeroPrimaryText,
-  secondary,
+  nextActionLine,
   loading,
+  emphasis = "none",
 }: {
   label: string;
   href: string;
   icon: ComponentType<{ className?: string }>;
   count: number;
   zeroPrimaryText: string;
-  secondary: string;
+  nextActionLine: string;
   loading: boolean;
+  emphasis?: TodayCardEmphasis;
 }) {
   return (
     <Link
       href={href}
-      className="group flex flex-col rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm transition-colors hover:border-kp-teal/25 hover:bg-kp-surface-high/40"
+      className={cn(
+        "group flex flex-col rounded-xl border p-4 transition-colors",
+        todayCardEmphasisClass(emphasis)
+      )}
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <span className="text-xs font-semibold uppercase tracking-wide text-kp-on-surface-muted">
@@ -125,7 +163,9 @@ function TodayMetricCard({
           {count}
         </span>
       )}
-      <p className="mt-2 text-xs leading-relaxed text-kp-on-surface-variant">{secondary}</p>
+      <p className="mt-2 text-xs font-medium leading-relaxed text-kp-on-surface-variant">
+        {loading ? "…" : nextActionLine}
+      </p>
     </Link>
   );
 }
@@ -198,8 +238,8 @@ function QuickActionLink({ href, children }: { href: string; children: React.Rea
       asChild
       variant="outline"
       className={cn(
-        kpBtnSecondary,
-        "h-12 min-h-12 justify-center gap-2.5 px-6 text-sm font-semibold shadow-sm"
+        kpBtnTertiary,
+        "h-9 min-h-9 justify-center gap-2 border border-kp-outline/70 px-4 text-xs font-semibold text-kp-on-surface-variant hover:border-kp-outline hover:text-kp-on-surface"
       )}
     >
       <Link href={href}>{children}</Link>
@@ -248,12 +288,8 @@ export function OperationalDashboardView() {
   const farmAreas = useMemo(() => farmData?.items ?? [], [farmData]);
   const farmUnavailable = farmData?.unavailable ?? false;
 
-  const now = useMemo(() => new Date(), []);
-
-  const { today: showingsToday, overdueToday: showingsOverdueToday } = useMemo(
-    () => deriveShowingsToday(showings, now),
-    [showings, now]
-  );
+  const now = new Date();
+  const { today: showingsToday } = deriveShowingsToday(showings, now);
 
   const followUpsDueCount = overdue.length + dueToday.length;
   const overdueFollowUpCount = overdue.length;
@@ -272,24 +308,22 @@ export function OperationalDashboardView() {
     [farmAreas]
   );
 
-  const todayShowingsSecondary = loading
-    ? "Loading your schedule."
-    : showingsToday === 0
-      ? "Add a showing or open ShowingHQ."
-      : showingsOverdueToday > 0
-        ? `${showingsOverdueToday} overdue`
-        : `${showingsToday} scheduled today`;
+  const showingsNextAction = loading
+    ? "Loading schedule…"
+    : nextShowingTodayActionLine(showings, now);
 
-  const todayTasksSecondary =
-    "Tasks with due dates surface in Task Pilot when connected.";
+  const followUpsNextAction = loading
+    ? "Loading follow-ups…"
+    : overdueFollowUpCount > 0
+      ? `${overdueFollowUpCount} follow-up${overdueFollowUpCount === 1 ? "" : "s"} overdue`
+      : dueTodayFollowUpCount > 0
+        ? `${dueTodayFollowUpCount} due today`
+        : "No urgent items";
 
-  const todayFollowUpsSecondary = loading
-    ? "Loading follow-ups."
-    : followUpsDueCount === 0
-      ? "Nothing overdue or due today."
-      : overdueFollowUpCount > 0
-        ? `${overdueFollowUpCount} overdue`
-        : `${dueTodayFollowUpCount} due today`;
+  const tasksNextAction = "No urgent items";
+
+  const todayClear =
+    !loading && showingsToday === 0 && followUpsDueCount === 0;
 
   const pipelineDealsSecondary =
     activeDeals === 0 ? "No active deals in pipeline." : "Open pipeline for detail.";
@@ -306,39 +340,69 @@ export function OperationalDashboardView() {
         : `${dueTodayFollowUpCount} due today`;
 
   const focusBody = loading
-    ? "Checking follow-ups…"
+    ? "Checking your day…"
     : overdueFollowUpCount > 0
-      ? `${overdueFollowUpCount} follow-up${overdueFollowUpCount === 1 ? "" : "s"} overdue`
-      : "You are caught up on overdue follow-ups.";
+      ? `You have ${overdueFollowUpCount} overdue follow-up${overdueFollowUpCount === 1 ? "" : "s"}.`
+      : showingsToday > 0
+        ? `You have ${showingsToday} showing${showingsToday === 1 ? "" : "s"} today.`
+        : "You're caught up — plan your next move.";
+
+  const focusHref =
+    overdueFollowUpCount > 0
+      ? "/showing-hq/follow-ups"
+      : showingsToday > 0
+        ? "/showing-hq/showings"
+        : "/transactions/pipeline";
+
+  const focusCta =
+    overdueFollowUpCount > 0
+      ? "Start follow-ups"
+      : showingsToday > 0
+        ? "View schedule"
+        : "Review pipeline";
 
   const moduleShowing = loading
-    ? "Loading schedule context."
+    ? "Loading schedule…"
     : showingsToday === 0
       ? "No showings today"
       : `${showingsToday} showing${showingsToday === 1 ? "" : "s"} today`;
 
   const moduleClient = loading
-    ? "Loading contact signals."
+    ? "Loading contacts…"
     : contactsAttention === 0
-      ? "No contacts need follow-up right now"
+      ? "No contacts need follow-up"
       : `${contactsAttention} contact${contactsAttention === 1 ? "" : "s"} need follow-up`;
 
   const moduleFarm = farmUnavailable
     ? "Farm areas unlock on Full CRM."
     : loading
-      ? "Loading farm territories."
+      ? "Loading farms…"
       : farmsNeedingUpdates === 0
         ? "Farms are up to date"
         : `${farmsNeedingUpdates} farm${farmsNeedingUpdates === 1 ? "" : "s"} need updates`;
 
   const moduleVault = loading
-    ? "Loading listings."
-    : `${propertiesCount} active listing${propertiesCount === 1 ? "" : "s"}`;
+    ? "Loading listings…"
+    : propertiesCount === 0
+      ? "No active listings"
+      : `${propertiesCount} active listing${propertiesCount === 1 ? "" : "s"}`;
+
+  const moduleShowingCta =
+    showingsToday > 0 ? "View schedule" : "Open ShowingHQ";
+  const moduleClientCta =
+    contactsAttention > 0 ? "Review follow-ups" : "Open contacts";
+  const moduleFarmCta = farmsNeedingUpdates > 0 ? "Update farms" : "Review farms";
+  const moduleVaultCta = propertiesCount > 0 ? "Manage listings" : "Open vault";
+
+  const moduleShowingHref = showingsToday > 0 ? "/showing-hq/showings" : "/showing-hq";
+  const moduleClientHref =
+    contactsAttention > 0 ? "/showing-hq/follow-ups" : "/contacts";
 
   return (
     <div className="space-y-3 pb-8 sm:space-y-4">
       <p className="max-w-xl text-[13px] leading-snug text-kp-on-surface-muted">
-        Today&apos;s work, pipeline snapshot, and module shortcuts — operational, not analytics.
+        What should you do right now? Today&apos;s work, pipeline snapshot, and module shortcuts —
+        operational, not analytics.
       </p>
 
       <section aria-labelledby="dash-today" className="scroll-mt-2">
@@ -352,35 +416,80 @@ export function OperationalDashboardView() {
           showings={showings}
           loading={loading}
           todayStats={
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
-              <TodayMetricCard
-                label="Showings today"
-                href="/showing-hq/showings"
-                icon={Calendar}
-                loading={loading}
-                count={showingsToday}
-                zeroPrimaryText="No showings today"
-                secondary={todayShowingsSecondary}
-              />
-              <TodayMetricCard
-                label="Tasks due"
-                href="/task-pilot"
-                icon={CheckSquare}
-                loading={loading}
-                count={0}
-                zeroPrimaryText="You're clear on tasks"
-                secondary={todayTasksSecondary}
-              />
-              <TodayMetricCard
-                label="Follow-ups due"
-                href="/showing-hq/follow-ups"
-                icon={MessageSquare}
-                loading={loading}
-                count={followUpsDueCount}
-                zeroPrimaryText="All follow-ups handled"
-                secondary={todayFollowUpsSecondary}
-              />
-            </div>
+            <>
+              {todayClear ? (
+                <p className="mb-2 text-sm font-medium text-kp-on-surface-muted">
+                  You&apos;re clear for today
+                </p>
+              ) : null}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
+                {overdueFollowUpCount > 0 ? (
+                  <>
+                    <TodayMetricCard
+                      label="Follow-ups due"
+                      href="/showing-hq/follow-ups"
+                      icon={MessageSquare}
+                      loading={loading}
+                      count={followUpsDueCount}
+                      zeroPrimaryText="All follow-ups handled"
+                      nextActionLine={followUpsNextAction}
+                      emphasis="elevated"
+                    />
+                    <TodayMetricCard
+                      label="Showings today"
+                      href="/showing-hq/showings"
+                      icon={Calendar}
+                      loading={loading}
+                      count={showingsToday}
+                      zeroPrimaryText="No showings today"
+                      nextActionLine={showingsNextAction}
+                      emphasis={showingsToday > 0 ? "accent" : "none"}
+                    />
+                    <TodayMetricCard
+                      label="Tasks due"
+                      href="/task-pilot"
+                      icon={CheckSquare}
+                      loading={loading}
+                      count={0}
+                      zeroPrimaryText="You're clear on tasks"
+                      nextActionLine={tasksNextAction}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <TodayMetricCard
+                      label="Showings today"
+                      href="/showing-hq/showings"
+                      icon={Calendar}
+                      loading={loading}
+                      count={showingsToday}
+                      zeroPrimaryText="No showings today"
+                      nextActionLine={showingsNextAction}
+                      emphasis={showingsToday > 0 ? "accent" : "none"}
+                    />
+                    <TodayMetricCard
+                      label="Tasks due"
+                      href="/task-pilot"
+                      icon={CheckSquare}
+                      loading={loading}
+                      count={0}
+                      zeroPrimaryText="You're clear on tasks"
+                      nextActionLine={tasksNextAction}
+                    />
+                    <TodayMetricCard
+                      label="Follow-ups due"
+                      href="/showing-hq/follow-ups"
+                      icon={MessageSquare}
+                      loading={loading}
+                      count={followUpsDueCount}
+                      zeroPrimaryText="All follow-ups handled"
+                      nextActionLine={followUpsNextAction}
+                      emphasis={followUpsDueCount > 0 ? "accent" : "none"}
+                    />
+                  </>
+                )}
+              </div>
+            </>
           }
         />
       </section>
@@ -435,7 +544,7 @@ export function OperationalDashboardView() {
             asChild
             className={cn(kpBtnPrimary, "mt-4 h-11 min-h-11 px-6 text-sm font-semibold")}
           >
-            <Link href="/showing-hq/follow-ups">Start now</Link>
+            <Link href={focusHref}>{focusCta}</Link>
           </Button>
         </div>
       </section>
@@ -451,30 +560,30 @@ export function OperationalDashboardView() {
           <ModuleShortcut
             title="ShowingHQ"
             contextLine={moduleShowing}
-            href="/showing-hq"
+            href={moduleShowingHref}
             icon={Calendar}
-            ctaLabel="Open schedule"
+            ctaLabel={moduleShowingCta}
           />
           <ModuleShortcut
             title="ClientKeep"
             contextLine={moduleClient}
-            href="/contacts"
+            href={moduleClientHref}
             icon={Users}
-            ctaLabel="Review contacts"
+            ctaLabel={moduleClientCta}
           />
           <ModuleShortcut
             title="FarmTrackr"
             contextLine={moduleFarm}
             href="/farm-trackr"
             icon={MapPin}
-            ctaLabel="Review farms"
+            ctaLabel={moduleFarmCta}
           />
           <ModuleShortcut
             title="PropertyVault"
             contextLine={moduleVault}
             href="/properties"
             icon={Building2}
-            ctaLabel="Open vault"
+            ctaLabel={moduleVaultCta}
           />
         </div>
       </section>
@@ -486,22 +595,22 @@ export function OperationalDashboardView() {
         >
           Quick actions
         </h2>
-        <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm transition-colors">
-          <div className="flex flex-wrap gap-3 md:gap-4">
+        <div className="rounded-xl border border-kp-outline/80 bg-kp-surface-high/20 p-3 shadow-none transition-colors md:p-3.5">
+          <div className="flex flex-wrap gap-2 md:gap-2.5">
             <QuickActionLink href="/contacts?new=1">
-              <UserPlus className="h-5 w-5 shrink-0" />
+              <UserPlus className="h-4 w-4 shrink-0 opacity-90" />
               New Contact
             </QuickActionLink>
             <QuickActionLink href="/showing-hq/showings/new">
-              <Calendar className="h-5 w-5 shrink-0" />
+              <Calendar className="h-4 w-4 shrink-0 opacity-90" />
               New Showing
             </QuickActionLink>
             <QuickActionLink href="/task-pilot">
-              <CheckSquare className="h-5 w-5 shrink-0" />
+              <CheckSquare className="h-4 w-4 shrink-0 opacity-90" />
               New Task
             </QuickActionLink>
             <QuickActionLink href="/farm-trackr">
-              <MapPin className="h-5 w-5 shrink-0" />
+              <MapPin className="h-4 w-4 shrink-0 opacity-90" />
               Import Farm
             </QuickActionLink>
           </div>
