@@ -13,7 +13,8 @@ export default defineConfig({
   },
   engine: "classic",
   datasource: {
-    // Prefer DIRECT_URL for schema ops (db push, migrate) to avoid PgBouncer "prepared statement" errors.
+    // Prefer DIRECT_URL for schema ops (db push, migrate). Poolers (Supabase :6543 or *.pooler.supabase.com)
+    // cause prepared-statement errors or MaxClientsInSessionMode; use db.<project>.supabase.co for migrate.
     // Fallback to DATABASE_URL, then dummy for prisma generate when neither is set (e.g. Vercel install).
     url:
       process.env.DIRECT_URL ||

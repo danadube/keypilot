@@ -53,9 +53,12 @@ jobs:
   # Connects to the real preview Supabase project. Skipped on forks and when
   # the DATABASE_URL secret is not set.
   #
-  # Prisma (migrate + prismaAdmin in Jest) must not use Supabase transaction
-  # pooler (:6543). Use session pooler or direct IPv4 on :5432 — see resolve step.
-  # To enable: add DATABASE_URL (and optionally DIRECT_URL) as repository secrets.
+  # Prisma migrate deploy must use a direct Postgres connection, not Supabase poolers:
+  # - Transaction pooler: *.pooler.supabase.com:6543 → hits PgBouncer limits / prepared stmt issues
+  # - Session pooler: *.pooler.supabase.com:5432 → MaxClientsInSessionMode (pool_size)
+  # Use DATABASE_URL secret for detection/fallback; set DIRECT_URL to db.<project>.supabase.co:5432
+  # (Supabase Dashboard → Database → Connection string → URI, direct host).
+  # To enable: add DATABASE_URL and DIRECT_URL as repository secrets (see docs/platform/database-migrations.md).
   isolation-tests:
     name: RLS isolation tests (preview DB)
     runs-on: ubuntu-latest
@@ -91,11 +94,11 @@ jobs:
         if: steps.isolation_db_config.outputs.skip != 'true'
         run: npm ci
 
-      # Single :5432 URL for prisma migrate deploy and prismaAdmin in Jest (both read DATABASE_URL).
-      # If DATABASE_URL secret is transaction pooler (:6543), DIRECT_URL secret must be session/direct :5432.
-      # Use GITHUB_OUTPUT + step env (not GITHUB_ENV echo) so passwords with $/# and multiline do not break parsing;
-      # explicitly set DATABASE_URL on migrate + test steps so Jest never inherits a stale :6543 from the job env.
-      - name: Resolve Prisma URLs for isolation job (reject :6543 for runtime)
+      # Single direct Postgres URL for prisma migrate deploy + prismaAdmin in Jest (both env vars set the same).
+      # Must NOT be Supabase pooler (6543 or *.pooler.supabase.com) — those exhaust MaxClientsInSessionMode.
+      # Prefer secret DIRECT_URL when it is direct (db.*.supabase.co); else DATABASE_URL if already direct.
+      # Use GITHUB_OUTPUT + step env so passwords with $/# do not break parsing.
+      - name: Resolve Prisma URLs for isolation job (direct DB only for migrate)
         if: steps.isolation_db_config.outputs.skip != 'true'
         id: resolve_prisma_db
         shell: bash
@@ -110,28 +113,34 @@ jobs:
               *) return 1 ;;
             esac
           }
-          err_6543() {
+          # Session + transaction poolers share this host; both are unsuitable for prisma migrate deploy.
+          uses_pooler_host() {
+            case "$1" in
+              *pooler.supabase.com*) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+          is_unsuitable_for_migrate() {
+            uses_6543 "$1" || uses_pooler_host "$1"
+          }
+          err_resolve() {
             echo "::error::$1"
             exit 1
           }
 
-          if uses_6543 "$raw_db"; then
-            if [ -z "$raw_direct" ] || [ "$raw_direct" = "$raw_db" ]; then
-              err_6543 "DATABASE_URL uses port 6543 (transaction pooler). Set DIRECT_URL to a PostgreSQL URL on port 5432 (Supabase session pooler or db.<project>.supabase.co). That value is used for DATABASE_URL and DIRECT_URL for migrate and RLS tests."
-            fi
-            if uses_6543 "$raw_direct"; then
-              err_6543 "DIRECT_URL must not use port 6543. Use session pooler :5432 or direct db host :5432."
-            fi
+          resolved=""
+          if [ -n "$raw_direct" ] && ! is_unsuitable_for_migrate "$raw_direct"; then
             resolved="$raw_direct"
-          else
-            if [ -n "$raw_direct" ] && uses_6543 "$raw_direct"; then
-              err_6543 "When DATABASE_URL is not :6543, DIRECT_URL must not use port 6543 either."
-            fi
+          elif ! is_unsuitable_for_migrate "$raw_db"; then
             resolved="$raw_db"
           fi
 
-          if uses_6543 "$resolved"; then
-            err_6543 "Resolved Prisma URL must not use port 6543."
+          if [ -z "$resolved" ]; then
+            err_resolve "No direct Postgres URL for migrate. Supabase poolers (port 6543 or host *.pooler.supabase.com, including session mode :5432) hit connection limits. Set repository secret DIRECT_URL to the direct connection string from Supabase → Database → Connection string (host db.<project>.supabase.co, not pooler). See docs/platform/database-migrations.md § GitHub Actions."
+          fi
+
+          if is_unsuitable_for_migrate "$resolved"; then
+            err_resolve "Resolved Prisma URL must be direct Postgres (not pooler.supabase.com and not port 6543)."
           fi
 
           {

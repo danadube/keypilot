@@ -80,6 +80,27 @@ If you add SQL only under `supabase/migrations/`, you must **also** add an equiv
 
 ---
 
+## GitHub Actions — `DATABASE_URL` and `DIRECT_URL` secrets
+
+The **RLS isolation tests** job runs **`npx prisma migrate deploy`** against the preview database. That command opens migrations against a **direct** PostgreSQL session, not a Supabase **pooler**.
+
+**Root issue:** If migrate uses a **transaction** pooler (`*.pooler.supabase.com:6543`) or **session** pooler (`*.pooler.supabase.com:5432`), you can see:
+
+- `MaxClientsInSessionMode: max clients reached - in Session mode max clients are limited to pool_size`
+
+**Required repository secrets**
+
+| Secret | Role in CI | Must be |
+|--------|------------|---------|
+| **`DATABASE_URL`** | Used when resolving the migrate URL; can be your normal app/pooled URL for detection | Any valid project URL (often transaction pooler `:6543`) |
+| **`DIRECT_URL`** | **Preferred** for the resolved URL used by `prisma migrate deploy` and isolation tests | **Direct** Postgres: host **`db.<project-ref>.supabase.co`**, port **5432** — from Supabase Dashboard → **Project Settings → Database → Connection string → URI** (direct connection, **not** “Pooler” or “Session pooler”) |
+
+The workflow picks the first URL that is **not** on port `6543` and **not** hosted on **`*.pooler.supabase.com`**. If both secrets are pooler-only, the job fails with an actionable error.
+
+**Vercel / runtime (unchanged):** Keep **`DATABASE_URL`** as the **transaction pooler** (`:6543`, `pgbouncer=true`) for serverless-friendly pooling. Set **`DIRECT_URL`** in Vercel to the **same direct** `db.*.supabase.co` string Prisma expects for introspection/migrate if your deploy runs migrations there — **do not** use the session pooler URI as `DIRECT_URL` if migrate runs in CI or build.
+
+---
+
 ## Runtime safety (operational resilience)
 
 KeyPilot is an **operational** product. A missing migration or transient DB error on a **non-core** or **additive** query must not take down the **entire** ShowingHQ dashboard or block all work.

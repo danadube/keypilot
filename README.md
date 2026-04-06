@@ -45,9 +45,9 @@ Follow these steps in order. Full details: **[docs/SETUP.md](docs/SETUP.md)**.
    - Select **Transaction** → Copy the URI
    - Replace `[YOUR-PASSWORD]` with your password
    - Add `?pgbouncer=true` at the end → this is **`DATABASE_URL`**
-6. **Session mode**:
-   - Switch to **Session** → Copy the URI (port 5432)
-   - Replace password → this is **`DIRECT_URL`**
+6. **Direct connection** (for **`DIRECT_URL`** — Prisma migrate, `db push`, GitHub Actions):
+   - In Database settings, use the **direct** URI (host **`db.<project-ref>.supabase.co`**, port **5432**), not the pooler host.
+   - Session pooler (`*.pooler.supabase.com:5432`) is still a pooler and can hit **max clients** during migrate; see **`docs/platform/database-migrations.md`**.
 7. In your project: add both URLs to `.env.local`, then run `npx prisma db push`
 
 **✓ Checkpoint:** Supabase → Table Editor shows `users`, `properties`, etc.
@@ -103,7 +103,7 @@ Follow these steps in order. Full details: **[docs/SETUP.md](docs/SETUP.md)**.
 | Variable | Description |
 |----------|-------------|
 | `DATABASE_URL` | PostgreSQL connection string (Supabase) |
-| `DIRECT_URL` | Direct connection for migrations |
+| `DIRECT_URL` | Direct Postgres host (`db.*.supabase.co`) for migrations / Prisma — not the pooler URI |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
 | `CLERK_SECRET_KEY` | Clerk secret key |
 | `CLERK_WEBHOOK_SECRET` | Clerk webhook signing secret |
