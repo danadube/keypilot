@@ -4,6 +4,13 @@ import { z } from "zod";
 import { prismaAdmin } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { contactAccessScope } from "@/lib/contacts/contact-access-scope";
+import {
+  contactHealthWhereFromQuery,
+  type ContactHealthMissingParam,
+} from "@/lib/farm/contact-health-prisma-filters";
+import { farmAreaListWhere } from "@/lib/farm/farm-area-list-where";
+import { parseFarmStructureVisibility } from "@/lib/validations/farm-structure-visibility";
 
 export const dynamic = "force-dynamic";
 
@@ -52,11 +59,26 @@ export async function GET(_req: NextRequest) {
     const farmTerritoryUuid = uuidParam.safeParse(farmTerritoryRaw);
 
     type FarmScopeMeta = {
-      farmScope: { kind: "area" | "territory"; id: string; name: string };
+      farmScope: { kind: "area" | "territory" | "all_farm"; id: string; name: string };
     };
     let farmMeta: FarmScopeMeta | undefined;
 
     let contactIds: string[];
+
+    const missingRaw = searchParams.get("missing")?.trim().toLowerCase() ?? "";
+    const missingAllowed: ContactHealthMissingParam[] = [
+      "email",
+      "phone",
+      "mailing",
+      "site",
+    ];
+    const missingParam = missingAllowed.includes(missingRaw as ContactHealthMissingParam)
+      ? (missingRaw as ContactHealthMissingParam)
+      : null;
+    const readyToPromote =
+      searchParams.get("readyToPromote") === "1" ||
+      searchParams.get("readyToPromote")?.toLowerCase() === "true";
+    const healthWhere = contactHealthWhereFromQuery(missingParam, readyToPromote);
 
     if (farmAreaUuid.success) {
       const area = await prismaAdmin.farmArea.findFirst({
@@ -125,6 +147,47 @@ export async function GET(_req: NextRequest) {
         },
       };
     } else {
+      const farmHealthRaw = searchParams.get("farmHealthScope");
+      const useFarmHealthAll = farmHealthRaw != null && farmHealthRaw.trim() !== "";
+
+      if (useFarmHealthAll) {
+        const visibility = parseFarmStructureVisibility(farmHealthRaw);
+        const areas = await prismaAdmin.farmArea.findMany({
+          where: farmAreaListWhere(user.id, visibility),
+          select: { id: true },
+        });
+        const areaIds = areas.map((a) => a.id);
+        if (areaIds.length === 0) {
+          contactIds = [];
+        } else {
+          const memberships = await prismaAdmin.contactFarmMembership.findMany({
+            where: {
+              farmAreaId: { in: areaIds },
+              userId: user.id,
+              status: ContactFarmMembershipStatus.ACTIVE,
+              contact: {
+                deletedAt: null,
+                ...contactAccessScope(user.id),
+              },
+            },
+            select: { contactId: true },
+            distinct: ["contactId"],
+          });
+          contactIds = memberships.map((m) => m.contactId);
+        }
+        farmMeta = {
+          farmScope: {
+            kind: "all_farm",
+            id: visibility,
+            name:
+              visibility === "active"
+                ? "Active farm structure"
+                : visibility === "archived"
+                  ? "Archived farm structure"
+                  : "All farm structures",
+          },
+        };
+      } else {
       // Default: contacts tied to current user's open-house visitors
       const openHouses = await prismaAdmin.openHouse.findMany({
         where: { hostUserId: user.id, deletedAt: null },
@@ -138,6 +201,7 @@ export async function GET(_req: NextRequest) {
         distinct: ["contactId"],
       });
       contactIds = Array.from(new Set(visitors.map((v) => v.contactId)));
+      }
     }
 
     const status = searchParams.get("status")?.toUpperCase();
@@ -192,6 +256,7 @@ export async function GET(_req: NextRequest) {
         ...statusFilter,
         ...tagFilter,
         ...followUpFilter,
+        ...(healthWhere ?? {}),
       },
       include: {
         assignedToUser: { select: { id: true, name: true } },

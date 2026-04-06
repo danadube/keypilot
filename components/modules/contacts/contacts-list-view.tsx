@@ -31,8 +31,10 @@ import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import {
   STATUS_TAB_VALUES,
   buildContactsApiUrl,
+  DEFAULT_CONTACTS_HEALTH_QUERY,
   hasSegmentFiltersInSearchParams,
   parseContactsFarmScopeFromSearchParams,
+  parseContactsHealthQueryFromSearchParams,
   parseContactsListSortFromSearchParams,
   parseFollowUpNeedsFromSearchParams,
   parseSegmentFromSearchParams,
@@ -41,6 +43,7 @@ import {
   tabToSavedStatus,
   type ContactSegmentStatusTab,
   type ContactsFarmScopeInput,
+  type ContactsHealthQuery,
   type ContactsListSortMode,
 } from "@/lib/client-keep/contact-segment-query";
 import {
@@ -111,7 +114,7 @@ function statusLabel(s: ContactStatus | null | undefined): string {
 // Client-side search is layered on top of the fetched result.
 
 type ContactsApiFarmScopeMeta = {
-  kind: "area" | "territory";
+  kind: "area" | "territory" | "all_farm";
   id: string;
   name: string;
 };
@@ -151,14 +154,16 @@ function useContacts(
   tagIdFilter: string | null,
   needsFollowUp: boolean,
   sortMode: ContactsListSortMode,
-  farmScope: ContactsFarmScopeInput
+  farmScope: ContactsFarmScopeInput,
+  healthQuery: ContactsHealthQuery
 ) {
   const url = buildContactsApiUrl(
     statusFilter,
     tagIdFilter,
     needsFollowUp,
     sortMode,
-    farmScope
+    farmScope,
+    healthQuery
   );
 
   const {
@@ -650,8 +655,16 @@ export function ContactsListView() {
     const sp = new URLSearchParams(contactsUrlQuery);
     return parseContactsFarmScopeFromSearchParams(sp);
   }, [contactsUrlQuery]);
+  const healthQuery = useMemo(() => {
+    const sp = new URLSearchParams(contactsUrlQuery);
+    return parseContactsHealthQueryFromSearchParams(sp);
+  }, [contactsUrlQuery]);
   const farmFilterActive =
-    farmScope.farmAreaId !== null || farmScope.farmTerritoryId !== null;
+    farmScope.farmAreaId !== null ||
+    farmScope.farmTerritoryId !== null ||
+    healthQuery.farmHealthScope !== null;
+  const healthFilterActive =
+    healthQuery.missing !== null || healthQuery.readyToPromote;
   const [statusFilter, setStatusFilter] = useState<StatusTabValue>(() =>
     parseSegmentFromSearchParams(searchParams).status
   );
@@ -673,7 +686,8 @@ export function ContactsListView() {
     tagIdFilter,
     needsFollowUp,
     listSort,
-    farmScope
+    farmScope,
+    healthQuery
   );
 
   const onMarkReminderDone = useCallback(
@@ -762,14 +776,44 @@ export function ContactsListView() {
     search.trim().length > 0 ||
     tagIdFilter !== null ||
     needsFollowUp ||
-    farmFilterActive;
+    farmFilterActive ||
+    healthFilterActive;
+
+  function healthQueryPreservingFarm(): ContactsHealthQuery {
+    return {
+      missing: null,
+      readyToPromote: false,
+      farmHealthScope: healthQuery.farmHealthScope,
+    };
+  }
 
   function clearFarmScopeOnly() {
     router.replace(
-      segmentToHref(statusFilter, tagIdFilter, needsFollowUp, listSort, {
-        farmAreaId: null,
-        farmTerritoryId: null,
-      }),
+      segmentToHref(
+        statusFilter,
+        tagIdFilter,
+        needsFollowUp,
+        listSort,
+        {
+          farmAreaId: null,
+          farmTerritoryId: null,
+        },
+        DEFAULT_CONTACTS_HEALTH_QUERY
+      ),
+      { scroll: false }
+    );
+  }
+
+  function clearHealthFilterOnly() {
+    router.replace(
+      segmentToHref(
+        statusFilter,
+        tagIdFilter,
+        needsFollowUp,
+        listSort,
+        farmScope,
+        healthQueryPreservingFarm()
+      ),
       { scroll: false }
     );
   }
@@ -878,7 +922,9 @@ export function ContactsListView() {
               {farmScopeMeta
                 ? farmScopeMeta.kind === "area"
                   ? `Farm area: ${farmScopeMeta.name}`
-                  : `Territory: ${farmScopeMeta.name}`
+                  : farmScopeMeta.kind === "territory"
+                    ? `Territory: ${farmScopeMeta.name}`
+                    : farmScopeMeta.name
                 : loading
                   ? "Farm filter…"
                   : "Farm filter active"}
@@ -889,6 +935,30 @@ export function ContactsListView() {
               className="shrink-0 text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
             >
               Clear farm filter
+            </button>
+          </div>
+        ) : null}
+        {healthFilterActive ? (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-kp-outline bg-amber-500/[0.08] px-5 py-2.5">
+            <p className="text-xs text-kp-on-surface">
+              {healthQuery.readyToPromote
+                ? "FarmTrackr health: FARM contacts ready to promote (have email or phone)."
+                : healthQuery.missing === "email"
+                  ? "FarmTrackr health: missing email (any primary or alternate)."
+                  : healthQuery.missing === "phone"
+                    ? "FarmTrackr health: missing phone (primary or second number)."
+                    : healthQuery.missing === "mailing"
+                      ? "FarmTrackr health: missing export-ready mailing (street, city, state, ZIP)."
+                      : healthQuery.missing === "site"
+                        ? "FarmTrackr health: missing export-ready site address."
+                        : "FarmTrackr health filter"}
+            </p>
+            <button
+              type="button"
+              onClick={clearHealthFilterOnly}
+              className="shrink-0 text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
+            >
+              Clear health filter
             </button>
           </div>
         ) : null}
@@ -913,7 +983,8 @@ export function ContactsListView() {
                         null,
                         needsFollowUp,
                         listSort,
-                        farmScope
+                        farmScope,
+                        healthQuery
                       ),
                       {
                         scroll: false,
@@ -938,7 +1009,8 @@ export function ContactsListView() {
                         tagIdFilter,
                         false,
                         listSort,
-                        farmScope
+                        farmScope,
+                        healthQuery
                       ),
                       { scroll: false }
                     )
@@ -966,13 +1038,15 @@ export function ContactsListView() {
             needsFollowUp ||
             tagIdFilter !== null ||
             statusFilter !== "__all__" ||
-            farmFilterActive) && (
+            farmFilterActive ||
+            healthFilterActive) && (
           <div className="border-b border-kp-outline px-5">
             {contacts.length > 0 ||
             statusFilter !== "__all__" ||
             tagIdFilter !== null ||
             needsFollowUp ||
-            farmFilterActive ? (
+            farmFilterActive ||
+            healthFilterActive ? (
               <SectionTabs
                 tabs={tabs}
                 active={statusFilter}
@@ -986,7 +1060,8 @@ export function ContactsListView() {
                       tagIdFilter,
                       needsFollowUp,
                       listSort,
-                      farmScope
+                      farmScope,
+                      healthQuery
                     ),
                     {
                       scroll: false,
@@ -1005,7 +1080,8 @@ export function ContactsListView() {
                       tagIdFilter,
                       !needsFollowUp,
                       listSort,
-                      farmScope
+                      farmScope,
+                      healthQuery
                     ),
                     { scroll: false }
                   )
@@ -1042,7 +1118,8 @@ export function ContactsListView() {
                         tagIdFilter,
                         needsFollowUp,
                         "followups",
-                        farmScope
+                        farmScope,
+                        healthQuery
                       ),
                       { scroll: false }
                     )
@@ -1065,7 +1142,8 @@ export function ContactsListView() {
                         tagIdFilter,
                         needsFollowUp,
                         "recent",
-                        farmScope
+                        farmScope,
+                        healthQuery
                       ),
                       { scroll: false }
                     )
@@ -1102,7 +1180,8 @@ export function ContactsListView() {
               tagIdFilter !== null ||
               statusFilter !== "__all__" ||
               needsFollowUp ||
-              farmFilterActive
+              farmFilterActive ||
+              healthFilterActive
                 ? handleClearFilters
                 : undefined
             }

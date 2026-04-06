@@ -1,4 +1,3 @@
-import type { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { ContactFarmMembershipStatus } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
@@ -8,37 +7,14 @@ import {
   emptyFarmAreaHealthMetrics,
 } from "@/lib/farm/aggregate-farm-area-health";
 import type { ContactHealthSelect } from "@/lib/farm/aggregate-farm-area-health";
+import { farmAreaListWhere } from "@/lib/farm/farm-area-list-where";
 import { prismaAdmin } from "@/lib/db";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { FarmPerformanceHealthQuerySchema } from "@/lib/validations/farm-performance-health";
-import {
-  parseFarmStructureVisibility,
-  type FarmStructureVisibility,
-} from "@/lib/validations/farm-structure-visibility";
+import { parseFarmStructureVisibility } from "@/lib/validations/farm-structure-visibility";
 
 export const dynamic = "force-dynamic";
-
-function farmAreaListWhere(
-  userId: string,
-  visibility: FarmStructureVisibility
-): Prisma.FarmAreaWhereInput {
-  const base: Prisma.FarmAreaWhereInput = { userId };
-  if (visibility === "active") {
-    return {
-      ...base,
-      deletedAt: null,
-      territory: { deletedAt: null },
-    };
-  }
-  if (visibility === "archived") {
-    return {
-      ...base,
-      OR: [{ deletedAt: { not: null } }, { territory: { deletedAt: { not: null } } }],
-    };
-  }
-  return base;
-}
 
 const contactSelect = {
   id: true,

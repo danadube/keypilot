@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import type { FarmStructureVisibility } from "@/lib/validations/farm-structure-visibility";
 import { fetchFarmPerformanceHealth } from "@/lib/farm/farm-performance-health-browser";
+import { contactsCleanupHrefAllFarmScope } from "@/lib/farm/contacts-cleanup-href";
 
 type Props = {
   visibility: FarmStructureVisibility;
@@ -97,6 +98,43 @@ export function FarmTrackrHealthSummaryStrip({ visibility }: Props) {
             className="text-xs font-medium text-kp-teal hover:underline"
           >
             Performance &amp; health
+          </Link>
+        </div>
+      </div>
+      <div className="flex flex-col gap-1.5 rounded-lg border border-kp-outline/80 bg-kp-surface-high/15 px-4 py-2.5">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+          Open in ClientKeep (matches this structure view)
+        </p>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+          <Link
+            href={contactsCleanupHrefAllFarmScope(visibility, { missing: "email" })}
+            className="font-medium text-kp-teal hover:underline"
+          >
+            Fix missing email
+          </Link>
+          <Link
+            href={contactsCleanupHrefAllFarmScope(visibility, { missing: "phone" })}
+            className="font-medium text-kp-teal hover:underline"
+          >
+            Fix missing phone
+          </Link>
+          <Link
+            href={contactsCleanupHrefAllFarmScope(visibility, { missing: "mailing" })}
+            className="font-medium text-kp-teal hover:underline"
+          >
+            Fix mailing data
+          </Link>
+          <Link
+            href={contactsCleanupHrefAllFarmScope(visibility, { missing: "site" })}
+            className="font-medium text-kp-teal hover:underline"
+          >
+            Fix site data
+          </Link>
+          <Link
+            href={contactsCleanupHrefAllFarmScope(visibility, { readyToPromote: true })}
+            className="font-medium text-kp-teal hover:underline"
+          >
+            Review ready to promote
           </Link>
         </div>
       </div>

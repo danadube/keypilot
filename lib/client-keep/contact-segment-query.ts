@@ -1,7 +1,10 @@
 /**
  * Canonical contact segment query grammar for /contacts and GET /api/v1/contacts.
- * Single source of truth for URL-driven filters (status, tagId, follow-up, sort, farm scope).
+ * Single source of truth for URL-driven filters (status, tagId, follow-up, sort, farm scope, health).
  */
+
+import type { FarmStructureVisibility } from "@/lib/validations/farm-structure-visibility";
+import { parseFarmStructureVisibility } from "@/lib/validations/farm-structure-visibility";
 
 /** Values accepted by GET /api/v1/contacts?status= */
 export const CONTACT_SEGMENT_STATUS_VALUES = [
@@ -89,6 +92,48 @@ export function parseContactsFarmScopeFromSearchParams(
   };
 }
 
+/** FarmTrackr health cleanup slice for ClientKeep contacts list (`missing`, `readyToPromote`, `farmHealthScope`). */
+export type ContactsHealthMissing = "email" | "phone" | "mailing" | "site";
+
+export type ContactsHealthQuery = {
+  missing: ContactsHealthMissing | null;
+  readyToPromote: boolean;
+  /** All farm memberships for this structure visibility (only when no farmAreaId / farmTerritoryId). */
+  farmHealthScope: FarmStructureVisibility | null;
+};
+
+export const DEFAULT_CONTACTS_HEALTH_QUERY: ContactsHealthQuery = {
+  missing: null,
+  readyToPromote: false,
+  farmHealthScope: null,
+};
+
+export function parseContactsHealthQueryFromSearchParams(
+  sp: URLSearchParams
+): ContactsHealthQuery {
+  const missingRaw = sp.get("missing")?.trim().toLowerCase() ?? "";
+  const missing: ContactsHealthMissing | null =
+    missingRaw === "email" ||
+    missingRaw === "phone" ||
+    missingRaw === "mailing" ||
+    missingRaw === "site"
+      ? (missingRaw as ContactsHealthMissing)
+      : null;
+  const readyToPromote =
+    sp.get("readyToPromote") === "1" ||
+    sp.get("readyToPromote")?.toLowerCase() === "true";
+  const areaId = normalizeSavedTagIdValue(sp.get("farmAreaId"));
+  const terrId = normalizeSavedTagIdValue(sp.get("farmTerritoryId"));
+  const scopeRaw = sp.get("farmHealthScope");
+  const farmHealthScope =
+    areaId || terrId
+      ? null
+      : scopeRaw != null && scopeRaw.trim() !== ""
+        ? parseFarmStructureVisibility(scopeRaw)
+        : null;
+  return { missing, readyToPromote, farmHealthScope };
+}
+
 function appendFarmScopeToSearchParams(
   params: URLSearchParams,
   farmScope: ContactsFarmScopeInput
@@ -99,6 +144,18 @@ function appendFarmScopeToSearchParams(
   }
   if (farmScope.farmTerritoryId) {
     params.set("farmTerritoryId", farmScope.farmTerritoryId);
+  }
+}
+
+function appendHealthQueryToSearchParams(
+  params: URLSearchParams,
+  health: ContactsHealthQuery,
+  farmScope: ContactsFarmScopeInput
+): void {
+  if (health.missing) params.set("missing", health.missing);
+  if (health.readyToPromote) params.set("readyToPromote", "1");
+  if (!farmScope.farmAreaId && !farmScope.farmTerritoryId && health.farmHealthScope) {
+    params.set("farmHealthScope", health.farmHealthScope);
   }
 }
 
@@ -130,7 +187,8 @@ export function segmentToHref(
   farmScope: ContactsFarmScopeInput = {
     farmAreaId: null,
     farmTerritoryId: null,
-  }
+  },
+  health: ContactsHealthQuery = DEFAULT_CONTACTS_HEALTH_QUERY
 ): string {
   const params = new URLSearchParams();
   if (status !== "__all__") params.set("status", status);
@@ -138,6 +196,7 @@ export function segmentToHref(
   if (needsFollowUp) params.set("followUp", "needs");
   if (sortMode === "recent") params.set("sort", "recent");
   appendFarmScopeToSearchParams(params, farmScope);
+  appendHealthQueryToSearchParams(params, health, farmScope);
   const q = params.toString();
   return q ? `/contacts?${q}` : "/contacts";
 }
@@ -150,7 +209,8 @@ export function buildContactsApiUrl(
   farmScope: ContactsFarmScopeInput = {
     farmAreaId: null,
     farmTerritoryId: null,
-  }
+  },
+  health: ContactsHealthQuery = DEFAULT_CONTACTS_HEALTH_QUERY
 ): string {
   const params = new URLSearchParams();
   if (status !== "__all__") params.set("status", status);
@@ -158,6 +218,7 @@ export function buildContactsApiUrl(
   if (needsFollowUp) params.set("followUp", "needs");
   if (sortMode === "recent") params.set("sort", "recent");
   appendFarmScopeToSearchParams(params, farmScope);
+  appendHealthQueryToSearchParams(params, health, farmScope);
   const q = params.toString();
   return q ? `/api/v1/contacts?${q}` : "/api/v1/contacts";
 }
@@ -181,9 +242,13 @@ export function tabToSavedStatus(
 /** True when URL encodes at least one server-side list filter (save-worthy). */
 export function hasSegmentFiltersInSearchParams(sp: URLSearchParams): boolean {
   const { status, tagId } = parseSegmentFromSearchParams(sp);
+  const h = parseContactsHealthQueryFromSearchParams(sp);
   return (
     status !== "__all__" ||
     tagId !== null ||
-    parseFollowUpNeedsFromSearchParams(sp)
+    parseFollowUpNeedsFromSearchParams(sp) ||
+    h.missing !== null ||
+    h.readyToPromote ||
+    h.farmHealthScope !== null
   );
 }

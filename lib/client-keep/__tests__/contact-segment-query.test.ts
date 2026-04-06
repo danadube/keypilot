@@ -2,6 +2,7 @@ import {
   buildContactsApiUrl,
   hasSegmentFiltersInSearchParams,
   parseContactsFarmScopeFromSearchParams,
+  parseContactsHealthQueryFromSearchParams,
   parseContactsListSortFromSearchParams,
   parseFollowUpNeedsFromSearchParams,
   parseSegmentFromSearchParams,
@@ -121,6 +122,42 @@ describe("contact-segment-query", () => {
         })
       ).toBe("/contacts?status=LEAD&farmTerritoryId=terr-1");
     });
+
+    it("includes missing and readyToPromote when set", () => {
+      expect(
+        segmentToHref("__all__", null, false, "followups", {
+          farmAreaId: "a1",
+          farmTerritoryId: null,
+        }, {
+          missing: "email",
+          readyToPromote: false,
+          farmHealthScope: null,
+        })
+      ).toBe("/contacts?farmAreaId=a1&missing=email");
+      expect(
+        segmentToHref("__all__", null, false, "followups", {
+          farmAreaId: "a1",
+          farmTerritoryId: null,
+        }, {
+          missing: null,
+          readyToPromote: true,
+          farmHealthScope: null,
+        })
+      ).toBe("/contacts?farmAreaId=a1&readyToPromote=1");
+    });
+
+    it("includes farmHealthScope only without farm area/territory", () => {
+      expect(
+        segmentToHref("__all__", null, false, "followups", {
+          farmAreaId: null,
+          farmTerritoryId: null,
+        }, {
+          missing: "mailing",
+          readyToPromote: false,
+          farmHealthScope: "active",
+        })
+      ).toBe("/contacts?missing=mailing&farmHealthScope=active");
+    });
   });
 
   describe("buildContactsApiUrl", () => {
@@ -141,6 +178,45 @@ describe("contact-segment-query", () => {
           farmTerritoryId: null,
         })
       ).toBe("/api/v1/contacts?farmAreaId=area-x");
+    });
+
+    it("includes health query params", () => {
+      expect(
+        buildContactsApiUrl("__all__", null, false, "followups", {
+          farmAreaId: null,
+          farmTerritoryId: null,
+        }, {
+          missing: "site",
+          readyToPromote: true,
+          farmHealthScope: "archived",
+        })
+      ).toBe("/api/v1/contacts?missing=site&readyToPromote=1&farmHealthScope=archived");
+    });
+  });
+
+  describe("parseContactsHealthQueryFromSearchParams", () => {
+    it("parses missing, readyToPromote, farmHealthScope", () => {
+      expect(
+        parseContactsHealthQueryFromSearchParams(
+          sp("missing=EMAIL&readyToPromote=1&farmHealthScope=active")
+        )
+      ).toEqual({
+        missing: "email",
+        readyToPromote: true,
+        farmHealthScope: "active",
+      });
+    });
+
+    it("drops farmHealthScope when farm area is set", () => {
+      expect(
+        parseContactsHealthQueryFromSearchParams(
+          sp("farmAreaId=x&farmHealthScope=active&missing=phone")
+        )
+      ).toEqual({
+        missing: "phone",
+        readyToPromote: false,
+        farmHealthScope: null,
+      });
     });
   });
 
@@ -228,6 +304,14 @@ describe("contact-segment-query", () => {
     it("is false when status is invalid (ignored)", () => {
       expect(hasSegmentFiltersInSearchParams(sp("status=INVALID"))).toBe(
         false
+      );
+    });
+
+    it("is true for FarmTrackr health cleanup params", () => {
+      expect(hasSegmentFiltersInSearchParams(sp("missing=email"))).toBe(true);
+      expect(hasSegmentFiltersInSearchParams(sp("readyToPromote=1"))).toBe(true);
+      expect(hasSegmentFiltersInSearchParams(sp("farmHealthScope=active"))).toBe(
+        true
       );
     });
   });
