@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   X,
   Search,
@@ -288,6 +289,7 @@ export function CreateDealModal({ open, onClose }: CreateDealModalProps) {
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
+      toast.success("Deal created");
       onClose();
       router.push(`/deals/${json.data.id}`);
     } catch (err) {

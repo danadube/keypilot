@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -109,8 +110,12 @@ export function OpenHouseDetailView({ id }: { id: string }) {
       .then((json) => {
         if (json.error) throw new Error(json.error.message);
         setOh((prev) => (prev ? { ...prev, status: newStatus } : null));
+        toast.success("Status updated");
       })
-      .catch(() => setError("Failed to update status"))
+      .catch(() => {
+        setError("Failed to update status");
+        toast.error("Failed to update status");
+      })
       .finally(() => setUpdatingStatus(false));
   };
 
@@ -131,10 +136,13 @@ export function OpenHouseDetailView({ id }: { id: string }) {
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
+      toast.success("Flyer uploaded");
       await refresh();
       setLoading(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setFlyerUploading(false);
       e.target.value = "";

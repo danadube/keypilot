@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useSearchParams, useRouter } from "next/navigation";
 import { BrandSectionHeader } from "@/components/ui/BrandSectionHeader";
 import { BrandCard } from "@/components/ui/BrandCard";
@@ -128,7 +129,7 @@ export function ConnectionsPageContent() {
     setActionId(provider);
     setTimeout(() => {
       setActionId(null);
-      alert("Connect flow coming soon for this provider.");
+      toast.info("Connect flow coming soon for this provider.");
     }, 500);
   };
 
@@ -138,9 +139,10 @@ export function ConnectionsPageContent() {
       const r = await fetch(`/api/v1/settings/connections/${id}`, { method: "DELETE" });
       const json = await r.json();
       if (!r.ok) throw new Error(json?.error?.message ?? "Failed to disconnect");
+      toast.success("Account disconnected");
       load();
     } catch (e) {
-      alert((e as Error).message);
+      toast.error((e as Error).message);
     } finally {
       setActionId(null);
     }
@@ -166,7 +168,7 @@ export function ConnectionsPageContent() {
       if (!r.ok) throw new Error(json?.error?.message ?? "Failed to update");
       load();
     } catch (e) {
-      alert((e as Error).message);
+      toast.error((e as Error).message);
     }
   };
 

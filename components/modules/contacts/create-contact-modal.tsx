@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { cn } from "@/lib/utils";
@@ -75,6 +76,7 @@ export function CreateContactModal({
         setError("Couldn't create contact");
         return;
       }
+      toast.success("Contact created");
       onCreated(id);
     } finally {
       setSubmitting(false);

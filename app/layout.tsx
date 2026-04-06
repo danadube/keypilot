@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Inter, Newsreader } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 import { BrandProvider } from "@/design-system/brand-context";
 
@@ -54,6 +55,17 @@ export default function RootLayout({
         <body className="font-sans antialiased">
           <BrandProvider brand="keypilot">
             {children}
+            <Toaster
+              theme="dark"
+              position="bottom-right"
+              toastOptions={{
+                style: {
+                  background: "var(--kp-surface-high, #1a2744)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  color: "var(--kp-on-surface, #e2e8f0)",
+                },
+              }}
+            />
           </BrandProvider>
         </body>
       </html>
