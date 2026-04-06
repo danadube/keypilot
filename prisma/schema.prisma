@@ -112,6 +112,7 @@ model Property {
   transactions      Transaction[]
   supraQueueMatches SupraQueueItem[]  @relation("SupraQueueMatchedProperty")
   userActivities    UserActivity[]
+  tasks             Task[]
 
   @@index([createdByUserId, deletedAt])
   @@index([city, state])
@@ -930,18 +931,21 @@ model Task {
   title       String
   description String?       @db.Text
   status      TaskStatus    @default(OPEN)
-  dueDate     DateTime?
+  dueAt       DateTime?
   priority    TaskPriority  @default(MEDIUM)
   contactId   String?
+  propertyId  String?
   createdAt   DateTime      @default(now())
   completedAt DateTime?
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  contact Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contact  Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
 
   @@index([userId, status])
-  @@index([userId, dueDate])
+  @@index([userId, dueAt])
   @@index([contactId])
+  @@index([propertyId])
   @@map("tasks")
 }
 

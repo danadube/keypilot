@@ -24,15 +24,26 @@ type TasksPayload = {
   completed: SerializedTask[];
 };
 
-function formatDueLabel(iso: string | null) {
+function formatDueAtLabel(iso: string | null) {
   if (!iso) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
-  return d.toLocaleDateString(undefined, {
+  const datePart = d.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
+  const h = d.getHours();
+  const m = d.getMinutes();
+  if (h !== 0 || m !== 0) {
+    const timePart = d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    return `${datePart} · ${timePart}`;
+  }
+  return datePart;
+}
+
+function propertyShort(p: NonNullable<SerializedTask["property"]>) {
+  return `${p.address1}, ${p.city}, ${p.state}`.trim();
 }
 
 function TaskRow({
@@ -48,7 +59,8 @@ function TaskRow({
   const contactLine = task.contact
     ? `${task.contact.firstName} ${task.contact.lastName}`.trim()
     : null;
-  const due = formatDueLabel(task.dueDate);
+  const propertyLine = task.property ? propertyShort(task.property) : null;
+  const due = formatDueAtLabel(task.dueAt);
 
   return (
     <li className="flex items-start gap-3 rounded-lg border border-kp-outline/80 bg-kp-surface-high/15 px-3 py-2.5">
@@ -69,9 +81,9 @@ function TaskRow({
         >
           {task.title}
         </p>
-        {(due || contactLine) && (
+        {(due || contactLine || propertyLine) && (
           <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-            {[due ? `Due ${due}` : null, contactLine].filter(Boolean).join(" · ")}
+            {[due ? `Due ${due}` : null, contactLine, propertyLine].filter(Boolean).join(" · ")}
           </p>
         )}
       </div>

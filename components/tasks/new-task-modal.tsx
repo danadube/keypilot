@@ -6,11 +6,20 @@ import { BrandModal } from "@/components/ui/BrandModal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary } from "@/components/ui/kp-dashboard-button-tiers";
+import { buildDueAtIsoFromDateAndTimeLocal } from "@/lib/tasks/parse-task-due-at";
 
 type ContactOption = {
   id: string;
   firstName: string;
   lastName: string;
+};
+
+type PropertyOption = {
+  id: string;
+  address1: string;
+  city: string;
+  state: string;
+  zip: string;
 };
 
 export type NewTaskModalProps = {
@@ -25,6 +34,10 @@ function contactLabel(c: ContactOption) {
   return `${c.firstName} ${c.lastName}`.trim() || "Unknown";
 }
 
+function propertyLabel(p: PropertyOption) {
+  return `${p.address1}, ${p.city}, ${p.state} ${p.zip}`.trim();
+}
+
 export function NewTaskModal({
   open,
   onOpenChange,
@@ -32,17 +45,23 @@ export function NewTaskModal({
   onCreated,
 }: NewTaskModalProps) {
   const [title, setTitle] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  const [dueDatePart, setDueDatePart] = useState("");
+  const [dueTimePart, setDueTimePart] = useState("");
   const [contactId, setContactId] = useState<string>("");
+  const [propertyId, setPropertyId] = useState<string>("");
   const [contacts, setContacts] = useState<ContactOption[]>([]);
+  const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
+  const [loadingProperties, setLoadingProperties] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setTitle("");
-    setDueDate("");
+    setDueDatePart("");
+    setDueTimePart("");
     setContactId(defaultContactId ?? "");
+    setPropertyId("");
     setSubmitting(false);
     setLoadingContacts(true);
     fetch("/api/v1/contacts")
@@ -50,12 +69,19 @@ export function NewTaskModal({
       .then((j) => setContacts(Array.isArray(j.data) ? j.data : []))
       .catch(() => setContacts([]))
       .finally(() => setLoadingContacts(false));
+    setLoadingProperties(true);
+    fetch("/api/v1/properties")
+      .then((r) => r.json())
+      .then((j) => setProperties(Array.isArray(j.data) ? j.data : []))
+      .catch(() => setProperties([]))
+      .finally(() => setLoadingProperties(false));
   }, [open, defaultContactId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const t = title.trim();
     if (!t || submitting) return;
+    const dueAtIso = buildDueAtIsoFromDateAndTimeLocal(dueDatePart, dueTimePart);
     setSubmitting(true);
     try {
       const res = await fetch("/api/v1/tasks", {
@@ -63,8 +89,9 @@ export function NewTaskModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: t,
-          dueDate: dueDate.trim() || null,
+          dueAt: dueAtIso,
           contactId: contactId || null,
+          propertyId: propertyId || null,
         }),
       });
       const json = await res.json();
@@ -87,8 +114,8 @@ export function NewTaskModal({
       open={open}
       onOpenChange={onOpenChange}
       title="New task"
-      description="Quick capture — optional due date and contact."
-      size="sm"
+      description="Optional due date and time, contact, and listing."
+      size="md"
       footer={
         <>
           <Button
@@ -129,17 +156,32 @@ export function NewTaskModal({
             required
           />
         </div>
-        <div className="space-y-1.5">
-          <label htmlFor="task-due" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-            Due date (optional)
-          </label>
-          <input
-            id="task-due"
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className={inputClass}
-          />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <label htmlFor="task-due-date" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+              Due date (optional)
+            </label>
+            <input
+              id="task-due-date"
+              type="date"
+              value={dueDatePart}
+              onChange={(e) => setDueDatePart(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="task-due-time" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+              Time (optional)
+            </label>
+            <input
+              id="task-due-time"
+              type="time"
+              value={dueTimePart}
+              onChange={(e) => setDueTimePart(e.target.value)}
+              disabled={!dueDatePart.trim()}
+              className={cn(inputClass, !dueDatePart.trim() && "opacity-50")}
+            />
+          </div>
         </div>
         <div className="space-y-1.5">
           <label htmlFor="task-contact" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
@@ -156,6 +198,25 @@ export function NewTaskModal({
             {contacts.map((c) => (
               <option key={c.id} value={c.id}>
                 {contactLabel(c)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="task-property" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+            Property (optional)
+          </label>
+          <select
+            id="task-property"
+            value={propertyId}
+            onChange={(e) => setPropertyId(e.target.value)}
+            disabled={loadingProperties}
+            className={cn(inputClass, "cursor-pointer")}
+          >
+            <option value="">— None —</option>
+            {properties.map((p) => (
+              <option key={p.id} value={p.id}>
+                {propertyLabel(p)}
               </option>
             ))}
           </select>

@@ -6,13 +6,16 @@ import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { CreateTaskSchema } from "@/lib/validations/task";
 import { serializeTask, type TaskRow } from "@/lib/tasks/task-serialize";
 import { bucketOpenTasksByDue } from "@/lib/tasks/task-buckets";
-import { parseOptionalTaskDueDate } from "@/lib/tasks/parse-task-due-date";
+import { parseOptionalTaskDueAt } from "@/lib/tasks/parse-task-due-at";
 
 export const dynamic = "force-dynamic";
 
 const taskInclude = {
   contact: {
     select: { id: true, firstName: true, lastName: true },
+  },
+  property: {
+    select: { id: true, address1: true, city: true, state: true, zip: true },
   },
 } as const;
 
@@ -40,7 +43,7 @@ export async function GET(req: NextRequest) {
           ...contactFilter,
         },
         include: taskInclude,
-        orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
+        orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
         take: 200,
       });
       const completedRows = await tx.task.findMany({
@@ -93,8 +96,8 @@ export async function POST(req: NextRequest) {
       return apiError(parsed.error.flatten().formErrors.join("; ") || "Invalid body", 400);
     }
 
-    const { title, description, dueDate, priority, contactId } = parsed.data;
-    const due = parseOptionalTaskDueDate(dueDate ?? null);
+    const { title, description, dueAt, priority, contactId, propertyId } = parsed.data;
+    const due = parseOptionalTaskDueAt(dueAt ?? null);
 
     const createdId = await withRLSContext(user.id, async (tx) => {
       if (contactId) {
@@ -106,14 +109,24 @@ export async function POST(req: NextRequest) {
           throw Object.assign(new Error("Contact not found or not accessible"), { status: 404 });
         }
       }
+      if (propertyId) {
+        const p = await tx.property.findFirst({
+          where: { id: propertyId, deletedAt: null },
+          select: { id: true },
+        });
+        if (!p) {
+          throw Object.assign(new Error("Property not found or not accessible"), { status: 404 });
+        }
+      }
       const row = await tx.task.create({
         data: {
           userId: user.id,
           title: title.trim(),
           description: description?.trim() || null,
-          dueDate: due,
+          dueAt: due,
           priority: priority ?? "MEDIUM",
           contactId: contactId ?? null,
+          propertyId: propertyId ?? null,
           status: "OPEN",
         },
         select: { id: true },

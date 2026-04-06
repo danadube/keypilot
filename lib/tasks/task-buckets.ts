@@ -10,11 +10,11 @@ export function bucketOpenTasksByDue(
   const upcoming: SerializedTask[] = [];
 
   for (const t of open) {
-    if (!t.dueDate) {
+    if (!t.dueAt) {
       upcoming.push(t);
       continue;
     }
-    const d = new Date(t.dueDate);
+    const d = new Date(t.dueAt);
     if (Number.isNaN(d.getTime())) {
       upcoming.push(t);
       continue;

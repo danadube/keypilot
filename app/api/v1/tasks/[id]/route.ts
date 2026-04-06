@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { withRLSContext } from "@/lib/db-context";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { UpdateTaskSchema } from "@/lib/validations/task";
-import { parseOptionalTaskDueDate } from "@/lib/tasks/parse-task-due-date";
+import { parseOptionalTaskDueAt } from "@/lib/tasks/parse-task-due-at";
 
 export const dynamic = "force-dynamic";
 
@@ -24,9 +24,9 @@ export async function PATCH(
     const data: Prisma.TaskUpdateInput = {};
     if (parsed.data.title !== undefined) data.title = parsed.data.title.trim();
     if (parsed.data.description !== undefined) data.description = parsed.data.description?.trim() || null;
-    if (parsed.data.dueDate !== undefined) {
-      data.dueDate =
-        parsed.data.dueDate === null ? null : parseOptionalTaskDueDate(parsed.data.dueDate);
+    if (parsed.data.dueAt !== undefined) {
+      data.dueAt =
+        parsed.data.dueAt === null ? null : parseOptionalTaskDueAt(parsed.data.dueAt);
     }
     if (parsed.data.priority !== undefined) data.priority = parsed.data.priority;
     if (parsed.data.status !== undefined) data.status = parsed.data.status;
