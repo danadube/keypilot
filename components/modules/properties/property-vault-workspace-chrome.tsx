@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import {
+  KP_WORKSPACE_CHROME_BODY_GUTTER_CLASS,
+  KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS,
+} from "@/lib/shell/workspace-chrome-gutter";
 
 export const PROPERTY_VAULT_TAB_ITEMS = [
   { id: "overview", label: "Overview", href: "/property-vault/overview" },
@@ -67,10 +71,15 @@ export function PropertyVaultWorkspaceChrome({
 }) {
   return (
     <div className="flex min-h-0 flex-col gap-1.5">
-      <header className="overflow-hidden rounded-lg border border-kp-outline-variant bg-kp-surface">
+      <header
+        className={cn(
+          "overflow-hidden rounded-lg border border-kp-outline-variant bg-kp-surface",
+          KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS
+        )}
+      >
         <PropertyVaultTabBar />
       </header>
-      <div className="min-h-0 flex-1">{children}</div>
+      <div className={KP_WORKSPACE_CHROME_BODY_GUTTER_CLASS}>{children}</div>
     </div>
   );
 }

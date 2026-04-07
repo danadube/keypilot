@@ -869,7 +869,7 @@ export function ContactsListView() {
     <div className="min-h-full rounded-2xl bg-kp-bg">
       {/* ── Save segment (tabs + shell carry page identity) ───────────── */}
       {canSaveSegment ? (
-        <div className="flex flex-wrap items-center justify-end gap-3 px-6 pb-3 pt-2 sm:px-8">
+        <div className="flex flex-wrap items-center justify-end gap-3 pb-3 pt-2">
           <button
             type="button"
             onClick={openSaveSegmentModal}
@@ -883,7 +883,7 @@ export function ContactsListView() {
 
       {/* ── Metric cards (CRM tier only) ─────────────────────────────────── */}
       {hasCrm && (
-        <div className="grid gap-3 px-6 pb-4 sm:grid-cols-2 lg:grid-cols-4 sm:px-8">
+        <div className="grid gap-3 pb-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             label="Total contacts"
             value={loading ? "—" : contacts.length}
@@ -915,7 +915,7 @@ export function ContactsListView() {
       )}
 
       {/* ── Table panel ─────────────────────────────────────────────────── */}
-      <div className="mx-6 mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
+      <div className="mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
         {farmFilterActive ? (
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-kp-outline bg-kp-teal/[0.06] px-5 py-2.5">
             <p className="text-xs text-kp-on-surface">
