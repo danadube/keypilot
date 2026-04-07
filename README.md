@@ -41,10 +41,11 @@ Follow these steps in order. Full details: **[docs/SETUP.md](docs/SETUP.md)**.
    - **Option A:** On your project’s home page, click the **Connect** button (top of the page)
    - **Option B:** Use the **Connect** button on the project home page (top of main content) — skip Settings, connection strings are here
    - **Option C:** Go directly: `https://supabase.com/dashboard/project/YOUR-PROJECT-REF/settings/database`
-5. **Transaction mode** (for `DATABASE_URL`):
-   - Select **Transaction** → Copy the URI
+5. **Transaction mode** (for `DATABASE_URL` — required on Vercel/serverless):
+   - Select **Transaction** → Copy the URI (port **6543**)
    - Replace `[YOUR-PASSWORD]` with your password
-   - Add `?pgbouncer=true` at the end → this is **`DATABASE_URL`**
+   - Add `?pgbouncer=true&connection_limit=1` at the end → this is **`DATABASE_URL`**
+   - **Do not** use **Session** mode or the **`:5432` pooler** URI for `DATABASE_URL` — you will hit `MaxClientsInSessionMode` under load.
 6. **Direct connection** (for **`DIRECT_URL`** — Prisma migrate, `db push`, GitHub Actions):
    - In Database settings, use the **direct** URI (host **`db.<project-ref>.supabase.co`**, port **5432**), not the pooler host.
    - Session pooler (`*.pooler.supabase.com:5432`) is still a pooler and can hit **max clients** during migrate; see **`docs/platform/database-migrations.md`**.
@@ -102,8 +103,8 @@ Follow these steps in order. Full details: **[docs/SETUP.md](docs/SETUP.md)**.
 
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | PostgreSQL connection string (Supabase) |
-| `DIRECT_URL` | Direct Postgres host (`db.*.supabase.co`) for migrations / Prisma — not the pooler URI |
+| `DATABASE_URL` | Supabase **transaction** pooler (`:6543`, `pgbouncer=true`; use `connection_limit=1` on Vercel) |
+| `DIRECT_URL` | **Direct** Postgres (`db.*.supabase.co:5432`) for migrations — not a pooler URI |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key |
 | `CLERK_SECRET_KEY` | Clerk secret key |
 | `CLERK_WEBHOOK_SECRET` | Clerk webhook signing secret |
