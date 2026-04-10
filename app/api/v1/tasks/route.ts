@@ -30,6 +30,13 @@ export async function GET(req: NextRequest) {
     }
     const contactFilter = contactRaw ? { contactId: contactRaw } : {};
 
+    const propertyRaw = searchParams.get("propertyId")?.trim() ?? "";
+    if (propertyRaw) {
+      const p = z.string().uuid().safeParse(propertyRaw);
+      if (!p.success) return apiError("Invalid propertyId", 400);
+    }
+    const propertyFilter = propertyRaw ? { propertyId: propertyRaw } : {};
+
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const todayEnd = new Date(todayStart);
@@ -41,6 +48,7 @@ export async function GET(req: NextRequest) {
           userId: user.id,
           status: "OPEN",
           ...contactFilter,
+          ...propertyFilter,
         },
         include: taskInclude,
         orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
@@ -51,6 +59,7 @@ export async function GET(req: NextRequest) {
           userId: user.id,
           status: "COMPLETED",
           ...contactFilter,
+          ...propertyFilter,
         },
         include: taskInclude,
         orderBy: { completedAt: "desc" },

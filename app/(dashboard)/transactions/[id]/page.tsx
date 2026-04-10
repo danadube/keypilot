@@ -1,4 +1,11 @@
+import type { Metadata } from "next";
 import { TransactionDetailView } from "@/components/modules/transactions/transaction-detail-view";
+
+export const metadata: Metadata = {
+  title: "Transaction | KeyPilot",
+  description:
+    "Transaction workspace—property, deal context, milestones, commissions, and lifecycle.",
+};
 
 export default async function TransactionDetailPage({
   params,
