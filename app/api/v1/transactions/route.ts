@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { Prisma } from "@prisma/client";
-import { TransactionSide, TransactionStatus } from "@prisma/client";
+import { Prisma, TransactionSide, TransactionStatus } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
-import { withRLSContext } from "@/lib/db-context";
+import { withRLSContext, withRLSContextOrFallbackAdmin } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import {
   responseIfDealIdUniqueViolation,
@@ -107,19 +106,29 @@ export async function GET(req: NextRequest) {
     const where: Prisma.TransactionWhereInput =
       andParts.length === 1 ? andParts[0]! : { AND: andParts };
 
-    const transactions = await withRLSContext(user.id, (tx) =>
-      tx.transaction.findMany({
-        where,
-        include: {
-          property: { select: transactionPropertySelect },
-          deal: { select: transactionLinkedDealSelect },
-        },
-        orderBy: { createdAt: "desc" },
-      })
+    const transactions = await withRLSContextOrFallbackAdmin(
+      user.id,
+      "api/v1/transactions:get",
+      (tx) =>
+        tx.transaction.findMany({
+          where,
+          include: {
+            property: { select: transactionPropertySelect },
+            deal: { select: transactionLinkedDealSelect },
+          },
+          orderBy: { createdAt: "desc" },
+        })
     );
 
     return NextResponse.json({ data: transactions });
   } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+      console.error("[GET /api/v1/transactions] Prisma", {
+        code: e.code,
+        meta: e.meta,
+      });
+      return apiErrorFromCaught(e, { log: false });
+    }
     return apiErrorFromCaught(e);
   }
 }
