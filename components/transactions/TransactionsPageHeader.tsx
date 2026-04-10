@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const DEFAULT_SUBTITLE =
-  "Track deal progress, key dates, and commission at a glance—operational control, not back-office accounting.";
+  "Closings, sale details, commission splits, and lifecycle state";
 
 export interface TransactionsPageHeaderProps {
   /** Secondary line under the title */

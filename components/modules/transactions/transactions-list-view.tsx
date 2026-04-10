@@ -245,6 +245,7 @@ export function TransactionsListView() {
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
       <TransactionsPageHeader
+        subtitle="Closings, sale details, commission splits, and lifecycle state"
         actions={
           <Button
             type="button"
