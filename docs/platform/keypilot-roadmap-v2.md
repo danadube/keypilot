@@ -1,7 +1,8 @@
 # KeyPilot Roadmap v2
 
-**Real estate operating system** — post RealOffice360 analysis.  
-This document is the Cursor- and dev-friendly phased plan; it complements the customer-facing milestone view in the app and the historical phase outline in [`docs/ai-context/ROADMAP.md`](../ai-context/ROADMAP.md).
+**Strategic source of truth** for phased product and engineering planning (KeyPilot as a real estate operating system). Prefer this file when deciding OS-level sequencing; the in-app **Roadmap** at `/roadmap` stays the customer-facing milestone view, and [`docs/ai-context/ROADMAP.md`](../ai-context/ROADMAP.md) keeps historical AI context.
+
+**Scope:** Post RealOffice360 analysis — Cursor- and dev-friendly phased plan.
 
 ---
 
