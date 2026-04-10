@@ -234,6 +234,7 @@ export const ROADMAP_ABOUT_COPY = {
   body: [
     "This page is directional: we sequence work based on production feedback from agents and brokerages. Dates can move when we learn something important.",
     "Milestones use a single scale — Now (generally available), Preview (early access), and H1 / H2 / 2027+ windows. Status chips add nuance: Live, Beta, In Progress, and Planned.",
+    "We also maintain a longer-form phased plan (Client HQ, Command Center, Foundation vs Control tiers, automation horizons) in the repo as KeyPilot Roadmap v2 — it complements this milestone view for engineering and planning.",
     "Want something prioritized? Use Feedback in the sidebar or reach out directly — it shapes what we build next.",
   ],
 } as const;
