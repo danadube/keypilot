@@ -1,5 +1,6 @@
 import {
   computeTransactionSignals,
+  formatTransactionAttentionPrimaryLine,
   isClosingSoon,
   TRANSACTION_CLOSING_SOON_DAYS,
 } from "@/lib/transactions/transaction-signals";
@@ -29,5 +30,22 @@ describe("transaction-signals", () => {
 
   it("documents default closing horizon", () => {
     expect(TRANSACTION_CLOSING_SOON_DAYS).toBe(30);
+  });
+
+  it("computeTransactionSignals surfaces incomplete checklist count without duplicate rules", () => {
+    const far = new Date();
+    far.setDate(far.getDate() + 90);
+    const s = computeTransactionSignals({
+      status: "PENDING",
+      salePrice: "400000",
+      closingDate: far.toISOString(),
+      brokerageName: "KW",
+      incompleteChecklistCount: 3,
+    });
+    expect(s.incompleteChecklistCount).toBe(3);
+    expect(s.hasAttention).toBe(true);
+    expect(
+      formatTransactionAttentionPrimaryLine("41745 Harrison Drive", s)
+    ).toContain("3 checklist items still open");
   });
 });

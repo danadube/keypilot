@@ -13,6 +13,7 @@ import {
 } from "@/lib/transactions/transaction-signals";
 import type { TransactionAttentionItem } from "@/lib/transactions/transaction-attention-types";
 import type { TxStatus } from "@/components/modules/transactions/transactions-shared";
+import { incompleteChecklistCountsByTransactionIds } from "@/lib/transactions/incomplete-checklist-counts";
 
 const ACTIVE_STATUSES: TransactionStatus[] = [
   "LEAD",
@@ -59,10 +60,15 @@ export async function GET() {
         },
       });
 
+      const checklistCounts = await incompleteChecklistCountsByTransactionIds(
+        tx,
+        transactions.map((t) => t.id)
+      );
+
       const items: TransactionAttentionItem[] = [];
 
       for (const t of transactions) {
-        const incompleteChecklistCount = 0;
+        const incompleteChecklistCount = checklistCounts.get(t.id) ?? 0;
         const signals = computeTransactionSignals({
           status: t.status as TxStatus,
           salePrice: t.salePrice?.toString() ?? null,

@@ -1097,6 +1097,7 @@ model Transaction {
   deal                    Deal?                      @relation("TransactionLinkedDeal", fields: [dealId], references: [id], onDelete: SetNull)
   commissions             Commission[]
   committedImportSessions TransactionImportSession[]
+  checklistItems          TransactionChecklistItem[]
 
   @@index([userId])
   @@index([propertyId])
@@ -1104,6 +1105,24 @@ model Transaction {
   @@index([closingDate])
   @@index([userId, deletedAt])
   @@map("transactions")
+}
+
+/** Persisted per-transaction checklist rows (TransactionHQ operational steps). */
+model TransactionChecklistItem {
+  id            String    @id @default(uuid())
+  transactionId String
+  title         String
+  isComplete    Boolean   @default(false)
+  sortOrder     Int       @default(0)
+  dueDate       DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@index([transactionId, isComplete])
+  @@map("transaction_checklist_items")
 }
 
 enum TransactionStatus {

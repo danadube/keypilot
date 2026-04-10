@@ -23,6 +23,40 @@ const propertySelect = {
   zip: true,
 } as const;
 
+const transactionDetailInclude = {
+  property: { select: propertySelect },
+  deal: { select: transactionLinkedDealSelect },
+  commissions: { orderBy: { createdAt: "asc" } },
+  committedImportSessions: {
+    select: {
+      id: true,
+      fileName: true,
+      selectedBrokerage: true,
+      detectedBrokerage: true,
+      parserProfile: true,
+      parserProfileVersion: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 1,
+  },
+  _count: {
+    select: {
+      checklistItems: { where: { isComplete: false } },
+    },
+  },
+} as const;
+
+function jsonTransactionDetail(
+  row: Prisma.TransactionGetPayload<{ include: typeof transactionDetailInclude }>
+) {
+  const { _count, ...rest } = row;
+  return {
+    ...rest,
+    checklistIncompleteCount: _count.checklistItems,
+  };
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -37,29 +71,13 @@ export async function GET(
     const transaction = await withRLSContext(user.id, (tx) =>
       tx.transaction.findFirst({
         where: { id, userId: user.id },
-        include: {
-          property: { select: propertySelect },
-          deal: { select: transactionLinkedDealSelect },
-          commissions: { orderBy: { createdAt: "asc" } },
-          committedImportSessions: {
-            select: {
-              id: true,
-              fileName: true,
-              selectedBrokerage: true,
-              detectedBrokerage: true,
-              parserProfile: true,
-              parserProfileVersion: true,
-              createdAt: true,
-            },
-            orderBy: { createdAt: "desc" },
-            take: 1,
-          },
-        },
+        include: transactionDetailInclude,
       })
     );
 
     if (!transaction) return apiError("Transaction not found", 404);
-    return NextResponse.json({ data: transaction });
+
+    return NextResponse.json({ data: jsonTransactionDetail(transaction) });
   } catch (e) {
     return apiErrorFromCaught(e);
   }
@@ -91,16 +109,12 @@ export async function PATCH(
         return tx.transaction.update({
           where: { id },
           data: { deletedAt: archiveParse.success ? new Date() : null },
-          include: {
-            property: { select: propertySelect },
-            deal: { select: transactionLinkedDealSelect },
-            commissions: { orderBy: { createdAt: "asc" } },
-          },
+          include: transactionDetailInclude,
         });
       });
 
       if (!transaction) return apiError("Transaction not found", 404);
-      return NextResponse.json({ data: transaction });
+      return NextResponse.json({ data: jsonTransactionDetail(transaction) });
     }
 
     const parsed = UpdateTransactionSchema.safeParse(body);
@@ -144,41 +158,22 @@ export async function PATCH(
         }
       }
 
-      const include = {
-        property: { select: propertySelect },
-        deal: { select: transactionLinkedDealSelect },
-        commissions: { orderBy: { createdAt: "asc" } as const },
-        committedImportSessions: {
-          select: {
-            id: true,
-            fileName: true,
-            selectedBrokerage: true,
-            detectedBrokerage: true,
-            parserProfile: true,
-            parserProfileVersion: true,
-            createdAt: true,
-          },
-          orderBy: { createdAt: "desc" } as const,
-          take: 1,
-        },
-      };
-
       if (Object.keys(data).length === 0) {
         return tx.transaction.findFirst({
           where: { id, userId: user.id },
-          include,
+          include: transactionDetailInclude,
         });
       }
 
       return tx.transaction.update({
         where: { id },
         data,
-        include,
+        include: transactionDetailInclude,
       });
     });
 
     if (!transaction) return apiError("Transaction not found", 404);
-    return NextResponse.json({ data: transaction });
+    return NextResponse.json({ data: jsonTransactionDetail(transaction) });
   } catch (e) {
     const uniqueResp = responseIfDealIdUniqueViolation(e);
     if (uniqueResp) return uniqueResp;

@@ -122,6 +122,8 @@ type TransactionDetail = {
   closingDate: string | null;
   brokerageName: string | null;
   notes: string | null;
+  /** Incomplete persisted checklist rows (from GET /transactions/[id]). */
+  checklistIncompleteCount?: number;
   createdAt: string;
   updatedAt: string;
   dealId: string | null;
@@ -328,7 +330,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       salePrice: txn.salePrice,
       closingDate: txn.closingDate,
       brokerageName: txn.brokerageName,
-      incompleteChecklistCount: 0,
+      incompleteChecklistCount: txn.checklistIncompleteCount ?? 0,
     });
   }, [txn]);
 

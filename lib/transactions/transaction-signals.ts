@@ -5,8 +5,8 @@
  * - closingSoon: closing date is in [today, today + CLOSING_SOON_DAYS], local calendar days;
  *   never true for CLOSED / FALLEN_APART.
  * - setupIncomplete: same fields as {@link getTransactionSetupGaps} / needs-setup on list.
- * - incompleteChecklistCount: count of incomplete checklist rows when that data is available;
- *   pass 0 when checklist is not loaded (e.g. aggregate APIs without join).
+ * - incompleteChecklistCount: count of incomplete persisted `TransactionChecklistItem` rows;
+ *   detail + attention APIs supply real counts; use 0 only when the count is intentionally omitted.
  */
 
 import type { TransactionStatus } from "@prisma/client";
