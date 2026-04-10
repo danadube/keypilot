@@ -66,9 +66,10 @@ If you add SQL only under `supabase/migrations/`, you must **also** add an equiv
 
 ### Preview (Vercel)
 
-1. Ensure the preview DB has received **`npx prisma migrate deploy`** for the branch (build command / deploy hook / manual run against preview DB URL — follow your team’s Vercel project settings).
-2. Open the preview URL and exercise the feature (especially authenticated routes using **`withRLSContext`**).
-3. Confirm no **500**s on primary surfaces (e.g. ShowingHQ dashboard).
+1. **Automatic:** Production and preview Vercel builds set **`VERCEL=1`**; the app **`npm run build`** runs **`scripts/vercel-prisma-migrate-deploy.mjs`**, which executes **`npx prisma migrate deploy`** before **`prisma generate`** so the linked database picks up any pending migrations from the branch. Ensure **`DATABASE_URL`** and **`DIRECT_URL`** (direct `db.<project>.supabase.co`, not a pooler) are set on the Vercel project so migrate can connect.
+2. If a preview still shows **500**s after deploy, confirm the migration history in **`_prisma_migrations`** matches the repo and run **`npx prisma migrate deploy`** manually against that environment once.
+3. Open the preview URL and exercise the feature (especially authenticated routes using **`withRLSContext`**).
+4. Confirm no **500**s on primary surfaces (e.g. ShowingHQ dashboard).
 
 ### Production
 
