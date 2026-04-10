@@ -232,12 +232,12 @@ function isClosingSoon(closingDateIso: string | null, status: TxStatus): boolean
 function LoadingState() {
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
-      <div className="px-6 pt-3 sm:px-8">
+      <div className="pt-2">
         <BrandSkeleton className="h-4 w-28" />
         <BrandSkeleton className="mt-4 h-8 w-64 max-w-full" />
         <BrandSkeleton className="mt-2 h-4 w-full max-w-md" />
       </div>
-      <div className="mx-6 mt-6 grid gap-6 lg:grid-cols-[minmax(260px,320px)_1fr_minmax(260px,320px)] sm:mx-8">
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(260px,320px)_1fr_minmax(260px,320px)]">
         <BrandSkeleton className="h-72 w-full rounded-xl" />
         <div className="flex min-h-[320px] flex-col gap-4">
           <BrandSkeleton className="h-24 w-full rounded-xl" />
@@ -533,15 +533,17 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
         : error ??
           "This transaction could not be loaded. It may not exist or you may not have access.";
     return (
-      <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 rounded-2xl bg-kp-bg px-6 text-center">
-        <AlertCircle className="h-6 w-6 text-red-400" />
-        <p className="max-w-md text-sm text-kp-on-surface-variant">{detail}</p>
-        <Link
-          href="/transactions"
-          className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
-        >
-          Back to transactions
-        </Link>
+      <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
+        <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 pt-6 text-center">
+          <AlertCircle className="h-6 w-6 text-red-400" />
+          <p className="max-w-md text-sm text-kp-on-surface-variant">{detail}</p>
+          <Link
+            href="/transactions"
+            className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
+          >
+            Back to overview
+          </Link>
+        </div>
       </div>
     );
   }
@@ -562,7 +564,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
-      <div className="px-6 pt-3 sm:px-8">
+      <div className="pt-2">
         <TransactionDetailPageHeader
           subtitle={
             <span>
@@ -600,7 +602,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
         />
       </div>
 
-      <div className="mx-6 mt-6 sm:mx-8">
+      <div className="mt-6">
         <TransactionDetailLayout
           left={
             <TransactionDetailIdentityRail

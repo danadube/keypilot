@@ -10,7 +10,6 @@ import {
   Megaphone,
   BarChart3,
   Settings,
-  List,
   Users,
 } from "lucide-react";
 
@@ -146,12 +145,8 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     name: "Transactions",
     href: "/transactions",
     available: true,
-    sidebar: [
-      { label: "Overview", href: "/transactions", icon: LayoutDashboard, section: "OVERVIEW" },
-      { label: "Pipeline", href: "/transactions/pipeline", icon: List, section: "WORK" },
-      { label: "Commissions", href: "/transactions/commissions", icon: BarChart3, section: "WORK" },
-      { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
-    ],
+    /** Section switching is in-module (top tabs); no nested sidebar rows. */
+    sidebar: [],
   },
   insight: {
     id: "insight",

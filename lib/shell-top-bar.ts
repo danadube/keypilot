@@ -5,7 +5,7 @@ import { isWorkspaceContext } from "@/lib/showing-hq/isShowingHQContext";
  * fixed height and border treatment so the bottom edge aligns across the seam.
  *
  * Workspace modules (including `/dashboard`, `/showing-hq/*`, `/open-houses/*`, `/farm-trackr/*`,
- * `/property-vault/*`, `/properties/*`, `/client-keep/*`, `/contacts/*`) use a taller band so the title +
+ * `/property-vault/*`, `/properties/*`, `/client-keep/*`, `/contacts/*`, `/transactions/*`) use a taller band so the title +
  * client date/time line fit; other routes use the default compact rail.
  */
 export function shellTopRowHeightClass(pathname: string | null | undefined): string {

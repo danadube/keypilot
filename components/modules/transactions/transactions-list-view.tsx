@@ -20,7 +20,7 @@ import {
 import {
   TransactionsListFilters,
   TransactionsListShell,
-  TransactionsPageHeader,
+  TransactionsModuleHeader,
 } from "@/components/transactions";
 import {
   buildTransactionsApiUrl,
@@ -201,8 +201,28 @@ export function TransactionsListView() {
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
-      <TransactionsPageHeader
-        subtitle="Closings, sale details, commission splits, and lifecycle state"
+      <TransactionsModuleHeader
+        subtitle="Overview — Closings, sale details, commission splits, and lifecycle state."
+        summary={
+          <div className="grid gap-2 sm:grid-cols-4">
+            <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Active</p>
+              <p className="text-sm font-semibold text-kp-on-surface">{summary.active}</p>
+            </div>
+            <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Needs setup</p>
+              <p className="text-sm font-semibold text-rose-300">{summary.needsSetup}</p>
+            </div>
+            <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Imported</p>
+              <p className="text-sm font-semibold text-kp-teal">{summary.imported}</p>
+            </div>
+            <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
+              <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Archived</p>
+              <p className="text-sm font-semibold text-amber-300">{summary.archived}</p>
+            </div>
+          </div>
+        }
         actions={
           <Button
             type="button"
@@ -217,31 +237,8 @@ export function TransactionsListView() {
         }
       />
 
-      <div className="mx-6 mb-4 grid gap-2 sm:mx-8 sm:grid-cols-2 lg:grid-cols-5">
-        <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
-          <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Active</p>
-          <p className="text-sm font-semibold text-kp-on-surface">{summary.active}</p>
-        </div>
-        <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
-          <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Closing soon</p>
-          <p className="text-sm font-semibold text-amber-200">{summary.closingSoon}</p>
-        </div>
-        <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
-          <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Needs setup</p>
-          <p className="text-sm font-semibold text-rose-300">{summary.needsSetup}</p>
-        </div>
-        <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
-          <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Imported</p>
-          <p className="text-sm font-semibold text-kp-teal">{summary.imported}</p>
-        </div>
-        <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
-          <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Archived</p>
-          <p className="text-sm font-semibold text-amber-300">{summary.archived}</p>
-        </div>
-      </div>
-
       <TransactionsListShell
-        className="mx-6 mb-8 sm:mx-8"
+        className="mb-8 mt-6"
         title="Your transactions"
         description="URL-backed filters — share or bookmark a view"
         headerRight={

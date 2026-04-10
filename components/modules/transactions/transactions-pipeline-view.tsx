@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { GitBranch, AlertCircle, Loader2, List } from "lucide-react";
+import { GitBranch, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import { TransactionsModuleHeader } from "@/components/transactions";
 import {
   type TransactionRow,
   type TxStatus,
@@ -79,26 +80,11 @@ export function TransactionsPipelineView() {
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
-      <div className="flex flex-col gap-3 px-6 pb-4 pt-3 sm:flex-row sm:items-start sm:justify-between sm:px-8">
-        <div>
-          <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
-            Closing pipeline
-          </h1>
-          <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-            Active closings grouped by stage. Closed deals stay on the overview list.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-9 text-xs")} asChild>
-            <Link href="/transactions">
-              <List className="h-3.5 w-3.5" />
-              All transactions
-            </Link>
-          </Button>
-        </div>
-      </div>
+      <TransactionsModuleHeader
+        subtitle="Pipeline — Active closings grouped by stage. Closed deals stay on the overview list."
+      />
 
-      <div className="mx-6 space-y-6 sm:mx-8">
+      <div className="mt-6 space-y-6">
         {loading ? (
           <div className="flex min-h-[280px] items-center justify-center rounded-xl border border-kp-outline bg-kp-surface">
             <Loader2 className="h-6 w-6 animate-spin text-kp-on-surface-variant" />
