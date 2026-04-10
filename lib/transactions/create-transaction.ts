@@ -29,11 +29,13 @@ export async function createTransactionForUser({
   const {
     propertyId,
     dealId,
+    transactionSide,
     status,
     salePrice,
     closingDate,
     brokerageName,
     notes,
+    baseCommissionAmount,
   } = input;
 
   const property = await tx.property.findFirst({
@@ -54,20 +56,35 @@ export async function createTransactionForUser({
     });
   }
 
+  const withCommission =
+    baseCommissionAmount != null && baseCommissionAmount > 0
+      ? {
+          commissions: {
+            create: {
+              role: "Gross commission",
+              amount: baseCommissionAmount,
+            },
+          },
+        }
+      : {};
+
   return tx.transaction.create({
     data: {
       propertyId,
       userId,
       ...(dealId !== undefined && { dealId }),
+      ...(transactionSide !== undefined && { transactionSide }),
       ...(status !== undefined && { status }),
       ...(salePrice !== undefined && { salePrice }),
       ...(closingDate !== undefined && { closingDate }),
       ...(brokerageName !== undefined && { brokerageName }),
       ...(notes !== undefined && { notes }),
+      ...withCommission,
     },
     include: {
       property: { select: transactionPropertySelect },
       deal: { select: transactionLinkedDealSelect },
+      commissions: { orderBy: { createdAt: "asc" } },
     },
   });
 }

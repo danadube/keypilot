@@ -2,22 +2,19 @@
 
 import useSWR from "swr";
 import { apiFetcher } from "@/lib/fetcher";
+import type { TransactionSide } from "@prisma/client";
 import type { ComponentProps } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
-  MapPin,
   Loader2,
   AlertCircle,
   Pencil,
   Trash2,
   Plus,
-  Save,
   X,
   Briefcase,
   ExternalLink,
-  User,
   CheckSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,6 +28,25 @@ import {
 } from "./transactions-shared";
 import { toast } from "sonner";
 import { BrandSkeleton } from "@/components/ui/BrandSkeleton";
+import {
+  TransactionChecklistSection,
+  TransactionContextRail,
+  TransactionDetailIdentityRail,
+  TransactionDetailLayout,
+  TransactionDetailPageHeader,
+  TransactionEditDialog,
+  TransactionMilestonesCard,
+  TransactionNextActionsCard,
+  TransactionSignalsCard,
+  TransactionTimelineShell,
+} from "@/components/transactions";
+import type { SerializedTask } from "@/lib/tasks/task-serialize";
+
+type TaskListApiPayload = {
+  overdue: SerializedTask[];
+  dueToday: SerializedTask[];
+  upcoming: SerializedTask[];
+};
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -92,30 +108,10 @@ const DEAL_STATUS_LABELS: Record<DealStatus, string> = {
   LOST: "Lost",
 };
 
-function dealStatusBadgeVariant(
-  s: DealStatus
-): ComponentProps<typeof StatusBadge>["variant"] {
-  switch (s) {
-    case "INTERESTED":
-      return "pending";
-    case "SHOWING":
-      return "upcoming";
-    case "OFFER":
-      return "active";
-    case "NEGOTIATION":
-      return "live";
-    case "UNDER_CONTRACT":
-      return "sold";
-    case "CLOSED":
-      return "closed";
-    case "LOST":
-      return "cancelled";
-  }
-}
-
 type TransactionDetail = {
   id: string;
   status: TxStatus;
+  transactionSide?: TransactionSide | null;
   deletedAt: string | null;
   salePrice: string | number | null;
   closingDate: string | null;
@@ -143,15 +139,6 @@ type TransactionDetail = {
     createdAt: string;
   }>;
 };
-
-const STATUS_OPTIONS: { value: TxStatus; label: string }[] = [
-  { value: "LEAD", label: "Lead" },
-  { value: "PENDING", label: "Pending" },
-  { value: "UNDER_CONTRACT", label: "Under contract" },
-  { value: "IN_ESCROW", label: "In escrow" },
-  { value: "CLOSED", label: "Closed" },
-  { value: "FALLEN_APART", label: "Fallen apart" },
-];
 
 const STATUS_LABELS: Record<TxStatus, string> = {
   LEAD: "Lead",
@@ -188,25 +175,6 @@ function formatMoneyDisplay(v: string | number | null | undefined) {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 }
 
-function isoToDateInput(iso: string | null) {
-  if (!iso) return "";
-  return iso.slice(0, 10);
-}
-
-function salePriceToInput(v: string | number | null) {
-  if (v == null || v === "") return "";
-  const n = typeof v === "string" ? parseFloat(v) : v;
-  return Number.isNaN(n) ? "" : String(n);
-}
-
-function parseOptionalPrice(s: string): number | null | undefined {
-  const t = s.trim().replace(/,/g, "");
-  if (!t) return null;
-  const n = parseFloat(t);
-  if (Number.isNaN(n) || n <= 0) return undefined;
-  return n;
-}
-
 function parseCommissionAmount(s: string): number | undefined {
   const t = s.trim().replace(/,/g, "");
   if (!t) return undefined;
@@ -236,29 +204,45 @@ function formatTimestamp(iso: string | null | undefined) {
   });
 }
 
+function isoToDisplayDate(iso: string | null | undefined) {
+  if (!iso) return "—";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function isClosingSoon(closingDateIso: string | null, status: TxStatus): boolean {
+  if (status === "CLOSED" || !closingDateIso) return false;
+  const end = new Date(closingDateIso);
+  if (Number.isNaN(end.getTime())) return false;
+  const now = new Date();
+  const ms = end.getTime() - now.getTime();
+  const days = ms / 86400000;
+  return days >= 0 && days <= 30;
+}
+
 // ── Skeleton loader ───────────────────────────────────────────────────────────
 
 function LoadingState() {
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
       <div className="px-6 pt-3 sm:px-8">
-        <BrandSkeleton className="h-4 w-24" />
-        <div className="mt-4 flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <BrandSkeleton className="h-8 w-36" />
-            <BrandSkeleton className="h-5 w-24 rounded-full" />
-          </div>
-          <BrandSkeleton className="h-4 w-64" />
-        </div>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <BrandSkeleton className="h-28 w-full rounded-xl" />
-          <BrandSkeleton className="h-28 w-full rounded-xl" />
-          <BrandSkeleton className="h-28 w-full rounded-xl" />
-        </div>
-        <div className="mt-4 flex flex-col gap-4">
+        <BrandSkeleton className="h-4 w-28" />
+        <BrandSkeleton className="mt-4 h-8 w-64 max-w-full" />
+        <BrandSkeleton className="mt-2 h-4 w-full max-w-md" />
+      </div>
+      <div className="mx-6 mt-6 grid gap-6 lg:grid-cols-[minmax(260px,320px)_1fr_minmax(260px,320px)] sm:mx-8">
+        <BrandSkeleton className="h-72 w-full rounded-xl" />
+        <div className="flex min-h-[320px] flex-col gap-4">
+          <BrandSkeleton className="h-24 w-full rounded-xl" />
+          <BrandSkeleton className="h-24 w-full rounded-xl" />
           <BrandSkeleton className="h-40 w-full rounded-xl" />
-          <BrandSkeleton className="h-32 w-full rounded-xl" />
         </div>
+        <BrandSkeleton className="h-64 w-full rounded-xl" />
       </div>
     </div>
   );
@@ -281,13 +265,18 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
   );
   const dealCandidates = useMemo(() => linkedDeals ?? [], [linkedDeals]);
 
-  const [status, setStatus] = useState<TxStatus>("PENDING");
-  const [salePriceInput, setSalePriceInput] = useState("");
-  const [closingInput, setClosingInput] = useState("");
-  const [brokerageInput, setBrokerageInput] = useState("");
-  const [notesInput, setNotesInput] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [dirty, setDirty] = useState(false);
+  const { data: tasksPayload, isLoading: tasksLoading } = useSWR<TaskListApiPayload>(
+    txn?.property?.id
+      ? `/api/v1/tasks?propertyId=${encodeURIComponent(txn.property.id)}`
+      : null,
+    apiFetcher
+  );
+  const propertyOpenTasks = useMemo(() => {
+    if (!tasksPayload) return [];
+    return [...tasksPayload.overdue, ...tasksPayload.dueToday, ...tasksPayload.upcoming];
+  }, [tasksPayload]);
+
+  const [editOpen, setEditOpen] = useState(false);
 
   const [newRole, setNewRole] = useState("");
   const [newAmount, setNewAmount] = useState("");
@@ -311,6 +300,17 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
   );
   const [taskModalOpen, setTaskModalOpen] = useState(false);
 
+  const scrollToTxnSection = useCallback((id: "txn-checklist" | "txn-timeline") => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
+  const focusChecklistQuickAdd = useCallback(() => {
+    scrollToTxnSection("txn-checklist");
+    requestAnimationFrame(() => {
+      document.getElementById("txn-checklist-quick-add")?.focus();
+    });
+  }, [scrollToTxnSection]);
+
   const selectableDeals = useMemo(
     () =>
       dealCandidates.filter(
@@ -323,28 +323,10 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     () => (txn ? getTransactionSetupGaps(txn) : []),
     [txn]
   );
-
-  useEffect(() => {
-    if (!txn) return;
-    setStatus(txn.status);
-    setSalePriceInput(salePriceToInput(txn.salePrice));
-    setClosingInput(isoToDateInput(txn.closingDate));
-    setBrokerageInput(txn.brokerageName ?? "");
-    setNotesInput(txn.notes ?? "");
-    setDirty(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [txn?.id]);
-
-  useEffect(() => {
-    if (!txn) return;
-    const changed =
-      status !== txn.status ||
-      salePriceInput !== salePriceToInput(txn.salePrice) ||
-      closingInput !== isoToDateInput(txn.closingDate) ||
-      brokerageInput !== (txn.brokerageName ?? "") ||
-      notesInput !== (txn.notes ?? "");
-    setDirty(changed);
-  }, [txn, status, salePriceInput, closingInput, brokerageInput, notesInput]);
+  const setupGapLabels = useMemo(
+    () => setupGaps.map((g) => setupGapLabel(g)),
+    [setupGaps]
+  );
 
   const patchDealLink = async (dealId: string | null) => {
     setDealLinkBusy(true);
@@ -363,51 +345,6 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       setDealLinkError(e instanceof Error ? e.message : "Link update failed");
     } finally {
       setDealLinkBusy(false);
-    }
-  };
-
-  const handleSaveTransaction = async () => {
-    if (!txn) return;
-
-    const body: Record<string, unknown> = { status };
-
-    const price = parseOptionalPrice(salePriceInput);
-    if (price === undefined) {
-      toast.error("Enter a valid sale price or leave blank to clear.");
-      return;
-    }
-    body.salePrice = price;
-
-    if (closingInput.trim()) {
-      body.closingDate = closingInput.trim();
-    } else {
-      body.closingDate = null;
-    }
-
-    body.brokerageName = brokerageInput.trim() ? brokerageInput.trim() : null;
-    body.notes = notesInput.trim() ? notesInput.trim() : null;
-
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/v1/transactions/${transactionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json();
-      if (json.error) throw new Error(json.error.message);
-      const t: TransactionDetail = json.data;
-      await reloadTxn(t, false);
-      setStatus(t.status);
-      setSalePriceInput(salePriceToInput(t.salePrice));
-      setClosingInput(isoToDateInput(t.closingDate));
-      setBrokerageInput(t.brokerageName ?? "");
-      setNotesInput(t.notes ?? "");
-      setDirty(false);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -588,10 +525,15 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
   if (loading) return <LoadingState />;
 
   if (error || !txn) {
+    const detail =
+      error?.includes("CRM features") || error?.includes("Full CRM")
+        ? "Transactions require Full CRM access for your workspace."
+        : error ??
+          "This transaction could not be loaded. It may not exist or you may not have access.";
     return (
-      <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 rounded-2xl bg-kp-bg px-6">
+      <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 rounded-2xl bg-kp-bg px-6 text-center">
         <AlertCircle className="h-6 w-6 text-red-400" />
-        <p className="text-sm text-kp-on-surface-variant">{error ?? "Not found"}</p>
+        <p className="max-w-md text-sm text-kp-on-surface-variant">{detail}</p>
         <Link
           href="/transactions"
           className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
@@ -619,164 +561,77 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
       <div className="px-6 pt-3 sm:px-8">
-        <Link
-          href="/transactions"
-          className="inline-flex items-center gap-1.5 text-sm text-kp-on-surface-variant transition-colors hover:text-kp-teal"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Transactions
-        </Link>
-
-        <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-headline text-[1.5rem] font-semibold text-kp-on-surface">
-                Transaction
-              </h1>
-              <StatusBadge variant={statusBadgeVariant(txn.status)}>
-                {STATUS_LABELS[txn.status]}
-              </StatusBadge>
-            </div>
-            <p className="mt-1 text-sm font-medium text-kp-on-surface">
+        <TransactionDetailPageHeader
+          subtitle={
+            <span>
               {txn.property.address1}
-              <span className="font-normal text-kp-on-surface-variant">
+              <span className="text-kp-on-surface-variant">
                 {" "}
                 · {txn.property.city}, {txn.property.state} {txn.property.zip}
               </span>
-            </p>
-            {txn.deletedAt && (
-              <p className="mt-2 inline-flex rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-xs font-semibold text-amber-300">
-                Archived transaction
-              </p>
-            )}
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 shrink-0 gap-1.5 text-xs"
-            onClick={() => setTaskModalOpen(true)}
-          >
-            <CheckSquare className="h-4 w-4" />
-            Add task
-          </Button>
-        </div>
+            </span>
+          }
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1.5 text-xs"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 shrink-0 gap-1.5 text-xs"
+                onClick={() => setTaskModalOpen(true)}
+              >
+                <CheckSquare className="h-4 w-4" />
+                Add task
+              </Button>
+            </div>
+          }
+        />
       </div>
 
-      <div className="mx-6 mt-6 space-y-6 sm:mx-8">
-        <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-          <h2 className="text-sm font-semibold text-kp-on-surface">Record links</h2>
-          <p className="mt-1 text-xs text-kp-on-surface-variant">
-            This closing is always tied to one property. A CRM deal is optional; the buyer/seller contact
-            comes from that deal, not directly from the transaction.
-          </p>
-          <ul className="mt-4 divide-y divide-kp-outline-variant">
-            <li className="flex flex-col gap-2 pb-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex min-w-0 gap-2">
-                <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" aria-hidden />
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                    Property
-                  </p>
-                  <p className="mt-0.5 text-sm font-medium text-kp-on-surface">{txn.property.address1}</p>
-                  <p className="text-xs text-kp-on-surface-variant">
-                    {txn.property.city}, {txn.property.state} {txn.property.zip}
-                  </p>
-                </div>
-              </div>
-              <Link
-                href={`/properties/${txn.property.id}`}
-                className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
-              >
-                Open property
-                <ExternalLink className="h-3 w-3 opacity-70" />
-              </Link>
-            </li>
-            <li className="flex flex-col gap-2 py-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex min-w-0 gap-2">
-                <Briefcase className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" aria-hidden />
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                    CRM deal
-                  </p>
-                  {txn.deal ? (
-                    <p className="mt-0.5 text-sm text-kp-on-surface">
-                      <StatusBadge variant={dealStatusBadgeVariant(txn.deal.status)}>
-                        {DEAL_STATUS_LABELS[txn.deal.status]}
-                      </StatusBadge>
-                    </p>
-                  ) : (
-                    <p className="mt-0.5 text-sm text-kp-on-surface-variant">Not linked</p>
-                  )}
-                </div>
-              </div>
-              {txn.deal ? (
-                <Link
-                  href={`/deals/${txn.deal.id}`}
-                  className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
-                >
-                  Open deal
-                  <ExternalLink className="h-3 w-3 opacity-70" />
-                </Link>
-              ) : null}
-            </li>
-            <li className="flex flex-col gap-2 pt-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex min-w-0 gap-2">
-                <User className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" aria-hidden />
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                    Contact (via deal)
-                  </p>
-                  {txn.deal ? (
-                    <p className="mt-0.5 text-sm font-medium text-kp-on-surface">
-                      {[txn.deal.contact.firstName, txn.deal.contact.lastName].filter(Boolean).join(" ") ||
-                        "—"}
-                    </p>
-                  ) : (
-                    <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-                      Link a CRM deal below to connect this closing to a contact.
-                    </p>
-                  )}
-                </div>
-              </div>
-              {txn.deal ? (
-                <Link
-                  href={`/contacts/${txn.deal.contact.id}`}
-                  className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
-                >
-                  Open contact
-                  <ExternalLink className="h-3 w-3 opacity-70" />
-                </Link>
-              ) : null}
-            </li>
-          </ul>
-        </section>
-
-        {setupGaps.length > 0 ? (
-          <section className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-rose-300">
-              Needs setup
-            </p>
-            <p className="mt-1 text-sm text-rose-100">
-              Fill {setupGaps.map((gap) => setupGapLabel(gap)).join(", ")} to complete this
-              transaction record.
-            </p>
-          </section>
-        ) : null}
-
-        {importProvenance ? (
-          <section className="rounded-xl border border-kp-teal/30 bg-kp-teal/10 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-kp-teal">
-              Imported provenance
-            </p>
-            <p className="mt-1 text-sm text-kp-on-surface">
-              Source statement: <span className="font-medium">{importProvenance.sourceFile}</span>
-            </p>
-            <p className="mt-1 text-xs text-kp-on-surface-variant">
-              Imported transaction created {formatTimestamp(txn.createdAt)}.
-            </p>
-          </section>
-        ) : null}
+      <div className="mx-6 mt-6 sm:mx-8">
+        <TransactionDetailLayout
+          left={
+            <TransactionDetailIdentityRail
+              property={txn.property}
+              statusLabel={STATUS_LABELS[txn.status]}
+              statusBadgeVariant={statusBadgeVariant(txn.status)}
+              transactionSide={txn.transactionSide}
+              closingDateLabel={isoToDisplayDate(txn.closingDate)}
+              salePrice={txn.salePrice}
+              brokerageName={txn.brokerageName}
+              commissionLines={txn.commissions}
+              archived={!!txn.deletedAt}
+            />
+          }
+          center={
+            <>
+              <TransactionNextActionsCard
+                onAddChecklistItem={focusChecklistQuickAdd}
+                onLogActivity={() => scrollToTxnSection("txn-timeline")}
+                onCreateTask={() => setTaskModalOpen(true)}
+              />
+              <TransactionChecklistSection
+                transactionId={txn.id}
+                onFocusQuickAdd={focusChecklistQuickAdd}
+              />
+              <TransactionTimelineShell
+                onLogActivity={() => scrollToTxnSection("txn-timeline")}
+              />
+              <TransactionMilestonesCard
+                closingDateIso={txn.closingDate}
+                createdAtIso={txn.createdAt}
+                updatedAtIso={txn.updatedAt}
+              />
 
         <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
           <div className="flex flex-wrap items-center gap-2">
@@ -785,7 +640,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           </div>
           <p className="mt-0.5 text-xs text-kp-on-surface-variant">
             Choose a deal on this same property. That deal&apos;s contact is what ties people to this
-            closing (see Record links above).
+            closing (see Linked context on the right).
           </p>
 
           {dealLinkError && (
@@ -891,10 +746,24 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
         </section>
 
         <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-          <h2 className="text-sm font-semibold text-kp-on-surface">Transaction details</h2>
-          <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-            Changes save to this closing record only.
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-kp-on-surface">Transaction record</h2>
+              <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+                Status, side, economics, and notes — use Edit in the header for a fast form.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => setEditOpen(true)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit details
+            </Button>
+          </div>
 
           {importSession && (
             <div className="mt-4 rounded-lg border border-kp-teal/20 bg-kp-teal/10 px-3 py-2">
@@ -914,130 +783,11 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             </div>
           )}
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label htmlFor="detail-status" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                Status
-              </label>
-              <select
-                id="detail-status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as TxStatus)}
-                className={cn(
-                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface",
-                  "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
-              >
-                {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="detail-price" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                Sale price
-              </label>
-              <input
-                id="detail-price"
-                type="text"
-                inputMode="decimal"
-                value={salePriceInput}
-                onChange={(e) => setSalePriceInput(e.target.value)}
-                placeholder="Optional"
-                className={cn(
-                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
-                  "text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
-                  "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="detail-close" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                Closing date
-              </label>
-              <input
-                id="detail-close"
-                type="date"
-                value={closingInput}
-                onChange={(e) => setClosingInput(e.target.value)}
-                className={cn(
-                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface",
-                  "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
-              />
-            </div>
-
-            <div className="space-y-1.5 sm:col-span-2">
-              <label htmlFor="detail-brokerage" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                Brokerage
-              </label>
-              <input
-                id="detail-brokerage"
-                type="text"
-                value={brokerageInput}
-                onChange={(e) => setBrokerageInput(e.target.value)}
-                className={cn(
-                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
-                  "text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
-              />
-            </div>
-
-            <div className="space-y-1.5 sm:col-span-2">
-              <label htmlFor="detail-notes" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                Notes
-              </label>
-              <textarea
-                id="detail-notes"
-                rows={3}
-                value={notesInput}
-                onChange={(e) => setNotesInput(e.target.value)}
-                className={cn(
-                  "w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm",
-                  "text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              type="button"
-              disabled={!dirty || saving}
-              onClick={() => {
-                setStatus(txn.status);
-                setSalePriceInput(salePriceToInput(txn.salePrice));
-                setClosingInput(isoToDateInput(txn.closingDate));
-                setBrokerageInput(txn.brokerageName ?? "");
-                setNotesInput(txn.notes ?? "");
-              }}
-              className={cn(
-                "rounded-lg px-4 py-2 text-sm text-kp-on-surface-variant",
-                "hover:bg-kp-surface-high hover:text-kp-on-surface",
-                "disabled:pointer-events-none disabled:opacity-40"
-              )}
-            >
-              Reset
-            </button>
-            <button
-              type="button"
-              disabled={!dirty || saving}
-              onClick={handleSaveTransaction}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
-                dirty && !saving
-                  ? "bg-kp-gold text-kp-bg hover:bg-kp-gold-bright"
-                  : "cursor-not-allowed bg-kp-surface-high text-kp-on-surface-variant"
-              )}
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save
-            </button>
-          </div>
+          {txn.notes?.trim() ? (
+            <p className="mt-4 line-clamp-4 text-sm text-kp-on-surface-variant">{txn.notes}</p>
+          ) : (
+            <p className="mt-4 text-sm text-kp-on-surface-variant">No notes yet.</p>
+          )}
         </section>
 
         <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
@@ -1236,7 +986,48 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             </button>
           </form>
         </section>
+            </>
+          }
+          right={
+            <>
+              <TransactionSignalsCard
+                setupGapLabels={setupGapLabels}
+                archived={!!txn.deletedAt}
+                importSourceFile={importProvenance?.sourceFile ?? null}
+                closingSoon={isClosingSoon(txn.closingDate, txn.status)}
+              />
+              <TransactionContextRail
+                property={txn.property}
+                deal={txn.deal}
+                tasksLoading={tasksLoading}
+                openTasks={propertyOpenTasks}
+              />
+            </>
+          }
+        />
       </div>
+
+      <TransactionEditDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        transaction={
+          txn
+            ? {
+                id: txn.id,
+                status: txn.status,
+                transactionSide: txn.transactionSide,
+                salePrice: txn.salePrice,
+                closingDate: txn.closingDate,
+                brokerageName: txn.brokerageName,
+                notes: txn.notes,
+                commissions: txn.commissions,
+              }
+            : null
+        }
+        onSaved={async () => {
+          await reloadTxn();
+        }}
+      />
 
       <NewTaskModal
         open={taskModalOpen}

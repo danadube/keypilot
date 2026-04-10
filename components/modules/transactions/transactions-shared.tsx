@@ -1,4 +1,5 @@
 import type { ComponentProps } from "react";
+import type { TransactionSide as TransactionSideEnum } from "@prisma/client";
 import Link from "next/link";
 import { ExternalLink, User } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,8 @@ export type TransactionLinkedDealRow = {
 export type TransactionRow = {
   id: string;
   status: TxStatus;
+  /** Null until set on create/edit — URL `side=` filters on this field. */
+  transactionSide?: TransactionSideEnum | null;
   deletedAt?: string | null;
   salePrice: string | number | null;
   closingDate: string | null;
@@ -40,6 +43,11 @@ export type TransactionRow = {
     zip: string;
   };
   deal?: TransactionLinkedDealRow | null;
+};
+
+export const SIDE_LABELS: Record<TransactionSideEnum, string> = {
+  BUY: "Buy",
+  SELL: "Sell",
 };
 
 export const STATUS_LABELS: Record<TxStatus, string> = {
@@ -197,13 +205,23 @@ export function TransactionsListTableRow({ row: t, index: i }: { row: Transactio
             Imported statement
           </p>
         )}
-        <span className="mt-1 inline-block sm:hidden">
+        <span className="mt-1 inline-flex flex-wrap items-center gap-2 sm:hidden">
           <StatusBadge variant={statusBadgeVariant(t.status)}>{STATUS_LABELS[t.status]}</StatusBadge>
+          {t.transactionSide ? (
+            <span className="rounded-md border border-kp-outline bg-kp-surface-high px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+              {SIDE_LABELS[t.transactionSide]}
+            </span>
+          ) : null}
         </span>
       </td>
       <td className={cn(TD, "hidden sm:table-cell")}>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge variant={statusBadgeVariant(t.status)}>{STATUS_LABELS[t.status]}</StatusBadge>
+          {t.transactionSide ? (
+            <span className="rounded-md border border-kp-outline bg-kp-surface-high px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+              {SIDE_LABELS[t.transactionSide]}
+            </span>
+          ) : null}
           {t.deletedAt ? (
             <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-300">
               Archived

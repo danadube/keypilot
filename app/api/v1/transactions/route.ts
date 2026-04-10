@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
+import { TransactionSide, TransactionStatus } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
@@ -12,7 +14,47 @@ import {
   createTransactionForUser,
   transactionPropertySelect,
 } from "@/lib/transactions/create-transaction";
-import { TransactionStatus } from "@prisma/client";
+import { ACTIVE_TRANSACTION_STATUSES } from "@/lib/transactions/list-query";
+
+function parseStatusFilter(raw: string | null): "ACTIVE" | TransactionStatus | null {
+  if (raw == null || raw.trim() === "") return null;
+  const u = raw.trim().toUpperCase();
+  if (u === "ACTIVE") return "ACTIVE";
+  if (Object.values(TransactionStatus).includes(u as TransactionStatus)) {
+    return u as TransactionStatus;
+  }
+  return null;
+}
+
+function parseSideFilter(raw: string | null): TransactionSide | null {
+  if (raw == null || raw.trim() === "") return null;
+  const u = raw.trim().toUpperCase();
+  if (u === "BUY" || u === "SELL") return u as TransactionSide;
+  return null;
+}
+
+function buildSearchWhere(term: string): Prisma.TransactionWhereInput {
+  const t = term.trim();
+  if (t.length === 0) return {};
+  const contains: Prisma.StringFilter = { contains: t, mode: "insensitive" };
+  return {
+    OR: [
+      { property: { address1: contains } },
+      { property: { city: contains } },
+      { brokerageName: contains },
+      { notes: contains },
+      {
+        deal: {
+          is: {
+            contact: {
+              OR: [{ firstName: contains }, { lastName: contains }],
+            },
+          },
+        },
+      },
+    ],
+  };
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -22,16 +64,52 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const status = searchParams.get("status") as TransactionStatus | null;
-    const showArchived = searchParams.get("showArchived") === "1";
+    const showArchived = searchParams.get("showArchived") === "1" || searchParams.get("archived") === "1";
+    const setupOnly = searchParams.get("setup") === "1";
+    const statusRaw = searchParams.get("status");
+    const sideParsed = parseSideFilter(searchParams.get("side"));
+    const qRaw = searchParams.get("q");
+    const q = typeof qRaw === "string" ? qRaw.trim().slice(0, 200) : "";
+
+    const statusFilter = parseStatusFilter(statusRaw);
+
+    const andParts: Prisma.TransactionWhereInput[] = [
+      { userId: user.id },
+      ...(showArchived ? [] : [{ deletedAt: null }]),
+    ];
+
+    if (statusFilter === "ACTIVE") {
+      andParts.push({ status: { in: ACTIVE_TRANSACTION_STATUSES } });
+    } else if (statusFilter != null) {
+      andParts.push({ status: statusFilter });
+    }
+
+    if (sideParsed) {
+      andParts.push({ transactionSide: sideParsed });
+    }
+
+    if (setupOnly) {
+      andParts.push({
+        OR: [
+          { salePrice: null },
+          { closingDate: null },
+          { brokerageName: null },
+          { brokerageName: "" },
+        ],
+      });
+    }
+
+    const searchWhere = buildSearchWhere(q);
+    if (Object.keys(searchWhere).length > 0) {
+      andParts.push(searchWhere);
+    }
+
+    const where: Prisma.TransactionWhereInput =
+      andParts.length === 1 ? andParts[0]! : { AND: andParts };
 
     const transactions = await withRLSContext(user.id, (tx) =>
       tx.transaction.findMany({
-        where: {
-          userId: user.id,
-          ...(showArchived ? {} : { deletedAt: null }),
-          ...(status ? { status } : {}),
-        },
+        where,
         include: {
           property: { select: transactionPropertySelect },
           deal: { select: transactionLinkedDealSelect },
