@@ -4,7 +4,7 @@ import useSWR from "swr";
 import { apiFetcher } from "@/lib/fetcher";
 import type { TransactionSide } from "@prisma/client";
 import type { ComponentProps } from "react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Loader2,
@@ -36,6 +36,7 @@ import {
   TransactionDetailPageHeader,
   TransactionEditDialog,
   TransactionMilestonesCard,
+  TransactionNextActionsCard,
   TransactionSignalsCard,
   TransactionTimelineShell,
 } from "@/components/transactions";
@@ -298,6 +299,10 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     null
   );
   const [taskModalOpen, setTaskModalOpen] = useState(false);
+
+  const scrollToTxnSection = useCallback((id: "txn-checklist" | "txn-timeline") => {
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   const selectableDeals = useMemo(
     () =>
@@ -603,8 +608,17 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           }
           center={
             <>
-              <TransactionTimelineShell />
-              <TransactionChecklistShell />
+              <TransactionNextActionsCard
+                onAddChecklistItem={() => scrollToTxnSection("txn-checklist")}
+                onLogActivity={() => scrollToTxnSection("txn-timeline")}
+                onCreateTask={() => setTaskModalOpen(true)}
+              />
+              <TransactionChecklistShell
+                onAddChecklistItem={() => scrollToTxnSection("txn-checklist")}
+              />
+              <TransactionTimelineShell
+                onLogActivity={() => scrollToTxnSection("txn-timeline")}
+              />
               <TransactionMilestonesCard
                 closingDateIso={txn.closingDate}
                 createdAtIso={txn.createdAt}
