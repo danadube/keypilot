@@ -71,6 +71,25 @@ If you add SQL only under `supabase/migrations/`, you must **also** add an equiv
 3. Open the preview URL and exercise the feature (especially authenticated routes using **`withRLSContext`**). After a **TransactionHQ**-related schema change, smoke authenticated **`GET /api/v1/transactions`** and **`GET /api/v1/transactions/attention`** (expect **200**, not **500**), then **`/transactions`**, a **`/transactions/[id]`** detail page, and the Command Center **Transaction attention** section.
 4. Confirm no **500**s on primary surfaces (e.g. ShowingHQ dashboard). In the Vercel deployment **Build** log, confirm **`prisma migrate deploy`** finished successfully before **`next build`** (otherwise the app may still be ahead of the DB).
 
+### Troubleshooting: P3009 (failed migrations)
+
+If **`npm run build`** on Vercel fails with **`Error: P3009`**, Prisma **`migrate deploy`** found a **failed** migration row in **`_prisma_migrations`** on that database and will not apply newer migrations until history is reconciled.
+
+1. **Identify the migration name** from the build log (Prisma prints which migration failed) or inspect **`_prisma_migrations`** in Supabase SQL Editor / `psql` for rows with **`finished_at` IS NULL** or failed checksums.
+2. **Fix the database state** so it matches the intended outcome of that migration (re-run the SQL manually if needed, or restore from backup — depends on what went wrong).
+3. **Tell Prisma the outcome** using a **direct** connection (same host as **`DIRECT_URL`**, not the transaction pooler):
+   - If the migration’s changes are **already applied** in the DB:  
+     **`npx prisma migrate resolve --applied "<migration_folder_name>"`**
+   - If you **rolled back** or never want those changes:  
+     **`npx prisma migrate resolve --rolled-back "<migration_folder_name>"`**  
+     (only when you understand the data implications.)
+4. Run **`npx prisma migrate deploy`** again against that environment; it should apply any pending migrations.
+5. **Redeploy** on Vercel.
+
+**Temporary unblock (use sparingly):** Set **`SKIP_PRISMA_MIGRATE_ON_BUILD=1`** on the Vercel project so the build skips **`migrate deploy`** and **`next build`** can succeed while you fix **`_prisma_migrations`**. Remove the variable after **`migrate deploy`** runs cleanly; otherwise preview/production schema can drift behind the app.
+
+**Prevention:** Run migrations against a **direct** Postgres URL (**`DIRECT_URL` / `db.*.supabase.co:5432`**). Using a **transaction pooler** for migrate can cause flaky applies and failed migration records.
+
 ### Production
 
 1. Merge only after preview validation.
