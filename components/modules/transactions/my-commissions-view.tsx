@@ -15,6 +15,7 @@ import {
   TD,
 } from "./transactions-shared";
 import { UI_COPY } from "@/lib/ui-copy";
+import { TransactionsModuleHeader } from "@/components/transactions";
 
 type MineTransactionSummary = {
   id: string;
@@ -84,16 +85,12 @@ export function MyCommissionsView() {
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
-      <div className="px-6 pb-4 pt-3 sm:px-8">
-        <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
-          My commissions
-        </h1>
-        <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-          Earnings on deals where you are assigned on a commission line. Open the parent transaction for full context.
-        </p>
-      </div>
+      <TransactionsModuleHeader
+        title="Commissions"
+        subtitle="Earnings on deals where you are assigned on a commission line. Open the parent transaction for full context."
+      />
 
-      <div className="mx-6 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
+      <div className="mx-6 mt-6 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
         <div className="flex items-start gap-2 border-b border-kp-outline px-5 py-4">
           <Wallet className="mt-0.5 h-4 w-4 text-kp-teal" />
           <div>

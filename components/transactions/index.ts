@@ -1,5 +1,12 @@
 export { TransactionsModuleShell } from "./transactions-module-shell";
 export { TransactionsPageHeader } from "./TransactionsPageHeader";
+export { TransactionsModuleHeader } from "./transactions-module-header";
+export {
+  TransactionsModuleTabBar,
+  TRANSACTIONS_TAB_ITEMS,
+  getActiveTransactionsTabId,
+} from "./transactions-module-tab-bar";
+export type { TransactionsTabId } from "./transactions-module-tab-bar";
 export { TransactionsListShell } from "./TransactionsListShell";
 export { TransactionsListFilters } from "./TransactionsListFilters";
 export { TransactionDetailLayout } from "./transaction-detail-layout";

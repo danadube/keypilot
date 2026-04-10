@@ -39,6 +39,7 @@ import {
   TransactionNextActionsCard,
   TransactionSignalsCard,
   TransactionTimelineShell,
+  TransactionsModuleTabBar,
 } from "@/components/transactions";
 import type { SerializedTask } from "@/lib/tasks/task-serialize";
 
@@ -230,6 +231,7 @@ function isClosingSoon(closingDateIso: string | null, status: TxStatus): boolean
 function LoadingState() {
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
+      <TransactionsModuleTabBar className="px-6 sm:px-8" />
       <div className="px-6 pt-3 sm:px-8">
         <BrandSkeleton className="h-4 w-28" />
         <BrandSkeleton className="mt-4 h-8 w-64 max-w-full" />
@@ -531,15 +533,18 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
         : error ??
           "This transaction could not be loaded. It may not exist or you may not have access.";
     return (
-      <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 rounded-2xl bg-kp-bg px-6 text-center">
-        <AlertCircle className="h-6 w-6 text-red-400" />
-        <p className="max-w-md text-sm text-kp-on-surface-variant">{detail}</p>
-        <Link
-          href="/transactions"
-          className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
-        >
-          Back to transactions
-        </Link>
+      <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
+        <TransactionsModuleTabBar className="px-6 sm:px-8" />
+        <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 px-6 pt-6 text-center sm:px-8">
+          <AlertCircle className="h-6 w-6 text-red-400" />
+          <p className="max-w-md text-sm text-kp-on-surface-variant">{detail}</p>
+          <Link
+            href="/transactions"
+            className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
+          >
+            Back to overview
+          </Link>
+        </div>
       </div>
     );
   }
@@ -560,6 +565,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
+      <TransactionsModuleTabBar className="px-6 sm:px-8" />
       <div className="px-6 pt-3 sm:px-8">
         <TransactionDetailPageHeader
           subtitle={

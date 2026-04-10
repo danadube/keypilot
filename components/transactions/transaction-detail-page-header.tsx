@@ -31,7 +31,7 @@ export function TransactionDetailPageHeader({
           className="inline-flex items-center gap-1.5 text-sm text-kp-on-surface-variant transition-colors hover:text-kp-teal"
         >
           <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
-          Transactions
+          Overview
         </Link>
         <h1 className="mt-3 font-headline text-[1.5rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
           Transaction workspace
