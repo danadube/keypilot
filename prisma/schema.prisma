@@ -1134,6 +1134,32 @@ enum TransactionActivityType {
   CHECKLIST_ITEM_COMPLETED
 }
 
+/** Reference data: default checklist structures (seeded; not tenant-owned rows). */
+enum TransactionChecklistTemplateSide {
+  BUY
+  SELL
+}
+
+model TransactionChecklistTemplate {
+  id    String                         @id @default(uuid())
+  side  TransactionChecklistTemplateSide @unique
+  label String
+  items TransactionChecklistTemplateItem[]
+
+  @@map("transaction_checklist_templates")
+}
+
+model TransactionChecklistTemplateItem {
+  id         String                     @id @default(uuid())
+  templateId String
+  sortOrder  Int
+  title      String
+  template   TransactionChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, sortOrder])
+  @@map("transaction_checklist_template_items")
+}
+
 /** Persisted per-transaction checklist rows (TransactionHQ operational steps). */
 model TransactionChecklistItem {
   id            String    @id @default(uuid())

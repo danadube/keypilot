@@ -27,6 +27,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { getImportProvenance } from "./transactions-shared";
 import { TransactionSignalsCard } from "@/components/modules/transactions/transaction-signals-card";
 import { TransactionActivityTimeline } from "@/components/modules/transactions/transaction-activity-timeline";
+import { TransactionChecklistPanel } from "@/components/modules/transactions/transaction-checklist-panel";
 import {
   computeTransactionSignals,
   setupGapLabelsFromInput,
@@ -784,6 +785,15 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             incompleteChecklistCount={attentionSignals.incompleteChecklistCount}
           />
         ) : null}
+
+        <TransactionChecklistPanel
+          transactionId={transactionId}
+          archived={!!txn.deletedAt}
+          onListsChanged={() => {
+            void reloadTxn();
+            void globalMutate(activityListKey);
+          }}
+        />
 
         <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
           <div className="flex flex-wrap items-center gap-2">
