@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma, type TransactionChecklistItem } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
-import { withRLSContext } from "@/lib/db-context";
+import { withRLSContext, withRLSContextOrFallbackAdmin } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { CreateTransactionChecklistItemSchema } from "@/lib/validations/transaction";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { recordTransactionActivity } from "@/lib/transactions/record-transaction-activity";
-import type { TransactionChecklistItem } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -37,22 +37,33 @@ export async function GET(
     }
     const { id: transactionId } = await params;
 
-    const items = await withRLSContext(user.id, async (tx) => {
-      const transaction = await tx.transaction.findFirst({
-        where: { id: transactionId, userId: user.id },
-        select: { id: true },
-      });
-      if (!transaction) return null;
+    const items = await withRLSContextOrFallbackAdmin(
+      user.id,
+      "api/v1/transactions/[id]/checklist:get",
+      async (tx) => {
+        const transaction = await tx.transaction.findFirst({
+          where: { id: transactionId, userId: user.id },
+          select: { id: true },
+        });
+        if (!transaction) return null;
 
-      const rows = await tx.transactionChecklistItem.findMany({
-        where: { transactionId },
-      });
-      return sortChecklistItems(rows);
-    });
+        const rows = await tx.transactionChecklistItem.findMany({
+          where: { transactionId },
+        });
+        return sortChecklistItems(rows);
+      }
+    );
 
     if (!items) return apiError("Transaction not found", 404);
     return NextResponse.json({ data: items });
   } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+      console.error("[GET /api/v1/transactions/[id]/checklist] Prisma", {
+        code: e.code,
+        meta: e.meta,
+      });
+      return apiErrorFromCaught(e, { log: false });
+    }
     return apiErrorFromCaught(e);
   }
 }
