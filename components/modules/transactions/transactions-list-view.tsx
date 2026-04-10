@@ -4,14 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { apiFetcher } from "@/lib/fetcher";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Banknote,
-  Search,
-  X,
-  AlertCircle,
-  Loader2,
-  LayoutDashboard,
-} from "lucide-react";
+import { Search, X, AlertCircle, Loader2, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SectionTabs } from "@/components/ui/section-tabs";
 import { BrandTablePagination } from "@/components/ui/BrandTablePagination";
@@ -25,6 +18,7 @@ import {
   TransactionsListTableRow,
   TH,
 } from "./transactions-shared";
+import { TransactionsListShell, TransactionsPageHeader } from "@/components/transactions";
 import { UI_COPY } from "@/lib/ui-copy";
 
 const STATUS_TABS = [
@@ -250,24 +244,18 @@ export function TransactionsListView() {
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
-      <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-3 sm:px-8">
-        <div>
-          <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
-            Transactions
-          </h1>
-          <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-            Closings, sale details, commission splits, and lifecycle state
-          </p>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.replace("/transactions?new=1", { scroll: false })}
-          className={cn(kpBtnSave, "mt-0.5 h-9 shrink-0 border-transparent px-3 text-xs")}
-        >
-          + Add transaction
-        </Button>
-      </div>
+      <TransactionsPageHeader
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.replace("/transactions?new=1", { scroll: false })}
+            className={cn(kpBtnSave, "mt-0.5 h-9 border-transparent px-3 text-xs")}
+          >
+            + Add transaction
+          </Button>
+        }
+      />
 
       <div className="mx-6 mb-4 grid gap-2 sm:mx-8 sm:grid-cols-4">
         <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
@@ -288,26 +276,20 @@ export function TransactionsListView() {
         </div>
       </div>
 
-      <div className="mx-6 mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
-        <div className="flex items-start justify-between gap-4 border-b border-kp-outline px-5 py-4">
-          <div className="flex items-start gap-2">
-            <Banknote className="mt-0.5 h-4 w-4 text-kp-teal" />
-            <div>
-              <p className="text-sm font-semibold text-kp-on-surface">Your transactions</p>
-              <p className="text-xs text-kp-on-surface-variant">
-                Filter by stage or search the list
-              </p>
-            </div>
-          </div>
-          {showContent && rows.length > 0 && (
-            <span className="shrink-0 text-xs tabular-nums text-kp-on-surface-variant">
+      <TransactionsListShell
+        className="mx-6 mb-8 sm:mx-8"
+        title="Your transactions"
+        description="Filter by stage or search the list"
+        headerRight={
+          showContent && rows.length > 0 ? (
+            <span className="text-xs tabular-nums text-kp-on-surface-variant">
               {visible.length}
               {visible.length !== rows.length && ` / ${rows.length}`}{" "}
               {rows.length === 1 ? "record" : "records"}
             </span>
-          )}
-        </div>
-
+          ) : null
+        }
+      >
         {showContent && rows.length > 0 && (
           <div className="border-b border-kp-outline px-5">
             <SectionTabs
@@ -377,7 +359,7 @@ export function TransactionsListView() {
             )}
           </>
         )}
-      </div>
+      </TransactionsListShell>
 
       <CreateTransactionModal
         open={createOpen}
