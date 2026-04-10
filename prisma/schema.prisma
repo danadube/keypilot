@@ -47,6 +47,7 @@ model User {
   transactions              Transaction[]
   transactionImportSessions TransactionImportSession[]
   commissions               Commission[]
+  transactionActivitiesAuthored TransactionActivity[] @relation("TransactionActivityActor")
   supraQueueItems           SupraQueueItem[]
   supraQueueReviewed        SupraQueueItem[]           @relation("SupraQueueReviewedBy")
   supraGmailImportSettings  SupraGmailImportSettings?
@@ -1075,6 +1076,13 @@ model UsageEvent {
 }
 
 // ─── Transactions module (DealForge / FarmTrackr-inspired) ──────────────────
+
+/** Buy-side vs sell-side for the transaction record (not inferred; set explicitly in UI). */
+enum TransactionSide {
+  BUY
+  SELL
+}
+
 model Transaction {
   id            String            @id @default(uuid())
   propertyId    String
@@ -1084,8 +1092,8 @@ model Transaction {
    */
   dealId        String?           @unique
   status        TransactionStatus @default(PENDING)
-  /** Buyer vs seller — v1 operational filter; null until set on create/edit. */
-  transactionSide TransactionSide?
+  /** Nullable for legacy rows and import-created transactions until set in UI. */
+  side          TransactionSide?
   salePrice     Decimal?          @db.Decimal(12, 2)
   closingDate   DateTime?
   brokerageName String?
@@ -1100,6 +1108,7 @@ model Transaction {
   commissions             Commission[]
   checklistItems          TransactionChecklistItem[]
   committedImportSessions TransactionImportSession[]
+  activities              TransactionActivity[]
 
   @@index([userId])
   @@index([propertyId])
@@ -1109,22 +1118,73 @@ model Transaction {
   @@map("transactions")
 }
 
-/**
- * Transaction-native checklist steps (not TaskPilot tasks).
- */
+/** Append-only operational timeline for a transaction (not social comments). */
+model TransactionActivity {
+  id            String   @id @default(uuid())
+  transactionId String
+  type          TransactionActivityType
+  summary       String
+  metadata      Json?
+  actorUserId   String
+  createdAt     DateTime @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  actor       User        @relation("TransactionActivityActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId, createdAt])
+  @@map("transaction_activities")
+}
+
+enum TransactionActivityType {
+  TRANSACTION_CREATED
+  TRANSACTION_UPDATED
+  STATUS_CHANGED
+  CHECKLIST_ITEM_ADDED
+  CHECKLIST_ITEM_COMPLETED
+}
+
+/** Reference data: default checklist structures (seeded; not tenant-owned rows). */
+enum TransactionChecklistTemplateSide {
+  BUY
+  SELL
+}
+
+model TransactionChecklistTemplate {
+  id    String                           @id @default(uuid())
+  side  TransactionChecklistTemplateSide @unique
+  label String
+  items TransactionChecklistTemplateItem[]
+
+  @@map("transaction_checklist_templates")
+}
+
+model TransactionChecklistTemplateItem {
+  id         String                       @id @default(uuid())
+  templateId String
+  sortOrder  Int
+  title      String
+  template   TransactionChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@index([templateId, sortOrder])
+  @@map("transaction_checklist_template_items")
+}
+
+/** Persisted per-transaction checklist rows (TransactionHQ operational steps). */
 model TransactionChecklistItem {
-  id             String    @id @default(uuid())
-  transactionId  String
-  title          String
-  isComplete     Boolean   @default(false)
-  dueDate        DateTime?
-  notes          String?   @db.Text
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id            String    @id @default(uuid())
+  transactionId String
+  title         String
+  isComplete    Boolean   @default(false)
+  sortOrder     Int       @default(0)
+  dueDate       DateTime?
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 
   @@index([transactionId])
+  @@index([transactionId, isComplete])
   @@map("transaction_checklist_items")
 }
 
@@ -1135,11 +1195,6 @@ enum TransactionStatus {
   PENDING
   CLOSED
   FALLEN_APART
-}
-
-enum TransactionSide {
-  BUY
-  SELL
 }
 
 enum TransactionImportStatus {

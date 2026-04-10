@@ -4,6 +4,9 @@ import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { UpdateTransactionChecklistItemSchema } from "@/lib/validations/transaction";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { recordTransactionActivity } from "@/lib/transactions/record-transaction-activity";
+
+export const dynamic = "force-dynamic";
 
 export async function PATCH(
   req: NextRequest,
@@ -36,11 +39,11 @@ export async function PATCH(
 
       const existing = await tx.transactionChecklistItem.findFirst({
         where: { id: itemId, transactionId },
-        select: { id: true },
+        select: { id: true, title: true, isComplete: true },
       });
       if (!existing) return null;
 
-      return tx.transactionChecklistItem.update({
+      const updated = await tx.transactionChecklistItem.update({
         where: { id: itemId },
         data: {
           ...(data.title !== undefined ? { title: data.title } : {}),
@@ -51,6 +54,18 @@ export async function PATCH(
             : {}),
         },
       });
+
+      if (data.isComplete === true && !existing.isComplete) {
+        await recordTransactionActivity(tx, {
+          transactionId,
+          actorUserId: user.id,
+          type: "CHECKLIST_ITEM_COMPLETED",
+          summary: `Completed checklist item: ${updated.title}`,
+          metadata: { checklistItemId: updated.id },
+        });
+      }
+
+      return updated;
     });
 
     if (!item) return apiError("Checklist item not found", 404);

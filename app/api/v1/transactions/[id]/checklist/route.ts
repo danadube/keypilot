@@ -4,7 +4,10 @@ import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { CreateTransactionChecklistItemSchema } from "@/lib/validations/transaction";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { recordTransactionActivity } from "@/lib/transactions/record-transaction-activity";
 import type { TransactionChecklistItem } from "@prisma/client";
+
+export const dynamic = "force-dynamic";
 
 function sortChecklistItems(rows: TransactionChecklistItem[]): TransactionChecklistItem[] {
   const open = rows.filter((r) => !r.isComplete);
@@ -13,12 +16,16 @@ function sortChecklistItems(rows: TransactionChecklistItem[]): TransactionCheckl
     const ad = a.dueDate?.getTime() ?? Number.POSITIVE_INFINITY;
     const bd = b.dueDate?.getTime() ?? Number.POSITIVE_INFINITY;
     if (ad !== bd) return ad - bd;
+    if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
     return a.createdAt.getTime() - b.createdAt.getTime();
   });
   done.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
   return [...open, ...done];
 }
 
+/**
+ * List persisted checklist rows for a transaction (RLS + CRM tier).
+ */
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -67,25 +74,54 @@ export async function POST(
       return apiError(parsed.error.issues[0]?.message ?? "Invalid input", 400);
     }
 
-    const item = await withRLSContext(user.id, async (tx) => {
-      const transaction = await tx.transaction.findFirst({
+    const row = await withRLSContext(user.id, async (tx) => {
+      const owned = await tx.transaction.findFirst({
         where: { id: transactionId, userId: user.id },
         select: { id: true },
       });
-      if (!transaction) return null;
+      if (!owned) return null;
 
-      return tx.transactionChecklistItem.create({
+      const maxOrder = await tx.transactionChecklistItem.aggregate({
+        where: { transactionId },
+        _max: { sortOrder: true },
+      });
+      const sortOrder = (maxOrder._max.sortOrder ?? 0) + 1;
+
+      const item = await tx.transactionChecklistItem.create({
         data: {
           transactionId,
-          title: parsed.data.title,
+          title: parsed.data.title.trim(),
+          sortOrder,
           dueDate: parsed.data.dueDate ?? null,
           notes: parsed.data.notes?.trim() ? parsed.data.notes.trim() : null,
         },
+        select: {
+          id: true,
+          transactionId: true,
+          title: true,
+          isComplete: true,
+          sortOrder: true,
+          dueDate: true,
+          notes: true,
+          createdAt: true,
+          updatedAt: true,
+        },
       });
+
+      await recordTransactionActivity(tx, {
+        transactionId,
+        actorUserId: user.id,
+        type: "CHECKLIST_ITEM_ADDED",
+        summary: `Added checklist item: ${item.title}`,
+        metadata: { checklistItemId: item.id },
+      });
+
+      return item;
     });
 
-    if (!item) return apiError("Transaction not found", 404);
-    return NextResponse.json({ data: item }, { status: 201 });
+    if (row === null) return apiError("Transaction not found", 404);
+
+    return NextResponse.json({ data: row }, { status: 201 });
   } catch (e) {
     return apiErrorFromCaught(e);
   }

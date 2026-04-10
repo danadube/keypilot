@@ -30,7 +30,7 @@ type CommissionRow = {
 export interface TransactionEditSnapshot {
   id: string;
   status: TxStatus;
-  transactionSide?: TransactionSide | null;
+  side?: TransactionSide | null;
   salePrice: string | number | null;
   closingDate: string | null;
   brokerageName: string | null;
@@ -66,7 +66,7 @@ export function TransactionEditDialog({
   useEffect(() => {
     if (!open || !transaction) return;
     setStatus(transaction.status as TransactionFormStatus);
-    setSide(transaction.transactionSide ?? "");
+    setSide(transaction.side ?? "");
     setSalePrice(salePriceToInput(transaction.salePrice));
     setClosingDate(isoToDateInput(transaction.closingDate));
     setBrokerageName(transaction.brokerageName ?? "");
@@ -113,8 +113,8 @@ export function TransactionEditDialog({
       notes: notes.trim() ? notes.trim() : null,
     };
 
-    if (side === "") body.transactionSide = null;
-    else body.transactionSide = side;
+    if (side === "") body.side = null;
+    else body.side = side;
 
     if (!baseCommissionDisabled) {
       body.baseCommissionAmount = basePayload;
@@ -187,8 +187,8 @@ export function TransactionEditDialog({
               variant="edit"
               status={status}
               onStatusChange={setStatus}
-              transactionSide={side}
-              onTransactionSideChange={setSide}
+              side={side}
+              onSideChange={setSide}
               salePrice={salePrice}
               onSalePriceChange={setSalePrice}
               closingDate={closingDate}

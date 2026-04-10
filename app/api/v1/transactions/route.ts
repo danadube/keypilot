@@ -85,7 +85,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (sideParsed) {
-      andParts.push({ transactionSide: sideParsed });
+      andParts.push({ side: sideParsed });
     }
 
     if (setupOnly) {
@@ -135,6 +135,9 @@ export async function POST(req: NextRequest) {
     const parsed = CreateTransactionSchema.safeParse(body);
     if (!parsed.success) {
       return apiError(parsed.error.issues[0]?.message ?? "Invalid input", 400);
+    }
+    if (parsed.data.side === undefined) {
+      return apiError("Transaction side (BUY or SELL) is required", 400);
     }
 
     const transaction = await withRLSContext(user.id, (tx) =>

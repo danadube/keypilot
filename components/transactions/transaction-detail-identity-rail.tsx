@@ -39,7 +39,7 @@ export interface TransactionDetailIdentityRailProps {
   };
   statusLabel: string;
   statusBadgeVariant: ComponentProps<typeof StatusBadge>["variant"];
-  transactionSide: TransactionSide | null | undefined;
+  side: TransactionSide | null | undefined;
   closingDateLabel: string;
   salePrice: string | number | null;
   brokerageName: string | null;
@@ -55,7 +55,7 @@ export function TransactionDetailIdentityRail({
   property,
   statusLabel,
   statusBadgeVariant,
-  transactionSide,
+  side,
   closingDateLabel,
   salePrice,
   brokerageName,
@@ -104,7 +104,7 @@ export function TransactionDetailIdentityRail({
         <div className="flex items-start justify-between gap-3">
           <dt className="text-kp-on-surface-muted">Side</dt>
           <dd className="text-right font-medium text-kp-on-surface">
-            {transactionSide ? SIDE_LABELS[transactionSide] : "—"}
+            {side ? SIDE_LABELS[side] : "—"}
           </dd>
         </div>
         <div className="flex items-start justify-between gap-3">

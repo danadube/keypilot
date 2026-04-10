@@ -111,7 +111,9 @@ const DEAL_STATUS_LABELS: Record<DealStatus, string> = {
 type TransactionDetail = {
   id: string;
   status: TxStatus;
-  transactionSide?: TransactionSide | null;
+  side?: TransactionSide | null;
+  /** From GET detail jsonTransactionDetail */
+  checklistIncompleteCount?: number;
   deletedAt: string | null;
   salePrice: string | number | null;
   closingDate: string | null;
@@ -605,7 +607,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
               property={txn.property}
               statusLabel={STATUS_LABELS[txn.status]}
               statusBadgeVariant={statusBadgeVariant(txn.status)}
-              transactionSide={txn.transactionSide}
+              side={txn.side}
               closingDateLabel={isoToDisplayDate(txn.closingDate)}
               salePrice={txn.salePrice}
               brokerageName={txn.brokerageName}
@@ -995,6 +997,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
                 archived={!!txn.deletedAt}
                 importSourceFile={importProvenance?.sourceFile ?? null}
                 closingSoon={isClosingSoon(txn.closingDate, txn.status)}
+                incompleteChecklistCount={txn.checklistIncompleteCount ?? 0}
               />
               <TransactionContextRail
                 property={txn.property}
@@ -1015,7 +1018,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             ? {
                 id: txn.id,
                 status: txn.status,
-                transactionSide: txn.transactionSide,
+                side: txn.side,
                 salePrice: txn.salePrice,
                 closingDate: txn.closingDate,
                 brokerageName: txn.brokerageName,

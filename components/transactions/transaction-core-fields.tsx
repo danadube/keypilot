@@ -11,8 +11,8 @@ export interface TransactionCoreFieldsProps {
   status: TransactionFormStatus;
   onStatusChange: (v: TransactionFormStatus) => void;
   /** Empty string = not selected (create). BUY/SELL or null legacy (edit). */
-  transactionSide: "BUY" | "SELL" | "" | null;
-  onTransactionSideChange: (v: "BUY" | "SELL" | "") => void;
+  side: "BUY" | "SELL" | "" | null;
+  onSideChange: (v: "BUY" | "SELL" | "") => void;
   salePrice: string;
   onSalePriceChange: (v: string) => void;
   closingDate: string;
@@ -36,8 +36,8 @@ export function TransactionCoreFields({
   variant,
   status,
   onStatusChange,
-  transactionSide,
-  onTransactionSideChange,
+  side,
+  onSideChange,
   salePrice,
   onSalePriceChange,
   closingDate,
@@ -69,10 +69,10 @@ export function TransactionCoreFields({
             </label>
             <select
               id="txn-side"
-              value={transactionSide ?? ""}
+              value={side ?? ""}
               onChange={(e) => {
                 const v = e.target.value;
-                onTransactionSideChange(v === "" ? "" : (v as "BUY" | "SELL"));
+                onSideChange(v === "" ? "" : (v as "BUY" | "SELL"));
               }}
               className={cn(
                 "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface",

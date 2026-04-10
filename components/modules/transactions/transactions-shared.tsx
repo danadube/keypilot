@@ -24,11 +24,13 @@ export type TransactionLinkedDealRow = {
   contact: { id: string; firstName: string; lastName: string };
 };
 
+export type TxSide = "BUY" | "SELL";
+
 export type TransactionRow = {
   id: string;
   status: TxStatus;
-  /** Null until set on create/edit — URL `side=` filters on this field. */
-  transactionSide?: TransactionSideEnum | null;
+  /** Nullable until set on create/edit — URL `side=` filters on this field. */
+  side?: TransactionSideEnum | null;
   deletedAt?: string | null;
   salePrice: string | number | null;
   closingDate: string | null;
@@ -49,6 +51,20 @@ export const SIDE_LABELS: Record<TransactionSideEnum, string> = {
   BUY: "Buy",
   SELL: "Sell",
 };
+
+/** Short label for tables and summaries; use em dash when unknown. */
+export function formatTransactionSideLabel(side: TxSide | null | undefined) {
+  if (side === "BUY") return "Buy";
+  if (side === "SELL") return "Sell";
+  return "—";
+}
+
+/** One-line copy for compact list rows when side is unset. */
+export function transactionSideSummaryLine(side: TxSide | null | undefined) {
+  if (side === "BUY") return "Buy side";
+  if (side === "SELL") return "Sell side";
+  return "Side not set";
+}
 
 export const STATUS_LABELS: Record<TxStatus, string> = {
   LEAD: "Lead",
@@ -168,6 +184,9 @@ export function TransactionsListTableRow({ row: t, index: i }: { row: Transactio
         <p className="text-xs text-kp-on-surface-variant">
           {t.property.city}, {t.property.state} {t.property.zip}
         </p>
+        <p className="mt-0.5 text-[11px] text-kp-on-surface-muted sm:hidden">
+          {transactionSideSummaryLine(t.side)}
+        </p>
         {t.deal ? (
           <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <User className="h-3 w-3 shrink-0 text-kp-on-surface-muted" aria-hidden />
@@ -207,19 +226,22 @@ export function TransactionsListTableRow({ row: t, index: i }: { row: Transactio
         )}
         <span className="mt-1 inline-flex flex-wrap items-center gap-2 sm:hidden">
           <StatusBadge variant={statusBadgeVariant(t.status)}>{STATUS_LABELS[t.status]}</StatusBadge>
-          {t.transactionSide ? (
+          {t.side ? (
             <span className="rounded-md border border-kp-outline bg-kp-surface-high px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-              {SIDE_LABELS[t.transactionSide]}
+              {SIDE_LABELS[t.side]}
             </span>
           ) : null}
         </span>
       </td>
+      <td className={cn(TD, "hidden sm:table-cell tabular-nums text-kp-on-surface-variant")}>
+        {formatTransactionSideLabel(t.side)}
+      </td>
       <td className={cn(TD, "hidden sm:table-cell")}>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge variant={statusBadgeVariant(t.status)}>{STATUS_LABELS[t.status]}</StatusBadge>
-          {t.transactionSide ? (
+          {t.side ? (
             <span className="rounded-md border border-kp-outline bg-kp-surface-high px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-              {SIDE_LABELS[t.transactionSide]}
+              {SIDE_LABELS[t.side]}
             </span>
           ) : null}
           {t.deletedAt ? (
@@ -299,6 +321,7 @@ export function PipelineTableRow({ row: t, index: i }: { row: TransactionRow; in
           <p className="mt-1.5 text-[11px] text-kp-on-surface-muted">No deal link</p>
         )}
       </td>
+      <td className={cn(TD, "text-kp-on-surface-variant")}>{formatTransactionSideLabel(t.side)}</td>
       <td className={cn(TD, "tabular-nums text-kp-on-surface")}>{formatMoney(t.salePrice)}</td>
       <td className={cn(TD, "text-kp-on-surface-variant")}>{formatDate(t.closingDate)}</td>
       <td className={cn(TD, "text-right")}>

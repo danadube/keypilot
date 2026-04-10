@@ -4,6 +4,7 @@ import {
   transactionLinkedDealSelect,
 } from "@/lib/transaction-deal-link";
 import type { CreateTransactionInput } from "@/lib/validations/transaction";
+import { recordTransactionActivity } from "@/lib/transactions/record-transaction-activity";
 
 export const transactionPropertySelect = {
   id: true,
@@ -29,7 +30,7 @@ export async function createTransactionForUser({
   const {
     propertyId,
     dealId,
-    transactionSide,
+    side,
     status,
     salePrice,
     closingDate,
@@ -68,13 +69,13 @@ export async function createTransactionForUser({
         }
       : {};
 
-  return tx.transaction.create({
+  const transaction = await tx.transaction.create({
     data: {
       propertyId,
       userId,
       ...(dealId !== undefined && { dealId }),
-      ...(transactionSide !== undefined && { transactionSide }),
       ...(status !== undefined && { status }),
+      ...(side !== undefined && { side }),
       ...(salePrice !== undefined && { salePrice }),
       ...(closingDate !== undefined && { closingDate }),
       ...(brokerageName !== undefined && { brokerageName }),
@@ -87,4 +88,13 @@ export async function createTransactionForUser({
       commissions: { orderBy: { createdAt: "asc" } },
     },
   });
+
+  await recordTransactionActivity(tx, {
+    transactionId: transaction.id,
+    actorUserId: userId,
+    type: "TRANSACTION_CREATED",
+    summary: "Transaction created",
+  });
+
+  return transaction;
 }

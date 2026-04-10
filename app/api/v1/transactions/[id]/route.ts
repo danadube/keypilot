@@ -13,6 +13,11 @@ import {
   UpdateTransactionSchema,
 } from "@/lib/validations/transaction";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { recordTransactionActivity } from "@/lib/transactions/record-transaction-activity";
+import {
+  recordActivitiesForTransactionPatch,
+  type TxScalarSnapshot,
+} from "@/lib/transactions/transaction-patch-activities";
 import type { Prisma } from "@prisma/client";
 import { applyBaseCommissionAmountForTransaction } from "@/lib/transactions/apply-base-commission";
 
@@ -23,6 +28,40 @@ const propertySelect = {
   state: true,
   zip: true,
 } as const;
+
+const transactionDetailInclude = {
+  property: { select: propertySelect },
+  deal: { select: transactionLinkedDealSelect },
+  commissions: { orderBy: { createdAt: "asc" } },
+  committedImportSessions: {
+    select: {
+      id: true,
+      fileName: true,
+      selectedBrokerage: true,
+      detectedBrokerage: true,
+      parserProfile: true,
+      parserProfileVersion: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 1,
+  },
+  _count: {
+    select: {
+      checklistItems: { where: { isComplete: false } },
+    },
+  },
+} as const;
+
+function jsonTransactionDetail(
+  row: Prisma.TransactionGetPayload<{ include: typeof transactionDetailInclude }>
+) {
+  const { _count, ...rest } = row;
+  return {
+    ...rest,
+    checklistIncompleteCount: _count.checklistItems,
+  };
+}
 
 export async function GET(
   _req: NextRequest,
@@ -38,29 +77,13 @@ export async function GET(
     const transaction = await withRLSContext(user.id, (tx) =>
       tx.transaction.findFirst({
         where: { id, userId: user.id },
-        include: {
-          property: { select: propertySelect },
-          deal: { select: transactionLinkedDealSelect },
-          commissions: { orderBy: { createdAt: "asc" } },
-          committedImportSessions: {
-            select: {
-              id: true,
-              fileName: true,
-              selectedBrokerage: true,
-              detectedBrokerage: true,
-              parserProfile: true,
-              parserProfileVersion: true,
-              createdAt: true,
-            },
-            orderBy: { createdAt: "desc" },
-            take: 1,
-          },
-        },
+        include: transactionDetailInclude,
       })
     );
 
     if (!transaction) return apiError("Transaction not found", 404);
-    return NextResponse.json({ data: transaction });
+
+    return NextResponse.json({ data: jsonTransactionDetail(transaction) });
   } catch (e) {
     return apiErrorFromCaught(e);
   }
@@ -85,23 +108,37 @@ export async function PATCH(
       const transaction = await withRLSContext(user.id, async (tx) => {
         const existing = await tx.transaction.findFirst({
           where: { id, userId: user.id },
-          select: { id: true },
+          select: { id: true, deletedAt: true },
         });
         if (!existing) return null;
 
-        return tx.transaction.update({
+        const row = await tx.transaction.update({
           where: { id },
           data: { deletedAt: archiveParse.success ? new Date() : null },
-          include: {
-            property: { select: propertySelect },
-            deal: { select: transactionLinkedDealSelect },
-            commissions: { orderBy: { createdAt: "asc" } },
-          },
+          include: transactionDetailInclude,
         });
+
+        if (archiveParse.success && !existing.deletedAt) {
+          await recordTransactionActivity(tx, {
+            transactionId: id,
+            actorUserId: user.id,
+            type: "TRANSACTION_UPDATED",
+            summary: "Archived transaction",
+          });
+        } else if (unarchiveParse.success && existing.deletedAt) {
+          await recordTransactionActivity(tx, {
+            transactionId: id,
+            actorUserId: user.id,
+            type: "TRANSACTION_UPDATED",
+            summary: "Restored transaction from archive",
+          });
+        }
+
+        return row;
       });
 
       if (!transaction) return apiError("Transaction not found", 404);
-      return NextResponse.json({ data: transaction });
+      return NextResponse.json({ data: jsonTransactionDetail(transaction) });
     }
 
     const parsed = UpdateTransactionSchema.safeParse(body);
@@ -112,14 +149,24 @@ export async function PATCH(
     const transaction = await withRLSContext(user.id, async (tx) => {
       const existing = await tx.transaction.findFirst({
         where: { id, userId: user.id },
-        select: { id: true, propertyId: true },
+        select: {
+          id: true,
+          propertyId: true,
+          status: true,
+          side: true,
+          salePrice: true,
+          closingDate: true,
+          brokerageName: true,
+          notes: true,
+          dealId: true,
+        },
       });
       if (!existing) return null;
 
       const {
         dealId: dealIdPatch,
-        transactionSide,
         status,
+        side,
         closingDate,
         salePrice,
         brokerageName,
@@ -128,7 +175,7 @@ export async function PATCH(
       } = parsed.data;
 
       const data: Prisma.TransactionUncheckedUpdateInput = {};
-      if (transactionSide !== undefined) data.transactionSide = transactionSide;
+      if (side !== undefined) data.side = side;
       if (status !== undefined) data.status = status;
       if (closingDate !== undefined) data.closingDate = closingDate;
       if (salePrice !== undefined) data.salePrice = salePrice;
@@ -148,30 +195,40 @@ export async function PATCH(
         }
       }
 
-      const include = {
-        property: { select: propertySelect },
-        deal: { select: transactionLinkedDealSelect },
-        commissions: { orderBy: { createdAt: "asc" } as const },
-        committedImportSessions: {
-          select: {
-            id: true,
-            fileName: true,
-            selectedBrokerage: true,
-            detectedBrokerage: true,
-            parserProfile: true,
-            parserProfileVersion: true,
-            createdAt: true,
-          },
-          orderBy: { createdAt: "desc" } as const,
-          take: 1,
-        },
-      };
-
       const hasScalarUpdates = Object.keys(data).length > 0;
+
       if (hasScalarUpdates) {
-        await tx.transaction.update({
+        const beforeSnapshot: TxScalarSnapshot = {
+          status: existing.status,
+          side: existing.side,
+          salePrice: existing.salePrice,
+          closingDate: existing.closingDate,
+          brokerageName: existing.brokerageName,
+          notes: existing.notes,
+          dealId: existing.dealId,
+        };
+
+        const updated = await tx.transaction.update({
           where: { id },
           data,
+          include: transactionDetailInclude,
+        });
+
+        const afterSnapshot: TxScalarSnapshot = {
+          status: updated.status,
+          side: updated.side,
+          salePrice: updated.salePrice,
+          closingDate: updated.closingDate,
+          brokerageName: updated.brokerageName,
+          notes: updated.notes,
+          dealId: updated.dealId,
+        };
+
+        await recordActivitiesForTransactionPatch(tx, {
+          transactionId: id,
+          actorUserId: user.id,
+          before: beforeSnapshot,
+          after: afterSnapshot,
         });
       }
 
@@ -181,12 +238,12 @@ export async function PATCH(
 
       return tx.transaction.findFirst({
         where: { id, userId: user.id },
-        include,
+        include: transactionDetailInclude,
       });
     });
 
     if (!transaction) return apiError("Transaction not found", 404);
-    return NextResponse.json({ data: transaction });
+    return NextResponse.json({ data: jsonTransactionDetail(transaction) });
   } catch (e) {
     const uniqueResp = responseIfDealIdUniqueViolation(e);
     if (uniqueResp) return uniqueResp;

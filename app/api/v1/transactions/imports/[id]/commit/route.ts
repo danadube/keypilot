@@ -38,6 +38,7 @@ const CommitTransactionImportSchema = z
         closingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
         brokerageName: z.string().max(200).optional().nullable(),
         notes: z.string().max(5000).optional().nullable(),
+        side: z.enum(["BUY", "SELL"]).optional(),
       })
       .strict(),
     commissions: z.array(CreateCommissionSchema).optional(),
@@ -89,6 +90,9 @@ export async function POST(
         propertyId: parsedBody.data.transaction.propertyId,
         dealId: parsedBody.data.transaction.dealId,
         status: parsedBody.data.transaction.status ?? "PENDING",
+        ...(parsedBody.data.transaction.side !== undefined
+          ? { side: parsedBody.data.transaction.side }
+          : {}),
         salePrice:
           parsedBody.data.transaction.salePrice ??
           statement.extracted.salePrice ??

@@ -38,6 +38,7 @@ import {
 } from "@/lib/dashboard-focus-queue";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import type { TaskPilotPayload } from "@/lib/tasks/task-pilot-payload-mutate";
+import { TransactionAttentionSection } from "@/components/dashboard/transaction-attention-section";
 import { contactIdFromAppHref, propertyIdFromAppHref } from "@/lib/tasks/entity-id-from-href";
 
 type DashboardTaskModalCtx = {
@@ -670,6 +671,8 @@ export function OperationalDashboardView() {
           />
         </div>
       </section>
+
+      <TransactionAttentionSection loading={loading} />
 
       <section aria-labelledby="dash-focus">
         <div className="mb-2 flex flex-wrap items-end justify-between gap-x-3 gap-y-1">

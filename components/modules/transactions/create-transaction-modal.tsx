@@ -273,7 +273,8 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
   const [mode, setMode] = useState<CreateMode>("manual");
 
   const [status, setStatus] = useState<TransactionFormStatus>("PENDING");
-  const [transactionSide, setTransactionSide] = useState<"" | "BUY" | "SELL">("");
+  const [side, setSide] = useState<"" | "BUY" | "SELL">("");
+  const [importSide, setImportSide] = useState<"" | "BUY" | "SELL">("");
   const [salePrice, setSalePrice] = useState("");
   const [closingDate, setClosingDate] = useState("");
   const [brokerageName, setBrokerageName] = useState("");
@@ -297,7 +298,8 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
     setMode("manual");
     setSelectedProperty(null);
     setStatus("PENDING");
-    setTransactionSide("");
+    setSide("");
+    setImportSide("");
     setSalePrice("");
     setClosingDate("");
     setBrokerageName("");
@@ -472,7 +474,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
   async function handleManualCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedProperty) return;
-    if (transactionSide !== "BUY" && transactionSide !== "SELL") {
+    if (side !== "BUY" && side !== "SELL") {
       toast.error("Select buy or sell.");
       return;
     }
@@ -490,8 +492,8 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
 
     const body: Record<string, unknown> = {
       propertyId: selectedProperty.id,
-      transactionSide,
       status,
+      side,
     };
     if (selectedDealId) body.dealId = selectedDealId;
     if (parsedSalePrice !== null) body.salePrice = parsedSalePrice;
@@ -535,6 +537,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
             propertyId: selectedProperty.id,
             ...(selectedDealId ? { dealId: selectedDealId } : {}),
             status,
+            ...(importSide ? { side: importSide } : {}),
             salePrice: parseNumberInput(salePrice) ?? null,
             closingDate: closingDate || null,
             brokerageName: finalBrokerageName,
@@ -556,9 +559,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
   }
 
   const canManualSubmit =
-    !!selectedProperty &&
-    (transactionSide === "BUY" || transactionSide === "SELL") &&
-    !submitting;
+    !!selectedProperty && (side === "BUY" || side === "SELL") && !submitting;
   const importCommitBlockReason = editedPayload
     ? getCommitBlockReason(editedPayload)
     : "Upload a PDF to generate preview.";
@@ -654,8 +655,8 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                 variant="create"
                 status={status}
                 onStatusChange={setStatus}
-                transactionSide={transactionSide}
-                onTransactionSideChange={setTransactionSide}
+                side={side}
+                onSideChange={setSide}
                 salePrice={salePrice}
                 onSalePriceChange={setSalePrice}
                 closingDate={closingDate}
@@ -672,7 +673,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
               <p className="text-xs text-kp-on-surface-variant">
                 {!selectedProperty
                   ? "Select a property to continue."
-                  : transactionSide !== "BUY" && transactionSide !== "SELL"
+                  : side !== "BUY" && side !== "SELL"
                     ? "Select buy or sell to continue."
                     : "Ready to create."}
               </p>
@@ -970,6 +971,24 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                       onChange={(e) => setNotes(e.target.value)}
                       className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
                     />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                      Transaction side (optional)
+                    </label>
+                    <select
+                      value={importSide}
+                      onChange={(e) => setImportSide(e.target.value as "" | "BUY" | "SELL")}
+                      className="h-9 w-full max-w-md rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                    >
+                      <option value="">Not set — choose later in transaction detail</option>
+                      <option value="BUY">Buy side</option>
+                      <option value="SELL">Sell side</option>
+                    </select>
+                    <p className="text-[11px] text-kp-on-surface-variant">
+                      Statements don&apos;t reliably indicate side; set it if you know it.
+                    </p>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2">
