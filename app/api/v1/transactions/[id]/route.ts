@@ -152,6 +152,7 @@ export async function PATCH(
           id: true,
           propertyId: true,
           status: true,
+          side: true,
           salePrice: true,
           closingDate: true,
           brokerageName: true,
@@ -164,6 +165,7 @@ export async function PATCH(
       const {
         dealId: dealIdPatch,
         status,
+        side,
         closingDate,
         salePrice,
         brokerageName,
@@ -172,6 +174,7 @@ export async function PATCH(
 
       const data: Prisma.TransactionUncheckedUpdateInput = {};
       if (status !== undefined) data.status = status;
+      if (side !== undefined) data.side = side;
       if (closingDate !== undefined) data.closingDate = closingDate;
       if (salePrice !== undefined) data.salePrice = salePrice;
       if (brokerageName !== undefined) data.brokerageName = brokerageName;
@@ -199,6 +202,7 @@ export async function PATCH(
 
       const beforeSnapshot: TxScalarSnapshot = {
         status: existing.status,
+        side: existing.side,
         salePrice: existing.salePrice,
         closingDate: existing.closingDate,
         brokerageName: existing.brokerageName,
@@ -214,6 +218,7 @@ export async function PATCH(
 
       const afterSnapshot: TxScalarSnapshot = {
         status: updated.status,
+        side: updated.side,
         salePrice: updated.salePrice,
         closingDate: updated.closingDate,
         brokerageName: updated.brokerageName,

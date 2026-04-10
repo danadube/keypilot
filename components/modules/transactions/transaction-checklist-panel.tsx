@@ -21,11 +21,14 @@ type ChecklistItem = {
 
 export function TransactionChecklistPanel({
   transactionId,
+  transactionSide = null,
   archived,
   onListsChanged,
   className,
 }: {
   transactionId: string;
+  /** When set, empty state offers a single primary “default checklist” for this side. */
+  transactionSide?: "BUY" | "SELL" | null;
   archived: boolean;
   onListsChanged: () => void;
   className?: string;
@@ -45,6 +48,8 @@ export function TransactionChecklistPanel({
   const rows = items ?? [];
   const busy = isLoading && items === undefined;
   const empty = !busy && rows.length === 0;
+  const resolvedSide =
+    transactionSide === "BUY" || transactionSide === "SELL" ? transactionSide : null;
 
   const applyTemplate = async (side: "BUY" | "SELL") => {
     setApplying(side);
@@ -163,39 +168,65 @@ export function TransactionChecklistPanel({
           </div>
         ) : empty && !archived ? (
           <div className="rounded-lg border border-kp-outline-variant bg-kp-surface-high/20 px-3 py-3">
-            <p className="text-sm text-kp-on-surface">
-              No checklist items yet. We don&apos;t infer buy vs sell on the transaction — pick the default
-              that matches this deal.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                disabled={applying !== null}
-                className="h-8 bg-kp-teal/20 text-xs font-semibold text-kp-teal hover:bg-kp-teal/30"
-                onClick={() => void applyTemplate("BUY")}
-              >
-                {applying === "BUY" ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  "Apply buy-side default"
-                )}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                disabled={applying !== null}
-                variant="outline"
-                className="h-8 border-kp-outline text-xs font-semibold text-kp-on-surface hover:bg-kp-surface-high"
-                onClick={() => void applyTemplate("SELL")}
-              >
-                {applying === "SELL" ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  "Apply sell-side default"
-                )}
-              </Button>
-            </div>
+            {resolvedSide ? (
+              <>
+                <p className="text-sm text-kp-on-surface">
+                  No checklist items yet. Apply the default checklist for this{" "}
+                  {resolvedSide === "BUY" ? "buy-side" : "sell-side"} transaction.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={applying !== null}
+                    className="h-8 bg-kp-teal/20 text-xs font-semibold text-kp-teal hover:bg-kp-teal/30"
+                    onClick={() => void applyTemplate(resolvedSide)}
+                  >
+                    {applying === resolvedSide ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      "Apply default checklist"
+                    )}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-kp-on-surface">
+                  No checklist items yet. Set buy or sell on this transaction for a one-tap default, or pick
+                  the template that matches this deal.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={applying !== null}
+                    className="h-8 bg-kp-teal/20 text-xs font-semibold text-kp-teal hover:bg-kp-teal/30"
+                    onClick={() => void applyTemplate("BUY")}
+                  >
+                    {applying === "BUY" ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      "Apply buy-side default"
+                    )}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={applying !== null}
+                    variant="outline"
+                    className="h-8 border-kp-outline text-xs font-semibold text-kp-on-surface hover:bg-kp-surface-high"
+                    onClick={() => void applyTemplate("SELL")}
+                  >
+                    {applying === "SELL" ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      "Apply sell-side default"
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         ) : empty && archived ? (
           <p className="text-sm text-kp-on-surface-muted">No checklist items — archive is read-only.</p>

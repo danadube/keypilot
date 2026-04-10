@@ -62,11 +62,14 @@ function useTransactions(statusFilter: StatusTabValue, showArchived: boolean) {
 function matchesSearch(t: TransactionRow, q: string): boolean {
   const lq = q.toLowerCase();
   const importSource = getImportProvenance(t.notes)?.sourceFile.toLowerCase() ?? "";
+  const sideMatch =
+    (t.side === "BUY" && lq.includes("buy")) || (t.side === "SELL" && lq.includes("sell"));
   return (
     t.property.address1.toLowerCase().includes(lq) ||
     t.property.city.toLowerCase().includes(lq) ||
     (t.brokerageName?.toLowerCase().includes(lq) ?? false) ||
-    importSource.includes(lq)
+    importSource.includes(lq) ||
+    sideMatch
   );
 }
 
@@ -176,6 +179,7 @@ function TransactionsTable({ rows }: { rows: TransactionRow[] }) {
         <thead>
           <tr className="border-b border-kp-outline bg-kp-surface-high">
             <th className={TH}>Property</th>
+            <th className={cn(TH, "hidden sm:table-cell")}>Side</th>
             <th className={cn(TH, "hidden sm:table-cell")}>Status</th>
             <th className={cn(TH, "hidden md:table-cell")}>Sale price</th>
             <th className={cn(TH, "hidden lg:table-cell")}>Closing</th>

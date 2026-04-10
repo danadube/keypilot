@@ -1076,6 +1076,13 @@ model UsageEvent {
 }
 
 // ─── Transactions module (DealForge / FarmTrackr-inspired) ──────────────────
+
+/** Buy-side vs sell-side for the transaction record (not inferred; set explicitly in UI). */
+enum TransactionSide {
+  BUY
+  SELL
+}
+
 model Transaction {
   id            String            @id @default(uuid())
   propertyId    String
@@ -1085,6 +1092,8 @@ model Transaction {
    */
   dealId        String?           @unique
   status        TransactionStatus @default(PENDING)
+  /** Nullable for legacy rows and commission-import creates until the user sets it. */
+  side          TransactionSide?
   salePrice     Decimal?          @db.Decimal(12, 2)
   closingDate   DateTime?
   brokerageName String?

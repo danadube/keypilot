@@ -155,6 +155,7 @@ export function TransactionsPipelineView() {
                         <thead>
                           <tr className="border-b border-kp-outline-variant bg-kp-surface">
                             <th className={TH}>Property</th>
+                            <th className={TH}>Side</th>
                             <th className={TH}>Sale price</th>
                             <th className={TH}>Closing</th>
                             <th className={cn(TH, "w-28 text-right")} />

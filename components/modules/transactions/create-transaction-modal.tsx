@@ -284,6 +284,8 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
   const [mode, setMode] = useState<CreateMode>("manual");
 
   const [status, setStatus] = useState<TxStatus>("PENDING");
+  const [transactionSide, setTransactionSide] = useState<"BUY" | "SELL">("BUY");
+  const [importSide, setImportSide] = useState<"" | "BUY" | "SELL">("");
   const [salePrice, setSalePrice] = useState("");
   const [closingDate, setClosingDate] = useState("");
   const [brokerageName, setBrokerageName] = useState("");
@@ -306,6 +308,8 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
     setMode("manual");
     setSelectedProperty(null);
     setStatus("PENDING");
+    setTransactionSide("BUY");
+    setImportSide("");
     setSalePrice("");
     setClosingDate("");
     setBrokerageName("");
@@ -483,6 +487,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
     const body: Record<string, unknown> = {
       propertyId: selectedProperty.id,
       status,
+      side: transactionSide,
     };
     if (selectedDealId) body.dealId = selectedDealId;
     const parsedSalePrice = parseNumberInput(salePrice);
@@ -526,6 +531,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
             propertyId: selectedProperty.id,
             ...(selectedDealId ? { dealId: selectedDealId } : {}),
             status,
+            ...(importSide ? { side: importSide } : {}),
             salePrice: parseNumberInput(salePrice) ?? null,
             closingDate: closingDate || null,
             brokerageName: finalBrokerageName,
@@ -638,7 +644,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                 onSelect={setSelectedProperty}
               />
               {optionalDealSection("create-txn-deal-manual")}
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
                     Status
@@ -656,6 +662,19 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                   </select>
                 </div>
                 <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                    Buy / sell side
+                  </label>
+                  <select
+                    value={transactionSide}
+                    onChange={(e) => setTransactionSide(e.target.value as "BUY" | "SELL")}
+                    className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                  >
+                    <option value="BUY">Buy side</option>
+                    <option value="SELL">Sell side</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
                   <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
                     Closing date (optional)
                   </label>
@@ -1002,6 +1021,24 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                       onChange={(e) => setNotes(e.target.value)}
                       className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
                     />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                      Transaction side (optional)
+                    </label>
+                    <select
+                      value={importSide}
+                      onChange={(e) => setImportSide(e.target.value as "" | "BUY" | "SELL")}
+                      className="h-9 w-full max-w-md rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                    >
+                      <option value="">Not set — choose later in transaction detail</option>
+                      <option value="BUY">Buy side</option>
+                      <option value="SELL">Sell side</option>
+                    </select>
+                    <p className="text-[11px] text-kp-on-surface-variant">
+                      Statements don&apos;t reliably indicate side; set it if you know it.
+                    </p>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2">

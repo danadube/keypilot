@@ -1,9 +1,10 @@
-import type { Prisma, TransactionStatus } from "@prisma/client";
+import type { Prisma, TransactionSide, TransactionStatus } from "@prisma/client";
 import { recordTransactionActivity } from "@/lib/transactions/record-transaction-activity";
 import { TX_STATUS_LABEL } from "@/lib/transactions/transaction-status-labels";
 
 export type TxScalarSnapshot = {
   status: TransactionStatus;
+  side: TransactionSide | null;
   salePrice: Prisma.Decimal | null;
   closingDate: Date | null;
   brokerageName: string | null;
@@ -64,6 +65,7 @@ export async function recordActivitiesForTransactionPatch(
   }
   if (normNotes(before.notes) !== normNotes(after.notes)) changedLabels.push("notes");
   if (before.dealId !== after.dealId) changedLabels.push("CRM deal link");
+  if (before.side !== after.side) changedLabels.push("transaction side");
 
   if (changedLabels.length > 0) {
     await recordTransactionActivity(tx, {

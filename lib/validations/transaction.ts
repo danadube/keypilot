@@ -9,6 +9,8 @@ const TransactionStatusEnum = z.enum([
   "FALLEN_APART",
 ]);
 
+const TransactionSideEnum = z.enum(["BUY", "SELL"]);
+
 export const CreateTransactionSchema = z.object({
   // Accept any non-empty string — DB FK constraint handles invalid IDs.
   // z.string().uuid() would couple validation to the ID generation strategy.
@@ -16,6 +18,8 @@ export const CreateTransactionSchema = z.object({
   /** Optional CRM deal; API enforces same user and same property as this transaction. */
   dealId: z.string().uuid().optional(),
   status: TransactionStatusEnum.optional(),
+  /** Omit on import-created rows; API requires this for manual POST /transactions. */
+  side: TransactionSideEnum.optional(),
   closingDate: z.coerce.date().optional().nullable(),
   salePrice: z.number().positive().optional().nullable(),
   brokerageName: z.string().max(200).optional().nullable(),
@@ -26,6 +30,7 @@ export const UpdateTransactionSchema = z.object({
   /** Set to unlink; omit to leave unchanged. */
   dealId: z.string().uuid().nullable().optional(),
   status: TransactionStatusEnum.optional(),
+  side: TransactionSideEnum.nullable().optional(),
   // z.coerce.date() accepts "2026-04-15" (plain date) and ISO datetime strings,
   // normalizing both to a Date object for Prisma. nullable() allows clearing the field.
   closingDate: z.coerce.date().optional().nullable(),

@@ -24,7 +24,11 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { getImportProvenance } from "./transactions-shared";
+import {
+  formatTransactionSideLabel,
+  getImportProvenance,
+  type TxSide,
+} from "./transactions-shared";
 import { TransactionSignalsCard } from "@/components/modules/transactions/transaction-signals-card";
 import { TransactionActivityTimeline } from "@/components/modules/transactions/transaction-activity-timeline";
 import { TransactionChecklistPanel } from "@/components/modules/transactions/transaction-checklist-panel";
@@ -119,6 +123,8 @@ function dealStatusBadgeVariant(
 type TransactionDetail = {
   id: string;
   status: TxStatus;
+  /** Present after side column migration; treat missing as unset. */
+  side?: TxSide | null;
   deletedAt: string | null;
   salePrice: string | number | null;
   closingDate: string | null;
@@ -290,6 +296,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
   const dealCandidates = useMemo(() => linkedDeals ?? [], [linkedDeals]);
 
   const [status, setStatus] = useState<TxStatus>("PENDING");
+  const [sideInput, setSideInput] = useState<"" | TxSide>("");
   const [salePriceInput, setSalePriceInput] = useState("");
   const [closingInput, setClosingInput] = useState("");
   const [brokerageInput, setBrokerageInput] = useState("");
@@ -347,6 +354,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
   useEffect(() => {
     if (!txn) return;
     setStatus(txn.status);
+    setSideInput(txn.side === "BUY" || txn.side === "SELL" ? txn.side : "");
     setSalePriceInput(salePriceToInput(txn.salePrice));
     setClosingInput(isoToDateInput(txn.closingDate));
     setBrokerageInput(txn.brokerageName ?? "");
@@ -357,14 +365,18 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
 
   useEffect(() => {
     if (!txn) return;
+    const sideMatches =
+      (txn.side === "BUY" || txn.side === "SELL" ? txn.side : null) ===
+      (sideInput === "" ? null : sideInput);
     const changed =
+      !sideMatches ||
       status !== txn.status ||
       salePriceInput !== salePriceToInput(txn.salePrice) ||
       closingInput !== isoToDateInput(txn.closingDate) ||
       brokerageInput !== (txn.brokerageName ?? "") ||
       notesInput !== (txn.notes ?? "");
     setDirty(changed);
-  }, [txn, status, salePriceInput, closingInput, brokerageInput, notesInput]);
+  }, [txn, status, sideInput, salePriceInput, closingInput, brokerageInput, notesInput]);
 
   const patchDealLink = async (dealId: string | null) => {
     setDealLinkBusy(true);
@@ -390,7 +402,10 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
   const handleSaveTransaction = async () => {
     if (!txn) return;
 
-    const body: Record<string, unknown> = { status };
+    const body: Record<string, unknown> = {
+      status,
+      side: sideInput === "" ? null : sideInput,
+    };
 
     const price = parseOptionalPrice(salePriceInput);
     if (price === undefined) {
@@ -421,6 +436,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       await reloadTxn(t, false);
       void globalMutate(activityListKey);
       setStatus(t.status);
+      setSideInput(t.side === "BUY" || t.side === "SELL" ? t.side : "");
       setSalePriceInput(salePriceToInput(t.salePrice));
       setClosingInput(isoToDateInput(t.closingDate));
       setBrokerageInput(t.brokerageName ?? "");
@@ -660,6 +676,11 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
               <StatusBadge variant={statusBadgeVariant(txn.status)}>
                 {STATUS_LABELS[txn.status]}
               </StatusBadge>
+              {txn.side ? (
+                <span className="text-sm font-medium text-kp-on-surface-muted">
+                  {formatTransactionSideLabel(txn.side)} side
+                </span>
+              ) : null}
             </div>
             <p className="mt-1 text-sm font-medium text-kp-on-surface">
               {txn.property.address1}
@@ -788,6 +809,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
 
         <TransactionChecklistPanel
           transactionId={transactionId}
+          transactionSide={txn.side ?? null}
           archived={!!txn.deletedAt}
           onListsChanged={() => {
             void reloadTxn();
@@ -954,6 +976,31 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             </div>
 
             <div className="space-y-1.5">
+              <label htmlFor="detail-side" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                Buy / sell side
+              </label>
+              <select
+                id="detail-side"
+                value={sideInput}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setSideInput(v === "" ? "" : (v as TxSide));
+                }}
+                className={cn(
+                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface",
+                  "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                )}
+              >
+                <option value="">Not set</option>
+                <option value="BUY">Buy side</option>
+                <option value="SELL">Sell side</option>
+              </select>
+              <p className="text-[11px] text-kp-on-surface-variant">
+                Set explicitly — we don&apos;t infer this from statements or deals.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
               <label htmlFor="detail-price" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
                 Sale price
               </label>
@@ -1027,6 +1074,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
               disabled={!dirty || saving}
               onClick={() => {
                 setStatus(txn.status);
+                setSideInput(txn.side === "BUY" || txn.side === "SELL" ? txn.side : "");
                 setSalePriceInput(salePriceToInput(txn.salePrice));
                 setClosingInput(isoToDateInput(txn.closingDate));
                 setBrokerageInput(txn.brokerageName ?? "");
