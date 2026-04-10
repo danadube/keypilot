@@ -197,8 +197,7 @@ export function TransactionsListView() {
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
       <TransactionsModuleHeader
-        title="Transactions"
-        subtitle="Closings, sale details, commission splits, and lifecycle state."
+        subtitle="Overview — Closings, sale details, commission splits, and lifecycle state."
         summary={
           <div className="grid gap-2 sm:grid-cols-4">
             <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">

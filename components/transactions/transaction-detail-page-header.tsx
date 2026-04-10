@@ -34,7 +34,7 @@ export function TransactionDetailPageHeader({
           Overview
         </Link>
         <h1 className="mt-3 font-headline text-[1.5rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
-          Transaction workspace
+          TransactionHQ
         </h1>
         {subtitle ? (
           <div className="mt-1 text-sm text-kp-on-surface-variant">{subtitle}</div>

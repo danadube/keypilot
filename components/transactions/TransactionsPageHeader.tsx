@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
-import { TransactionsModuleHeader } from "./transactions-module-header";
+import {
+  TRANSACTION_HQ_MODULE_TITLE,
+  TransactionsModuleHeader,
+} from "./transactions-module-header";
 
 const DEFAULT_SUBTITLE =
   "Closings, sale details, commission splits, and lifecycle state";
@@ -14,7 +17,7 @@ export interface TransactionsPageHeaderProps {
 
 /**
  * @deprecated Prefer {@link TransactionsModuleHeader} for full module chrome (tabs + layout).
- * This wrapper keeps a stable title of "Transactions" and includes the shared tabs.
+ * Wraps TransactionHQ chrome with a stable default subtitle.
  */
 export function TransactionsPageHeader({
   subtitle = DEFAULT_SUBTITLE,
@@ -23,7 +26,7 @@ export function TransactionsPageHeader({
 }: TransactionsPageHeaderProps) {
   return (
     <TransactionsModuleHeader
-      title="Transactions"
+      title={TRANSACTION_HQ_MODULE_TITLE}
       subtitle={subtitle}
       actions={actions}
       className={className}

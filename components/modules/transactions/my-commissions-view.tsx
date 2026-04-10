@@ -86,8 +86,7 @@ export function MyCommissionsView() {
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
       <TransactionsModuleHeader
-        title="Commissions"
-        subtitle="Earnings on deals where you are assigned on a commission line. Open the parent transaction for full context."
+        subtitle="Commissions — Earnings on deals where you are assigned on a commission line. Open the parent transaction for full context."
       />
 
       <div className="mx-6 mt-6 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">

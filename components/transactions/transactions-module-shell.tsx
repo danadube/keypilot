@@ -10,7 +10,7 @@ export function TransactionsModuleShell({ children }: { children: React.ReactNod
   return (
     <ModuleGate
       moduleId="transactions"
-      moduleName="Transactions"
+      moduleName="TransactionHQ"
       backHref="/dashboard"
       valueProposition="Track deal progress, key dates, and commission overview in one place."
     >

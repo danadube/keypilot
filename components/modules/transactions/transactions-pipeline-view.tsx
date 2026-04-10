@@ -81,8 +81,7 @@ export function TransactionsPipelineView() {
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
       <TransactionsModuleHeader
-        title="Pipeline"
-        subtitle="Active closings grouped by stage. Closed deals stay on the overview list."
+        subtitle="Pipeline — Active closings grouped by stage. Closed deals stay on the overview list."
       />
 
       <div className="mx-6 mt-6 space-y-6 sm:mx-8">
