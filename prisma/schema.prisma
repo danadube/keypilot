@@ -1098,6 +1098,7 @@ model Transaction {
   user                    User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   deal                    Deal?                      @relation("TransactionLinkedDeal", fields: [dealId], references: [id], onDelete: SetNull)
   commissions             Commission[]
+  checklistItems          TransactionChecklistItem[]
   committedImportSessions TransactionImportSession[]
 
   @@index([userId])
@@ -1106,6 +1107,25 @@ model Transaction {
   @@index([closingDate])
   @@index([userId, deletedAt])
   @@map("transactions")
+}
+
+/**
+ * Transaction-native checklist steps (not TaskPilot tasks).
+ */
+model TransactionChecklistItem {
+  id             String    @id @default(uuid())
+  transactionId  String
+  title          String
+  isComplete     Boolean   @default(false)
+  dueDate        DateTime?
+  notes          String?   @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@map("transaction_checklist_items")
 }
 
 enum TransactionStatus {

@@ -8,7 +8,7 @@ export { TransactionDetailIdentityRail } from "./transaction-detail-identity-rai
 export { TransactionTimelineShell } from "./transaction-timeline-shell";
 export { TransactionCoreFields } from "./transaction-core-fields";
 export { TransactionEditDialog } from "./transaction-edit-dialog";
-export { TransactionChecklistShell } from "./transaction-checklist-shell";
+export { TransactionChecklistSection } from "./transaction-checklist-section";
 export { TransactionNextActionsCard } from "./transaction-next-actions-card";
 export { TransactionMilestonesCard } from "./transaction-milestones-card";
 export { TransactionSignalsCard } from "./transaction-signals-card";

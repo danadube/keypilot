@@ -29,7 +29,7 @@ import {
 import { toast } from "sonner";
 import { BrandSkeleton } from "@/components/ui/BrandSkeleton";
 import {
-  TransactionChecklistShell,
+  TransactionChecklistSection,
   TransactionContextRail,
   TransactionDetailIdentityRail,
   TransactionDetailLayout,
@@ -303,6 +303,13 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
   const scrollToTxnSection = useCallback((id: "txn-checklist" | "txn-timeline") => {
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, []);
+
+  const focusChecklistQuickAdd = useCallback(() => {
+    scrollToTxnSection("txn-checklist");
+    requestAnimationFrame(() => {
+      document.getElementById("txn-checklist-quick-add")?.focus();
+    });
+  }, [scrollToTxnSection]);
 
   const selectableDeals = useMemo(
     () =>
@@ -609,12 +616,13 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           center={
             <>
               <TransactionNextActionsCard
-                onAddChecklistItem={() => scrollToTxnSection("txn-checklist")}
+                onAddChecklistItem={focusChecklistQuickAdd}
                 onLogActivity={() => scrollToTxnSection("txn-timeline")}
                 onCreateTask={() => setTaskModalOpen(true)}
               />
-              <TransactionChecklistShell
-                onAddChecklistItem={() => scrollToTxnSection("txn-checklist")}
+              <TransactionChecklistSection
+                transactionId={txn.id}
+                onFocusQuickAdd={focusChecklistQuickAdd}
               />
               <TransactionTimelineShell
                 onLogActivity={() => scrollToTxnSection("txn-timeline")}

@@ -66,6 +66,19 @@ export const CreateCommissionSchema = z.object({
 
 export const UpdateCommissionSchema = CreateCommissionSchema.partial();
 
+export const CreateTransactionChecklistItemSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(500),
+  dueDate: z.coerce.date().optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+});
+
+export const UpdateTransactionChecklistItemSchema = z.object({
+  title: z.string().trim().min(1).max(500).optional(),
+  isComplete: z.boolean().optional(),
+  dueDate: z.coerce.date().optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+});
+
 export type CreateTransactionInput = z.infer<typeof CreateTransactionSchema>;
 export type UpdateTransactionInput = z.infer<typeof UpdateTransactionSchema>;
 export type CreateCommissionInput = z.infer<typeof CreateCommissionSchema>;
