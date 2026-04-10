@@ -24,11 +24,12 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { getImportProvenance } from "./transactions-shared";
+import { TransactionSignalsCard } from "@/components/modules/transactions/transaction-signals-card";
 import {
-  getImportProvenance,
-  getTransactionSetupGaps,
-  setupGapLabel,
-} from "./transactions-shared";
+  computeTransactionSignals,
+  setupGapLabelsFromInput,
+} from "@/lib/transactions/transaction-signals";
 import { toast } from "sonner";
 import { BrandSkeleton } from "@/components/ui/BrandSkeleton";
 
@@ -319,10 +320,22 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     [dealCandidates, transactionId]
   );
   const importProvenance = useMemo(() => getImportProvenance(txn?.notes), [txn?.notes]);
-  const setupGaps = useMemo(
-    () => (txn ? getTransactionSetupGaps(txn) : []),
-    [txn]
-  );
+
+  const attentionSignals = useMemo(() => {
+    if (!txn) return null;
+    return computeTransactionSignals({
+      status: txn.status,
+      salePrice: txn.salePrice,
+      closingDate: txn.closingDate,
+      brokerageName: txn.brokerageName,
+      incompleteChecklistCount: 0,
+    });
+  }, [txn]);
+
+  const setupGapLabelsForCard = useMemo(() => {
+    if (!txn) return [];
+    return setupGapLabelsFromInput(txn);
+  }, [txn]);
 
   useEffect(() => {
     if (!txn) return;
@@ -752,30 +765,14 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           </ul>
         </section>
 
-        {setupGaps.length > 0 ? (
-          <section className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-rose-300">
-              Needs setup
-            </p>
-            <p className="mt-1 text-sm text-rose-100">
-              Fill {setupGaps.map((gap) => setupGapLabel(gap)).join(", ")} to complete this
-              transaction record.
-            </p>
-          </section>
-        ) : null}
-
-        {importProvenance ? (
-          <section className="rounded-xl border border-kp-teal/30 bg-kp-teal/10 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-kp-teal">
-              Imported provenance
-            </p>
-            <p className="mt-1 text-sm text-kp-on-surface">
-              Source statement: <span className="font-medium">{importProvenance.sourceFile}</span>
-            </p>
-            <p className="mt-1 text-xs text-kp-on-surface-variant">
-              Imported transaction created {formatTimestamp(txn.createdAt)}.
-            </p>
-          </section>
+        {attentionSignals ? (
+          <TransactionSignalsCard
+            setupGapLabels={setupGapLabelsForCard}
+            archived={!!txn.deletedAt}
+            importSourceFile={importProvenance?.sourceFile ?? null}
+            closingSoon={attentionSignals.closingSoon}
+            incompleteChecklistCount={attentionSignals.incompleteChecklistCount}
+          />
         ) : null}
 
         <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
