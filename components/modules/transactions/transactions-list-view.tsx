@@ -4,9 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { apiFetcher } from "@/lib/fetcher";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, X, AlertCircle, Loader2, LayoutDashboard } from "lucide-react";
+import { AlertCircle, Loader2, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SectionTabs } from "@/components/ui/section-tabs";
 import { BrandTablePagination } from "@/components/ui/BrandTablePagination";
 import { Button } from "@/components/ui/button";
 import { kpBtnSave } from "@/components/ui/kp-dashboard-button-tiers";
@@ -18,29 +17,22 @@ import {
   TransactionsListTableRow,
   TH,
 } from "./transactions-shared";
-import { TransactionsListShell, TransactionsPageHeader } from "@/components/transactions";
+import {
+  TransactionsListFilters,
+  TransactionsListShell,
+  TransactionsPageHeader,
+} from "@/components/transactions";
+import {
+  buildTransactionsApiUrl,
+  buildTransactionsPageHref,
+  hasTransactionsListFilters,
+  parseTransactionsListFromSearchParams,
+} from "@/lib/transactions/list-query";
 import { UI_COPY } from "@/lib/ui-copy";
 
-const STATUS_TABS = [
-  { label: "All", value: "__all__" },
-  { label: "Lead", value: "LEAD" },
-  { label: "Pending", value: "PENDING" },
-  { label: "Under contract", value: "UNDER_CONTRACT" },
-  { label: "In escrow", value: "IN_ESCROW" },
-  { label: "Closed", value: "CLOSED" },
-  { label: "Fallen apart", value: "FALLEN_APART" },
-] as const;
-
-type StatusTabValue = (typeof STATUS_TABS)[number]["value"];
-
-function useTransactions(statusFilter: StatusTabValue, showArchived: boolean) {
-  const params = new URLSearchParams();
-  if (statusFilter !== "__all__") params.set("status", statusFilter);
-  if (showArchived) params.set("showArchived", "1");
-  const url = params.size > 0 ? `/api/v1/transactions?${params.toString()}` : "/api/v1/transactions";
-
+function useTransactionsList(apiUrl: string) {
   const { data, error: rawError, isLoading, mutate: reload } = useSWR<TransactionRow[]>(
-    url,
+    apiUrl,
     apiFetcher,
     { errorRetryCount: 2, errorRetryInterval: 500 }
   );
@@ -50,17 +42,6 @@ function useTransactions(statusFilter: StatusTabValue, showArchived: boolean) {
   const rows = data ?? [];
 
   return { rows, loading, error, reload };
-}
-
-function matchesSearch(t: TransactionRow, q: string): boolean {
-  const lq = q.toLowerCase();
-  const importSource = getImportProvenance(t.notes)?.sourceFile.toLowerCase() ?? "";
-  return (
-    t.property.address1.toLowerCase().includes(lq) ||
-    t.property.city.toLowerCase().includes(lq) ||
-    (t.brokerageName?.toLowerCase().includes(lq) ?? false) ||
-    importSource.includes(lq)
-  );
 }
 
 function LoadingState() {
@@ -88,13 +69,11 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 }
 
 function EmptyState({
-  isFiltered,
-  onReset,
-  showArchived,
+  mode,
+  onClearFilters,
 }: {
-  isFiltered: boolean;
-  onReset: () => void;
-  showArchived: boolean;
+  mode: "none" | "filtered";
+  onClearFilters: () => void;
 }) {
   return (
     <div className="flex min-h-[240px] flex-col items-center justify-center gap-4 px-4 text-center">
@@ -102,62 +81,32 @@ function EmptyState({
         <LayoutDashboard className="h-5 w-5 text-kp-on-surface-variant" />
       </div>
       <div>
-        {isFiltered ? (
+        {mode === "filtered" ? (
           <>
-            <p className="text-sm font-medium text-kp-on-surface">No matching transactions</p>
+            <p className="text-sm font-medium text-kp-on-surface">No transactions match these filters</p>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-              Try another status or clear search.
+              Try a different status, side, or search—or clear filters to see everything in scope.
             </p>
           </>
         ) : (
           <>
             <p className="text-sm font-medium text-kp-on-surface">{UI_COPY.empty.noneYet("transactions")}</p>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-              {showArchived
-                ? "No active or archived transactions found."
-                : "Add a transaction to track a closing and commission splits."}
+              Add a transaction to track a closing and commission splits. Filters and search apply once you have
+              records.
             </p>
           </>
         )}
       </div>
-      {isFiltered && (
+      {mode === "filtered" ? (
         <button
           type="button"
-          onClick={onReset}
+          onClick={onClearFilters}
           className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
         >
           Clear filters
         </button>
-      )}
-    </div>
-  );
-}
-
-function SearchInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  return (
-    <div className="relative">
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-kp-on-surface-variant" />
-      <input
-        type="text"
-        placeholder="Search by address or brokerage…"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(
-          "h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high pl-8 pr-8",
-          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
-          "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-        )}
-      />
-      {value && (
-        <button
-          type="button"
-          onClick={() => onChange("")}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-kp-on-surface-variant hover:text-kp-on-surface"
-          aria-label="Clear search"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -187,34 +136,34 @@ function TransactionsTable({ rows }: { rows: TransactionRow[] }) {
 }
 
 /**
- * TransactionsListView — closing records for the agent&apos;s properties.
+ * TransactionsListView — operational list with URL-driven filters.
  *
- * API: GET /api/v1/transactions?status=
+ * API: GET /api/v1/transactions?status=&side=&q=&archived=&setup=
  */
 export function TransactionsListView() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [statusFilter, setStatusFilter] = useState<StatusTabValue>("__all__");
-  const [search, setSearch] = useState("");
-  const [showArchived, setShowArchived] = useState(false);
-  const [needsSetupOnly, setNeedsSetupOnly] = useState(false);
-  const createOpen = searchParams.get("new") === "1";
+  const spKey = searchParams.toString();
 
-  const { rows, loading, error, reload } = useTransactions(statusFilter, showArchived);
+  const listState = useMemo(
+    () => parseTransactionsListFromSearchParams(new URLSearchParams(spKey)),
+    [spKey]
+  );
 
-  const visible = useMemo(() => {
-    const base = needsSetupOnly ? rows.filter((t) => isTransactionNeedsSetup(t)) : rows;
-    if (!search.trim()) return base;
-    return base.filter((t) => matchesSearch(t, search));
-  }, [rows, search, needsSetupOnly]);
+  const apiUrl = useMemo(() => buildTransactionsApiUrl(listState), [listState]);
 
-  // Pagination
+  const { rows, loading, error, reload } = useTransactionsList(apiUrl);
+
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  useEffect(() => { setPage(1); }, [visible]);
-  const pagedVisible = useMemo(
-    () => visible.slice((page - 1) * pageSize, page * pageSize),
-    [visible, page, pageSize]
+
+  useEffect(() => {
+    setPage(1);
+  }, [spKey]);
+
+  const pagedRows = useMemo(
+    () => rows.slice((page - 1) * pageSize, page * pageSize),
+    [rows, page, pageSize]
   );
 
   const summary = useMemo(() => {
@@ -225,22 +174,25 @@ export function TransactionsListView() {
     return { active, archived, needsSetup, imported };
   }, [rows]);
 
-  const isUnfiltered = statusFilter === "__all__";
-  const tabs = STATUS_TABS.map((t) => ({
-    label: t.label,
-    value: t.value,
-    count: t.value === "__all__" && isUnfiltered ? rows.length : undefined,
-  }));
+  const hasFilters = hasTransactionsListFilters(listState);
+  const createOpen = searchParams.get("new") === "1";
 
-  const isFiltered = statusFilter !== "__all__" || search.trim().length > 0 || needsSetupOnly;
-
-  function handleClearFilters() {
-    setStatusFilter("__all__");
-    setSearch("");
-    setNeedsSetupOnly(false);
+  /** Reset to default list state while preserving create modal if open. */
+  function clearAllFilters() {
+    router.replace(
+      buildTransactionsPageHref(
+        {
+          statusTab: "__all__",
+          side: null,
+          q: "",
+          archived: false,
+          setup: false,
+        },
+        { keepNewModal: createOpen }
+      ),
+      { scroll: false }
+    );
   }
-
-  const showContent = !loading && !error;
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
@@ -250,7 +202,9 @@ export function TransactionsListView() {
           <Button
             type="button"
             variant="outline"
-            onClick={() => router.replace("/transactions?new=1", { scroll: false })}
+            onClick={() =>
+              router.replace(buildTransactionsPageHref(listState, { keepNewModal: true }), { scroll: false })
+            }
             className={cn(kpBtnSave, "mt-0.5 h-9 border-transparent px-3 text-xs")}
           >
             + Add transaction
@@ -280,82 +234,39 @@ export function TransactionsListView() {
       <TransactionsListShell
         className="mx-6 mb-8 sm:mx-8"
         title="Your transactions"
-        description="Filter by stage or search the list"
+        description="URL-backed filters — share or bookmark a view"
         headerRight={
-          showContent && rows.length > 0 ? (
+          !loading && !error && rows.length > 0 ? (
             <span className="text-xs tabular-nums text-kp-on-surface-variant">
-              {visible.length}
-              {visible.length !== rows.length && ` / ${rows.length}`}{" "}
-              {rows.length === 1 ? "record" : "records"}
+              {rows.length} {rows.length === 1 ? "record" : "records"}
             </span>
           ) : null
         }
       >
-        {showContent && rows.length > 0 && (
-          <div className="border-b border-kp-outline px-5">
-            <SectionTabs
-              tabs={tabs}
-              active={statusFilter}
-              onChange={(v) => {
-                setSearch("");
-                setStatusFilter(v as StatusTabValue);
-              }}
-            />
-          </div>
-        )}
-
-        {showContent && (
-          <div className="border-b border-kp-outline-variant px-5 py-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              {rows.length > 0 ? (
-                <div className="sm:min-w-[340px] sm:flex-1">
-                  <SearchInput value={search} onChange={setSearch} />
-                </div>
-              ) : (
-                <div />
-              )}
-              <label className="inline-flex items-center gap-2 text-xs text-kp-on-surface-variant">
-                <input
-                  type="checkbox"
-                  checked={needsSetupOnly}
-                  onChange={(e) => setNeedsSetupOnly(e.target.checked)}
-                  className="h-4 w-4 rounded border-kp-outline bg-kp-surface-high text-rose-300 focus:ring-rose-300/40"
-                />
-                Needs setup only
-              </label>
-              <label className="inline-flex items-center gap-2 text-xs text-kp-on-surface-variant">
-                <input
-                  type="checkbox"
-                  checked={showArchived}
-                  onChange={(e) => setShowArchived(e.target.checked)}
-                  className="h-4 w-4 rounded border-kp-outline bg-kp-surface-high text-kp-teal focus:ring-kp-teal/40"
-                />
-                Show archived
-              </label>
-            </div>
-          </div>
-        )}
+        <TransactionsListFilters totalRowCount={rows.length} />
 
         {loading ? (
           <LoadingState />
         ) : error ? (
           <ErrorState message={error} onRetry={reload} />
-        ) : visible.length === 0 ? (
+        ) : rows.length === 0 ? (
           <EmptyState
-            isFiltered={isFiltered}
-            onReset={handleClearFilters}
-            showArchived={showArchived}
+            mode={hasFilters ? "filtered" : "none"}
+            onClearFilters={clearAllFilters}
           />
         ) : (
           <>
-            <TransactionsTable rows={pagedVisible} />
-            {visible.length > pageSize && (
+            <TransactionsTable rows={pagedRows} />
+            {rows.length > pageSize && (
               <BrandTablePagination
-                total={visible.length}
+                total={rows.length}
                 page={page}
                 pageSize={pageSize}
                 onPageChange={setPage}
-                onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+                onPageSizeChange={(s) => {
+                  setPageSize(s);
+                  setPage(1);
+                }}
               />
             )}
           </>
@@ -364,7 +275,7 @@ export function TransactionsListView() {
 
       <CreateTransactionModal
         open={createOpen}
-        onClose={() => router.replace("/transactions", { scroll: false })}
+        onClose={() => router.replace(buildTransactionsPageHref(listState), { scroll: false })}
       />
     </div>
   );
