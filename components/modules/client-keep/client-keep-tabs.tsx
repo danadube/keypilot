@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import {
+  KP_WORKSPACE_CHROME_BODY_GUTTER_CLASS,
+  KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS,
+} from "@/lib/shell/workspace-chrome-gutter";
 
 export const CLIENT_KEEP_TAB_ITEMS = [
   { id: "contacts", label: "Contacts", href: "/contacts" },
@@ -73,10 +77,15 @@ export function ClientKeepWorkspaceChrome({
 }) {
   return (
     <div className="flex min-h-0 flex-col gap-1.5">
-      <header className="overflow-hidden rounded-lg border border-kp-outline-variant bg-kp-surface">
+      <header
+        className={cn(
+          "overflow-hidden rounded-lg border border-kp-outline-variant bg-kp-surface",
+          KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS
+        )}
+      >
         <ClientKeepTabBar />
       </header>
-      <div className="min-h-0 flex-1">{children}</div>
+      <div className={KP_WORKSPACE_CHROME_BODY_GUTTER_CLASS}>{children}</div>
     </div>
   );
 }

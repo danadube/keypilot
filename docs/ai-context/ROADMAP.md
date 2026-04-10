@@ -1,5 +1,10 @@
-
 # KeyPilot Development Roadmap
+
+## Strategic roadmap (v2)
+
+For the **post–RealOffice360 phased plan** (Client HQ, Command Center, tiers, OS-layer horizons), see **[`docs/platform/keypilot-roadmap-v2.md`](../platform/keypilot-roadmap-v2.md)**. The sections below remain a concise **historical phase outline** for AI context and long-running codebase references; v2 is the primary **operating-system** sequencing doc for new work.
+
+---
 
 ## Phase 1 – Open House MVP
 

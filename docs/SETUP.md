@@ -60,15 +60,15 @@ You will set up:
 13. Replace `[YOUR-PASSWORD]` with the database password you copied in Step 1.2.
 14. Add `?pgbouncer=true` at the very end (e.g. `...postgres?pgbouncer=true`).
 15. This final string is your **`DATABASE_URL`** — save it.
+16. **Serverless (Vercel):** append a low Prisma pool size so lambdas do not exhaust the pool, e.g.  
+    `...?pgbouncer=true&connection_limit=1` (if you already have query params, use `&connection_limit=1`).
 
-**Choose Session mode (for DIRECT_URL):**
-16. Switch the mode selector to **Session** (or "Session mode" / "Pooler session" / "Direct").
-17. Click **Copy** again.
-18. Paste into your editor. It will use port **5432** (not 6543). Do **not** add `?pgbouncer=true`.
-19. Replace `[YOUR-PASSWORD]` with your database password.
-20. This is your **`DIRECT_URL`** — save it.
+**Choose Direct connection (for `DIRECT_URL` — Prisma migrate / `db push`):**
+17. In the same Supabase connection UI, switch to **Direct connection** (host **`db.<project-ref>.supabase.co`**, port **5432**). This is **not** the pooler hostname.
+18. Copy the URI, replace the password placeholder, and save as **`DIRECT_URL`**. Do **not** add `?pgbouncer=true`.
+19. If you only see pooler hosts, open **`docs/platform/database-migrations.md`** — migrate must not use the transaction pooler (`:6543`).
 
-**✓ Checkpoint:** You have two URLs: one ending with `:6543/postgres?pgbouncer=true` (DATABASE_URL) and one ending with `:5432/postgres` (DIRECT_URL).
+**✓ Checkpoint:** **`DATABASE_URL`** uses the **transaction** pooler **`:6543`** with **`?pgbouncer=true`** (and ideally `connection_limit=1` on Vercel). **`DIRECT_URL`** uses the **direct** host **`db.*.supabase.co:5432`**.
 
 ---
 
@@ -84,8 +84,8 @@ You will set up:
 5. Add or replace with these lines (use your real values from Steps 1.3 and 2.3):
 
    ```env
-   DATABASE_URL="postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true"
-   DIRECT_URL="postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:5432/postgres"
+   DATABASE_URL="postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1"
+   DIRECT_URL="postgresql://postgres.[ref]:[YOUR-PASSWORD]@db.[project-ref].supabase.co:5432/postgres"
    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_
    CLERK_SECRET_KEY=sk_test_
    CLERK_WEBHOOK_SECRET=whsec_
@@ -433,8 +433,9 @@ Until that’s set up, continue adding properties manually or via the generic `M
 |---------|----------------|
 | **Vercel build fails** | All 6 env vars set? `postinstall` runs `prisma generate` – no DB needed for that. |
 | **"User not found" after sign-in** | Clerk webhook URL correct? `CLERK_WEBHOOK_SECRET` set in Vercel? Try signing up again after fixing. |
-| **Database connection error** | `DATABASE_URL` uses port 6543 and `?pgbouncer=true`. `DIRECT_URL` uses port 5432. Password correct and URL-encoded? |
-| **`prisma db push` fails with "prepared statement already exists"** | Use **Session** mode (port 5432) for `DIRECT_URL`, not Transaction (6543). `prisma.config.ts` prefers `DIRECT_URL` for schema ops. If it still fails, run `npm run db:push:direct`. See [Supabase Prisma troubleshooting](https://supabase.com/docs/guides/database/prisma/prisma-troubleshooting). |
+| **Database connection error** | `DATABASE_URL` uses **transaction** pooler port **6543** and `?pgbouncer=true` (not Session / not `:5432` pooler). `DIRECT_URL` uses **direct** host **`db.*.supabase.co:5432`**. Password correct and URL-encoded? |
+| **API 500, Vercel logs: `MaxClientsInSessionMode` / max clients in Session mode** | **`DATABASE_URL` is wrong for serverless.** You are using the **Session** pooler (often **`:5432`** on `*.pooler.supabase.com`) as the app URL. Switch Vercel **`DATABASE_URL`** to **Transaction** mode (**`:6543`**) and add **`?pgbouncer=true`** plus **`&connection_limit=1`**. Redeploy. See README → Supabase connection strings. |
+| **`prisma db push` fails with "prepared statement already exists"** | **`DIRECT_URL` must not be the `:6543` transaction pooler.** Use the **direct** `db.*.supabase.co:5432` URI, or the pool workarounds in **`docs/platform/database-migrations.md`** / `npm run db:push:direct`. See [Supabase Prisma troubleshooting](https://supabase.com/docs/guides/database/prisma/prisma-troubleshooting). |
 | **Redirect loop on sign-in** | Clerk domain added? `NEXT_PUBLIC_APP_URL` matches your Vercel URL? |
 | **Webhook not firing** | Endpoint is `https://your-domain.vercel.app/api/v1/auth/webhook`. Check Clerk → Webhooks → Recent deliveries for errors. |
 | **Webhook returns 500 "Base64Coder"** | `CLERK_WEBHOOK_SECRET` is malformed. **Fix:** Clerk → Webhooks → endpoint → Signing secret → **Regenerate** → copy. Vercel → env vars → replace `CLERK_WEBHOOK_SECRET` (no spaces) → Redeploy. |

@@ -24,7 +24,8 @@ describe("isShowingHQContext", () => {
 });
 
 describe("isWorkspaceContext", () => {
-  it("is true for ShowingHQ, open houses, ClientKeep, and Contacts prefixes", () => {
+  it("is true for dashboard, ShowingHQ, open houses, ClientKeep, and Contacts prefixes", () => {
+    expect(isWorkspaceContext("/dashboard")).toBe(true);
     expect(isWorkspaceContext("/showing-hq")).toBe(true);
     expect(isWorkspaceContext("/open-houses")).toBe(true);
     expect(isWorkspaceContext("/client-keep")).toBe(true);

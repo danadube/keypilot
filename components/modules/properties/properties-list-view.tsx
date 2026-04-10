@@ -226,7 +226,7 @@ export function PropertiesListView() {
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
       {/* Hero: one context line + CTA — module title is in the shell */}
-      <div className="flex flex-col gap-3 px-6 pb-3 pt-2 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+      <div className="flex flex-col gap-3 pb-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="max-w-xl text-xs text-kp-on-surface-variant">
           Listing records for open houses and visitor capture.
         </p>
@@ -241,7 +241,7 @@ export function PropertiesListView() {
 
       {/* Page-level list tabs (unchanged visibility rules) */}
       {!loading && !error && properties.length > 0 && (
-        <div className="px-6 sm:px-8">
+        <div>
           <SectionTabs
             tabs={TABS.map((t) => ({
               ...t,
@@ -254,7 +254,7 @@ export function PropertiesListView() {
       )}
 
       {/* ── Metric cards ────────────────────────────────────────────────────── */}
-      <div className="grid gap-3 px-6 pb-4 pt-4 sm:grid-cols-3 sm:px-8">
+      <div className="grid gap-3 pb-4 pt-4 sm:grid-cols-3">
         <MetricCard
           label="Total properties"
           value={properties.length}
@@ -283,7 +283,7 @@ export function PropertiesListView() {
       </div>
 
       {/* ── Table panel ─────────────────────────────────────────────────────── */}
-      <div className="mx-6 mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
+      <div className="mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
         {!loading && !error && properties.length > 0 && (
           <div className="flex justify-end border-b border-kp-outline px-5 py-2">
             <span className="text-xs tabular-nums text-kp-on-surface-muted">

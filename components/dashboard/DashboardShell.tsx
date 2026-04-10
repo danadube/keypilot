@@ -136,8 +136,6 @@ function MobileDrawer({
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
-  const base = (pathname.split("?")[0] ?? "").replace(/\/$/, "") || "/";
-  const isOperationalDashboard = base === "/dashboard";
   /** + New stays available globally (direct-create links), not only on ShowingHQ surfaces. */
   const showHeaderNewMenu = true;
   const workspaceShell = isWorkspaceContext(pathname);
@@ -165,7 +163,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <header
             className={cn(
               "sticky top-0 z-20 flex w-full shrink-0 border-b border-white/[0.08] shadow-none",
-              workspaceShell || isOperationalDashboard ? "items-center" : "items-stretch",
+              workspaceShell ? "items-center" : "items-stretch",
               shellTopRowHeightClass(pathname)
             )}
             style={SHELL_CHROME_BG_STYLE}
@@ -223,14 +221,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                     <WorkspaceShellDateTimeLine />
                   </>
                 ) : (
-                  <h1
-                    className={cn(
-                      "truncate font-semibold leading-tight text-kp-on-surface",
-                      isOperationalDashboard
-                        ? "text-[13px] md:text-sm"
-                        : "text-sm md:text-base"
-                    )}
-                  >
+                  <h1 className="truncate text-sm font-semibold leading-tight text-kp-on-surface md:text-base">
                     {pageTitle}
                   </h1>
                 )}
@@ -244,18 +235,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          <main
-            className={cn(
-              "min-h-0 flex-1 bg-kp-bg px-6 pb-5 md:px-8 md:pb-6 lg:px-10",
-              isOperationalDashboard ? "pt-1.5 md:pt-2" : "pt-2 md:pt-3"
-            )}
-          >
-            <div
-              className={cn(
-                "mx-auto min-h-[50vh] w-full",
-                isOperationalDashboard ? "max-w-7xl" : "max-w-6xl"
-              )}
-            >
+          <main className="min-h-0 flex-1 bg-kp-bg px-6 pb-5 pt-2 md:px-8 md:pb-6 md:pt-3 lg:px-10">
+            <div className="mx-auto min-h-[50vh] w-full max-w-6xl">
               {children}
             </div>
           </main>
