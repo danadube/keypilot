@@ -17,6 +17,7 @@
     "test:watch": "jest --watch",
     "check:prisma": "node scripts/check-prisma-usage.js",
     "validate:db-safety": "node scripts/validate-db-safety.mjs",
+    "schema:sanity": "node scripts/vercel-schema-sanity-check.mjs",
     "db:push": "prisma db push",
     "db:push:direct": "node scripts/db-push-direct.cjs",
     "release:patch": "npm version patch",

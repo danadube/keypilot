@@ -66,10 +66,21 @@ If you add SQL only under `supabase/migrations/`, you must **also** add an equiv
 
 ### Preview (Vercel)
 
-1. **Automatic:** Production and preview Vercel builds set **`VERCEL=1`**; the app **`npm run build`** runs **`scripts/vercel-prisma-migrate-deploy.mjs`**, which executes **`npx prisma migrate deploy`** before **`prisma generate`** so the linked database picks up any pending migrations from the branch. Ensure **`DATABASE_URL`** and **`DIRECT_URL`** (direct `db.<project>.supabase.co`, not a pooler) are set on the Vercel project so migrate can connect.
+1. **Automatic:** Production and preview Vercel builds set **`VERCEL=1`**; the app **`npm run build`** runs **`scripts/vercel-prisma-migrate-deploy.mjs`**, which executes **`npx prisma migrate deploy`**, then **`scripts/vercel-schema-sanity-check.mjs`**, then the rest of the build continues with **`prisma generate`** and **`next build`**. The sanity step queries **`information_schema`** for critical **TransactionHQ** tables/columns (e.g. **`transactions.side`**, **`transaction_checklist_items`**, **`notes`**, **`transaction_activities`**, **`transaction_checklist_templates`**) and **fails the build** if anything required is still missing—preventing Prisma **`P2022`** / runtime **500**s from schema drift after a “green” migrate. Ensure **`DATABASE_URL`** and **`DIRECT_URL`** (direct **`db.<project-ref>.supabase.co:5432`**, not a transaction pooler) are set on the Vercel project so **`prisma migrate deploy`** and **`prisma db execute`** (used by the sanity script) can connect reliably.
 2. If a preview still shows **500**s after deploy, confirm the migration history in **`_prisma_migrations`** matches the repo and run **`npx prisma migrate deploy`** manually against that environment once.
 3. Open the preview URL and exercise the feature (especially authenticated routes using **`withRLSContext`**). After a **TransactionHQ**-related schema change, smoke authenticated **`GET /api/v1/transactions`** and **`GET /api/v1/transactions/attention`** (expect **200**, not **500**), then **`/transactions`**, a **`/transactions/[id]`** detail page, and the Command Center **Transaction attention** section.
-4. Confirm no **500**s on primary surfaces (e.g. ShowingHQ dashboard). In the Vercel deployment **Build** log, confirm **`prisma migrate deploy`** finished successfully before **`next build`** (otherwise the app may still be ahead of the DB).
+4. Confirm no **500**s on primary surfaces (e.g. ShowingHQ dashboard). In the Vercel deployment **Build** log, confirm **`prisma migrate deploy`** finished successfully, then **`[schema-sanity]`** / **`OK — required TransactionHQ schema present`**, before **`prisma generate`** / **`next build`**. If the sanity step fails, the database is still missing objects Prisma expects—fix drift (run **`npx prisma migrate deploy`** against that environment using **`DIRECT_URL`**, resolve **P3009** if needed), then redeploy.
+
+### Schema sanity check failures (build stops after migrate)
+
+If **`[vercel-schema-sanity-check] Missing required TransactionHQ schema`** appears in logs:
+
+1. Confirm **`DIRECT_URL`** on Vercel points at the **direct** Postgres host (**`db.<project-ref>.supabase.co:5432`**), not a pooler-only URL—migrate and **`prisma db execute`** need a stable direct session for DDL and checks.
+2. Run **`npx prisma migrate deploy`** locally or in CI against **that same database** (using **`DIRECT_URL`**) and ensure no failed rows in **`_prisma_migrations`**.
+3. Idempotent convergence migrations (e.g. **`transactionhq_schema_convergence`**) are intended to repair common preview drift; if objects are still missing, compare **`prisma/migrations`** history to **`_prisma_migrations`** on the DB.
+4. **DB-changing PRs** should be validated on **preview** with authenticated smoke tests on affected routes (e.g. **`GET /api/v1/transactions`**, **`GET /api/v1/transactions/{id}/checklist`**, transaction detail) before merge to release.
+
+**Local / CI:** Non-Vercel **`npm run build`** does **not** run migrate or the sanity script (placeholder **`DATABASE_URL`**). To verify a real database manually: **`npm run schema:sanity`** (or **`VERCEL=1`** is not required—only a real **`DATABASE_URL`** / **`DIRECT_URL`**).
 
 ### Troubleshooting: P3009 (failed migrations)
 
@@ -164,6 +175,7 @@ Historically, **`keypilot_app`** policies and **GRANT**s for most tables were in
 ## Automated checks
 
 - **`npm run validate:db-safety`** — diff-based guard for schema vs migrations and RLS markers in new Prisma SQL. See **`docs/platform/db-safety-validator.md`**.
+- **`scripts/vercel-schema-sanity-check.mjs`** (invoked automatically after **`prisma migrate deploy`** on **Vercel only**) — post-migrate SQL assertions for critical **TransactionHQ** schema; **`npm run schema:sanity`** runs the same checks when a real database URL is available.
 
 ## Related docs
 
