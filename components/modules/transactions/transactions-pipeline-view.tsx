@@ -84,7 +84,7 @@ export function TransactionsPipelineView() {
         subtitle="Pipeline — Active closings grouped by stage. Closed deals stay on the overview list."
       />
 
-      <div className="mx-6 mt-6 space-y-6 sm:mx-8">
+      <div className="mt-6 space-y-6">
         {loading ? (
           <div className="flex min-h-[280px] items-center justify-center rounded-xl border border-kp-outline bg-kp-surface">
             <Loader2 className="h-6 w-6 animate-spin text-kp-on-surface-variant" />

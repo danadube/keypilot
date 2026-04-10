@@ -65,6 +65,9 @@ function getPageTitle(pathname: string): string {
   if (pathname.startsWith("/property-vault") || pathname.startsWith("/properties")) {
     return "PropertyVault";
   }
+  if (pathname.startsWith("/transactions")) {
+    return "TransactionHQ";
+  }
   if (pathname.startsWith("/farm-trackr")) {
     return "FarmTrackr";
   }
@@ -204,6 +207,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                       >
                         <span className="text-kp-on-surface">Property</span>
                         <span className="text-kp-teal">Vault</span>
+                      </h1>
+                    ) : pageTitle === "TransactionHQ" ? (
+                      <h1
+                        aria-label="TransactionHQ"
+                        className="truncate text-lg font-semibold leading-none tracking-tight md:text-xl"
+                      >
+                        <span className="text-kp-on-surface">Transaction</span>
+                        <span className="text-kp-teal">HQ</span>
                       </h1>
                     ) : pageTitle === "FarmTrackr" ? (
                       <h1

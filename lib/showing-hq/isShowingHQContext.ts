@@ -12,7 +12,7 @@ export function isShowingHQContext(pathname: string): boolean {
  * Shell alignment: same header height, sticky sidebar, and date line as ShowingHQ.
  * Includes the operational home (`/dashboard`), FarmTrackr (`/farm-trackr/*`),
  * PropertyVault (`/property-vault/*`, `/properties/*`), ClientKeep (`/client-keep/*`, `/contacts/*`),
- * plus ShowingHQ surfaces.
+ * plus ShowingHQ surfaces and TransactionHQ (`/transactions/*`).
  */
 export function isWorkspaceContext(pathname: string): boolean {
   const base = normalizePathnameBase(pathname);
@@ -24,7 +24,8 @@ export function isWorkspaceContext(pathname: string): boolean {
     base.startsWith("/property-vault") ||
     base.startsWith("/properties") ||
     base.startsWith("/client-keep") ||
-    base.startsWith("/contacts")
+    base.startsWith("/contacts") ||
+    base.startsWith("/transactions")
   );
 }
 

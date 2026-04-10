@@ -1,14 +1,11 @@
 import type { ReactNode } from "react";
-import {
-  TRANSACTION_HQ_MODULE_TITLE,
-  TransactionsModuleHeader,
-} from "./transactions-module-header";
+import { TransactionsModuleHeader } from "./transactions-module-header";
 
 const DEFAULT_SUBTITLE =
   "Closings, sale details, commission splits, and lifecycle state";
 
 export interface TransactionsPageHeaderProps {
-  /** Secondary line under the title */
+  /** Secondary line under the shell title */
   subtitle?: string;
   /** Primary actions (e.g. add transaction) */
   actions?: ReactNode;
@@ -16,8 +13,7 @@ export interface TransactionsPageHeaderProps {
 }
 
 /**
- * @deprecated Prefer {@link TransactionsModuleHeader} for full module chrome (tabs + layout).
- * Wraps TransactionHQ chrome with a stable default subtitle.
+ * @deprecated Prefer {@link TransactionsModuleHeader} for page context (subtitle + actions).
  */
 export function TransactionsPageHeader({
   subtitle = DEFAULT_SUBTITLE,
@@ -25,11 +21,6 @@ export function TransactionsPageHeader({
   className,
 }: TransactionsPageHeaderProps) {
   return (
-    <TransactionsModuleHeader
-      title={TRANSACTION_HQ_MODULE_TITLE}
-      subtitle={subtitle}
-      actions={actions}
-      className={className}
-    />
+    <TransactionsModuleHeader subtitle={subtitle} actions={actions} className={className} />
   );
 }

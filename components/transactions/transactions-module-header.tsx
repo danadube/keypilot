@@ -2,59 +2,43 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { TransactionsModuleTabBar } from "./transactions-module-tab-bar";
 
-/** Canonical in-content title for the Transactions module operating surface. */
+/** Canonical module name — primary label lives in {@link DashboardShell} for `/transactions/*`. */
 export const TRANSACTION_HQ_MODULE_TITLE = "TransactionHQ";
 
 export interface TransactionsModuleHeaderProps {
-  /** Row 1 — defaults to TransactionHQ. */
-  title?: string;
-  /** Supporting line under the title (row 2). */
+  /** Supporting context under the shell title (section-specific). */
   subtitle?: string;
-  /** Optional summary strip (stats, etc.) — row 2, below subtitle when both set. */
+  /** Optional summary strip (stats, etc.). */
   summary?: ReactNode;
-  /** Primary actions (row 1, right). */
+  /** Primary actions (row with subtitle). */
   actions?: ReactNode;
   className?: string;
 }
 
 /**
- * TransactionHQ module chrome: title row, subtitle/summary, then in-module top tabs.
+ * Page-level lead for TransactionHQ: context line, optional metrics, actions.
+ * Module title + tabs are provided by the dashboard shell and {@link TransactionsWorkspaceChrome}.
  */
 export function TransactionsModuleHeader({
-  title = TRANSACTION_HQ_MODULE_TITLE,
   subtitle,
   summary,
   actions,
   className,
 }: TransactionsModuleHeaderProps) {
+  if (!subtitle && !summary && !actions) return null;
+
   return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-t-2xl border border-kp-outline/70 bg-gradient-to-b from-kp-surface-high/35 via-kp-bg to-kp-bg shadow-sm shadow-black/20",
-        className
-      )}
-    >
-      <div className="px-6 pb-2 pt-4 sm:px-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
-              {title}
-            </h1>
-          </div>
-          {actions ? <div className="shrink-0">{actions}</div> : null}
-        </div>
-
-        {subtitle || summary ? (
-          <div className="mt-3 space-y-3 pb-2">
-            {subtitle ? <p className="text-sm leading-relaxed text-kp-on-surface-variant">{subtitle}</p> : null}
-            {summary}
-          </div>
-        ) : null}
+    <div className={cn("flex flex-col gap-3 pb-3 pt-2", className)}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        {subtitle ? (
+          <p className="max-w-2xl text-xs leading-relaxed text-kp-on-surface-variant">{subtitle}</p>
+        ) : (
+          <span className="min-w-0 flex-1" />
+        )}
+        {actions ? <div className="shrink-0">{actions}</div> : null}
       </div>
-
-      <TransactionsModuleTabBar className="px-6 sm:px-8" />
+      {summary ? <div className="space-y-3">{summary}</div> : null}
     </div>
   );
 }

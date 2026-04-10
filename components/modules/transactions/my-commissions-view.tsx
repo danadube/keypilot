@@ -89,7 +89,7 @@ export function MyCommissionsView() {
         subtitle="Commissions — Earnings on deals where you are assigned on a commission line. Open the parent transaction for full context."
       />
 
-      <div className="mx-6 mt-6 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
+      <div className="mt-6 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
         <div className="flex items-start gap-2 border-b border-kp-outline px-5 py-4">
           <Wallet className="mt-0.5 h-4 w-4 text-kp-teal" />
           <div>

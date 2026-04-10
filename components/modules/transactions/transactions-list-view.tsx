@@ -233,7 +233,7 @@ export function TransactionsListView() {
       />
 
       <TransactionsListShell
-        className="mx-6 mb-8 mt-6 sm:mx-8"
+        className="mb-8 mt-6"
         title="Your transactions"
         description="URL-backed filters — share or bookmark a view"
         headerRight={

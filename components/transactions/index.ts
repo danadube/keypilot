@@ -1,4 +1,5 @@
 export { TransactionsModuleShell } from "./transactions-module-shell";
+export { TransactionsWorkspaceChrome } from "./transactions-workspace-chrome";
 export { TransactionsPageHeader } from "./TransactionsPageHeader";
 export {
   TRANSACTION_HQ_MODULE_TITLE,

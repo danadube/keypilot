@@ -24,7 +24,7 @@ describe("isShowingHQContext", () => {
 });
 
 describe("isWorkspaceContext", () => {
-  it("is true for dashboard, ShowingHQ, open houses, ClientKeep, and Contacts prefixes", () => {
+  it("is true for dashboard, ShowingHQ, open houses, ClientKeep, Contacts, and TransactionHQ prefixes", () => {
     expect(isWorkspaceContext("/dashboard")).toBe(true);
     expect(isWorkspaceContext("/showing-hq")).toBe(true);
     expect(isWorkspaceContext("/open-houses")).toBe(true);
@@ -32,6 +32,8 @@ describe("isWorkspaceContext", () => {
     expect(isWorkspaceContext("/client-keep/segments")).toBe(true);
     expect(isWorkspaceContext("/contacts")).toBe(true);
     expect(isWorkspaceContext("/contacts/abc")).toBe(true);
+    expect(isWorkspaceContext("/transactions")).toBe(true);
+    expect(isWorkspaceContext("/transactions/pipeline")).toBe(true);
   });
 
   it("is false outside workspace surfaces", () => {
