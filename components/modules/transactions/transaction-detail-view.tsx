@@ -18,6 +18,7 @@ import {
   CheckSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isClosingSoon } from "@/lib/transactions/transaction-signals";
 import { Button } from "@/components/ui/button";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -215,16 +216,6 @@ function isoToDisplayDate(iso: string | null | undefined) {
     day: "numeric",
     year: "numeric",
   });
-}
-
-function isClosingSoon(closingDateIso: string | null, status: TxStatus): boolean {
-  if (status === "CLOSED" || !closingDateIso) return false;
-  const end = new Date(closingDateIso);
-  if (Number.isNaN(end.getTime())) return false;
-  const now = new Date();
-  const ms = end.getTime() - now.getTime();
-  const days = ms / 86400000;
-  return days >= 0 && days <= 30;
 }
 
 // ── Skeleton loader ───────────────────────────────────────────────────────────
