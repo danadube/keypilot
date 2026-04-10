@@ -4,7 +4,7 @@ import useSWR from "swr";
 import { apiFetcher } from "@/lib/fetcher";
 import type { TransactionSide } from "@prisma/client";
 import type { ComponentProps } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Loader2,
@@ -12,7 +12,6 @@ import {
   Pencil,
   Trash2,
   Plus,
-  Save,
   X,
   Briefcase,
   ExternalLink,
@@ -35,6 +34,7 @@ import {
   TransactionDetailIdentityRail,
   TransactionDetailLayout,
   TransactionDetailPageHeader,
+  TransactionEditDialog,
   TransactionMilestonesCard,
   TransactionSignalsCard,
   TransactionTimelineShell,
@@ -139,15 +139,6 @@ type TransactionDetail = {
   }>;
 };
 
-const STATUS_OPTIONS: { value: TxStatus; label: string }[] = [
-  { value: "LEAD", label: "Lead" },
-  { value: "PENDING", label: "Pending" },
-  { value: "UNDER_CONTRACT", label: "Under contract" },
-  { value: "IN_ESCROW", label: "In escrow" },
-  { value: "CLOSED", label: "Closed" },
-  { value: "FALLEN_APART", label: "Fallen apart" },
-];
-
 const STATUS_LABELS: Record<TxStatus, string> = {
   LEAD: "Lead",
   UNDER_CONTRACT: "Under contract",
@@ -181,25 +172,6 @@ function formatMoneyDisplay(v: string | number | null | undefined) {
   const n = typeof v === "string" ? parseFloat(v) : v;
   if (Number.isNaN(n)) return "—";
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
-}
-
-function isoToDateInput(iso: string | null) {
-  if (!iso) return "";
-  return iso.slice(0, 10);
-}
-
-function salePriceToInput(v: string | number | null) {
-  if (v == null || v === "") return "";
-  const n = typeof v === "string" ? parseFloat(v) : v;
-  return Number.isNaN(n) ? "" : String(n);
-}
-
-function parseOptionalPrice(s: string): number | null | undefined {
-  const t = s.trim().replace(/,/g, "");
-  if (!t) return null;
-  const n = parseFloat(t);
-  if (Number.isNaN(n) || n <= 0) return undefined;
-  return n;
 }
 
 function parseCommissionAmount(s: string): number | undefined {
@@ -303,13 +275,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     return [...tasksPayload.overdue, ...tasksPayload.dueToday, ...tasksPayload.upcoming];
   }, [tasksPayload]);
 
-  const [status, setStatus] = useState<TxStatus>("PENDING");
-  const [salePriceInput, setSalePriceInput] = useState("");
-  const [closingInput, setClosingInput] = useState("");
-  const [brokerageInput, setBrokerageInput] = useState("");
-  const [notesInput, setNotesInput] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [dirty, setDirty] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   const [newRole, setNewRole] = useState("");
   const [newAmount, setNewAmount] = useState("");
@@ -350,28 +316,6 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     [setupGaps]
   );
 
-  useEffect(() => {
-    if (!txn) return;
-    setStatus(txn.status);
-    setSalePriceInput(salePriceToInput(txn.salePrice));
-    setClosingInput(isoToDateInput(txn.closingDate));
-    setBrokerageInput(txn.brokerageName ?? "");
-    setNotesInput(txn.notes ?? "");
-    setDirty(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [txn?.id]);
-
-  useEffect(() => {
-    if (!txn) return;
-    const changed =
-      status !== txn.status ||
-      salePriceInput !== salePriceToInput(txn.salePrice) ||
-      closingInput !== isoToDateInput(txn.closingDate) ||
-      brokerageInput !== (txn.brokerageName ?? "") ||
-      notesInput !== (txn.notes ?? "");
-    setDirty(changed);
-  }, [txn, status, salePriceInput, closingInput, brokerageInput, notesInput]);
-
   const patchDealLink = async (dealId: string | null) => {
     setDealLinkBusy(true);
     setDealLinkError(null);
@@ -389,51 +333,6 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       setDealLinkError(e instanceof Error ? e.message : "Link update failed");
     } finally {
       setDealLinkBusy(false);
-    }
-  };
-
-  const handleSaveTransaction = async () => {
-    if (!txn) return;
-
-    const body: Record<string, unknown> = { status };
-
-    const price = parseOptionalPrice(salePriceInput);
-    if (price === undefined) {
-      toast.error("Enter a valid sale price or leave blank to clear.");
-      return;
-    }
-    body.salePrice = price;
-
-    if (closingInput.trim()) {
-      body.closingDate = closingInput.trim();
-    } else {
-      body.closingDate = null;
-    }
-
-    body.brokerageName = brokerageInput.trim() ? brokerageInput.trim() : null;
-    body.notes = notesInput.trim() ? notesInput.trim() : null;
-
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/v1/transactions/${transactionId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json();
-      if (json.error) throw new Error(json.error.message);
-      const t: TransactionDetail = json.data;
-      await reloadTxn(t, false);
-      setStatus(t.status);
-      setSalePriceInput(salePriceToInput(t.salePrice));
-      setClosingInput(isoToDateInput(t.closingDate));
-      setBrokerageInput(t.brokerageName ?? "");
-      setNotesInput(t.notes ?? "");
-      setDirty(false);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -661,16 +560,28 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             </span>
           }
           actions={
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-9 shrink-0 gap-1.5 text-xs"
-              onClick={() => setTaskModalOpen(true)}
-            >
-              <CheckSquare className="h-4 w-4" />
-              Add task
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1.5 text-xs"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="h-4 w-4" />
+                Edit
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 shrink-0 gap-1.5 text-xs"
+                onClick={() => setTaskModalOpen(true)}
+              >
+                <CheckSquare className="h-4 w-4" />
+                Add task
+              </Button>
+            </div>
           }
         />
       </div>
@@ -813,10 +724,24 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
         </section>
 
         <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-          <h2 className="text-sm font-semibold text-kp-on-surface">Transaction details</h2>
-          <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-            Changes save to this closing record only.
-          </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold text-kp-on-surface">Transaction record</h2>
+              <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+                Status, side, economics, and notes — use Edit in the header for a fast form.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={() => setEditOpen(true)}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Edit details
+            </Button>
+          </div>
 
           {importSession && (
             <div className="mt-4 rounded-lg border border-kp-teal/20 bg-kp-teal/10 px-3 py-2">
@@ -836,130 +761,11 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             </div>
           )}
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label htmlFor="detail-status" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                Status
-              </label>
-              <select
-                id="detail-status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as TxStatus)}
-                className={cn(
-                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface",
-                  "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
-              >
-                {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="detail-price" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                Sale price
-              </label>
-              <input
-                id="detail-price"
-                type="text"
-                inputMode="decimal"
-                value={salePriceInput}
-                onChange={(e) => setSalePriceInput(e.target.value)}
-                placeholder="Optional"
-                className={cn(
-                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
-                  "text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
-                  "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="detail-close" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                Closing date
-              </label>
-              <input
-                id="detail-close"
-                type="date"
-                value={closingInput}
-                onChange={(e) => setClosingInput(e.target.value)}
-                className={cn(
-                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface",
-                  "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
-              />
-            </div>
-
-            <div className="space-y-1.5 sm:col-span-2">
-              <label htmlFor="detail-brokerage" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                Brokerage
-              </label>
-              <input
-                id="detail-brokerage"
-                type="text"
-                value={brokerageInput}
-                onChange={(e) => setBrokerageInput(e.target.value)}
-                className={cn(
-                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
-                  "text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
-              />
-            </div>
-
-            <div className="space-y-1.5 sm:col-span-2">
-              <label htmlFor="detail-notes" className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                Notes
-              </label>
-              <textarea
-                id="detail-notes"
-                rows={3}
-                value={notesInput}
-                onChange={(e) => setNotesInput(e.target.value)}
-                className={cn(
-                  "w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm",
-                  "text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 flex justify-end gap-2">
-            <button
-              type="button"
-              disabled={!dirty || saving}
-              onClick={() => {
-                setStatus(txn.status);
-                setSalePriceInput(salePriceToInput(txn.salePrice));
-                setClosingInput(isoToDateInput(txn.closingDate));
-                setBrokerageInput(txn.brokerageName ?? "");
-                setNotesInput(txn.notes ?? "");
-              }}
-              className={cn(
-                "rounded-lg px-4 py-2 text-sm text-kp-on-surface-variant",
-                "hover:bg-kp-surface-high hover:text-kp-on-surface",
-                "disabled:pointer-events-none disabled:opacity-40"
-              )}
-            >
-              Reset
-            </button>
-            <button
-              type="button"
-              disabled={!dirty || saving}
-              onClick={handleSaveTransaction}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold",
-                dirty && !saving
-                  ? "bg-kp-gold text-kp-bg hover:bg-kp-gold-bright"
-                  : "cursor-not-allowed bg-kp-surface-high text-kp-on-surface-variant"
-              )}
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save
-            </button>
-          </div>
+          {txn.notes?.trim() ? (
+            <p className="mt-4 line-clamp-4 text-sm text-kp-on-surface-variant">{txn.notes}</p>
+          ) : (
+            <p className="mt-4 text-sm text-kp-on-surface-variant">No notes yet.</p>
+          )}
         </section>
 
         <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
@@ -1178,6 +984,28 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           }
         />
       </div>
+
+      <TransactionEditDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        transaction={
+          txn
+            ? {
+                id: txn.id,
+                status: txn.status,
+                transactionSide: txn.transactionSide,
+                salePrice: txn.salePrice,
+                closingDate: txn.closingDate,
+                brokerageName: txn.brokerageName,
+                notes: txn.notes,
+                commissions: txn.commissions,
+              }
+            : null
+        }
+        onSaved={async () => {
+          await reloadTxn();
+        }}
+      />
 
       <NewTaskModal
         open={taskModalOpen}

@@ -14,6 +14,7 @@ import {
 } from "@/lib/validations/transaction";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import type { Prisma } from "@prisma/client";
+import { applyBaseCommissionAmountForTransaction } from "@/lib/transactions/apply-base-commission";
 
 const propertySelect = {
   id: true,
@@ -117,14 +118,17 @@ export async function PATCH(
 
       const {
         dealId: dealIdPatch,
+        transactionSide,
         status,
         closingDate,
         salePrice,
         brokerageName,
         notes,
+        baseCommissionAmount,
       } = parsed.data;
 
       const data: Prisma.TransactionUncheckedUpdateInput = {};
+      if (transactionSide !== undefined) data.transactionSide = transactionSide;
       if (status !== undefined) data.status = status;
       if (closingDate !== undefined) data.closingDate = closingDate;
       if (salePrice !== undefined) data.salePrice = salePrice;
@@ -163,16 +167,20 @@ export async function PATCH(
         },
       };
 
-      if (Object.keys(data).length === 0) {
-        return tx.transaction.findFirst({
-          where: { id, userId: user.id },
-          include,
+      const hasScalarUpdates = Object.keys(data).length > 0;
+      if (hasScalarUpdates) {
+        await tx.transaction.update({
+          where: { id },
+          data,
         });
       }
 
-      return tx.transaction.update({
-        where: { id },
-        data,
+      if (baseCommissionAmount !== undefined) {
+        await applyBaseCommissionAmountForTransaction(tx, id, baseCommissionAmount);
+      }
+
+      return tx.transaction.findFirst({
+        where: { id, userId: user.id },
         include,
       });
     });

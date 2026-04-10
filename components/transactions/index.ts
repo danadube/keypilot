@@ -6,6 +6,8 @@ export { TransactionDetailLayout } from "./transaction-detail-layout";
 export { TransactionDetailPageHeader } from "./transaction-detail-page-header";
 export { TransactionDetailIdentityRail } from "./transaction-detail-identity-rail";
 export { TransactionTimelineShell } from "./transaction-timeline-shell";
+export { TransactionCoreFields } from "./transaction-core-fields";
+export { TransactionEditDialog } from "./transaction-edit-dialog";
 export { TransactionChecklistShell } from "./transaction-checklist-shell";
 export { TransactionMilestonesCard } from "./transaction-milestones-card";
 export { TransactionSignalsCard } from "./transaction-signals-card";

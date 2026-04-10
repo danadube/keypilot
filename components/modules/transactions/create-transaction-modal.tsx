@@ -18,6 +18,12 @@ import {
   getLowConfidenceFields,
   prettyFieldName,
 } from "@/lib/transactions/commission-import-review";
+import { TransactionCoreFields } from "@/components/transactions/transaction-core-fields";
+import type { TransactionFormStatus } from "@/lib/transactions/form-options";
+import {
+  parseOptionalBaseCommissionInput,
+  parseOptionalSalePriceInput,
+} from "@/lib/transactions/parse-transaction-form";
 
 type PropertyOption = {
   id: string;
@@ -26,14 +32,6 @@ type PropertyOption = {
   state: string;
   zip: string;
 };
-
-type TxStatus =
-  | "LEAD"
-  | "UNDER_CONTRACT"
-  | "IN_ESCROW"
-  | "PENDING"
-  | "CLOSED"
-  | "FALLEN_APART";
 
 type CreateMode = "manual" | "import";
 type BrokerageSelection = "" | "KW" | "BDH" | "CUSTOM";
@@ -93,15 +91,6 @@ type ParsedPayload = {
     missingRequired: string[];
   };
 };
-
-const STATUS_OPTIONS: { value: TxStatus; label: string }[] = [
-  { value: "LEAD", label: "Lead" },
-  { value: "PENDING", label: "Pending" },
-  { value: "UNDER_CONTRACT", label: "Under contract" },
-  { value: "IN_ESCROW", label: "In escrow" },
-  { value: "CLOSED", label: "Closed" },
-  { value: "FALLEN_APART", label: "Fallen apart" },
-];
 
 const BROKERAGE_SELECT_OPTIONS: { value: BrokerageSelection; label: string }[] = [
   { value: "", label: "Auto (detected)" },
@@ -283,11 +272,13 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
   const [selectedProperty, setSelectedProperty] = useState<PropertyOption | null>(null);
   const [mode, setMode] = useState<CreateMode>("manual");
 
-  const [status, setStatus] = useState<TxStatus>("PENDING");
+  const [status, setStatus] = useState<TransactionFormStatus>("PENDING");
+  const [transactionSide, setTransactionSide] = useState<"" | "BUY" | "SELL">("");
   const [salePrice, setSalePrice] = useState("");
   const [closingDate, setClosingDate] = useState("");
   const [brokerageName, setBrokerageName] = useState("");
   const [notes, setNotes] = useState("");
+  const [baseCommission, setBaseCommission] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -306,10 +297,12 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
     setMode("manual");
     setSelectedProperty(null);
     setStatus("PENDING");
+    setTransactionSide("");
     setSalePrice("");
     setClosingDate("");
     setBrokerageName("");
     setNotes("");
+    setBaseCommission("");
     setParsing(false);
     setCommitting(false);
     setImportSessionId(null);
@@ -479,17 +472,33 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
   async function handleManualCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedProperty) return;
+    if (transactionSide !== "BUY" && transactionSide !== "SELL") {
+      toast.error("Select buy or sell.");
+      return;
+    }
+
+    const parsedSalePrice = parseOptionalSalePriceInput(salePrice);
+    if (parsedSalePrice === undefined) {
+      toast.error("Enter a valid sale price or leave blank.");
+      return;
+    }
+    const parsedBase = parseOptionalBaseCommissionInput(baseCommission);
+    if (parsedBase === undefined) {
+      toast.error("Enter a valid base commission or leave blank.");
+      return;
+    }
 
     const body: Record<string, unknown> = {
       propertyId: selectedProperty.id,
+      transactionSide,
       status,
     };
     if (selectedDealId) body.dealId = selectedDealId;
-    const parsedSalePrice = parseNumberInput(salePrice);
-    if (parsedSalePrice !== undefined && parsedSalePrice > 0) body.salePrice = parsedSalePrice;
+    if (parsedSalePrice !== null) body.salePrice = parsedSalePrice;
     if (closingDate.trim()) body.closingDate = closingDate.trim();
     if (brokerageName.trim()) body.brokerageName = brokerageName.trim();
     if (notes.trim()) body.notes = notes.trim();
+    if (parsedBase != null && parsedBase > 0) body.baseCommissionAmount = parsedBase;
 
     setSubmitting(true);
     try {
@@ -546,7 +555,10 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
     }
   }
 
-  const canManualSubmit = !!selectedProperty && !submitting;
+  const canManualSubmit =
+    !!selectedProperty &&
+    (transactionSide === "BUY" || transactionSide === "SELL") &&
+    !submitting;
   const importCommitBlockReason = editedPayload
     ? getCommitBlockReason(editedPayload)
     : "Upload a PDF to generate preview.";
@@ -638,75 +650,31 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                 onSelect={setSelectedProperty}
               />
               {optionalDealSection("create-txn-deal-manual")}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                    Status
-                  </label>
-                  <select
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as TxStatus)}
-                    className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                  >
-                    {STATUS_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                    Closing date (optional)
-                  </label>
-                  <input
-                    type="date"
-                    value={closingDate}
-                    onChange={(e) => setClosingDate(e.target.value)}
-                    className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                  />
-                </div>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                    Sale price (optional)
-                  </label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={salePrice}
-                    onChange={(e) => setSalePrice(e.target.value)}
-                    className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                    Brokerage (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={brokerageName}
-                    onChange={(e) => setBrokerageName(e.target.value)}
-                    className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                  />
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                  Notes (optional)
-                </label>
-                <textarea
-                  rows={3}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                />
-              </div>
+              <TransactionCoreFields
+                variant="create"
+                status={status}
+                onStatusChange={setStatus}
+                transactionSide={transactionSide}
+                onTransactionSideChange={setTransactionSide}
+                salePrice={salePrice}
+                onSalePriceChange={setSalePrice}
+                closingDate={closingDate}
+                onClosingDateChange={setClosingDate}
+                brokerageName={brokerageName}
+                onBrokerageNameChange={setBrokerageName}
+                notes={notes}
+                onNotesChange={setNotes}
+                baseCommission={baseCommission}
+                onBaseCommissionChange={setBaseCommission}
+              />
             </div>
             <div className="flex items-center justify-between gap-3 border-t border-kp-outline px-6 py-4">
               <p className="text-xs text-kp-on-surface-variant">
-                {selectedProperty ? "Ready to create." : "Select a property to continue."}
+                {!selectedProperty
+                  ? "Select a property to continue."
+                  : transactionSide !== "BUY" && transactionSide !== "SELL"
+                    ? "Select buy or sell to continue."
+                    : "Ready to create."}
               </p>
               <div className="flex items-center gap-2">
                 <button
