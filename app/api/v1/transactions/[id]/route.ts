@@ -13,6 +13,11 @@ import {
   UpdateTransactionSchema,
 } from "@/lib/validations/transaction";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { recordTransactionActivity } from "@/lib/transactions/record-transaction-activity";
+import {
+  recordActivitiesForTransactionPatch,
+  type TxScalarSnapshot,
+} from "@/lib/transactions/transaction-patch-activities";
 import type { Prisma } from "@prisma/client";
 
 const propertySelect = {
@@ -102,15 +107,33 @@ export async function PATCH(
       const transaction = await withRLSContext(user.id, async (tx) => {
         const existing = await tx.transaction.findFirst({
           where: { id, userId: user.id },
-          select: { id: true },
+          select: { id: true, deletedAt: true },
         });
         if (!existing) return null;
 
-        return tx.transaction.update({
+        const row = await tx.transaction.update({
           where: { id },
           data: { deletedAt: archiveParse.success ? new Date() : null },
           include: transactionDetailInclude,
         });
+
+        if (archiveParse.success && !existing.deletedAt) {
+          await recordTransactionActivity(tx, {
+            transactionId: id,
+            actorUserId: user.id,
+            type: "TRANSACTION_UPDATED",
+            summary: "Archived transaction",
+          });
+        } else if (unarchiveParse.success && existing.deletedAt) {
+          await recordTransactionActivity(tx, {
+            transactionId: id,
+            actorUserId: user.id,
+            type: "TRANSACTION_UPDATED",
+            summary: "Restored transaction from archive",
+          });
+        }
+
+        return row;
       });
 
       if (!transaction) return apiError("Transaction not found", 404);
@@ -125,7 +148,16 @@ export async function PATCH(
     const transaction = await withRLSContext(user.id, async (tx) => {
       const existing = await tx.transaction.findFirst({
         where: { id, userId: user.id },
-        select: { id: true, propertyId: true },
+        select: {
+          id: true,
+          propertyId: true,
+          status: true,
+          salePrice: true,
+          closingDate: true,
+          brokerageName: true,
+          notes: true,
+          dealId: true,
+        },
       });
       if (!existing) return null;
 
@@ -165,11 +197,38 @@ export async function PATCH(
         });
       }
 
-      return tx.transaction.update({
+      const beforeSnapshot: TxScalarSnapshot = {
+        status: existing.status,
+        salePrice: existing.salePrice,
+        closingDate: existing.closingDate,
+        brokerageName: existing.brokerageName,
+        notes: existing.notes,
+        dealId: existing.dealId,
+      };
+
+      const updated = await tx.transaction.update({
         where: { id },
         data,
         include: transactionDetailInclude,
       });
+
+      const afterSnapshot: TxScalarSnapshot = {
+        status: updated.status,
+        salePrice: updated.salePrice,
+        closingDate: updated.closingDate,
+        brokerageName: updated.brokerageName,
+        notes: updated.notes,
+        dealId: updated.dealId,
+      };
+
+      await recordActivitiesForTransactionPatch(tx, {
+        transactionId: id,
+        actorUserId: user.id,
+        before: beforeSnapshot,
+        after: afterSnapshot,
+      });
+
+      return updated;
     });
 
     if (!transaction) return apiError("Transaction not found", 404);

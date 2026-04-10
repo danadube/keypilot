@@ -1,6 +1,6 @@
 "use client";
 
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { apiFetcher } from "@/lib/fetcher";
 import type { ComponentProps } from "react";
 import { useEffect, useMemo, useState } from "react";
@@ -26,6 +26,7 @@ import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { getImportProvenance } from "./transactions-shared";
 import { TransactionSignalsCard } from "@/components/modules/transactions/transaction-signals-card";
+import { TransactionActivityTimeline } from "@/components/modules/transactions/transaction-activity-timeline";
 import {
   computeTransactionSignals,
   setupGapLabelsFromInput,
@@ -270,6 +271,9 @@ function LoadingState() {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function TransactionDetailView({ transactionId }: { transactionId: string }) {
+  const { mutate: globalMutate } = useSWRConfig();
+  const activityListKey = `/api/v1/transactions/${transactionId}/activity`;
+
   const { data: txn, error: loadError, isLoading, mutate: reloadTxn } = useSWR<TransactionDetail>(
     transactionId ? `/api/v1/transactions/${transactionId}` : null,
     apiFetcher,
@@ -373,6 +377,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       const json = await res.json();
       if (!res.ok) throw new Error(json.error?.message ?? "Update failed");
       await reloadTxn();
+      void globalMutate(activityListKey);
       setSelectedDealId("");
     } catch (e) {
       setDealLinkError(e instanceof Error ? e.message : "Link update failed");
@@ -413,6 +418,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       if (json.error) throw new Error(json.error.message);
       const t: TransactionDetail = json.data;
       await reloadTxn(t, false);
+      void globalMutate(activityListKey);
       setStatus(t.status);
       setSalePriceInput(salePriceToInput(t.salePrice));
       setClosingInput(isoToDateInput(t.closingDate));
@@ -557,6 +563,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       const json = await res.json();
       if (json.error) throw new Error(json.error.message ?? "Archive failed");
       await reloadTxn();
+      void globalMutate(activityListKey);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Archive failed");
     } finally {
@@ -575,6 +582,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       const json = await res.json();
       if (json.error) throw new Error(json.error.message ?? "Restore failed");
       await reloadTxn();
+      void globalMutate(activityListKey);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Restore failed");
     } finally {
@@ -1038,6 +1046,8 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             </button>
           </div>
         </section>
+
+        <TransactionActivityTimeline transactionId={transactionId} />
 
         <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
           <h2 className="text-sm font-semibold text-kp-on-surface">Transaction lifecycle</h2>

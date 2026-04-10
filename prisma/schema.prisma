@@ -47,6 +47,7 @@ model User {
   transactions              Transaction[]
   transactionImportSessions TransactionImportSession[]
   commissions               Commission[]
+  transactionActivitiesAuthored TransactionActivity[] @relation("TransactionActivityActor")
   supraQueueItems           SupraQueueItem[]
   supraQueueReviewed        SupraQueueItem[]           @relation("SupraQueueReviewedBy")
   supraGmailImportSettings  SupraGmailImportSettings?
@@ -1098,6 +1099,7 @@ model Transaction {
   commissions             Commission[]
   committedImportSessions TransactionImportSession[]
   checklistItems          TransactionChecklistItem[]
+  activities              TransactionActivity[]
 
   @@index([userId])
   @@index([propertyId])
@@ -1105,6 +1107,31 @@ model Transaction {
   @@index([closingDate])
   @@index([userId, deletedAt])
   @@map("transactions")
+}
+
+/** Append-only operational timeline for a transaction (not social comments). */
+model TransactionActivity {
+  id            String                   @id @default(uuid())
+  transactionId String
+  type          TransactionActivityType
+  summary       String
+  metadata      Json?
+  actorUserId   String
+  createdAt     DateTime                 @default(now())
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  actor       User        @relation("TransactionActivityActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId, createdAt])
+  @@map("transaction_activities")
+}
+
+enum TransactionActivityType {
+  TRANSACTION_CREATED
+  TRANSACTION_UPDATED
+  STATUS_CHANGED
+  CHECKLIST_ITEM_ADDED
+  CHECKLIST_ITEM_COMPLETED
 }
 
 /** Persisted per-transaction checklist rows (TransactionHQ operational steps). */
