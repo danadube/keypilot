@@ -50,11 +50,20 @@ export function TransactionsListFilters({ totalRowCount, className }: Transactio
     setQDraft(listState.q);
   }, [listState.q]);
 
+  /** Drop any in-flight debounced search commit so other filter changes cannot be overwritten by stale q. */
+  const cancelPendingQCommit = useCallback(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+  }, []);
+
   const navigate = useCallback(
     (next: TransactionsListQueryState) => {
+      cancelPendingQCommit();
       router.replace(buildTransactionsPageHref(next, { keepNewModal }), { scroll: false });
     },
-    [router, keepNewModal]
+    [router, keepNewModal, cancelPendingQCommit]
   );
 
   const scheduleQCommit = useCallback(
@@ -79,9 +88,9 @@ export function TransactionsListFilters({ totalRowCount, className }: Transactio
 
   useEffect(() => {
     return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
+      cancelPendingQCommit();
     };
-  }, []);
+  }, [cancelPendingQCommit]);
 
   const statusTabs = TRANSACTION_LIST_STATUS_TABS.map((t) => ({
     label: t.label,
@@ -171,7 +180,7 @@ export function TransactionsListFilters({ totalRowCount, className }: Transactio
                   type="button"
                   onClick={() => {
                     setQDraft("");
-                    if (debounceRef.current) clearTimeout(debounceRef.current);
+                    cancelPendingQCommit();
                     navigate(mergeListState(listState, { q: "" }));
                   }}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-kp-on-surface-variant hover:text-kp-on-surface"
@@ -212,12 +221,13 @@ export function TransactionsListFilters({ totalRowCount, className }: Transactio
                 variant="outline"
                 size="sm"
                 className={cn(kpBtnSecondary, "h-8 border-kp-outline px-3 text-xs")}
-                onClick={() =>
+                onClick={() => {
+                  cancelPendingQCommit();
                   router.replace(
                     buildTransactionsPageHref(DEFAULT_TRANSACTIONS_LIST_STATE, { keepNewModal }),
                     { scroll: false }
-                  )
-                }
+                  );
+                }}
               >
                 Clear filters
               </Button>
