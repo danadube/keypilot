@@ -46,7 +46,7 @@ export function AppHeader({ className, onOpenMobileNav }: AppHeaderProps) {
       <div className="flex min-h-0 min-w-0 flex-1 items-center gap-2.5 md:gap-3 lg:gap-4">
         <Link
           href="/dashboard"
-          className="flex shrink-0 items-center rounded-md py-2 pl-1.5 pr-2 transition-opacity hover:opacity-90 sm:pl-2 sm:pr-2.5 md:py-2.5 md:pl-3 md:pr-3"
+          className="flex shrink-0 items-center rounded-md py-0 pl-2 pr-2.5 transition-opacity hover:opacity-90 sm:pl-2.5 sm:pr-3 md:pl-3.5 md:pr-4"
           aria-label="KeyPilot home"
         >
           <Image
@@ -55,7 +55,7 @@ export function AppHeader({ className, onOpenMobileNav }: AppHeaderProps) {
             width={400}
             height={120}
             priority
-            className="h-9 w-auto max-h-[48px] max-w-[min(240px,46vw)] object-contain object-left sm:h-10 sm:max-h-[52px] md:h-11 md:max-h-[54px]"
+            className="h-auto w-auto max-h-[64px] max-w-[min(280px,50vw)] object-contain object-left md:max-h-[68px] lg:max-h-[72px]"
           />
         </Link>
 
