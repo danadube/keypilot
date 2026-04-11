@@ -2,6 +2,26 @@ export type ContactTag = { id: string; name: string };
 
 export type Reminder = { id: string; dueAt: string; body: string; status: string };
 
+export type ContactContextProperty = {
+  id: string;
+  address1: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+};
+
+export type ContactDetailDeal = {
+  id: string;
+  status: string;
+  property: ContactContextProperty;
+};
+
+export type ContactDetailTransaction = {
+  id: string;
+  status: string;
+  property: ContactContextProperty;
+};
+
 export type ContactDetailContact = {
   id: string;
   firstName: string;
@@ -30,6 +50,8 @@ export type ContactDetailContact = {
   siteZip?: string | null;
   contactTags?: { tag: ContactTag }[];
   followUpReminders?: Reminder[];
+  deals?: ContactDetailDeal[];
+  transactionsPrimary?: ContactDetailTransaction[];
 };
 
 export type FarmAreaOption = {

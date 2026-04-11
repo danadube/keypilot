@@ -15,6 +15,38 @@ function detailInclude(userId: string): Prisma.ContactInclude {
       orderBy: { dueAt: "asc" },
       take: 10,
     },
+    deals: {
+      where: { userId },
+      orderBy: { updatedAt: "desc" },
+      take: 6,
+      include: {
+        property: {
+          select: {
+            id: true,
+            address1: true,
+            city: true,
+            state: true,
+            zip: true,
+          },
+        },
+      },
+    },
+    transactionsPrimary: {
+      where: { userId, deletedAt: null },
+      orderBy: { updatedAt: "desc" },
+      take: 6,
+      include: {
+        property: {
+          select: {
+            id: true,
+            address1: true,
+            city: true,
+            state: true,
+            zip: true,
+          },
+        },
+      },
+    },
   };
 }
 

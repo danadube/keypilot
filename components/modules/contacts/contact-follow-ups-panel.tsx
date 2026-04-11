@@ -24,6 +24,8 @@ type ContactFollowUpsPanelProps = {
   onAddReminder: () => void;
   onReminderDone: (id: string) => void;
   onReminderDismiss: (id: string) => void;
+  /** When true, omit the inline schedule form (e.g. scheduling lives in the activity column). */
+  hideScheduleForm?: boolean;
 };
 
 export function ContactFollowUpsPanel({
@@ -37,6 +39,7 @@ export function ContactFollowUpsPanel({
   onAddReminder,
   onReminderDone,
   onReminderDismiss,
+  hideScheduleForm = false,
 }: ContactFollowUpsPanelProps) {
   return (
     <ContactDetailSection
@@ -94,33 +97,39 @@ export function ContactFollowUpsPanel({
         </p>
       )}
 
-      <div className="space-y-2 border-t border-kp-outline pt-4">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-kp-on-surface-variant">
-          Schedule follow-up
+      {hideScheduleForm ? (
+        <p className="border-t border-kp-outline pt-3 text-xs text-kp-on-surface-variant">
+          Schedule or add follow-ups in the <span className="font-medium text-kp-on-surface">Activity</span> workspace (last interaction / next action).
         </p>
-        <Input
-          type="datetime-local"
-          value={reminderDue}
-          onChange={(e) => onReminderDueChange(e.target.value)}
-          className="h-8 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface focus-visible:ring-kp-teal [color-scheme:dark]"
-        />
-        <Textarea
-          placeholder="What to follow up on…"
-          value={reminderBody}
-          onChange={(e) => onReminderBodyChange(e.target.value)}
-          rows={2}
-          className="resize-none border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
-        />
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(kpBtnSave, "h-8 border-transparent px-3 text-xs")}
-          onClick={onAddReminder}
-          disabled={!reminderBody.trim() || !reminderDue || addingReminder}
-        >
-          {addingReminder ? "Adding…" : "Add follow-up"}
-        </Button>
-      </div>
+      ) : (
+        <div className="space-y-2 border-t border-kp-outline pt-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-kp-on-surface-variant">
+            Schedule follow-up
+          </p>
+          <Input
+            type="datetime-local"
+            value={reminderDue}
+            onChange={(e) => onReminderDueChange(e.target.value)}
+            className="h-8 border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface focus-visible:ring-kp-teal [color-scheme:dark]"
+          />
+          <Textarea
+            placeholder="What to follow up on…"
+            value={reminderBody}
+            onChange={(e) => onReminderBodyChange(e.target.value)}
+            rows={2}
+            className="resize-none border-kp-outline bg-kp-surface-high text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(kpBtnSave, "h-8 border-transparent px-3 text-xs")}
+            onClick={onAddReminder}
+            disabled={!reminderBody.trim() || !reminderDue || addingReminder}
+          >
+            {addingReminder ? "Adding…" : "Add follow-up"}
+          </Button>
+        </div>
+      )}
     </ContactDetailSection>
   );
 }

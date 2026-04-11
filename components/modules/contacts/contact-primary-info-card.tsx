@@ -31,6 +31,8 @@ type ContactPrimaryInfoCardProps = {
   onRemoveTag: (tagId: string) => void;
   onAssignToMe: () => void;
   onUnassign: () => void;
+  /** Compact rail layout for the identity column (no outer section card). */
+  variant?: "default" | "rail";
 };
 
 export function ContactPrimaryInfoCard({
@@ -45,17 +47,20 @@ export function ContactPrimaryInfoCard({
   onRemoveTag,
   onAssignToMe,
   onUnassign,
+  variant = "default",
 }: ContactPrimaryInfoCardProps) {
   const tags = contact.contactTags ?? [];
+  const rail = variant === "rail";
 
-  return (
-    <ContactDetailSection
-      title="Contact"
-      description={`Source · ${contact.source}`}
-    >
-      <div className="space-y-4">
+  const inner = (
+    <div className={rail ? "space-y-3" : "space-y-4"}>
         {hasCrmAccess && currentUserId ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-kp-outline pb-3">
+          <div
+            className={cn(
+              "flex flex-wrap items-center justify-between gap-2 pb-3",
+              rail ? "border-b border-kp-outline/60" : "border-b border-kp-outline"
+            )}
+          >
             <div className="text-xs text-kp-on-surface-variant">
               {contact.assignedToUserId ? (
                 isAssignedToMe ? (
@@ -150,8 +155,10 @@ export function ContactPrimaryInfoCard({
         </div>
 
         {hasCrmAccess ? (
-          <div className="border-t border-kp-outline pt-4">
-            <div className="mb-3 flex items-center gap-2">
+          <div
+            className={cn("pt-4", rail ? "border-t border-kp-outline/60" : "border-t border-kp-outline")}
+          >
+            <div className={cn("mb-3 flex items-center gap-2", rail && "mb-2")}>
               <Tag className="h-3.5 w-3.5 text-kp-on-surface-variant" />
               <span className="text-xs font-semibold text-kp-on-surface">
                 Tags
@@ -197,7 +204,26 @@ export function ContactPrimaryInfoCard({
             </div>
           </div>
         ) : null}
+    </div>
+  );
+
+  if (rail) {
+    return (
+      <div className="border-t border-kp-outline/60 pt-3">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+          Contact details
+        </p>
+        {inner}
       </div>
+    );
+  }
+
+  return (
+    <ContactDetailSection
+      title="Contact"
+      description={`Source · ${contact.source}`}
+    >
+      {inner}
     </ContactDetailSection>
   );
 }

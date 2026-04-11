@@ -11,13 +11,28 @@ import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import type { TaskPilotPayload } from "@/lib/tasks/task-pilot-payload-mutate";
 import { useCallback, useState } from "react";
 
-export function ContactTasksPanel({ contactId }: { contactId: string }) {
+type ContactTasksPanelProps = {
+  contactId: string;
+  /** Controlled modal: when set, overrides internal open state for the new-task modal. */
+  taskModalOpen?: boolean;
+  onTaskModalOpenChange?: (open: boolean) => void;
+};
+
+export function ContactTasksPanel({
+  contactId,
+  taskModalOpen: taskModalOpenControlled,
+  onTaskModalOpenChange,
+}: ContactTasksPanelProps) {
   const { data: payload, mutate } = useSWR<TaskPilotPayload>(
     `/api/v1/tasks?contactId=${encodeURIComponent(contactId)}`,
     apiFetcher,
     { revalidateOnFocus: true }
   );
-  const [modalOpen, setModalOpen] = useState(false);
+  const [modalOpenInternal, setModalOpenInternal] = useState(false);
+  const controlled =
+    taskModalOpenControlled !== undefined && onTaskModalOpenChange !== undefined;
+  const modalOpen = controlled ? taskModalOpenControlled : modalOpenInternal;
+  const setModalOpen = controlled ? onTaskModalOpenChange : setModalOpenInternal;
   const [patchingId, setPatchingId] = useState<string | null>(null);
 
   const openTasks = useCallback(() => {

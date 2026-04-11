@@ -35,6 +35,8 @@ type ContactActivityTimelineProps = {
   onCommBodyChange: (v: string) => void;
   loggingComm: boolean;
   onLogCommunication: () => void;
+  /** Primary workspace layout: larger compose surface, stronger hierarchy. */
+  workspace?: boolean;
 };
 
 export function ContactActivityTimeline({
@@ -50,17 +52,29 @@ export function ContactActivityTimeline({
   onCommBodyChange,
   loggingComm,
   onLogCommunication,
+  workspace = false,
 }: ContactActivityTimelineProps) {
   return (
     <ContactDetailSection
       title="Activity"
-      description="Everything that happened with this contact — newest first."
+      description={
+        workspace
+          ? "Log notes and touches, then scan the timeline — newest first."
+          : "Everything that happened with this contact — newest first."
+      }
       icon={<GitBranch className="h-3.5 w-3.5" />}
-      className="min-h-[280px]"
+      className={cn("min-h-[280px]", workspace && "border-kp-teal/20 bg-kp-surface-high/25 shadow-sm")}
     >
       {hasCrmAccess ? (
-        <div className="mb-5 space-y-3">
-          <div className="space-y-2 rounded-lg border border-kp-outline bg-kp-surface-high/50 p-3">
+        <div className={cn("mb-5 space-y-3", workspace && "mb-6")}>
+          <div
+            className={cn(
+              "space-y-2 rounded-lg border p-3",
+              workspace
+                ? "border-kp-teal/25 bg-kp-surface/80"
+                : "border-kp-outline bg-kp-surface-high/50"
+            )}
+          >
             <div className="flex items-center gap-2">
               <FileText className="h-3.5 w-3.5 text-kp-on-surface-variant" />
               <span className="text-xs font-medium text-kp-on-surface">
@@ -68,10 +82,11 @@ export function ContactActivityTimeline({
               </span>
             </div>
             <Textarea
+              id="contact-activity-note"
               placeholder="Capture what matters while it is fresh..."
               value={noteBody}
               onChange={(e) => onNoteBodyChange(e.target.value)}
-              rows={2}
+              rows={workspace ? 4 : 2}
               className="resize-none border-kp-outline bg-kp-surface text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
             />
             <Button

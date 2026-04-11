@@ -7,8 +7,9 @@ import { toast } from "sonner";
 import { BrandSkeleton } from "@/components/ui/BrandSkeleton";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { useProductTier } from "@/components/ProductTierProvider";
-import { ContactDetailHero } from "./contact-detail-hero";
-import { ContactPrimaryInfoCard } from "./contact-primary-info-card";
+import { ContactDetailIdentityColumn } from "./contact-detail-identity-column";
+import { ContactDetailActivitySummary } from "./contact-detail-activity-summary";
+import { ContactBusinessContextRail } from "./contact-business-context-rail";
 import { ContactNotesCard } from "./contact-notes-card";
 import { ContactActivityTimeline } from "./contact-activity-timeline";
 import { ContactFollowUpsPanel } from "./contact-follow-ups-panel";
@@ -25,20 +26,15 @@ import type {
 
 function LoadingState() {
   return (
-    <div className="flex flex-col gap-6">
-      {/* Hero */}
-      <BrandSkeleton className="h-44 w-full rounded-xl" />
-      {/* Two-column */}
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_min(100%,340px)] lg:items-start">
-        <div className="flex flex-col gap-4">
-          <BrandSkeleton className="h-8 w-40" />
-          <BrandSkeleton className="h-24 w-full rounded-xl" />
-          <BrandSkeleton className="h-24 w-full rounded-xl" />
-        </div>
-        <div className="flex flex-col gap-4">
-          <BrandSkeleton className="h-48 w-full rounded-xl" />
-          <BrandSkeleton className="h-32 w-full rounded-xl" />
-        </div>
+    <div className="grid gap-6 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)_minmax(220px,300px)] lg:items-start">
+      <BrandSkeleton className="h-[420px] w-full rounded-xl lg:sticky lg:top-4" />
+      <div className="flex min-h-[320px] flex-col gap-4">
+        <BrandSkeleton className="h-28 w-full rounded-xl" />
+        <BrandSkeleton className="min-h-[240px] flex-1 rounded-xl" />
+      </div>
+      <div className="flex flex-col gap-4">
+        <BrandSkeleton className="h-36 w-full rounded-xl" />
+        <BrandSkeleton className="h-28 w-full rounded-xl" />
       </div>
     </div>
   );
@@ -102,6 +98,7 @@ export function ContactDetailView({ id }: { id: string }) {
   const [siteZip, setSiteZip] = useState("");
   const [savingSite, setSavingSite] = useState(false);
   const [promotingFromFarm, setPromotingFromFarm] = useState(false);
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
 
   const refreshActivities = useCallback(() => {
     return reloadActivities();
@@ -471,6 +468,20 @@ export function ContactDetailView({ id }: { id: string }) {
     updateReminderStatus(r.id, "DONE");
   }, [nextReminder, updateReminderStatus]);
 
+  const scrollToActivityNote = useCallback(() => {
+    if (typeof document === "undefined") return;
+    const el = document.getElementById("contact-activity-note");
+    el?.focus();
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+
+  const initials = useMemo(() => {
+    const a = contact?.firstName?.trim()?.[0] ?? "";
+    const b = contact?.lastName?.trim()?.[0] ?? "";
+    const s = `${a}${b}`.toUpperCase();
+    return s;
+  }, [contact?.firstName, contact?.lastName]);
+
   if (loading) return <LoadingState />;
   if (error || !contact)
     return <ErrorMessage message={error || "Not found"} onRetry={() => void reloadContact()} />;
@@ -480,123 +491,131 @@ export function ContactDetailView({ id }: { id: string }) {
     .join(" ");
   const reminders = contact.followUpReminders ?? [];
   const isAssignedToMe = contact.assignedToUserId === currentUserId;
-  const markingHeroReminder =
+  const markingNextReminder =
     !!nextReminder && patchingReminderId === nextReminder.id;
 
   return (
-    <div className="flex flex-col gap-6">
-      <ContactDetailHero
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,300px)] lg:items-start lg:gap-5">
+      <ContactDetailIdentityColumn
+        className="order-2 lg:order-none"
         fullName={fullName}
-        status={contact.status}
+        initials={initials}
+        contact={contact}
         hasCrmAccess={hasCrmAccess}
+        currentUserId={currentUserId}
+        isAssignedToMe={isAssignedToMe}
+        tagName={tagName}
+        addingTag={addingTag}
+        onTagNameChange={setTagName}
+        onAddTag={addTag}
+        onRemoveTag={removeTag}
+        onAssignToMe={assignToMe}
+        onUnassign={unassign}
         onStatusChange={updateStatus}
         onPromoteFromFarmToLead={
           hasCrmAccess ? () => void promoteFromFarmToLead() : undefined
         }
         promotingFromFarm={promotingFromFarm}
-        activities={activities}
-        nextReminder={nextReminder}
-        onMarkNextReminderDone={markNextReminderDone}
-        markingReminder={markingHeroReminder}
-        reminderDue={reminderDue}
-        reminderBody={reminderBody}
-        onReminderDueChange={setReminderDue}
-        onReminderBodyChange={setReminderBody}
-        onAddReminder={addReminder}
-        addingReminder={addingReminder}
+        onScrollToNote={scrollToActivityNote}
+        onOpenTaskModal={() => setTaskModalOpen(true)}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_min(100%,340px)] lg:items-start">
-        <div className="min-w-0">
-          <ContactActivityTimeline
-            activities={activities}
-            hasCrmAccess={hasCrmAccess}
-            noteBody={noteBody}
-            addingNote={addingNote}
-            onNoteBodyChange={setNoteBody}
-            onAddNote={addNote}
-            commChannel={commChannel}
-            onCommChannelChange={setCommChannel}
-            commBody={commBody}
-            onCommBodyChange={setCommBody}
-            loggingComm={loggingComm}
-            onLogCommunication={logCommunication}
-          />
-        </div>
-
-        <aside className="flex w-full flex-col gap-4 lg:max-w-[340px] lg:justify-self-end">
-          <ContactPrimaryInfoCard
-            contact={contact}
-            hasCrmAccess={hasCrmAccess}
-            currentUserId={currentUserId}
-            isAssignedToMe={isAssignedToMe}
-            tagName={tagName}
-            addingTag={addingTag}
-            onTagNameChange={setTagName}
-            onAddTag={addTag}
-            onRemoveTag={removeTag}
-            onAssignToMe={assignToMe}
-            onUnassign={unassign}
-          />
-          <ContactMailingAddressCard
-            street1={mailStreet1}
-            street2={mailStreet2}
-            city={mailCity}
-            state={mailState}
-            zip={mailZip}
-            saving={savingMailing}
-            onStreet1Change={setMailStreet1}
-            onStreet2Change={setMailStreet2}
-            onCityChange={setMailCity}
-            onStateChange={setMailState}
-            onZipChange={setMailZip}
-            onSave={saveMailingAddress}
-          />
-          <ContactSiteAddressCard
-            street1={siteStreet1}
-            street2={siteStreet2}
-            city={siteCity}
-            state={siteState}
-            zip={siteZip}
-            saving={savingSite}
-            onStreet1Change={setSiteStreet1}
-            onStreet2Change={setSiteStreet2}
-            onCityChange={setSiteCity}
-            onStateChange={setSiteState}
-            onZipChange={setSiteZip}
-            onSave={saveSiteAddress}
-          />
-          {hasCrmAccess ? (
-            <ContactFarmMembershipsPanel
-              memberships={farmMemberships}
-              farmAreas={farmAreas}
-              selectedFarmAreaId={selectedFarmAreaId}
-              addingFarmMembership={addingFarmMembership}
-              onSelectedFarmAreaIdChange={setSelectedFarmAreaId}
-              onAddFarmMembership={addFarmMembership}
-              onArchiveFarmMembership={archiveFarmMembership}
-            />
-          ) : null}
-          <ContactNotesCard notes={contact.notes} />
-          <ContactTasksPanel contactId={id} />
-          {hasCrmAccess ? (
-            <ContactFollowUpsPanel
-              reminders={reminders}
-              reminderDue={reminderDue}
-              reminderBody={reminderBody}
-              addingReminder={addingReminder}
-              patchingReminderId={patchingReminderId}
-              onReminderDueChange={setReminderDue}
-              onReminderBodyChange={setReminderBody}
-              onAddReminder={addReminder}
-              onReminderDone={(rid) => updateReminderStatus(rid, "DONE")}
-              onReminderDismiss={(rid) =>
-                updateReminderStatus(rid, "DISMISSED")
-              }
-            />
-          ) : null}
-        </aside>
+      <div className="order-1 flex min-w-0 flex-col gap-4 lg:order-none">
+        <ContactDetailActivitySummary
+          activities={activities}
+          hasCrmAccess={hasCrmAccess}
+          nextReminder={nextReminder}
+          onMarkNextReminderDone={markNextReminderDone}
+          markingReminder={markingNextReminder}
+          reminderDue={reminderDue}
+          reminderBody={reminderBody}
+          onReminderDueChange={setReminderDue}
+          onReminderBodyChange={setReminderBody}
+          onAddReminder={addReminder}
+          addingReminder={addingReminder}
+        />
+        <ContactActivityTimeline
+          activities={activities}
+          hasCrmAccess={hasCrmAccess}
+          noteBody={noteBody}
+          addingNote={addingNote}
+          onNoteBodyChange={setNoteBody}
+          onAddNote={addNote}
+          commChannel={commChannel}
+          onCommChannelChange={setCommChannel}
+          commBody={commBody}
+          onCommBodyChange={setCommBody}
+          loggingComm={loggingComm}
+          onLogCommunication={logCommunication}
+          workspace
+        />
       </div>
+
+      <aside className="order-3 flex min-w-0 flex-col gap-4 lg:order-none">
+        <ContactBusinessContextRail contact={contact} />
+        {hasCrmAccess ? (
+          <ContactFollowUpsPanel
+            reminders={reminders}
+            reminderDue={reminderDue}
+            reminderBody={reminderBody}
+            addingReminder={addingReminder}
+            patchingReminderId={patchingReminderId}
+            onReminderDueChange={setReminderDue}
+            onReminderBodyChange={setReminderBody}
+            onAddReminder={addReminder}
+            onReminderDone={(rid) => updateReminderStatus(rid, "DONE")}
+            onReminderDismiss={(rid) => updateReminderStatus(rid, "DISMISSED")}
+            hideScheduleForm
+          />
+        ) : null}
+        <ContactTasksPanel
+          contactId={id}
+          taskModalOpen={taskModalOpen}
+          onTaskModalOpenChange={setTaskModalOpen}
+        />
+        {hasCrmAccess ? (
+          <ContactFarmMembershipsPanel
+            memberships={farmMemberships}
+            farmAreas={farmAreas}
+            selectedFarmAreaId={selectedFarmAreaId}
+            addingFarmMembership={addingFarmMembership}
+            onSelectedFarmAreaIdChange={setSelectedFarmAreaId}
+            onAddFarmMembership={addFarmMembership}
+            onArchiveFarmMembership={archiveFarmMembership}
+          />
+        ) : null}
+        <ContactMailingAddressCard
+          street1={mailStreet1}
+          street2={mailStreet2}
+          city={mailCity}
+          state={mailState}
+          zip={mailZip}
+          saving={savingMailing}
+          onStreet1Change={setMailStreet1}
+          onStreet2Change={setMailStreet2}
+          onCityChange={setMailCity}
+          onStateChange={setMailState}
+          onZipChange={setMailZip}
+          onSave={saveMailingAddress}
+          collapsible
+        />
+        <ContactSiteAddressCard
+          street1={siteStreet1}
+          street2={siteStreet2}
+          city={siteCity}
+          state={siteState}
+          zip={siteZip}
+          saving={savingSite}
+          onStreet1Change={setSiteStreet1}
+          onStreet2Change={setSiteStreet2}
+          onCityChange={setSiteCity}
+          onStateChange={setSiteState}
+          onZipChange={setSiteZip}
+          onSave={saveSiteAddress}
+          collapsible
+        />
+        <ContactNotesCard notes={contact.notes} />
+      </aside>
     </div>
   );
 }

@@ -19,6 +19,8 @@ type ContactMailingAddressCardProps = {
   onStateChange: (v: string) => void;
   onZipChange: (v: string) => void;
   onSave: () => void;
+  /** Collapsible panel for secondary rails (default: full card). */
+  collapsible?: boolean;
 };
 
 export function ContactMailingAddressCard({
@@ -34,13 +36,10 @@ export function ContactMailingAddressCard({
   onStateChange,
   onZipChange,
   onSave,
+  collapsible = false,
 }: ContactMailingAddressCardProps) {
-  return (
-    <ContactDetailSection
-      title="Mailing address"
-      description="Used for FarmTrackr mailing CSV and label exports. Optional."
-    >
-      <div className="grid gap-2">
+  const fields = (
+    <div className="grid gap-2">
         <Input
           placeholder="Street line 1"
           value={street1}
@@ -83,7 +82,29 @@ export function ContactMailingAddressCard({
         >
           {saving ? "Saving…" : "Save mailing address"}
         </Button>
-      </div>
+    </div>
+  );
+
+  if (collapsible) {
+    return (
+      <details className="group rounded-xl border border-kp-outline/70 bg-kp-surface-high/15 [&_summary::-webkit-details-marker]:hidden">
+        <summary className="cursor-pointer list-none px-3 py-2.5 text-left">
+          <span className="text-xs font-semibold text-kp-on-surface">Mailing address</span>
+          <p className="mt-0.5 text-[11px] text-kp-on-surface-variant">
+            FarmTrackr exports & labels — optional
+          </p>
+        </summary>
+        <div className="border-t border-kp-outline/60 px-3 pb-3 pt-2">{fields}</div>
+      </details>
+    );
+  }
+
+  return (
+    <ContactDetailSection
+      title="Mailing address"
+      description="Used for FarmTrackr mailing CSV and label exports. Optional."
+    >
+      {fields}
     </ContactDetailSection>
   );
 }
