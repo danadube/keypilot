@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Bookmark, ChevronDown, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 
 export const SHOWING_HQ_TAB_ITEMS = [
   { id: "showings", label: "Showings", href: "/showing-hq/showings" },
@@ -38,7 +36,6 @@ export function getActiveShowingHqTabId(pathname: string): ShowingHqTabId | null
   ) {
     return "feedback";
   }
-  // Activity / templates: reachable via sidebar and deep links; no primary tab.
   return null;
 }
 
@@ -47,11 +44,16 @@ export function ShowingHqTabBar({ className }: { className?: string }) {
   const activeId = getActiveShowingHqTabId(pathname);
 
   return (
-    <div className={cn("border-b border-kp-outline/60 px-4 pb-2.5 md:px-5", className)}>
+    <div
+      className={cn(
+        "flex flex-wrap items-end justify-between gap-x-4 gap-y-1 border-b border-kp-outline/25 pb-0",
+        className
+      )}
+    >
       <div
         role="tablist"
         aria-label="ShowingHQ workspace tabs"
-        className="flex flex-wrap items-end gap-5 md:gap-7"
+        className="flex flex-wrap items-end gap-1 sm:gap-3"
       >
         {SHOWING_HQ_TAB_ITEMS.map((tab) => {
           const isActive = tab.id === activeId;
@@ -64,11 +66,11 @@ export function ShowingHqTabBar({ className }: { className?: string }) {
               prefetch={true}
               scroll={false}
               className={cn(
-                "relative inline-flex py-2.5 text-sm transition-colors md:text-[15px]",
-                "after:pointer-events-none after:absolute after:left-0 after:h-[2px] after:w-full after:transition-opacity after:duration-200",
+                "relative inline-flex py-1.5 text-xs transition-colors md:text-[13px]",
+                "after:pointer-events-none after:absolute after:left-0 after:h-px after:w-full after:transition-opacity after:duration-200",
                 isActive
-                  ? "font-semibold text-kp-on-surface after:bottom-[-5px] after:bg-kp-gold after:opacity-100"
-                  : "font-medium text-kp-on-surface-variant after:bottom-[-5px] after:bg-kp-outline/80 after:opacity-0 hover:text-kp-on-surface hover:after:opacity-100"
+                  ? "font-medium text-kp-on-surface after:bottom-0 after:bg-kp-gold/90 after:opacity-100"
+                  : "font-normal text-kp-on-surface-muted after:bottom-0 after:bg-kp-outline/50 after:opacity-0 hover:text-kp-on-surface hover:after:opacity-100"
               )}
             >
               {tab.label}
@@ -76,13 +78,19 @@ export function ShowingHqTabBar({ className }: { className?: string }) {
           );
         })}
       </div>
+      <Link
+        href="/showing-hq/saved-views"
+        className="shrink-0 py-1.5 text-[11px] font-normal text-kp-on-surface-muted underline-offset-4 transition-colors hover:text-kp-on-surface md:text-xs"
+      >
+        Manage saved views
+      </Link>
     </div>
   );
 }
 
 /**
- * ShowingHQ workspace chrome: tab bar first, then a light context line and module actions.
- * Wraps all /showing-hq/* and /open-houses/* pages.
+ * ShowingHQ workspace chrome: lightweight tab navigation only.
+ * Add / Actions live in ShowingHqPageHeader on each surface.
  */
 export function ShowingHqWorkspaceChrome({
   children,
@@ -90,63 +98,8 @@ export function ShowingHqWorkspaceChrome({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-0 flex-col gap-1">
-      <header className="overflow-hidden rounded-lg border border-kp-outline/50 bg-kp-surface-high/[0.04]">
-        <ShowingHqTabBar />
-        <div className="flex flex-col gap-1 px-3 py-1.5 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-1.5">
-          <p className="text-xs leading-snug text-kp-on-surface-muted">
-            Workspace areas below — saved views keep your filters.
-          </p>
-          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-            <details className="group relative">
-              <summary
-                className={cn(
-                  "flex cursor-pointer list-none items-center gap-1 rounded-md border border-kp-outline/50 bg-transparent px-2 py-1 text-[11px] font-medium text-kp-on-surface-muted transition-colors hover:border-kp-outline/80 hover:text-kp-on-surface",
-                  "[&::-webkit-details-marker]:hidden"
-                )}
-              >
-                <Bookmark className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
-                Saved views
-                <ChevronDown
-                  className="h-3 w-3 shrink-0 opacity-60 transition-transform group-open:rotate-180"
-                  aria-hidden
-                />
-              </summary>
-              <div className="absolute right-0 z-30 mt-1 min-w-[11rem] rounded-md border border-kp-outline/80 bg-kp-surface py-1 shadow-md">
-                <Link
-                  href="/showing-hq/saved-views"
-                  className="block px-2.5 py-1.5 text-[11px] text-kp-on-surface hover:bg-kp-surface-high"
-                >
-                  Manage saved views…
-                </Link>
-              </div>
-            </details>
-
-            <Link
-              href="/showing-hq/showings/new"
-              className={cn(
-                "inline-flex items-center gap-1 rounded-md border border-kp-outline/60 px-2 py-1 text-[11px] font-medium text-kp-on-surface-variant transition-colors hover:border-kp-outline hover:bg-kp-surface-high/50 hover:text-kp-on-surface",
-                kpBtnSecondary
-              )}
-            >
-              <Plus className="h-3 w-3" aria-hidden />
-              Showing
-            </Link>
-            <Link
-              href="/open-houses/new"
-              className={cn(
-                "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-kp-bg transition-colors hover:opacity-95",
-                kpBtnPrimary,
-                "border border-transparent"
-              )}
-            >
-              <Plus className="h-3 w-3" aria-hidden />
-              Open house
-            </Link>
-          </div>
-        </div>
-      </header>
-
+    <div className="flex min-h-0 flex-col gap-2">
+      <ShowingHqTabBar className="px-0 pt-0.5" />
       <div className="min-h-0 flex-1">{children}</div>
     </div>
   );

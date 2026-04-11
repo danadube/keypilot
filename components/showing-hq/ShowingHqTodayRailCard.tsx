@@ -21,20 +21,20 @@ export function ShowingHqTodayRailCard({
 
   return (
     <section
-      className="rounded-xl border border-kp-outline bg-kp-surface p-4"
+      className="border-b border-kp-outline/20 pb-3 pt-0.5"
       aria-labelledby="showinghq-today-rail-heading"
     >
       <h2
         id="showinghq-today-rail-heading"
-        className="mb-3 text-sm font-semibold text-kp-on-surface"
+        className="mb-2 text-xs font-medium text-kp-on-surface-muted"
       >
         Today
       </h2>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+      <div className="grid grid-cols-2 gap-x-3 gap-y-2">
         {cells.map((c) => (
           <div key={c.label} className="min-w-0">
-            <p className="text-xs text-kp-on-surface-muted">{c.label}</p>
-            <p className="text-base font-semibold tabular-nums text-kp-on-surface">{c.value}</p>
+            <p className="text-[10px] text-kp-on-surface-muted">{c.label}</p>
+            <p className="text-sm font-medium tabular-nums text-kp-on-surface">{c.value}</p>
           </div>
         ))}
       </div>

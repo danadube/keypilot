@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { ShowingHqPageHeader } from "@/components/modules/showing-hq/showing-hq-page-header";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
-import { ClipboardCheck, Copy, Check, Mail } from "lucide-react";
+import { ClipboardCheck, Copy, Check } from "lucide-react";
 import { UI_COPY } from "@/lib/ui-copy";
 
 type FeedbackRequest = {
@@ -77,19 +78,18 @@ export function FeedbackRequestsView() {
   const expired = requests.filter((r) => r.status === "EXPIRED");
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
+      <ShowingHqPageHeader
+        title="Feedback"
+        subtitle="Visitor form requests and buyer-agent email drafts from showings."
+      />
       {buyerAgentDraftShowings.length > 0 && (
-        <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-          <div className="mb-3 flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-kp-teal/10">
-              <Mail className="h-4 w-4 text-kp-teal" />
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-kp-on-surface">Buyer-agent feedback emails</h2>
-              <p className="text-xs text-kp-on-surface-variant">
-                Drafts from Supra showings — open to copy or create mail (your app adds the signature).
-              </p>
-            </div>
+        <div className="border-b border-kp-outline/20 pb-4">
+          <div className="mb-2">
+            <h2 className="text-sm font-medium text-kp-on-surface">Buyer-agent feedback emails</h2>
+            <p className="text-xs text-kp-on-surface-muted">
+              Drafts from Supra showings — open to copy or create mail (your app adds the signature).
+            </p>
           </div>
           <div className="-mx-1 overflow-x-auto px-1">
             <table className="w-full text-sm">
@@ -146,30 +146,18 @@ export function FeedbackRequestsView() {
 
       {/* Summary strip */}
       {requests.length > 0 && (
-        <div className="rounded-xl border border-kp-outline bg-kp-surface p-4">
-          <div className="flex flex-wrap items-center gap-6">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-kp-gold/10">
-                <ClipboardCheck className="h-5 w-5 text-kp-gold" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-kp-on-surface-variant">Pending</p>
-                <p className="text-xl font-semibold text-kp-on-surface">{pending.length}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-kp-surface-high">
-                <Check className="h-5 w-5 text-kp-on-surface-variant" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-kp-on-surface-variant">Responded</p>
-                <p className="text-xl font-semibold text-kp-on-surface">{responded.length}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <p className="text-xs font-medium text-kp-on-surface-variant">Total requests</p>
-              <p className="text-xl font-semibold text-kp-on-surface">{requests.length}</p>
-            </div>
+        <div className="flex flex-wrap gap-6 border-b border-kp-outline/20 pb-4 text-sm">
+          <div>
+            <p className="text-[11px] text-kp-on-surface-muted">Pending</p>
+            <p className="font-medium tabular-nums text-kp-on-surface">{pending.length}</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-kp-on-surface-muted">Responded</p>
+            <p className="font-medium tabular-nums text-kp-on-surface">{responded.length}</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-kp-on-surface-muted">Total</p>
+            <p className="font-medium tabular-nums text-kp-on-surface">{requests.length}</p>
           </div>
         </div>
       )}

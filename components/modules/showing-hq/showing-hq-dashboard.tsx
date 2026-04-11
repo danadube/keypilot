@@ -33,7 +33,7 @@ import {
 } from "@/components/showing-hq/ShowingHqAgentFollowUpsSection";
 import { UI_COPY } from "@/lib/ui-copy";
 import { ShowingHqTodayRailCard } from "@/components/showing-hq/ShowingHqTodayRailCard";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { ShowingHqPageHeader } from "@/components/modules/showing-hq/showing-hq-page-header";
 import { cn } from "@/lib/utils";
 
 // ── Types (mirrored from API) ───────────────────────────────────────────────
@@ -409,8 +409,8 @@ export function ShowingHQDashboardView() {
 
   return (
     <div className="flex min-h-0 w-full flex-col bg-transparent">
-      <PageHeader
-        className="pb-3 pt-0 md:pb-4"
+      <ShowingHqPageHeader
+        className="pb-2 pt-0 md:pb-3"
         title="Workbench"
         subtitle="Priority queue, today's schedule, and supporting rails — same tools, calmer layout."
       />
@@ -423,16 +423,16 @@ export function ShowingHQDashboardView() {
         formatTime={formatTime}
         priorityLine={priorityLine}
       />
-      <ShowingHQMetricsStrip className="mt-4 sm:mt-5" items={metricTiles} />
+      <ShowingHQMetricsStrip className="mt-3 sm:mt-4" items={metricTiles} />
 
       <div
         className={cn(
-          "mt-6 grid grid-cols-1 gap-5 sm:mt-7",
-          "lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,1fr)] lg:items-start lg:gap-x-7",
-          "xl:gap-x-8"
+          "mt-4 grid grid-cols-1 gap-4 sm:mt-5",
+          "lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,1fr)] lg:items-start lg:gap-x-6",
+          "xl:gap-x-7"
         )}
       >
-        <div className="flex min-w-0 flex-col gap-5 lg:gap-6">
+        <div className="flex min-w-0 flex-col gap-4 lg:gap-5">
           <WhatNeedsAttentionSection rows={workflowRows} />
           {data.agentFollowUps === null ? (
             <section className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3.5">
@@ -466,7 +466,7 @@ export function ShowingHQDashboardView() {
           ) : null}
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-4 lg:gap-5">
+        <aside className="flex min-w-0 flex-col gap-3 lg:gap-4">
           <ShowingHqTodayRailCard
             showingsToday={stats.privateShowingsToday ?? 0}
             openHousesToday={openHousesTodayCount}

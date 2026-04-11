@@ -5,6 +5,7 @@ import useSWR from "swr";
 import { apiFetcher } from "@/lib/fetcher";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ShowingHqPageHeader } from "@/components/modules/showing-hq/showing-hq-page-header";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { Button } from "@/components/ui/button";
@@ -233,20 +234,20 @@ export function VisitorsListView() {
   if (error) return <ErrorMessage message={error} onRetry={loadData} />;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
+      <ShowingHqPageHeader
+        title="Visitors"
+        subtitle="Sign-ins from open houses — follow-up and lead status."
+      />
       {/* Summary strip + filters */}
-      <div className="rounded-xl border border-kp-outline bg-kp-surface p-4">
-        <div className="flex flex-wrap items-center gap-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-kp-surface-high">
-              <Users className="h-5 w-5 text-kp-on-surface-variant" />
-            </div>
-            <div>
-              <p className="text-xs font-medium text-kp-on-surface-variant">Showing</p>
-              <p className="text-xl font-semibold text-kp-on-surface">
-                {loading ? "…" : visitors.length} visitor{visitors.length !== 1 ? "s" : ""}
-              </p>
-            </div>
+      <div className="border-b border-kp-outline/20 pb-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex min-w-0 items-baseline gap-2">
+            <span className="text-xs text-kp-on-surface-muted">Total</span>
+            <span className="text-lg font-medium tabular-nums text-kp-on-surface">
+              {loading ? "…" : visitors.length}
+            </span>
+            <span className="text-xs text-kp-on-surface-muted">visitor{visitors.length !== 1 ? "s" : ""}</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {canSaveView && (
