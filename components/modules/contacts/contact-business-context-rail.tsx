@@ -41,9 +41,9 @@ export function ContactBusinessContextRail({ contact }: ContactBusinessContextRa
         title="Business context"
         description="Deals and transactions linked to this client appear here."
         icon={<Building2 className="h-3.5 w-3.5" />}
-        className="border-kp-outline/80 bg-kp-surface-high/20 p-4"
+        className="!p-3 border-kp-outline/55 bg-kp-surface-high/12 [&>div:first-child]:mb-2"
       >
-        <p className="text-sm text-kp-on-surface-variant">
+        <p className="text-xs leading-relaxed text-kp-on-surface-variant">
           No linked deals or transactions yet. Create a deal from ClientKeep or set this contact as primary on a transaction to surface it here.
         </p>
       </ContactDetailSection>
@@ -51,13 +51,13 @@ export function ContactBusinessContextRail({ contact }: ContactBusinessContextRa
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {transactions.length > 0 ? (
         <ContactDetailSection
           title="Transactions"
-          description="Active pipeline context for this client."
+          description="Pipeline context for this client."
           icon={<Landmark className="h-3.5 w-3.5" />}
-          className="p-4"
+          className="!p-3 border-kp-outline/55 bg-kp-surface-high/10 [&>div:first-child]:mb-2"
         >
           <ul className="space-y-2">
             {transactions.map((t) => (
@@ -82,9 +82,9 @@ export function ContactBusinessContextRail({ contact }: ContactBusinessContextRa
       {deals.length > 0 ? (
         <ContactDetailSection
           title="Deals"
-          description="CRM deals tied to this contact."
+          description="CRM deals for this contact."
           icon={<Handshake className="h-3.5 w-3.5" />}
-          className="p-4"
+          className="!p-3 border-kp-outline/55 bg-kp-surface-high/10 [&>div:first-child]:mb-2"
         >
           <ul className="space-y-2">
             {deals.map((d) => (

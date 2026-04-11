@@ -63,7 +63,10 @@ export function ContactActivityTimeline({
           : "Everything that happened with this contact — newest first."
       }
       icon={<GitBranch className="h-3.5 w-3.5" />}
-      className={cn("min-h-[280px]", workspace && "border-kp-teal/20 bg-kp-surface-high/25 shadow-sm")}
+      className={cn(
+        "min-h-[280px]",
+        workspace && "border-kp-teal/15 bg-kp-surface-high/20"
+      )}
     >
       {hasCrmAccess ? (
         <div className={cn("mb-5 space-y-3", workspace && "mb-6")}>

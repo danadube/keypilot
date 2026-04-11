@@ -65,49 +65,52 @@ export function ContactDetailIdentityColumn({
   const primaryEmail = contact.email?.trim() || null;
   const primaryPhone = contact.phone?.trim() || null;
 
+  const quickBtn =
+    "h-7 gap-1 border-kp-outline/40 bg-transparent px-2 text-[11px] font-normal text-kp-on-surface shadow-none hover:bg-kp-surface-high/60";
+
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm lg:sticky lg:top-4 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto",
+        "flex flex-col gap-2.5 rounded-xl border border-kp-outline/80 bg-kp-surface p-3 lg:sticky lg:top-4 lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto",
         className
       )}
     >
       <Button
         variant="ghost"
         size="sm"
-        className={cn(kpBtnTertiary, "h-8 w-fit gap-1.5 px-2")}
+        className={cn(kpBtnTertiary, "h-7 w-fit gap-1 px-1.5 text-[11px]")}
         asChild
       >
         <Link href="/contacts">
-          <ArrowLeft className="h-4 w-4 shrink-0" />
+          <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
           Contacts
         </Link>
       </Button>
 
-      <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:text-left">
+      <div className="flex gap-2.5 sm:items-start">
         <div
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-kp-outline/80 bg-kp-surface-high text-lg font-semibold text-kp-on-surface"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-kp-outline/70 bg-kp-surface-high/80 text-sm font-semibold text-kp-on-surface"
           aria-hidden
         >
           {initials || "—"}
         </div>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-balance text-xl font-bold tracking-tight text-kp-on-surface">
+        <div className="min-w-0 flex-1 pt-0.5">
+          <h1 className="text-balance text-lg font-semibold leading-tight tracking-tight text-kp-on-surface">
             {fullName || "—"}
           </h1>
-          <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-            Source · {contact.source}
+          <p className="mt-0.5 text-[11px] text-kp-on-surface-variant/90">
+            {contact.source}
           </p>
         </div>
       </div>
 
       {hasCrmAccess ? (
-        <div className="space-y-2 border-t border-kp-outline/60 pt-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+        <div className="space-y-1.5 border-t border-kp-outline/40 pt-2">
+          <p className="text-[9px] font-medium uppercase tracking-wide text-kp-on-surface-variant/85">
             Stage
           </p>
           <Select value={status || "LEAD"} onValueChange={onStatusChange}>
-            <SelectTrigger className="h-9 w-full border-kp-outline bg-kp-surface-high text-kp-on-surface">
+            <SelectTrigger className="h-8 w-full border-kp-outline/70 bg-kp-surface-high/50 text-xs text-kp-on-surface">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="border-kp-outline bg-kp-surface text-kp-on-surface">
@@ -123,7 +126,7 @@ export function ContactDetailIdentityColumn({
               type="button"
               variant="outline"
               size="sm"
-              className={cn(kpBtnSecondary, "h-8 w-full border-transparent text-xs")}
+              className={cn(kpBtnSecondary, "h-7 w-full border-kp-outline/50 text-[11px] font-normal")}
               onClick={onPromoteFromFarmToLead}
               disabled={promotingFromFarm}
             >
@@ -133,27 +136,27 @@ export function ContactDetailIdentityColumn({
         </div>
       ) : null}
 
-      <div className="border-t border-kp-outline/60 pt-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+      <div className="border-t border-kp-outline/40 pt-2">
+        <p className="mb-1.5 text-[9px] font-medium uppercase tracking-wide text-kp-on-surface-variant/85">
           Quick actions
         </p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-1.5">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className={cn(kpBtnSecondary, "h-9 justify-center gap-1.5 border-kp-outline/80 text-xs")}
+            className={cn(kpBtnTertiary, quickBtn)}
             disabled={!primaryPhone}
             asChild={!!primaryPhone}
           >
             {primaryPhone ? (
               <a href={`tel:${primaryPhone}`}>
-                <Phone className="h-3.5 w-3.5 shrink-0" />
+                <Phone className="h-3 w-3 shrink-0 opacity-80" />
                 Call
               </a>
             ) : (
-              <span className="inline-flex items-center gap-1.5">
-                <Phone className="h-3.5 w-3.5" />
+              <span className="inline-flex items-center gap-1">
+                <Phone className="h-3 w-3" />
                 Call
               </span>
             )}
@@ -162,18 +165,18 @@ export function ContactDetailIdentityColumn({
             type="button"
             variant="outline"
             size="sm"
-            className={cn(kpBtnSecondary, "h-9 justify-center gap-1.5 border-kp-outline/80 text-xs")}
+            className={cn(kpBtnTertiary, quickBtn)}
             disabled={!primaryEmail}
             asChild={!!primaryEmail}
           >
             {primaryEmail ? (
               <a href={`mailto:${primaryEmail}`}>
-                <Mail className="h-3.5 w-3.5 shrink-0" />
+                <Mail className="h-3 w-3 shrink-0 opacity-80" />
                 Email
               </a>
             ) : (
-              <span className="inline-flex items-center gap-1.5">
-                <Mail className="h-3.5 w-3.5" />
+              <span className="inline-flex items-center gap-1">
+                <Mail className="h-3 w-3" />
                 Email
               </span>
             )}
@@ -182,20 +185,20 @@ export function ContactDetailIdentityColumn({
             type="button"
             variant="outline"
             size="sm"
-            className={cn(kpBtnSecondary, "h-9 justify-center gap-1.5 border-kp-outline/80 text-xs")}
+            className={cn(kpBtnTertiary, quickBtn)}
             onClick={onScrollToNote}
           >
-            <StickyNote className="h-3.5 w-3.5 shrink-0" />
+            <StickyNote className="h-3 w-3 shrink-0 opacity-80" />
             Note
           </Button>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className={cn(kpBtnSecondary, "h-9 justify-center gap-1.5 border-kp-outline/80 text-xs")}
+            className={cn(kpBtnTertiary, quickBtn)}
             onClick={onOpenTaskModal}
           >
-            <CheckSquare className="h-3.5 w-3.5 shrink-0" />
+            <CheckSquare className="h-3 w-3 shrink-0 opacity-80" />
             Task
           </Button>
         </div>
@@ -214,6 +217,7 @@ export function ContactDetailIdentityColumn({
         onAssignToMe={onAssignToMe}
         onUnassign={onUnassign}
         variant="rail"
+        railCompact
       />
     </div>
   );
