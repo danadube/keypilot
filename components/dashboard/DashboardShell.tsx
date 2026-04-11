@@ -74,7 +74,7 @@ function MobileDrawer({
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
   const base = (pathname.split("?")[0] ?? "").replace(/\/$/, "") || "/";
-  const isCommandCenter = base === "/dashboard" || pathname === "/";
+  const isCommandCenter = base === "/dashboard" || base === "/";
   const workspaceShell = isWorkspaceContext(pathname) && !isCommandCenter;
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
 
