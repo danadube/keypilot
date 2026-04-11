@@ -11,6 +11,7 @@ import {
 import { AppHeader } from "@/components/layout/AppHeader";
 import { WorkspaceMainContextBar } from "@/components/dashboard/WorkspaceMainContextBar";
 import { cn } from "@/lib/utils";
+import { KP_APP_HEADER_HEIGHT_PX } from "@/lib/shell-top-bar";
 import { isWorkspaceContext } from "@/lib/showing-hq/isShowingHQContext";
 
 const MOBILE_DRAWER_TRANSITION_MS = 200;
@@ -39,8 +40,12 @@ function MobileDrawer({
 
   if (!show) return null;
 
+  /** Below global AppHeader (z-100) so menu, search, and account stay usable while open. */
   return (
-    <div className="fixed inset-0 z-[110] lg:hidden">
+    <div
+      className="fixed bottom-0 left-0 right-0 z-[95] lg:hidden"
+      style={{ top: KP_APP_HEADER_HEIGHT_PX }}
+    >
       <div
         className={cn(
           "absolute inset-0 bg-black/60 transition-opacity duration-200",
