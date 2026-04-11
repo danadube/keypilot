@@ -100,28 +100,12 @@ export function FarmTrackrFarmsView() {
       backHref="/showing-hq"
     >
       <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <p className="max-w-2xl text-xs text-kp-on-surface-variant">
-            Territory and farm area directory. Manage members per area; imports and mailing on Overview.
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold text-kp-on-surface">Farm directory</h2>
           <FarmTrackrStructureVisibilityToggle
             value={structureVisibility}
             onChange={setStructureVisibility}
           />
-        </div>
-        <div className="flex flex-wrap items-center justify-end gap-3 text-xs">
-            <Link
-              href="/farm-trackr"
-              className="font-medium text-kp-teal underline-offset-2 hover:underline"
-            >
-              Overview — imports &amp; mailing
-            </Link>
-            <Link
-              href="/contacts"
-              className="font-medium text-kp-teal underline-offset-2 hover:underline"
-            >
-              Contacts
-            </Link>
         </div>
 
         {error ? (

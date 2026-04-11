@@ -243,10 +243,8 @@ export function FarmTrackrPerformanceView() {
       backHref="/showing-hq"
     >
       <div className="flex flex-col gap-4">
-        <p className="max-w-2xl text-xs text-kp-on-surface-variant">
-          {UI_COPY.farmTrackr.performanceBlurb}
-        </p>
-        <p className="max-w-2xl text-xs text-kp-on-surface-variant">
+        <p className="max-w-2xl text-xs leading-relaxed text-kp-on-surface-variant">
+          {UI_COPY.farmTrackr.performanceBlurb}{" "}
           {UI_COPY.farmTrackr.performanceHealthNote}
         </p>
 

@@ -244,17 +244,7 @@ export function FarmTrackrListsView() {
       backHref="/showing-hq"
     >
       <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <p className="max-w-2xl text-xs text-kp-on-surface-variant">
-            {UI_COPY.farmTrackr.listsBlurb}
-          </p>
-          <Link
-            href="/farm-trackr"
-            className="text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
-          >
-            Overview — import tool
-          </Link>
-        </div>
+        <p className="max-w-2xl text-xs text-kp-on-surface-variant">{UI_COPY.farmTrackr.listsBlurb}</p>
 
         {error ? (
           <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">

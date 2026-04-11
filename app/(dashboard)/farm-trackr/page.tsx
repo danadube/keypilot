@@ -17,7 +17,6 @@ import { FarmTrackrHealthSummaryStrip } from "./_components/farm-trackr-health-s
 import { FarmTrackrImportWorkflow } from "./_components/farm-trackr-import-workflow";
 import { FarmTrackrRecentImports } from "./_components/farm-trackr-recent-imports";
 import { FarmTrackrStructureVisibilityToggle } from "./_components/farm-trackr-structure-visibility";
-import { FarmSegmentationPanel } from "@/components/modules/farm-trackr/farm-segmentation-panel";
 import { UI_COPY } from "@/lib/ui-copy";
 
 type Territory = {
@@ -414,17 +413,7 @@ export default function FarmTrackrPage() {
       valueProposition="Geographic farming intelligence and territory management for prospecting in your farm areas."
       backHref="/showing-hq"
     >
-      <div className="flex flex-col gap-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <p className="max-w-2xl text-xs text-kp-on-surface-variant">
-            Territories, farm areas, imports, and mailing tools for contact memberships.
-          </p>
-          <FarmTrackrStructureVisibilityToggle
-            value={structureVisibility}
-            onChange={setStructureVisibility}
-          />
-        </div>
-
+      <div className="flex flex-col gap-4">
         {error ? (
           <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             <AlertCircle className="h-4 w-4" />
@@ -434,176 +423,70 @@ export default function FarmTrackrPage() {
 
         <FarmTrackrHealthSummaryStrip visibility={structureVisibility} />
 
-        <FarmSegmentationPanel />
-
-        <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-          <div className="flex flex-wrap items-start gap-3">
-            <Mail className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" />
-            <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-semibold text-kp-on-surface">Mailing list &amp; labels</h2>
-              <p className="mt-1 text-xs text-kp-on-surface-variant">
-                Active memberships with a full mailing address on the contact (deduped). CSV for mail merge;
-                Avery 5160 sheet for browser print.
-              </p>
-              <div className="mt-3 flex flex-wrap gap-3">
-                <label className="flex items-center gap-2 text-xs text-kp-on-surface">
-                  <input
-                    type="radio"
-                    name="mailing-scope"
-                    checked={mailingScope === "territory"}
-                    onChange={() => {
-                      setMailingScope("territory");
-                      setMailingAreaId("");
-                    }}
-                    className="h-3.5 w-3.5 border-kp-outline text-kp-teal"
-                  />
-                  Entire territory
-                </label>
-                <label className="flex items-center gap-2 text-xs text-kp-on-surface">
-                  <input
-                    type="radio"
-                    name="mailing-scope"
-                    checked={mailingScope === "area"}
-                    onChange={() => {
-                      setMailingScope("area");
-                      setMailingTerritoryId("");
-                    }}
-                    className="h-3.5 w-3.5 border-kp-outline text-kp-teal"
-                  />
-                  Single farm area
-                </label>
-              </div>
-              {mailingScope === "territory" ? (
-                <select
-                  value={mailingTerritoryId}
-                  onChange={(e) => setMailingTerritoryId(e.target.value)}
-                  disabled={loading || formTerritories.length === 0}
-                  className="mt-2 h-9 w-full max-w-md rounded-md border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface sm:w-auto"
-                >
-                  <option value="">Select territory…</option>
-                  {formTerritories.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <select
-                  value={mailingAreaId}
-                  onChange={(e) => setMailingAreaId(e.target.value)}
-                  disabled={loading || formAreas.length === 0}
-                  className="mt-2 h-9 w-full max-w-md rounded-md border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface sm:w-auto"
-                >
-                  <option value="">Select farm area…</option>
-                  {formAreas.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.territory.name} — {a.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={cn(kpBtnSecondary, "h-8 border-transparent px-3 text-xs")}
-                  disabled={!!mailingBusy || loading}
-                  onClick={() => void exportMailingCsv()}
-                >
-                  {mailingBusy === "csv" ? (
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  ) : null}
-                  Export mailing list (CSV)
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={cn(kpBtnSecondary, "h-8 border-transparent px-3 text-xs")}
-                  disabled={!!mailingBusy || loading}
-                  onClick={() => void printMailingLabels()}
-                >
-                  {mailingBusy === "print" ? (
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Printer className="mr-1.5 h-3.5 w-3.5" />
-                  )}
-                  Print labels
-                </Button>
-              </div>
-              {mailingHint ? (
-                <p className="mt-2 text-xs text-kp-on-surface-variant">{mailingHint}</p>
-              ) : null}
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-          <div className="space-y-5">
-            <FarmTrackrImportWorkflow
-              onApplySuccess={() => {
-                void loadData();
-                setFarmImportHistoryTick((n) => n + 1);
-              }}
+        <section id="farm-trackr-structure" className="scroll-mt-6 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-base font-semibold text-kp-on-surface">Territories &amp; farm areas</h2>
+            <FarmTrackrStructureVisibilityToggle
+              value={structureVisibility}
+              onChange={setStructureVisibility}
             />
-            <FarmTrackrRecentImports refreshKey={farmImportHistoryTick} />
           </div>
-        </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-            <h2 className="text-sm font-semibold text-kp-on-surface">Create territory</h2>
-            <div className="mt-3 flex gap-2">
-              <Input
-                value={newTerritoryName}
-                onChange={(e) => setNewTerritoryName(e.target.value)}
-                placeholder="e.g. South Palm Springs"
-                className="h-9 border-kp-outline bg-kp-surface-high text-kp-on-surface"
-              />
-              <Button
-                type="button"
-                className={cn(kpBtnPrimary, "h-9 border-transparent px-3 text-xs")}
-                onClick={() => void handleCreateTerritory()}
-                disabled={!newTerritoryName.trim() || creatingTerritory}
-              >
-                {creatingTerritory ? "Creating..." : "Create"}
-              </Button>
+          <div id="farm-trackr-create" className="grid gap-3 scroll-mt-6 sm:grid-cols-2">
+            <div className="rounded-lg border border-kp-outline/70 bg-kp-surface p-4">
+              <h3 className="text-sm font-medium text-kp-on-surface">New territory</h3>
+              <div className="mt-3 flex gap-2">
+                <Input
+                  value={newTerritoryName}
+                  onChange={(e) => setNewTerritoryName(e.target.value)}
+                  placeholder="e.g. South Palm Springs"
+                  className="h-9 border-kp-outline bg-kp-surface-high text-kp-on-surface"
+                />
+                <Button
+                  type="button"
+                  className={cn(kpBtnPrimary, "h-9 border-transparent px-3 text-xs")}
+                  onClick={() => void handleCreateTerritory()}
+                  disabled={!newTerritoryName.trim() || creatingTerritory}
+                >
+                  {creatingTerritory ? "Creating..." : "Create"}
+                </Button>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-kp-outline/70 bg-kp-surface p-4">
+              <h3 className="text-sm font-medium text-kp-on-surface">New farm area</h3>
+              <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+                <select
+                  value={newAreaTerritoryId}
+                  onChange={(e) => setNewAreaTerritoryId(e.target.value)}
+                  className="h-9 rounded-md border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface"
+                >
+                  <option value="">Select territory</option>
+                  {formTerritories.map((territory) => (
+                    <option key={territory.id} value={territory.id}>
+                      {territory.name}
+                    </option>
+                  ))}
+                </select>
+                <Input
+                  value={newAreaName}
+                  onChange={(e) => setNewAreaName(e.target.value)}
+                  placeholder="e.g. Warm Sands"
+                  className="h-9 border-kp-outline bg-kp-surface-high text-kp-on-surface"
+                />
+                <Button
+                  type="button"
+                  className={cn(kpBtnPrimary, "h-9 border-transparent px-3 text-xs")}
+                  onClick={() => void handleCreateArea()}
+                  disabled={!newAreaTerritoryId || !newAreaName.trim() || creatingArea}
+                >
+                  {creatingArea ? "Creating..." : "Create"}
+                </Button>
+              </div>
             </div>
           </div>
 
-          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-            <h2 className="text-sm font-semibold text-kp-on-surface">Create farm area</h2>
-            <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-              <select
-                value={newAreaTerritoryId}
-                onChange={(e) => setNewAreaTerritoryId(e.target.value)}
-                className="h-9 rounded-md border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface"
-              >
-                <option value="">Select territory</option>
-                {formTerritories.map((territory) => (
-                  <option key={territory.id} value={territory.id}>
-                    {territory.name}
-                  </option>
-                ))}
-              </select>
-              <Input
-                value={newAreaName}
-                onChange={(e) => setNewAreaName(e.target.value)}
-                placeholder="e.g. Warm Sands"
-                className="h-9 border-kp-outline bg-kp-surface-high text-kp-on-surface"
-              />
-              <Button
-                type="button"
-                className={cn(kpBtnPrimary, "h-9 border-transparent px-3 text-xs")}
-                onClick={() => void handleCreateArea()}
-                disabled={!newAreaTerritoryId || !newAreaName.trim() || creatingArea}
-              >
-                {creatingArea ? "Creating..." : "Create"}
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-3">
+          <div className="space-y-3">
           {loading ? (
             <div className="flex items-center gap-2 rounded-xl border border-kp-outline bg-kp-surface px-4 py-3 text-sm text-kp-on-surface-variant">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -883,6 +766,131 @@ export default function FarmTrackrPage() {
             })
           )}
         </div>
+        </section>
+
+        <section id="imports" className="scroll-mt-6 space-y-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+            Imports &amp; history
+          </h2>
+          <div className="overflow-hidden divide-y divide-kp-outline/60 rounded-lg border border-kp-outline/80 bg-kp-surface">
+            <div className="p-4">
+              <FarmTrackrImportWorkflow
+                onApplySuccess={() => {
+                  void loadData();
+                  setFarmImportHistoryTick((n) => n + 1);
+                }}
+              />
+            </div>
+            <div className="p-4">
+              <FarmTrackrRecentImports refreshKey={farmImportHistoryTick} />
+            </div>
+          </div>
+        </section>
+
+        <section id="farm-trackr-mailing" className="scroll-mt-6 space-y-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+            Mailing list &amp; labels
+          </h2>
+          <div className="rounded-lg border border-kp-outline/60 bg-kp-surface-high/10 p-4">
+            <div className="flex flex-wrap items-start gap-3">
+              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal/90" />
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-kp-on-surface-variant">
+                  Active memberships with a full mailing address on the contact (deduped). CSV for mail merge;
+                  Avery 5160 sheet for browser print.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <label className="flex items-center gap-2 text-xs text-kp-on-surface">
+                    <input
+                      type="radio"
+                      name="mailing-scope"
+                      checked={mailingScope === "territory"}
+                      onChange={() => {
+                        setMailingScope("territory");
+                        setMailingAreaId("");
+                      }}
+                      className="h-3.5 w-3.5 border-kp-outline text-kp-teal"
+                    />
+                    Entire territory
+                  </label>
+                  <label className="flex items-center gap-2 text-xs text-kp-on-surface">
+                    <input
+                      type="radio"
+                      name="mailing-scope"
+                      checked={mailingScope === "area"}
+                      onChange={() => {
+                        setMailingScope("area");
+                        setMailingTerritoryId("");
+                      }}
+                      className="h-3.5 w-3.5 border-kp-outline text-kp-teal"
+                    />
+                    Single farm area
+                  </label>
+                </div>
+                {mailingScope === "territory" ? (
+                  <select
+                    value={mailingTerritoryId}
+                    onChange={(e) => setMailingTerritoryId(e.target.value)}
+                    disabled={loading || formTerritories.length === 0}
+                    className="mt-2 h-9 w-full max-w-md rounded-md border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface sm:w-auto"
+                  >
+                    <option value="">Select territory…</option>
+                    {formTerritories.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    value={mailingAreaId}
+                    onChange={(e) => setMailingAreaId(e.target.value)}
+                    disabled={loading || formAreas.length === 0}
+                    className="mt-2 h-9 w-full max-w-md rounded-md border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface sm:w-auto"
+                  >
+                    <option value="">Select farm area…</option>
+                    {formAreas.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.territory.name} — {a.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(kpBtnSecondary, "h-8 border-transparent px-3 text-xs")}
+                    disabled={!!mailingBusy || loading}
+                    onClick={() => void exportMailingCsv()}
+                  >
+                    {mailingBusy === "csv" ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : null}
+                    Export mailing list (CSV)
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className={cn(kpBtnSecondary, "h-8 border-transparent px-3 text-xs")}
+                    disabled={!!mailingBusy || loading}
+                    onClick={() => void printMailingLabels()}
+                  >
+                    {mailingBusy === "print" ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Printer className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    Print labels
+                  </Button>
+                </div>
+                {mailingHint ? (
+                  <p className="mt-2 text-xs text-kp-on-surface-variant">{mailingHint}</p>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </ModuleGate>
   );
