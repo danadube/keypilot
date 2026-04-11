@@ -34,9 +34,9 @@ export function TransactionsListShell({
         className
       )}
     >
-      <div className="flex items-start justify-between gap-4 border-b border-kp-outline px-5 py-4">
+      <div className="flex items-start justify-between gap-3 border-b border-kp-outline px-4 py-3">
         <div className="flex min-w-0 items-start gap-2">
-          <Icon className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" aria-hidden />
+          <Icon className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal/90" aria-hidden />
           <div>
             <p className="text-sm font-semibold text-kp-on-surface">{title}</p>
             {description ? (

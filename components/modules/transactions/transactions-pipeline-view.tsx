@@ -6,7 +6,6 @@ import { GitBranch, AlertCircle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
-import { TransactionsModuleHeader } from "@/components/transactions";
 import {
   type TransactionRow,
   type TxStatus,
@@ -79,12 +78,8 @@ export function TransactionsPipelineView() {
   const totalActive = activeRows.length;
 
   return (
-    <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
-      <TransactionsModuleHeader
-        subtitle="Pipeline — Active closings grouped by stage. Closed deals stay on the overview list."
-      />
-
-      <div className="mt-6 space-y-6">
+    <div className="min-h-full rounded-2xl bg-kp-bg pb-8">
+      <div className="space-y-5">
         {loading ? (
           <div className="flex min-h-[280px] items-center justify-center rounded-xl border border-kp-outline bg-kp-surface">
             <Loader2 className="h-6 w-6 animate-spin text-kp-on-surface-variant" />

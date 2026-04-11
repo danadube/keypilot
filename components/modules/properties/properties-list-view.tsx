@@ -225,21 +225,11 @@ export function PropertiesListView() {
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
-      {/* Hero: one context line + CTA — module title is in the shell */}
-      <div className="flex flex-col gap-3 pb-3 pt-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="max-w-xl text-xs text-kp-on-surface-variant">
-          Listing records for open houses and visitor capture.
-        </p>
-        <Link
-          href="/properties/new"
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-kp-gold px-3 py-1.5 text-xs font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-gold focus-visible:ring-offset-2 focus-visible:ring-offset-kp-bg"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Add property
-        </Link>
-      </div>
+      <p className="pb-3 pt-1 text-xs text-kp-on-surface-variant">
+        Listing records for open houses and visitor capture.
+      </p>
 
-      {/* Page-level list tabs (unchanged visibility rules) */}
+      {/* Page-level list tabs (below workspace PageHeader + PropertyVault tabs) */}
       {!loading && !error && properties.length > 0 && (
         <div>
           <SectionTabs

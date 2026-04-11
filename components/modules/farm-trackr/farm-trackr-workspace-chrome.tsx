@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { FarmTrackrPageHeader } from "@/components/platform/farm-trackr-page-header";
+import {
+  KP_WORKSPACE_CHROME_BODY_GUTTER_CLASS,
+  KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS,
+} from "@/lib/shell/workspace-chrome-gutter";
 
 export const FARM_TRACKR_TAB_ITEMS = [
   { id: "overview", label: "Overview", href: "/farm-trackr" },
@@ -66,7 +71,7 @@ export function FarmTrackrTabBar({ className }: { className?: string }) {
 }
 
 /**
- * FarmTrackr workspace: module-level tabs + page body. Shell provides the module title.
+ * FarmTrackr workspace: {@link PageHeader}, module tabs, then page body.
  */
 export function FarmTrackrWorkspaceChrome({
   children,
@@ -75,10 +80,18 @@ export function FarmTrackrWorkspaceChrome({
 }) {
   return (
     <div className="flex min-h-0 flex-col gap-1.5">
-      <header className="overflow-hidden rounded-lg border border-kp-outline-variant bg-kp-surface">
+      <div className={KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS}>
+        <FarmTrackrPageHeader className="pb-2 pt-0 md:pb-3" />
+      </div>
+      <header
+        className={cn(
+          "overflow-hidden rounded-lg border border-kp-outline-variant bg-kp-surface",
+          KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS
+        )}
+      >
         <FarmTrackrTabBar />
       </header>
-      <div className="min-h-0 flex-1">{children}</div>
+      <div className={cn("min-h-0 flex-1", KP_WORKSPACE_CHROME_BODY_GUTTER_CLASS)}>{children}</div>
     </div>
   );
 }

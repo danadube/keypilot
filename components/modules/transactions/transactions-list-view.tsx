@@ -7,8 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Loader2, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandTablePagination } from "@/components/ui/BrandTablePagination";
-import { Button } from "@/components/ui/button";
-import { kpBtnSave } from "@/components/ui/kp-dashboard-button-tiers";
 import { CreateTransactionModal } from "./create-transaction-modal";
 import {
   type TransactionRow,
@@ -202,43 +200,30 @@ export function TransactionsListView() {
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
       <TransactionsModuleHeader
-        subtitle="Overview — Closings, sale details, commission splits, and lifecycle state."
         summary={
-          <div className="grid gap-2 sm:grid-cols-4">
-            <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Active</p>
-              <p className="text-sm font-semibold text-kp-on-surface">{summary.active}</p>
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+            <div className="rounded-md border border-kp-outline/50 bg-kp-surface-high/[0.2] px-2.5 py-1.5">
+              <p className="text-[10px] font-medium text-kp-on-surface-muted">Active</p>
+              <p className="text-sm font-semibold tabular-nums text-kp-on-surface">{summary.active}</p>
             </div>
-            <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Needs setup</p>
-              <p className="text-sm font-semibold text-rose-300">{summary.needsSetup}</p>
+            <div className="rounded-md border border-kp-outline/50 bg-kp-surface-high/[0.2] px-2.5 py-1.5">
+              <p className="text-[10px] font-medium text-kp-on-surface-muted">Needs setup</p>
+              <p className="text-sm font-semibold tabular-nums text-rose-300/90">{summary.needsSetup}</p>
             </div>
-            <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Imported</p>
-              <p className="text-sm font-semibold text-kp-teal">{summary.imported}</p>
+            <div className="rounded-md border border-kp-outline/50 bg-kp-surface-high/[0.2] px-2.5 py-1.5">
+              <p className="text-[10px] font-medium text-kp-on-surface-muted">Imported</p>
+              <p className="text-sm font-semibold tabular-nums text-kp-teal/90">{summary.imported}</p>
             </div>
-            <div className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2">
-              <p className="text-[11px] uppercase tracking-wide text-kp-on-surface-muted">Archived</p>
-              <p className="text-sm font-semibold text-amber-300">{summary.archived}</p>
+            <div className="rounded-md border border-kp-outline/50 bg-kp-surface-high/[0.2] px-2.5 py-1.5">
+              <p className="text-[10px] font-medium text-kp-on-surface-muted">Archived</p>
+              <p className="text-sm font-semibold tabular-nums text-amber-200/90">{summary.archived}</p>
             </div>
           </div>
-        }
-        actions={
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() =>
-              router.replace(buildTransactionsPageHref(listState, { keepNewModal: true }), { scroll: false })
-            }
-            className={cn(kpBtnSave, "mt-0.5 h-9 border-transparent px-3 text-xs")}
-          >
-            + Add transaction
-          </Button>
         }
       />
 
       <TransactionsListShell
-        className="mb-8 mt-6"
+        className="mb-6 mt-3"
         title="Your transactions"
         description="URL-backed filters — share or bookmark a view"
         headerRight={

@@ -10,12 +10,10 @@ import {
   buildGettingStartedSteps,
 } from "@/components/showing-hq/GettingStartedCard";
 import {
-  QuickActionsRailSection,
   RecentOutputsRailSection,
   ShowingHQMetricsStrip,
-  ShowingHQCommandStrip,
+  ShowingHQPriorityStrip,
   TodayScheduleSection,
-  UpNextRailSection,
   WhatNeedsAttentionSection,
   buildCommandStripPriorityLine,
   buildNeedsAttentionItems,
@@ -32,8 +30,8 @@ import {
   type AgentFollowUpBuckets,
 } from "@/components/showing-hq/ShowingHqAgentFollowUpsSection";
 import { UI_COPY } from "@/lib/ui-copy";
-import { ShowingHqTodayRailCard } from "@/components/showing-hq/ShowingHqTodayRailCard";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { ShowingHqWorkbenchOverviewRail } from "@/components/showing-hq/ShowingHqTodayRailCard";
+import { ShowingHqPageHeader } from "@/components/modules/showing-hq/showing-hq-page-header";
 import { cn } from "@/lib/utils";
 
 // ── Types (mirrored from API) ───────────────────────────────────────────────
@@ -335,18 +333,11 @@ export function ShowingHQDashboardView() {
     12
   );
 
-  let needPrepCount = 0;
-  for (const row of needsAttentionItems) {
-    if (row.attention.label === "Prep required") needPrepCount += 1;
-  }
-
   const awaitingCount = needsFollowUp.filter((r) => r.reasonLabel === "Awaiting response").length;
 
   const upcomingCount = stats.upcomingThisWeekCount ?? 0;
   const draftsWaitingCount = stats.buyerAgentEmailDraftsPending ?? followUpTasks.length;
   const visitorsLastOpenHouse = recentReports[0]?.visitorCount ?? 0;
-  const actionNowCount = workflowRows.filter((r) => r.queueGroup === "action_now").length;
-
   const nextEvent =
     data.nextShowing != null
       ? {
@@ -406,91 +397,101 @@ export function ShowingHQDashboardView() {
     },
   ];
   const nextUpPrimary = upNextRows[0] ?? null;
+  const planAheadRows = workflowRows.filter((r) => r.queueGroup === "upcoming");
+  const mainAttentionRows = workflowRows.filter(
+    (r) => r.queueGroup === "action_now" || r.queueGroup === "waiting"
+  );
+  const topRow = workflowRows[0] ?? null;
+  const topStripRowKey =
+    topRow?.queueGroup === "upcoming" ? topRow.key : null;
 
   return (
     <div className="flex min-h-0 w-full flex-col bg-transparent">
-      <PageHeader
-        className="pb-3 pt-0 md:pb-4"
-        title="Workbench"
-        subtitle="Priority queue, today's schedule, and supporting rails — same tools, calmer layout."
-      />
-      <ShowingHQCommandStrip
+      <ShowingHqPageHeader className="pb-2 pt-0 md:pb-3" />
+      <ShowingHQPriorityStrip
+        workflowRows={workflowRows}
         nextEvent={nextEvent}
-        upcomingCount={upcomingCount}
-        needPrepCount={needPrepCount}
-        awaitingCount={awaitingCount}
-        actionNowCount={actionNowCount}
-        formatTime={formatTime}
         priorityLine={priorityLine}
+        formatTime={formatTime}
       />
-      <ShowingHQMetricsStrip className="mt-4 sm:mt-5" items={metricTiles} />
+      <ShowingHQMetricsStrip
+        emphasis="subdued"
+        className="mt-2 sm:mt-2.5"
+        items={metricTiles}
+      />
 
       <div
         className={cn(
-          "mt-6 grid grid-cols-1 gap-5 sm:mt-7",
-          "lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,1fr)] lg:items-start lg:gap-x-7",
-          "xl:gap-x-8"
+          "mt-3 grid grid-cols-1 gap-3 sm:mt-4",
+          "lg:grid-cols-[minmax(0,1.35fr)_minmax(272px,1fr)] lg:items-start lg:gap-x-5",
+          "xl:gap-x-6"
         )}
       >
-        <div className="flex min-w-0 flex-col gap-5 lg:gap-6">
-          <WhatNeedsAttentionSection rows={workflowRows} />
-          {data.agentFollowUps === null ? (
-            <section className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3.5">
-              <p className="text-sm font-medium text-kp-on-surface">Person follow-ups</p>
-              <p className="mt-1 text-sm text-kp-on-surface-variant">
-                Couldn&apos;t load this section.
-              </p>
-              <button
-                type="button"
-                onClick={() => refetchDashboard()}
-                className="mt-2 text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
-              >
-                Retry
-              </button>
-            </section>
-          ) : data.agentFollowUps ? (
-            <ShowingHqAgentFollowUpsSection buckets={data.agentFollowUps} onRefresh={refetchDashboard} />
-          ) : null}
-          <TodayScheduleSection
-            rows={todayScheduleRows}
-            draftQueueCount={draftsWaitingCount}
-            awaitingCount={awaitingCount}
-            nextUp={nextUpPrimary}
-            formatTime={formatTime}
-          />
-          {showGettingStarted && !gettingStartedDismissed ? (
-            <GettingStartedCard
-              steps={gettingStartedSteps}
-              onDismiss={handleDismissGettingStarted}
-            />
-          ) : null}
+        <div className="min-w-0">
+          <WhatNeedsAttentionSection rows={mainAttentionRows} groups={["action_now", "waiting"]} />
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-4 lg:gap-5">
-          <ShowingHqTodayRailCard
+        <aside className="min-w-0 lg:sticky lg:top-4 lg:self-start">
+          <ShowingHqWorkbenchOverviewRail
             showingsToday={stats.privateShowingsToday ?? 0}
             openHousesToday={openHousesTodayCount}
             draftsWaiting={draftsWaitingCount}
             awaitingResponse={awaitingCount}
-          />
-          <QuickActionsRailSection nextEvent={nextEvent} hasDrafts={draftsWaitingCount > 0} />
-          <UpNextRailSection
-            rows={upNextRows}
+            upNextRows={upNextRows}
+            planAheadRows={planAheadRows}
+            topPriorityRowKey={topStripRowKey}
             formatTime={formatTime}
             formatShortDate={formatShortDate}
-          />
-          <RecentOutputsRailSection
-            reports={recentReportOutputs}
-            latestSummary={{
-              represented: null,
-              unrepresented: null,
-              draftsPending: latestReportDraftsPending,
-            }}
-            loadFailed={Boolean(data.recentReportsLoadFailed)}
-            formatShortDate={formatShortDate}
-            formatTime={formatTime}
           />
         </aside>
+      </div>
+
+      <div className="mt-4 space-y-3 border-t border-kp-outline/12 pt-4">
+        {data.agentFollowUps === null ? (
+          <section className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04] px-3 py-3 sm:px-4">
+            <p className="text-xs font-medium text-kp-on-surface">Person follow-ups</p>
+            <p className="mt-1 text-xs text-kp-on-surface-variant">Couldn&apos;t load this section.</p>
+            <button
+              type="button"
+              onClick={() => refetchDashboard()}
+              className="mt-2 text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
+            >
+              Retry
+            </button>
+          </section>
+        ) : data.agentFollowUps ? (
+          <ShowingHqAgentFollowUpsSection buckets={data.agentFollowUps} onRefresh={refetchDashboard} />
+        ) : null}
+
+        <RecentOutputsRailSection
+          reports={recentReportOutputs}
+          latestSummary={{
+            represented: null,
+            unrepresented: null,
+            draftsPending: latestReportDraftsPending,
+          }}
+          loadFailed={Boolean(data.recentReportsLoadFailed)}
+          formatShortDate={formatShortDate}
+          formatTime={formatTime}
+          className="opacity-95"
+        />
+
+        <TodayScheduleSection
+          rows={todayScheduleRows}
+          draftQueueCount={draftsWaitingCount}
+          awaitingCount={awaitingCount}
+          nextUp={nextUpPrimary}
+          formatTime={formatTime}
+          tone="support"
+          hideUpNextSummaryLine
+        />
+
+        {showGettingStarted && !gettingStartedDismissed ? (
+          <GettingStartedCard
+            steps={gettingStartedSteps}
+            onDismiss={handleDismissGettingStarted}
+          />
+        ) : null}
       </div>
     </div>
   );

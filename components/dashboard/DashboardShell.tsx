@@ -13,6 +13,7 @@ import { WorkspaceMainContextBar } from "@/components/dashboard/WorkspaceMainCon
 import { cn } from "@/lib/utils";
 import { KP_APP_HEADER_HEIGHT_PX } from "@/lib/shell-top-bar";
 import { isWorkspaceContext } from "@/lib/showing-hq/isShowingHQContext";
+import { hidesWorkspaceMainContextBar } from "@/lib/shell/hides-workspace-main-context-bar";
 
 const MOBILE_DRAWER_TRANSITION_MS = 200;
 
@@ -76,6 +77,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const base = (pathname.split("?")[0] ?? "").replace(/\/$/, "") || "/";
   const isCommandCenter = base === "/dashboard" || base === "/";
   const workspaceShell = isWorkspaceContext(pathname) && !isCommandCenter;
+  /** In-page {@link PageHeader} carries module identity — skip the duplicate module/date strip. */
+  const showWorkspaceMainContextBar = workspaceShell && !hidesWorkspaceMainContextBar(pathname);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -94,7 +97,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
           <div
             className="flex min-h-0 min-w-0 flex-1 flex-col lg:ml-[200px]"
           >
-            {workspaceShell ? <WorkspaceMainContextBar /> : null}
+            {showWorkspaceMainContextBar ? <WorkspaceMainContextBar /> : null}
 
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
               <main className="min-h-0 flex-1 bg-kp-bg px-5 pb-4 pt-3 md:px-7 md:pb-5 md:pt-4 lg:px-9">

@@ -21,7 +21,6 @@ import {
   Inbox,
   Mail,
   ClipboardCheck,
-  Plus,
   AlertCircle,
   Loader2,
   Layers,
@@ -36,7 +35,7 @@ import {
 } from "@/components/ui/kp-dashboard-button-tiers";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { BrandTablePagination } from "@/components/ui/BrandTablePagination";
-import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
+import { ShowingHqPageHeader } from "@/components/modules/showing-hq/showing-hq-page-header";
 import {
   Select,
   SelectContent,
@@ -747,26 +746,12 @@ export function ShowingsListView() {
           />
         </div>
       ) : null}
-      {/* ── Intro (shell owns title) + primary action ───────────────────── */}
-      <div className="flex flex-col gap-3 px-6 pb-3 pt-3 sm:flex-row sm:items-end sm:justify-between sm:px-8">
-        <DashboardContextStrip
-          className="min-w-0 flex-1 sm:max-w-2xl"
-          message="Private appointments from Supra or manual entry — separate from public open houses."
-        />
-        <Link
-          href="/showing-hq/showings/new"
-          className={cn(
-            "inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-kp-gold px-3 py-1.5",
-            "text-xs font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright"
-          )}
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Schedule Showing
-        </Link>
+      <div className="px-6 pb-2 pt-1 sm:px-8">
+        <ShowingHqPageHeader />
       </div>
 
-      {/* ── Action-first workflow strip (replaces dominant KPI cards) ───── */}
-      <div className="mx-6 mb-3 rounded-lg border border-kp-outline/80 bg-kp-surface-high/50 px-3 py-2.5 sm:mx-8 sm:px-4">
+      {/* ── Review focus (summary strip) ───── */}
+      <div className="mx-6 mb-3 border-b border-kp-outline/25 px-0 py-2.5 sm:mx-8">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
             Review focus

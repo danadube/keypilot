@@ -4,16 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  kpBtnPrimary,
-  kpBtnSecondary,
-  kpBtnTertiary,
-} from "@/components/ui/kp-dashboard-button-tiers";
+import { kpBtnSecondary, kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, Calendar, List, Plus } from "lucide-react";
 import { PageLoading } from "@/components/shared/PageLoading";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
-import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 import { UI_COPY } from "@/lib/ui-copy";
 
 type DashboardStats = {
@@ -50,19 +45,7 @@ export default function PropertyVaultOverviewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <DashboardContextStrip
-          message={vaultContextMessage}
-          className="min-w-0 flex-1 sm:max-w-2xl"
-        />
-        <Button
-          asChild
-          variant="outline"
-          className={cn(kpBtnPrimary, "w-full shrink-0 border-transparent sm:w-auto")}
-        >
-          <Link href="/properties/new">Add property</Link>
-        </Button>
-      </div>
+      <p className="text-sm text-kp-on-surface-variant">{vaultContextMessage}</p>
 
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

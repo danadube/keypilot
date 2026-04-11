@@ -6,8 +6,10 @@ import { cn } from "@/lib/utils";
 import { kpBtnSecondary, kpBtnSave } from "@/components/ui/kp-dashboard-button-tiers";
 
 export type PageHeaderProps = {
-  title: string;
+  title?: string;
   subtitle?: string;
+  /** When `title` is omitted, optional quiet label (e.g. ShowingHQ view name). */
+  leading?: React.ReactNode;
   actionsMenu?: React.ReactNode;
   primaryAction?: React.ReactNode;
   className?: string;
@@ -16,11 +18,13 @@ export type PageHeaderProps = {
 export function PageHeader({
   title,
   subtitle,
+  leading,
   actionsMenu,
   primaryAction,
   className,
 }: PageHeaderProps) {
   const hasRight = Boolean(actionsMenu || primaryAction);
+  const hasLeftContent = Boolean(title || subtitle || leading);
   return (
     <header
       className={cn(
@@ -31,19 +35,30 @@ export function PageHeader({
       <div
         className={cn(
           "flex flex-col gap-2.5",
-          hasRight && "sm:flex-row sm:items-start sm:justify-between sm:gap-4"
+          hasRight &&
+            hasLeftContent &&
+            "sm:flex-row sm:items-start sm:justify-between sm:gap-4",
+          hasRight && !hasLeftContent && "items-end sm:items-center"
         )}
       >
-        <div className="min-w-0">
-          <h1 className="font-headline text-xl font-semibold tracking-tight text-kp-on-surface md:text-2xl">
-            {title}
-          </h1>
-          {subtitle ? (
-            <p className="mt-0.5 max-w-2xl text-sm leading-snug text-kp-on-surface-variant">
-              {subtitle}
-            </p>
-          ) : null}
-        </div>
+        {hasLeftContent ? (
+          <div className="min-w-0">
+            {title ? (
+              <>
+                <h1 className="font-headline text-xl font-semibold tracking-tight text-kp-on-surface md:text-2xl">
+                  {title}
+                </h1>
+                {subtitle ? (
+                  <p className="mt-0.5 max-w-2xl text-sm leading-snug text-kp-on-surface-variant">
+                    {subtitle}
+                  </p>
+                ) : null}
+              </>
+            ) : (
+              leading
+            )}
+          </div>
+        ) : null}
         {hasRight ? (
           <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
             {actionsMenu}

@@ -10,6 +10,8 @@ interface MetricCardProps {
   /** Optional rendered in the bottom-right of the card */
   action?: React.ReactNode;
   accent?: MetricCardAccent;
+  /** Lighter, smaller treatment — e.g. list page KPI rows where the table is primary. Still uses `accent` for value color. */
+  variant?: "default" | "compact";
   className?: string;
 }
 
@@ -28,34 +30,55 @@ export function MetricCard({
   sub,
   action,
   accent = "default",
+  variant = "default",
   className,
 }: MetricCardProps) {
+  const compact = variant === "compact";
+  const valueAccentClass =
+    accent === "gold"
+      ? "text-kp-gold"
+      : accent === "teal"
+        ? "text-kp-teal"
+        : "text-kp-on-surface";
+
   return (
     <div
       className={cn(
-        "relative flex flex-col justify-between rounded-xl border border-kp-outline bg-kp-surface px-5 py-4",
+        "relative flex flex-col justify-between",
+        compact
+          ? "rounded-lg border border-kp-outline/45 bg-kp-surface-high/[0.22] px-3 py-2"
+          : "rounded-xl border border-kp-outline bg-kp-surface px-5 py-4",
         className
       )}
     >
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-kp-on-surface-muted">
+        <p
+          className={cn(
+            "text-kp-on-surface-muted",
+            compact
+              ? "text-[10px] font-medium tracking-wide"
+              : "text-[11px] font-semibold uppercase tracking-widest"
+          )}
+        >
           {label}
         </p>
         <p
           className={cn(
-            "mt-2 font-headline text-[2rem] font-semibold leading-none tabular-nums",
-            accent === "gold" && "text-kp-gold",
-            accent === "teal" && "text-kp-teal",
-            accent === "default" && "text-kp-on-surface"
+            "font-semibold tabular-nums leading-none",
+            compact
+              ? cn("mt-1 text-base", valueAccentClass)
+              : cn("mt-2 font-headline text-[2rem]", valueAccentClass)
           )}
         >
           {value}
         </p>
         {sub && (
-          <p className="mt-1.5 text-xs text-kp-on-surface-variant">{sub}</p>
+          <p className={cn("text-kp-on-surface-variant", compact ? "mt-0.5 text-[11px]" : "mt-1.5 text-xs")}>
+            {sub}
+          </p>
         )}
       </div>
-      {action && <div className="mt-3">{action}</div>}
+      {action && <div className={compact ? "mt-2" : "mt-3"}>{action}</div>}
     </div>
   );
 }

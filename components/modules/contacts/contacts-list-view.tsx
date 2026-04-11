@@ -641,7 +641,7 @@ function ContactsTable({
  * Adds:
  * - Client-side search over fetched data (no backend change)
  * - SectionTabs replaces the Select dropdown (same re-fetch trigger)
- * - MetricCard summary strip
+ * - Compact MetricCard summary strip (table-primary layout)
  * - StatusBadge for all contact statuses
  *
  * Revert: swap back to <ContactsList /> inside the ModuleGate in
@@ -869,7 +869,7 @@ export function ContactsListView() {
     <div className="min-h-full rounded-2xl bg-kp-bg">
       {/* ── Save segment (tabs + shell carry page identity) ───────────── */}
       {canSaveSegment ? (
-        <div className="flex flex-wrap items-center justify-end gap-3 pb-3 pt-2">
+        <div className="flex flex-wrap items-center justify-end gap-3 pb-2 pt-1">
           <button
             type="button"
             onClick={openSaveSegmentModal}
@@ -881,18 +881,20 @@ export function ContactsListView() {
         </div>
       ) : null}
 
-      {/* ── Metric cards (CRM tier only) ─────────────────────────────────── */}
+      {/* ── Summary metrics (CRM tier) — compact; table is the hero ─────── */}
       {hasCrm && (
-        <div className="grid gap-3 pb-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-2 pb-3 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             label="Total contacts"
             value={loading ? "—" : contacts.length}
             accent="gold"
+            variant="compact"
           />
           <MetricCard
             label="Farm pool"
             value={loading ? "—" : farmCount}
             accent="teal"
+            variant="compact"
             sub={
               !loading && farmCount > 0
                 ? "From farm imports & territory"
@@ -903,21 +905,23 @@ export function ContactsListView() {
             label="Leads / Contacted"
             value={loading ? "—" : leadCount + nurturingCount}
             accent="teal"
+            variant="compact"
             sub={!loading && nurturingCount > 0 ? `${nurturingCount} being nurtured` : undefined}
           />
           <MetricCard
             label="Ready to move"
             value={loading ? "—" : readyCount}
             accent="default"
+            variant="compact"
             sub={!loading && readyCount > 0 ? "High-intent buyers" : undefined}
           />
         </div>
       )}
 
       {/* ── Table panel ─────────────────────────────────────────────────── */}
-      <div className="mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
+      <div className="mb-6 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
         {farmFilterActive ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-kp-outline bg-kp-teal/[0.06] px-5 py-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-kp-outline bg-kp-teal/[0.06] px-4 py-2">
             <p className="text-xs text-kp-on-surface">
               {farmScopeMeta
                 ? farmScopeMeta.kind === "area"
@@ -939,7 +943,7 @@ export function ContactsListView() {
           </div>
         ) : null}
         {healthFilterActive ? (
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-kp-outline bg-amber-500/[0.08] px-5 py-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-kp-outline bg-amber-500/[0.08] px-4 py-2">
             <p className="text-xs text-kp-on-surface">
               {healthQuery.readyToPromote
                 ? "FarmTrackr health: FARM contacts ready to promote (have email or phone)."
@@ -963,7 +967,7 @@ export function ContactsListView() {
           </div>
         ) : null}
         {/* Panel header */}
-        <div className="flex items-start justify-between gap-4 border-b border-kp-outline px-5 py-4">
+        <div className="flex items-start justify-between gap-3 border-b border-kp-outline px-4 py-3">
           <div className="space-y-1">
             <p className="text-sm font-semibold text-kp-on-surface">
               {farmFilterActive
