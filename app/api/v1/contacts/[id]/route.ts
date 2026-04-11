@@ -116,7 +116,67 @@ export async function PUT(
       data,
     });
 
+    const lines: string[] = [];
+    const c = contact;
+    if (data.status !== undefined && data.status !== c.status) {
+      lines.push(`Stage set to ${data.status}`);
+    }
+    if (data.email !== undefined && data.email !== c.email) lines.push("Email updated");
+    if (data.phone !== undefined && data.phone !== c.phone) lines.push("Phone updated");
+    if (data.firstName !== undefined && data.firstName !== c.firstName) lines.push("First name updated");
+    if (data.lastName !== undefined && data.lastName !== c.lastName) lines.push("Last name updated");
+    if (
+      (data.mailingStreet1 !== undefined && data.mailingStreet1 !== c.mailingStreet1) ||
+      (data.mailingCity !== undefined && data.mailingCity !== c.mailingCity) ||
+      (data.mailingState !== undefined && data.mailingState !== c.mailingState) ||
+      (data.mailingZip !== undefined && data.mailingZip !== c.mailingZip)
+    ) {
+      lines.push("Mailing address updated");
+    }
+    if (
+      (data.siteStreet1 !== undefined && data.siteStreet1 !== c.siteStreet1) ||
+      (data.siteCity !== undefined && data.siteCity !== c.siteCity)
+    ) {
+      lines.push("Site address updated");
+    }
+
+    if (lines.length > 0) {
+      await prismaAdmin.activity.create({
+        data: {
+          contactId: params.id,
+          activityType: "NOTE_ADDED",
+          body: `Record updated: ${lines.join(" · ")}`,
+          occurredAt: new Date(),
+        },
+      });
+    }
+
     return NextResponse.json({ data: updated });
+  } catch (err) {
+    return apiErrorFromCaught(err);
+  }
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await getCurrentUser();
+    const contact = await getContactIfAccessible(params.id, user.id);
+    if (!contact) {
+      return NextResponse.json(
+        { error: { message: "Contact not found" } },
+        { status: 404 }
+      );
+    }
+
+    await prismaAdmin.contact.update({
+      where: { id: params.id },
+      data: { deletedAt: new Date() },
+    });
+
+    return NextResponse.json({ data: { ok: true } });
   } catch (err) {
     return apiErrorFromCaught(err);
   }

@@ -99,7 +99,7 @@ export function ContactFollowUpsPanel({
 
       {hideScheduleForm ? (
         <p className="border-t border-kp-outline pt-3 text-xs text-kp-on-surface-variant">
-          Schedule or add follow-ups in the <span className="font-medium text-kp-on-surface">Activity</span> workspace (last interaction / next action).
+          Schedule new follow-ups from the <span className="font-medium text-kp-on-surface">Actions</span> menu at the top of this page (Schedule follow-up).
         </p>
       ) : (
         <div className="space-y-2 border-t border-kp-outline pt-4">

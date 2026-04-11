@@ -8,7 +8,7 @@ import { BrandSkeleton } from "@/components/ui/BrandSkeleton";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { useProductTier } from "@/components/ProductTierProvider";
 import { ContactDetailIdentityColumn } from "./contact-detail-identity-column";
-import { ContactDetailActivitySummary } from "./contact-detail-activity-summary";
+import { ContactDetailActionsMenu } from "./contact-detail-actions-menu";
 import { ContactBusinessContextRail } from "./contact-business-context-rail";
 import { ContactNotesCard } from "./contact-notes-card";
 import { ContactActivityTimeline } from "./contact-activity-timeline";
@@ -29,7 +29,7 @@ function LoadingState() {
     <div className="grid gap-6 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)_minmax(220px,300px)] lg:items-start">
       <BrandSkeleton className="h-[420px] w-full rounded-xl lg:sticky lg:top-4" />
       <div className="flex min-h-[320px] flex-col gap-4">
-        <BrandSkeleton className="h-28 w-full rounded-xl" />
+        <BrandSkeleton className="h-10 w-full rounded-lg" />
         <BrandSkeleton className="min-h-[240px] flex-1 rounded-xl" />
       </div>
       <div className="flex flex-col gap-4">
@@ -43,30 +43,32 @@ function LoadingState() {
 export function ContactDetailView({ id }: { id: string }) {
   const { hasCrm: hasCrmAccess } = useProductTier();
 
-  const { data: contact, error: contactError, isLoading: contactLoading, mutate: reloadContact } = useSWR<ContactDetailContact>(
-    id ? `/api/v1/contacts/${id}` : null,
-    apiFetcher,
-    { errorRetryCount: 2, errorRetryInterval: 500 }
-  );
+  const {
+    data: contact,
+    error: contactError,
+    isLoading: contactLoading,
+    mutate: reloadContact,
+  } = useSWR<ContactDetailContact>(id ? `/api/v1/contacts/${id}` : null, apiFetcher, {
+    errorRetryCount: 2,
+    errorRetryInterval: 500,
+  });
   const { data: activities = [], mutate: reloadActivities } = useSWR<ContactDetailActivity[]>(
     id ? `/api/v1/contacts/${id}/activities` : null,
     apiFetcher
   );
-  const { data: me } = useSWR<{ id: string }>(
-    '/api/v1/me',
-    apiFetcher
-  );
+  const { data: me } = useSWR<{ id: string }>("/api/v1/me", apiFetcher);
   const { data: farmMemberships = [], mutate: reloadFarmMemberships } = useSWR<FarmMembership[]>(
     hasCrmAccess && id ? `/api/v1/contacts/${id}/farm-memberships` : null,
     apiFetcher
   );
   const { data: farmAreas = [] } = useSWR<FarmAreaOption[]>(
-    hasCrmAccess ? '/api/v1/farm-areas' : null,
+    hasCrmAccess ? "/api/v1/farm-areas" : null,
     apiFetcher
   );
 
   const loading = contactLoading && !contact;
-  const error = contactError instanceof Error ? contactError.message : contactError ? String(contactError) : null;
+  const error =
+    contactError instanceof Error ? contactError.message : contactError ? String(contactError) : null;
   const currentUserId = me?.id ?? null;
 
   const [noteBody, setNoteBody] = useState("");
@@ -79,12 +81,7 @@ export function ContactDetailView({ id }: { id: string }) {
   const [selectedFarmAreaId, setSelectedFarmAreaId] = useState("");
   const [addingFarmMembership, setAddingFarmMembership] = useState(false);
 
-  const [commChannel, setCommChannel] = useState<"CALL" | "EMAIL">("CALL");
-  const [commBody, setCommBody] = useState("");
-  const [loggingComm, setLoggingComm] = useState(false);
-  const [patchingReminderId, setPatchingReminderId] = useState<string | null>(
-    null
-  );
+  const [patchingReminderId, setPatchingReminderId] = useState<string | null>(null);
   const [mailStreet1, setMailStreet1] = useState("");
   const [mailStreet2, setMailStreet2] = useState("");
   const [mailCity, setMailCity] = useState("");
@@ -97,8 +94,6 @@ export function ContactDetailView({ id }: { id: string }) {
   const [siteState, setSiteState] = useState("");
   const [siteZip, setSiteZip] = useState("");
   const [savingSite, setSavingSite] = useState(false);
-  const [promotingFromFarm, setPromotingFromFarm] = useState(false);
-  const [taskModalOpen, setTaskModalOpen] = useState(false);
 
   const refreshActivities = useCallback(() => {
     return reloadActivities();
@@ -132,23 +127,6 @@ export function ContactDetailView({ id }: { id: string }) {
       .catch(() => {});
   }, [id, contact, reloadContact]);
 
-  const updateStatus = useCallback(
-    (status: string) => {
-      if (!contact) return;
-      fetch(`/api/v1/contacts/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: status || null }),
-      })
-        .then((res) => res.json())
-        .then((json) => {
-          if (!json.error) void reloadContact(json.data, false);
-        })
-        .catch(() => {});
-    },
-    [id, contact, reloadContact]
-  );
-
   const addTag = useCallback(() => {
     const name = tagName.trim();
     if (!name || addingTag) return;
@@ -161,38 +139,43 @@ export function ContactDetailView({ id }: { id: string }) {
       .then((res) => res.json())
       .then((json) => {
         if (json.error) throw new Error(json.error.message);
-        void reloadContact((prev) =>
-          prev
-            ? {
-                ...prev,
-                contactTags: [...(prev.contactTags || []), { tag: json.data }],
-              }
-            : prev
-        , false);
+        void reloadContact(
+          (prev) =>
+            prev
+              ? {
+                  ...prev,
+                  contactTags: [...(prev.contactTags || []), { tag: json.data }],
+                }
+              : prev,
+          false
+        );
         setTagName("");
       })
       .catch(() => {})
       .finally(() => setAddingTag(false));
   }, [id, tagName, addingTag, reloadContact]);
 
-  const removeTag = useCallback((tagId: string) => {
-    fetch(`/api/v1/contacts/${id}/tags/${tagId}`, { method: "DELETE" })
-      .then((res) => res.json())
-      .then((json) => {
-        if (!json.error)
-          void reloadContact((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  contactTags: (prev.contactTags || []).filter(
-                    (ct) => ct.tag.id !== tagId
-                  ),
-                }
-              : prev
-          , false);
-      })
-      .catch(() => {});
-  }, [id, reloadContact]);
+  const removeTag = useCallback(
+    (tagId: string) => {
+      fetch(`/api/v1/contacts/${id}/tags/${tagId}`, { method: "DELETE" })
+        .then((res) => res.json())
+        .then((json) => {
+          if (!json.error)
+            void reloadContact(
+              (prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      contactTags: (prev.contactTags || []).filter((ct) => ct.tag.id !== tagId),
+                    }
+                  : prev,
+              false
+            );
+        })
+        .catch(() => {});
+    },
+    [id, reloadContact]
+  );
 
   const addReminder = useCallback(() => {
     const body = reminderBody.trim();
@@ -209,21 +192,18 @@ export function ContactDetailView({ id }: { id: string }) {
         if (json.error) throw new Error(json.error.message);
         void reloadContact((prev) => {
           if (!prev) return prev;
-          const merged = [
-            ...(prev.followUpReminders || []),
-            json.data,
-          ].sort(
-            (a, b) =>
-              new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()
+          const merged = [...(prev.followUpReminders || []), json.data].sort(
+            (a, b) => new Date(a.dueAt).getTime() - new Date(b.dueAt).getTime()
           );
           return { ...prev, followUpReminders: merged };
         }, false);
         setReminderBody("");
         setReminderDue("");
+        void refreshActivities();
       })
       .catch(() => {})
       .finally(() => setAddingReminder(false));
-  }, [id, reminderBody, reminderDue, addingReminder, reloadContact]);
+  }, [id, reminderBody, reminderDue, addingReminder, reloadContact, refreshActivities]);
 
   const addFarmMembership = useCallback(() => {
     if (!selectedFarmAreaId || addingFarmMembership) return;
@@ -285,12 +265,11 @@ export function ContactDetailView({ id }: { id: string }) {
               prev
                 ? {
                     ...prev,
-                    followUpReminders: (prev.followUpReminders || []).filter(
-                      (r) => r.id !== reminderId
-                    ),
+                    followUpReminders: (prev.followUpReminders || []).filter((r) => r.id !== reminderId),
                   }
-                : prev
-            , false);
+                : prev,
+              false
+            );
             void refreshActivities();
           }
         })
@@ -299,25 +278,6 @@ export function ContactDetailView({ id }: { id: string }) {
     },
     [refreshActivities, reloadContact]
   );
-
-  const logCommunication = useCallback(() => {
-    const body = commBody.trim();
-    if (!body || loggingComm) return;
-    setLoggingComm(true);
-    fetch(`/api/v1/contacts/${id}/communications`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ channel: commChannel, body }),
-    })
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) throw new Error(json.error.message);
-        setCommBody("");
-        void refreshActivities();
-      })
-      .catch(() => toast.error("Failed to log communication"))
-      .finally(() => setLoggingComm(false));
-  }, [id, commChannel, commBody, loggingComm, refreshActivities]);
 
   const addNote = useCallback(() => {
     const body = noteBody.trim();
@@ -337,31 +297,6 @@ export function ContactDetailView({ id }: { id: string }) {
       .catch(() => toast.error("Failed to add note"))
       .finally(() => setAddingNote(false));
   }, [id, noteBody, addingNote, refreshActivities]);
-
-  const promoteFromFarmToLead = useCallback(() => {
-    if (!hasCrmAccess) return;
-    if (!confirm("Promote this contact from Farm to Lead?")) return;
-    setPromotingFromFarm(true);
-    fetch("/api/v1/contacts/promote-farm-to-lead", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contactIds: [id] }),
-    })
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.error) throw new Error(json.error.message);
-        const promoted = (json.data?.promotedCount as number) ?? 0;
-        if (promoted === 0) {
-          toast.error("No change — contact is not in Farm stage.");
-          return;
-        }
-        return reloadContact();
-      })
-      .catch((err) =>
-        toast.error(err instanceof Error ? err.message : "Promote failed")
-      )
-      .finally(() => setPromotingFromFarm(false));
-  }, [hasCrmAccess, id, reloadContact]);
 
   useEffect(() => {
     if (!contact) return;
@@ -395,6 +330,7 @@ export function ContactDetailView({ id }: { id: string }) {
       .then((json) => {
         if (json.error) throw new Error(json.error.message);
         void reloadContact(json.data, false);
+        void refreshActivities();
       })
       .catch(() => {})
       .finally(() => setSavingMailing(false));
@@ -408,6 +344,7 @@ export function ContactDetailView({ id }: { id: string }) {
     mailZip,
     savingMailing,
     reloadContact,
+    refreshActivities,
   ]);
 
   const saveSiteAddress = useCallback(() => {
@@ -428,6 +365,7 @@ export function ContactDetailView({ id }: { id: string }) {
       .then((json) => {
         if (json.error) throw new Error(json.error.message);
         void reloadContact(json.data, false);
+        void refreshActivities();
       })
       .catch(() => {})
       .finally(() => setSavingSite(false));
@@ -441,32 +379,8 @@ export function ContactDetailView({ id }: { id: string }) {
     siteZip,
     savingSite,
     reloadContact,
+    refreshActivities,
   ]);
-
-  /** Open schedule panel when linked from Contacts list (`#schedule-follow-up`). */
-  useEffect(() => {
-    if (loading || !contact || typeof window === "undefined") return;
-    if (window.location.hash !== "#schedule-follow-up") return;
-    const t = window.setTimeout(() => {
-      const el = document.getElementById("schedule-follow-up");
-      if (el instanceof HTMLDetailsElement) {
-        el.open = true;
-        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      }
-    }, 0);
-    return () => window.clearTimeout(t);
-  }, [loading, contact]);
-
-  const nextReminder = useMemo(() => {
-    const list = contact?.followUpReminders ?? [];
-    return list.length ? list[0] : null;
-  }, [contact?.followUpReminders]);
-
-  const markNextReminderDone = useCallback(() => {
-    const r = nextReminder;
-    if (!r) return;
-    updateReminderStatus(r.id, "DONE");
-  }, [nextReminder, updateReminderStatus]);
 
   const scrollToActivityNote = useCallback(() => {
     if (typeof document === "undefined") return;
@@ -478,157 +392,135 @@ export function ContactDetailView({ id }: { id: string }) {
   const initials = useMemo(() => {
     const a = contact?.firstName?.trim()?.[0] ?? "";
     const b = contact?.lastName?.trim()?.[0] ?? "";
-    const s = `${a}${b}`.toUpperCase();
-    return s;
+    return `${a}${b}`.toUpperCase();
   }, [contact?.firstName, contact?.lastName]);
 
   if (loading) return <LoadingState />;
   if (error || !contact)
     return <ErrorMessage message={error || "Not found"} onRetry={() => void reloadContact()} />;
 
-  const fullName = [contact.firstName, contact.lastName]
-    .filter(Boolean)
-    .join(" ");
+  const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ");
   const reminders = contact.followUpReminders ?? [];
   const isAssignedToMe = contact.assignedToUserId === currentUserId;
-  const markingNextReminder =
-    !!nextReminder && patchingReminderId === nextReminder.id;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,300px)] lg:items-start lg:gap-5">
-      <ContactDetailIdentityColumn
-        className="order-2 lg:order-none"
-        fullName={fullName}
-        initials={initials}
-        contact={contact}
-        hasCrmAccess={hasCrmAccess}
-        currentUserId={currentUserId}
-        isAssignedToMe={isAssignedToMe}
-        tagName={tagName}
-        addingTag={addingTag}
-        onTagNameChange={setTagName}
-        onAddTag={addTag}
-        onRemoveTag={removeTag}
-        onAssignToMe={assignToMe}
-        onUnassign={unassign}
-        onStatusChange={updateStatus}
-        onPromoteFromFarmToLead={
-          hasCrmAccess ? () => void promoteFromFarmToLead() : undefined
-        }
-        promotingFromFarm={promotingFromFarm}
-        onScrollToNote={scrollToActivityNote}
-        onOpenTaskModal={() => setTaskModalOpen(true)}
-      />
-
-      <div className="order-1 flex min-w-0 flex-col gap-3 lg:order-none">
-        <ContactDetailActivitySummary
-          activities={activities}
+    <div className="flex flex-col gap-5">
+      <div className="flex justify-end">
+        <ContactDetailActionsMenu
+          contactId={id}
+          contact={contact}
           hasCrmAccess={hasCrmAccess}
-          nextReminder={nextReminder}
-          onMarkNextReminderDone={markNextReminderDone}
-          markingReminder={markingNextReminder}
-          reminderDue={reminderDue}
-          reminderBody={reminderBody}
-          onReminderDueChange={setReminderDue}
-          onReminderBodyChange={setReminderBody}
-          onAddReminder={addReminder}
-          addingReminder={addingReminder}
-        />
-        <ContactActivityTimeline
-          activities={activities}
-          hasCrmAccess={hasCrmAccess}
-          noteBody={noteBody}
-          addingNote={addingNote}
-          onNoteBodyChange={setNoteBody}
-          onAddNote={addNote}
-          commChannel={commChannel}
-          onCommChannelChange={setCommChannel}
-          commBody={commBody}
-          onCommBodyChange={setCommBody}
-          loggingComm={loggingComm}
-          onLogCommunication={logCommunication}
-          workspace
+          onScrollToNote={scrollToActivityNote}
+          onRefreshTimeline={() => void reloadActivities()}
+          onRefreshContact={() => void reloadContact()}
         />
       </div>
 
-      <aside className="order-3 flex min-w-0 flex-col gap-3 lg:order-none">
-        <div className="space-y-3 border-l-2 border-kp-teal/30 pl-3">
-          <ContactBusinessContextRail contact={contact} />
-          {hasCrmAccess ? (
-            <ContactFollowUpsPanel
-              reminders={reminders}
-              reminderDue={reminderDue}
-              reminderBody={reminderBody}
-              addingReminder={addingReminder}
-              patchingReminderId={patchingReminderId}
-              onReminderDueChange={setReminderDue}
-              onReminderBodyChange={setReminderBody}
-              onAddReminder={addReminder}
-              onReminderDone={(rid) => updateReminderStatus(rid, "DONE")}
-              onReminderDismiss={(rid) => updateReminderStatus(rid, "DISMISSED")}
-              hideScheduleForm
-            />
-          ) : null}
-          <ContactTasksPanel
-            contactId={id}
-            taskModalOpen={taskModalOpen}
-            onTaskModalOpenChange={setTaskModalOpen}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,300px)] lg:items-start lg:gap-5">
+        <ContactDetailIdentityColumn
+          className="order-2 lg:order-none"
+          fullName={fullName}
+          initials={initials}
+          contact={contact}
+          hasCrmAccess={hasCrmAccess}
+          currentUserId={currentUserId}
+          isAssignedToMe={isAssignedToMe}
+          tagName={tagName}
+          addingTag={addingTag}
+          onTagNameChange={setTagName}
+          onAddTag={addTag}
+          onRemoveTag={removeTag}
+          onAssignToMe={assignToMe}
+          onUnassign={unassign}
+        />
+
+        <div className="order-1 flex min-w-0 flex-col gap-4 lg:order-none">
+          <ContactActivityTimeline
+            activities={activities}
+            hasCrmAccess={hasCrmAccess}
+            noteBody={noteBody}
+            addingNote={addingNote}
+            onNoteBodyChange={setNoteBody}
+            onAddNote={addNote}
+            workspace
           />
         </div>
 
-        <details className="group rounded-lg border border-kp-outline/40 bg-kp-surface-high/[0.04] [&_summary::-webkit-details-marker]:hidden">
-          <summary className="cursor-pointer list-none px-3 py-2.5 text-left transition-colors hover:bg-kp-surface-high/30">
-            <span className="text-xs font-medium text-kp-on-surface">Reference & records</span>
-            <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-variant">
-              Farm memberships, mailing/site addresses, background notes
-            </p>
-          </summary>
-          <div className="space-y-3 border-t border-kp-outline/35 px-3 pb-3 pt-2">
+        <aside className="order-3 flex min-w-0 flex-col gap-3 lg:order-none">
+          <div className="space-y-3 pl-0 lg:border-l lg:border-kp-outline/25 lg:pl-3">
+            <ContactBusinessContextRail contact={contact} />
             {hasCrmAccess ? (
-              <ContactFarmMembershipsPanel
-                memberships={farmMemberships}
-                farmAreas={farmAreas}
-                selectedFarmAreaId={selectedFarmAreaId}
-                addingFarmMembership={addingFarmMembership}
-                onSelectedFarmAreaIdChange={setSelectedFarmAreaId}
-                onAddFarmMembership={addFarmMembership}
-                onArchiveFarmMembership={archiveFarmMembership}
+              <ContactFollowUpsPanel
+                reminders={reminders}
+                reminderDue={reminderDue}
+                reminderBody={reminderBody}
+                addingReminder={addingReminder}
+                patchingReminderId={patchingReminderId}
+                onReminderDueChange={setReminderDue}
+                onReminderBodyChange={setReminderBody}
+                onAddReminder={addReminder}
+                onReminderDone={(rid) => updateReminderStatus(rid, "DONE")}
+                onReminderDismiss={(rid) => updateReminderStatus(rid, "DISMISSED")}
+                hideScheduleForm
               />
             ) : null}
-            <ContactMailingAddressCard
-              street1={mailStreet1}
-              street2={mailStreet2}
-              city={mailCity}
-              state={mailState}
-              zip={mailZip}
-              saving={savingMailing}
-              onStreet1Change={setMailStreet1}
-              onStreet2Change={setMailStreet2}
-              onCityChange={setMailCity}
-              onStateChange={setMailState}
-              onZipChange={setMailZip}
-              onSave={saveMailingAddress}
-              collapsible
-            />
-            <ContactSiteAddressCard
-              street1={siteStreet1}
-              street2={siteStreet2}
-              city={siteCity}
-              state={siteState}
-              zip={siteZip}
-              saving={savingSite}
-              onStreet1Change={setSiteStreet1}
-              onStreet2Change={setSiteStreet2}
-              onCityChange={setSiteCity}
-              onStateChange={setSiteState}
-              onZipChange={setSiteZip}
-              onSave={saveSiteAddress}
-              collapsible
-            />
-            <ContactNotesCard notes={contact.notes} referenceDensity />
+            <ContactTasksPanel contactId={id} hideAddButton />
           </div>
-        </details>
-      </aside>
+
+          <details className="group rounded-lg border border-kp-outline/35 bg-kp-surface-high/[0.04] [&_summary::-webkit-details-marker]:hidden">
+            <summary className="cursor-pointer list-none px-3 py-2.5 text-left transition-colors hover:bg-kp-surface-high/30">
+              <span className="text-xs font-medium text-kp-on-surface">Reference & records</span>
+              <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-variant">
+                Farm memberships, mailing/site addresses, background notes
+              </p>
+            </summary>
+            <div className="space-y-3 border-t border-kp-outline/35 px-3 pb-3 pt-2">
+              {hasCrmAccess ? (
+                <ContactFarmMembershipsPanel
+                  memberships={farmMemberships}
+                  farmAreas={farmAreas}
+                  selectedFarmAreaId={selectedFarmAreaId}
+                  addingFarmMembership={addingFarmMembership}
+                  onSelectedFarmAreaIdChange={setSelectedFarmAreaId}
+                  onAddFarmMembership={addFarmMembership}
+                  onArchiveFarmMembership={archiveFarmMembership}
+                />
+              ) : null}
+              <ContactMailingAddressCard
+                street1={mailStreet1}
+                street2={mailStreet2}
+                city={mailCity}
+                state={mailState}
+                zip={mailZip}
+                saving={savingMailing}
+                onStreet1Change={setMailStreet1}
+                onStreet2Change={setMailStreet2}
+                onCityChange={setMailCity}
+                onStateChange={setMailState}
+                onZipChange={setMailZip}
+                onSave={saveMailingAddress}
+                collapsible
+              />
+              <ContactSiteAddressCard
+                street1={siteStreet1}
+                street2={siteStreet2}
+                city={siteCity}
+                state={siteState}
+                zip={siteZip}
+                saving={savingSite}
+                onStreet1Change={setSiteStreet1}
+                onStreet2Change={setSiteStreet2}
+                onCityChange={setSiteCity}
+                onStateChange={setSiteState}
+                onZipChange={setSiteZip}
+                onSave={saveSiteAddress}
+                collapsible
+              />
+              <ContactNotesCard notes={contact.notes} referenceDensity />
+            </div>
+          </details>
+        </aside>
+      </div>
     </div>
   );
 }

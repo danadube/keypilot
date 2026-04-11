@@ -1,20 +1,10 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import {
-  kpBtnPrimary,
-  kpBtnSecondary,
-} from "@/components/ui/kp-dashboard-button-tiers";
-import { FileText, MessageSquare, GitBranch } from "lucide-react";
+import { kpBtnPrimary } from "@/components/ui/kp-dashboard-button-tiers";
+import { FileText, GitBranch } from "lucide-react";
 import { ContactDetailSection } from "./contact-detail-section";
 import type { ContactDetailActivity } from "./contact-detail-types";
 import {
@@ -29,13 +19,7 @@ type ContactActivityTimelineProps = {
   addingNote: boolean;
   onNoteBodyChange: (v: string) => void;
   onAddNote: () => void;
-  commChannel: "CALL" | "EMAIL";
-  onCommChannelChange: (v: "CALL" | "EMAIL") => void;
-  commBody: string;
-  onCommBodyChange: (v: string) => void;
-  loggingComm: boolean;
-  onLogCommunication: () => void;
-  /** Primary workspace layout: larger compose surface, stronger hierarchy. */
+  /** Primary workspace: lighter chrome, timeline-first. */
   workspace?: boolean;
 };
 
@@ -46,129 +30,68 @@ export function ContactActivityTimeline({
   addingNote,
   onNoteBodyChange,
   onAddNote,
-  commChannel,
-  onCommChannelChange,
-  commBody,
-  onCommBodyChange,
-  loggingComm,
-  onLogCommunication,
   workspace = false,
 }: ContactActivityTimelineProps) {
   return (
     <ContactDetailSection
       title="Activity"
-      description={
-        workspace
-          ? "Log notes and touches, then scan the timeline — newest first."
-          : "Everything that happened with this contact — newest first."
-      }
+      description="Chronological timeline — newest first. Use Actions for calls, emails, tasks, and follow-ups."
       icon={<GitBranch className="h-3.5 w-3.5" />}
       className={cn(
-        "min-h-[280px]",
-        workspace && "border-kp-teal/15 bg-kp-surface-high/20"
+        "min-h-[240px] border-kp-outline/50 bg-kp-surface/40",
+        workspace && "border-kp-outline/40"
       )}
     >
       {hasCrmAccess ? (
-        <div className={cn("mb-5 space-y-3", workspace && "mb-6")}>
-          <div
-            className={cn(
-              "space-y-2 rounded-lg border p-3",
-              workspace
-                ? "border-kp-teal/25 bg-kp-surface/80"
-                : "border-kp-outline bg-kp-surface-high/50"
-            )}
+        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end">
+          <Textarea
+            id="contact-activity-note"
+            placeholder="Quick note…"
+            value={noteBody}
+            onChange={(e) => onNoteBodyChange(e.target.value)}
+            rows={2}
+            className="min-h-0 flex-1 resize-none border-kp-outline/70 bg-kp-surface text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(kpBtnPrimary, "h-9 shrink-0 border-transparent px-4 text-xs sm:self-end")}
+            onClick={onAddNote}
+            disabled={!noteBody.trim() || addingNote}
           >
-            <div className="flex items-center gap-2">
-              <FileText className="h-3.5 w-3.5 text-kp-on-surface-variant" />
-              <span className="text-xs font-medium text-kp-on-surface">
-                Add note
-              </span>
-            </div>
-            <Textarea
-              id="contact-activity-note"
-              placeholder="Capture what matters while it is fresh..."
-              value={noteBody}
-              onChange={(e) => onNoteBodyChange(e.target.value)}
-              rows={workspace ? 4 : 2}
-              className="resize-none border-kp-outline bg-kp-surface text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
-            />
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(kpBtnPrimary, "h-7 border-transparent px-3 text-xs")}
-              onClick={onAddNote}
-              disabled={!noteBody.trim() || addingNote}
-            >
-              {addingNote ? "Adding…" : "Add note"}
-            </Button>
-          </div>
-
-          <details className="group rounded-lg border border-kp-outline bg-kp-surface-high/30">
-            <summary className="cursor-pointer list-none px-3 py-2.5 text-xs font-medium text-kp-on-surface outline-none marker:content-none [&::-webkit-details-marker]:hidden">
-              <span className="inline-flex items-center gap-2">
-                <MessageSquare className="h-3.5 w-3.5 text-kp-on-surface-variant" />
-                Log a call or email
-                <span className="text-kp-on-surface-variant font-normal">
-                  (optional)
-                </span>
-              </span>
-            </summary>
-            <div className="space-y-2 border-t border-kp-outline p-3 pt-3">
-              <Select
-                value={commChannel}
-                onValueChange={(v) =>
-                  onCommChannelChange(v as "CALL" | "EMAIL")
-                }
-              >
-                <SelectTrigger className="h-7 w-28 border-kp-outline bg-kp-surface text-xs text-kp-on-surface">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="border-kp-outline bg-kp-surface text-kp-on-surface">
-                  <SelectItem value="CALL">Call</SelectItem>
-                  <SelectItem value="EMAIL">Email</SelectItem>
-                </SelectContent>
-              </Select>
-              <Textarea
-                placeholder={`What was discussed…`}
-                value={commBody}
-                onChange={(e) => onCommBodyChange(e.target.value)}
-                rows={2}
-                className="resize-none border-kp-outline bg-kp-surface text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
-              />
-              <Button
-                size="sm"
-                variant="outline"
-                className={cn(kpBtnSecondary, "h-7 px-3 text-xs")}
-                onClick={onLogCommunication}
-                disabled={!commBody.trim() || loggingComm}
-              >
-                {loggingComm ? "Logging…" : `Log ${commChannel.toLowerCase()}`}
-              </Button>
-            </div>
-          </details>
+            {addingNote ? "Adding…" : "Add note"}
+          </Button>
         </div>
-      ) : null}
+      ) : (
+        <p className="mb-5 text-sm text-kp-on-surface-variant">
+          <FileText className="mb-1 mr-1 inline h-4 w-4 align-text-bottom opacity-70" />
+          Timeline is read-only. Full CRM unlocks notes and richer history.
+        </p>
+      )}
 
       {activities.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-kp-outline py-12 text-center">
+        <div className="rounded-lg border border-dashed border-kp-outline/60 py-10 text-center">
           <p className="text-sm text-kp-on-surface-variant">
-            No activity yet. Notes and logged touches will build the timeline here.
+            No timeline events yet. Notes appear here; use Actions to log calls, emails, and more.
           </p>
         </div>
       ) : (
         <ul className="relative space-y-0">
           <span
-            className="pointer-events-none absolute left-[5.25rem] top-2 bottom-2 w-px bg-kp-outline/90 hidden sm:block"
+            className="pointer-events-none absolute bottom-2 left-[5.25rem] top-2 hidden w-px bg-kp-outline/50 sm:block"
             aria-hidden
           />
           {activities.map((a, i) => {
-            const { label, colorClass } = contactActivityLabel(a.activityType);
+            const { label, colorClass } =
+              a.activityType === "NOTE_ADDED" && a.body.startsWith("Record updated:")
+                ? { label: "Record update", colorClass: "text-kp-on-surface-variant" }
+                : contactActivityLabel(a.activityType);
             return (
               <li
                 key={a.id}
                 className={cn(
-                  "relative flex flex-col gap-1 py-4 sm:flex-row sm:items-start sm:gap-4",
-                  i < activities.length - 1 && "border-b border-kp-outline"
+                  "relative flex flex-col gap-1 py-3.5 sm:flex-row sm:items-start sm:gap-4",
+                  i < activities.length - 1 && "border-b border-kp-outline/40"
                 )}
               >
                 <time
@@ -180,15 +103,13 @@ export function ContactActivityTimeline({
                 <div className="min-w-0 flex-1 sm:pl-2">
                   <span
                     className={cn(
-                      "mb-1 block text-[10px] font-bold uppercase tracking-wide",
+                      "mb-0.5 block text-[10px] font-semibold uppercase tracking-wide",
                       colorClass
                     )}
                   >
                     {label}
                   </span>
-                  <p className="text-sm leading-snug text-kp-on-surface">
-                    {a.body}
-                  </p>
+                  <p className="text-sm leading-snug text-kp-on-surface">{a.body}</p>
                 </div>
               </li>
             );

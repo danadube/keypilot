@@ -90,11 +90,18 @@ export function PageHeaderActionsMenuSeparator() {
   return <div className="my-1 h-px bg-kp-outline/70" role="separator" aria-hidden />;
 }
 
-export function PageHeaderActionsMenu({ children }: { children: React.ReactNode }) {
+export function PageHeaderActionsMenu({
+  children,
+  summaryLabel = "Actions",
+}: {
+  children: React.ReactNode;
+  /** Button label (e.g. `Workspace` when module nav should not compete with page-level Actions). */
+  summaryLabel?: string;
+}) {
   return (
     <details className="group relative">
       <summary className={actionsSummaryClass}>
-        Actions
+        {summaryLabel}
         <ChevronDown
           className="h-3.5 w-3.5 shrink-0 opacity-70 transition-transform group-open:rotate-180"
           aria-hidden

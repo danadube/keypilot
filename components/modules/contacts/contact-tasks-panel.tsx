@@ -13,26 +13,17 @@ import { useCallback, useState } from "react";
 
 type ContactTasksPanelProps = {
   contactId: string;
-  /** Controlled modal: when set, overrides internal open state for the new-task modal. */
-  taskModalOpen?: boolean;
-  onTaskModalOpenChange?: (open: boolean) => void;
+  /** Hide add button when tasks are created only from the contact Actions menu. */
+  hideAddButton?: boolean;
 };
 
-export function ContactTasksPanel({
-  contactId,
-  taskModalOpen: taskModalOpenControlled,
-  onTaskModalOpenChange,
-}: ContactTasksPanelProps) {
+export function ContactTasksPanel({ contactId, hideAddButton = false }: ContactTasksPanelProps) {
   const { data: payload, mutate } = useSWR<TaskPilotPayload>(
     `/api/v1/tasks?contactId=${encodeURIComponent(contactId)}`,
     apiFetcher,
     { revalidateOnFocus: true }
   );
-  const [modalOpenInternal, setModalOpenInternal] = useState(false);
-  const controlled =
-    taskModalOpenControlled !== undefined && onTaskModalOpenChange !== undefined;
-  const modalOpen = controlled ? taskModalOpenControlled : modalOpenInternal;
-  const setModalOpen = controlled ? onTaskModalOpenChange : setModalOpenInternal;
+  const [modalOpen, setModalOpen] = useState(false);
   const [patchingId, setPatchingId] = useState<string | null>(null);
 
   const openTasks = useCallback(() => {
@@ -60,19 +51,21 @@ export function ContactTasksPanel({
   const list = openTasks();
 
   return (
-    <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
+    <div className="rounded-xl border border-kp-outline/70 bg-kp-surface p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="font-headline text-sm font-semibold text-kp-on-surface">Tasks</h3>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className={cn(kpBtnTertiary, "h-8 px-2 text-xs font-semibold")}
-          onClick={() => setModalOpen(true)}
-        >
-          <CheckSquare className="mr-1 h-3.5 w-3.5" />
-          Add task
-        </Button>
+        {!hideAddButton ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className={cn(kpBtnTertiary, "h-8 px-2 text-xs font-semibold")}
+            onClick={() => setModalOpen(true)}
+          >
+            <CheckSquare className="mr-1 h-3.5 w-3.5" />
+            Add task
+          </Button>
+        ) : null}
       </div>
       {!payload ? (
         <p className="text-xs text-kp-on-surface-muted">Loading…</p>
@@ -106,12 +99,14 @@ export function ContactTasksPanel({
           Open TaskPilot
         </Link>
       </p>
-      <NewTaskModal
-        open={modalOpen}
-        onOpenChange={setModalOpen}
-        defaultContactId={contactId}
-        onCreated={() => void mutate()}
-      />
+      {!hideAddButton ? (
+        <NewTaskModal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          defaultContactId={contactId}
+          onCreated={() => void mutate()}
+        />
+      ) : null}
     </div>
   );
 }

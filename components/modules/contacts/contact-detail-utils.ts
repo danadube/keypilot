@@ -37,6 +37,22 @@ export function contactActivityLabel(type: string): {
       return { label: "Call", colorClass: "text-kp-gold" };
     case "EMAIL_LOGGED":
       return { label: "Email", colorClass: "text-kp-teal" };
+    case "TIMELINE_CONTACT_CREATED":
+      return { label: "Contact", colorClass: "text-kp-gold/90" };
+    case "TIMELINE_TASK_CREATED":
+      return { label: "Task", colorClass: "text-kp-teal/90" };
+    case "TIMELINE_TASK_COMPLETED":
+      return { label: "Task", colorClass: "text-emerald-400/90" };
+    case "TIMELINE_REMINDER_SCHEDULED":
+      return { label: "Follow-up", colorClass: "text-kp-teal/80" };
+    case "TIMELINE_REMINDER_COMPLETED":
+      return { label: "Follow-up", colorClass: "text-emerald-400/80" };
+    case "TIMELINE_REMINDER_DISMISSED":
+      return { label: "Follow-up", colorClass: "text-kp-on-surface-variant" };
+    case "TIMELINE_DEAL_ADDED":
+      return { label: "Deal", colorClass: "text-kp-gold/80" };
+    case "TIMELINE_TRANSACTION_LINKED":
+      return { label: "Transaction", colorClass: "text-kp-teal/80" };
     default:
       return {
         label: type.replace(/_/g, " ").toLowerCase(),
