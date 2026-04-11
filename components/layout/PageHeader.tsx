@@ -22,7 +22,12 @@ export function PageHeader({
 }: PageHeaderProps) {
   const hasRight = Boolean(actionsMenu || primaryAction);
   return (
-    <header className={cn("border-b border-kp-outline/50 pb-3 pt-0.5", className)}>
+    <header
+      className={cn(
+        "bg-transparent pb-4 pt-1 md:pb-5 md:pt-1.5",
+        className
+      )}
+    >
       <div
         className={cn(
           "flex flex-col gap-2.5",
