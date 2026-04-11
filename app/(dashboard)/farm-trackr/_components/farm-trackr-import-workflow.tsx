@@ -523,6 +523,8 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
           mapping,
           defaultTerritoryName: defaultTerritoryName.trim() || null,
           defaultAreaName: defaultAreaName.trim() || null,
+          sourceType: fileMeta?.format === "xlsx" ? "XLSX" : "CSV",
+          fileName: fileMeta?.name ?? null,
         }),
       });
       const json = await res.json();
@@ -544,6 +546,7 @@ export function FarmTrackrImportWorkflow({ onApplySuccess }: { onApplySuccess?: 
     defaultTerritoryName,
     defaultAreaName,
     previewIsFresh,
+    fileMeta,
     onApplySuccess,
   ]);
 
