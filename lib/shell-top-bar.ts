@@ -1,15 +1,19 @@
-import { isWorkspaceContext } from "@/lib/showing-hq/isShowingHQContext";
+/**
+ * Global app header height — sidebar offset and main chrome align to this.
+ */
+export const KP_APP_HEADER_HEIGHT_PX = 72;
+
+export const KP_APP_HEADER_HEIGHT_CLASS = "min-h-[72px] h-[72px]";
+
+/** Fixed sidebar sits below the global header. */
+export const KP_SIDEBAR_TOP_CLASS = "top-[72px]";
+
+export const KP_SIDEBAR_HEIGHT_CLASS = "h-[calc(100vh-72px)]";
 
 /**
- * Shared shell top row: sidebar logo strip + main header must share the same
- * fixed height and border treatment so the bottom edge aligns across the seam.
- *
- * Workspace modules (including `/dashboard`, `/showing-hq/*`, `/open-houses/*`, `/farm-trackr/*`,
- * `/property-vault/*`, `/properties/*`, `/client-keep/*`, `/contacts/*`, `/transactions/*`) use a taller band so the title +
- * client date/time line fit; other routes use the default compact rail.
+ * @deprecated Pathname no longer changes height; kept for call-site compatibility.
  */
 export function shellTopRowHeightClass(pathname: string | null | undefined): string {
-  const path = pathname ?? "";
-  if (isWorkspaceContext(path)) return "h-[58px]";
-  return "h-[52px]";
+  void pathname;
+  return KP_APP_HEADER_HEIGHT_CLASS;
 }

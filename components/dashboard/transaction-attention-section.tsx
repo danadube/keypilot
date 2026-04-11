@@ -33,10 +33,13 @@ async function transactionAttentionFetcher(url: string): Promise<AttentionRespon
 export function TransactionAttentionSection({
   loading,
   className,
+  embedded = false,
 }: {
   /** When true, outer dashboard is still loading core stats — show subtle skeleton. */
   loading: boolean;
   className?: string;
+  /** Tighter chrome when placed inside a shared work zone (e.g. Command Center). */
+  embedded?: boolean;
 }) {
   const { data, error, isLoading, mutate } = useSWR<AttentionResponse>(
     "/api/v1/transactions/attention",
@@ -49,19 +52,32 @@ export function TransactionAttentionSection({
   const busy = loading || isLoading;
 
   return (
-    <section aria-labelledby="dash-txn-attention" className={cn("scroll-mt-2", className)}>
+    <section
+      aria-labelledby="dash-txn-attention"
+      className={cn("scroll-mt-2", embedded && "min-h-0", className)}
+    >
       <h2
         id="dash-txn-attention"
-        className="mb-2 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
+        className={cn(
+          "font-headline font-semibold tracking-tight text-kp-on-surface",
+          embedded ? "mb-2 text-sm" : "mb-2 text-lg"
+        )}
       >
         Transaction attention
       </h2>
-      <p className="mb-2 max-w-xl text-[13px] leading-snug text-kp-on-surface-muted">
-        Closings that need setup, a date coming up, or checklist follow-up — jump straight into the
-        record.
-      </p>
+      {embedded ? null : (
+        <p className="mb-2 max-w-xl text-[13px] leading-snug text-kp-on-surface-muted">
+          Closings that need setup, a date coming up, or checklist follow-up — jump straight into the
+          record.
+        </p>
+      )}
 
-      <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
+      <div
+        className={cn(
+          "rounded-xl border border-kp-outline bg-kp-surface shadow-sm",
+          embedded ? "p-3" : "p-4"
+        )}
+      >
         {busy ? (
           <ul className="space-y-2" aria-busy="true">
             {[0, 1, 2].map((k) => (

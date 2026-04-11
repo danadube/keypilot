@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { usePathname, useSearchParams, type ReadonlyURLSearchParams } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -24,7 +23,7 @@ import { MODULES, getModuleFromPath, pathMatchesHref } from "@/lib/modules";
 import { UPGRADE_MODULES } from "@/lib/module-access";
 import { useProductTier } from "@/components/ProductTierProvider";
 import { APP_VERSION, APP_COMMIT } from "@/lib/app-version";
-import { shellTopRowHeightClass } from "@/lib/shell-top-bar";
+import { KP_SIDEBAR_HEIGHT_CLASS, KP_SIDEBAR_TOP_CLASS } from "@/lib/shell-top-bar";
 import type { ModuleConfig, ModuleId, ModuleSidebarItem } from "@/lib/modules";
 
 /** Sidebar width in px — keep in sync with main column `marginLeft` in `DashboardShell`. */
@@ -171,32 +170,9 @@ export function SidebarContents({ onLinkClick }: { onLinkClick?: () => void }) {
 
   return (
     <>
-      {/* Logo */}
-      <div
-        className={cn(
-          "flex shrink-0 items-center border-b border-white/[0.08] px-4",
-          shellTopRowHeightClass(pathname ?? "")
-        )}
-      >
-        <Link
-          href="/dashboard"
-          onClick={onLinkClick}
-          className="flex min-w-0 items-center transition-opacity hover:opacity-90"
-          aria-label="KeyPilot home"
-        >
-          <Image
-            src="/KeyPilot-logo.png?v=4"
-            alt="KeyPilot"
-            width={200}
-            height={60}
-            className="h-9 w-auto max-w-full object-contain object-left"
-          />
-        </Link>
-      </div>
-
-      {/* Nav */}
+      {/* Navigation only — brand mark lives in the global app header */}
       <nav
-        className="min-h-0 flex-1 overflow-y-auto py-3"
+        className="min-h-0 flex-1 overflow-y-auto px-0 pb-3 pt-3"
         aria-label="Module navigation"
       >
         <div className="mb-1 px-2">
@@ -448,11 +424,15 @@ export function SidebarContents({ onLinkClick }: { onLinkClick?: () => void }) {
   );
 }
 
-/** Desktop-only fixed sidebar. Hidden on mobile — mobile nav is via MobileDrawer in DashboardShell. */
+/** Desktop-only fixed sidebar below the global app header. */
 export function ModuleSidebar() {
   return (
     <aside
-      className="fixed left-0 top-0 z-10 hidden h-screen flex-col border-r border-kp-outline text-slate-100 lg:flex"
+      className={cn(
+        "fixed left-0 z-[90] hidden flex-col border-r border-kp-outline text-slate-100 lg:flex",
+        KP_SIDEBAR_TOP_CLASS,
+        KP_SIDEBAR_HEIGHT_CLASS
+      )}
       style={{
         width: DASHBOARD_SIDEBAR_WIDTH_PX,
         backgroundColor: "var(--brand-sidebar-bg, #0B1A3C)",

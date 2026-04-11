@@ -1,59 +1,33 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { useMemo, useState, type ComponentType, type ReactNode } from "react";
 import useSWR from "swr";
-import { apiFetcher } from "@/lib/fetcher";
 import Link from "next/link";
 import {
   Building2,
   Calendar,
-  Check,
   CheckSquare,
   Handshake,
-  MapPin,
   MessageSquare,
-  UserPlus,
+  Plus,
   Users,
-  X,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
+import { kpBtnSave } from "@/components/ui/kp-dashboard-button-tiers";
+import {
+  PageHeader,
+  PageHeaderActionItem,
+  PageHeaderActionButton,
+  PageHeaderActionsMenu,
+} from "@/components/layout/PageHeader";
 import {
   DashboardTodayCalendarScheduleGrid,
   type DashboardScheduleShowing,
 } from "@/components/dashboard/dashboard-calendar-rail";
-import {
-  buildFocusCandidates,
-  filterVisibleFocusCandidates,
-  focusPersistedListsEqual,
-  loadFocusState,
-  reconcileFocusStorage,
-  resetFocusPersistedState,
-  saveFocusState,
-  upsertFocusHide,
-  type FocusDisplayItem,
-  type FocusPersistedState,
-  type FocusSignals,
-} from "@/lib/dashboard-focus-queue";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import type { TaskPilotPayload } from "@/lib/tasks/task-pilot-payload-mutate";
 import { TransactionAttentionSection } from "@/components/dashboard/transaction-attention-section";
-import { contactIdFromAppHref, propertyIdFromAppHref } from "@/lib/tasks/entity-id-from-href";
-
-type DashboardTaskModalCtx = {
-  defaultContactId: string | null;
-  defaultPropertyId: string | null;
-  initialTitle: string;
-  initialDescription: string;
-};
-
-const EMPTY_DASH_TASK_CTX: DashboardTaskModalCtx = {
-  defaultContactId: null,
-  defaultPropertyId: null,
-  initialTitle: "",
-  initialDescription: "",
-};
+import { apiFetcher } from "@/lib/fetcher";
 
 type DashboardStats = {
   propertiesCount: number;
@@ -81,15 +55,13 @@ function isSameLocalCalendarDay(d: Date, ref: Date): boolean {
 
 function deriveShowingsToday(showings: ShowingRow[], now: Date) {
   let today = 0;
-  let overdueToday = 0;
   for (const s of showings) {
     const d = new Date(s.scheduledAt);
     if (Number.isNaN(d.getTime())) continue;
     if (!isSameLocalCalendarDay(d, now)) continue;
     today += 1;
-    if (d.getTime() < now.getTime()) overdueToday += 1;
   }
-  return { today, overdueToday };
+  return { today };
 }
 
 function countActiveDeals(deals: DealRow[]) {
@@ -107,49 +79,49 @@ function nextShowingTodayActionLine(showings: ShowingRow[], now: Date): string {
       return !Number.isNaN(d.getTime()) && isSameLocalCalendarDay(d, now);
     })
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
-  if (todayList.length === 0) return "No showings today";
+  if (todayList.length === 0) return "None scheduled";
   const nowMs = now.getTime();
   const upcoming = todayList.find((s) => new Date(s.scheduledAt).getTime() > nowMs);
   if (upcoming) {
     const t = new Date(upcoming.scheduledAt);
     const timeStr = t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-    return `Next showing at ${timeStr}`;
+    return `Next at ${timeStr}`;
   }
   const last = todayList[todayList.length - 1]!;
   const t = new Date(last.scheduledAt);
   const timeStr = t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  return `Last showing was at ${timeStr}`;
+  return `Last at ${timeStr}`;
 }
 
 function PrimaryValue({ loading, children }: { loading: boolean; children: ReactNode }) {
   if (loading) {
     return (
       <span
-        className="inline-block h-9 w-16 animate-pulse rounded-md bg-kp-surface-high/90"
+        className="inline-block h-7 w-12 animate-pulse rounded bg-kp-surface-high/90"
         aria-hidden
       />
     );
   }
   return (
-    <span className="font-headline text-2xl font-semibold tabular-nums text-kp-on-surface">
+    <span className="font-headline text-xl font-semibold tabular-nums text-kp-on-surface">
       {children}
     </span>
   );
 }
 
-type TodayCardEmphasis = "elevated" | "accent" | "none";
+type StripEmphasis = "elevated" | "accent" | "none";
 
-function todayCardEmphasisClass(emphasis: TodayCardEmphasis) {
+function stripEmphasisClass(emphasis: StripEmphasis) {
   if (emphasis === "elevated") {
-    return "border-kp-teal/45 bg-kp-teal/[0.07] shadow-sm hover:border-kp-teal/55 hover:bg-kp-teal/[0.1]";
+    return "border-kp-teal/35 bg-kp-teal/[0.05]";
   }
   if (emphasis === "accent") {
-    return "border-kp-gold/40 bg-kp-gold/[0.06] shadow-sm hover:border-kp-gold/50 hover:bg-kp-gold/[0.09]";
+    return "border-kp-gold/30 bg-kp-gold/[0.04]";
   }
-  return "border-kp-outline bg-kp-surface shadow-sm hover:border-kp-teal/25 hover:bg-kp-surface-high/40";
+  return "border-kp-outline/90 bg-kp-surface-high/[0.12]";
 }
 
-function TodayMetricCard({
+function TodayStripCard({
   label,
   href,
   icon: Icon,
@@ -166,44 +138,42 @@ function TodayMetricCard({
   zeroPrimaryText: string;
   nextActionLine: string;
   loading: boolean;
-  emphasis?: TodayCardEmphasis;
+  emphasis?: StripEmphasis;
 }) {
   return (
     <Link
       href={href}
       className={cn(
-        "group flex flex-col rounded-xl border p-4 transition-colors",
-        todayCardEmphasisClass(emphasis)
+        "group flex flex-col rounded-lg border px-3 py-2.5 transition-colors",
+        stripEmphasisClass(emphasis)
       )}
     >
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
           {label}
         </span>
-        <Icon className="h-4 w-4 shrink-0 text-kp-on-surface-muted opacity-80 group-hover:text-kp-teal" />
+        <Icon className="h-3.5 w-3.5 shrink-0 text-kp-on-surface-muted opacity-75 group-hover:text-kp-teal" />
       </div>
       {loading ? (
         <span
-          className="inline-block h-10 w-28 max-w-full animate-pulse rounded-md bg-kp-surface-high/90"
+          className="inline-block h-7 w-14 max-w-full animate-pulse rounded bg-kp-surface-high/90"
           aria-hidden
         />
       ) : count === 0 ? (
-        <p className="font-headline text-base font-semibold leading-snug text-kp-on-surface">
-          {zeroPrimaryText}
-        </p>
+        <p className="text-sm font-medium leading-tight text-kp-on-surface">{zeroPrimaryText}</p>
       ) : (
-        <span className="font-headline text-2xl font-semibold tabular-nums text-kp-on-surface">
+        <span className="font-headline text-xl font-semibold tabular-nums text-kp-on-surface">
           {count}
         </span>
       )}
-      <p className="mt-2 text-xs font-medium leading-relaxed text-kp-on-surface-variant">
+      <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-kp-on-surface-variant">
         {loading ? "…" : nextActionLine}
       </p>
     </Link>
   );
 }
 
-function PipelineCard({
+function SnapshotCard({
   label,
   href,
   icon: Icon,
@@ -221,62 +191,17 @@ function PipelineCard({
   return (
     <Link
       href={href}
-      className="group flex flex-col rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm transition-colors hover:border-kp-teal/25 hover:bg-kp-surface-high/40"
+      className="group flex flex-col rounded-lg border border-kp-outline/80 bg-kp-surface-high/[0.06] px-3 py-2.5 transition-colors hover:border-kp-teal/20 hover:bg-kp-surface-high/20"
     >
-      <div className="mb-2 flex items-center gap-2">
-        <Icon className="h-4 w-4 shrink-0 text-kp-on-surface-muted opacity-90 group-hover:text-kp-teal" />
-        <span className="font-headline text-sm font-semibold text-kp-on-surface">{label}</span>
+      <div className="mb-1 flex items-center gap-1.5">
+        <Icon className="h-3.5 w-3.5 shrink-0 text-kp-on-surface-muted opacity-90 group-hover:text-kp-teal" />
+        <span className="font-headline text-xs font-semibold text-kp-on-surface">{label}</span>
       </div>
       <PrimaryValue loading={loading}>{primary}</PrimaryValue>
-      <span className="mt-2 text-xs text-kp-on-surface-variant group-hover:text-kp-teal">
+      <span className="mt-1 line-clamp-2 text-[11px] text-kp-on-surface-variant group-hover:text-kp-on-surface-muted">
         {secondary}
       </span>
     </Link>
-  );
-}
-
-function ModuleShortcut({
-  title,
-  contextLine,
-  href,
-  icon: Icon,
-  ctaLabel,
-}: {
-  title: string;
-  contextLine: string;
-  href: string;
-  icon: ComponentType<{ className?: string }>;
-  ctaLabel: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="group flex flex-col rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm transition-colors hover:border-kp-teal/25 hover:bg-kp-surface-high/40"
-    >
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg border border-kp-outline/80 bg-kp-surface-high/30 text-kp-gold">
-        <Icon className="h-5 w-5" />
-      </div>
-      <h3 className="font-headline text-base font-semibold text-kp-on-surface">{title}</h3>
-      <p className="mt-1.5 flex-1 text-sm leading-relaxed text-kp-on-surface-variant">
-        {contextLine}
-      </p>
-      <span className="mt-3 text-xs font-medium text-kp-teal group-hover:underline">{ctaLabel}</span>
-    </Link>
-  );
-}
-
-function QuickActionLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Button
-      asChild
-      variant="outline"
-      className={cn(
-        kpBtnTertiary,
-        "h-9 min-h-9 justify-center gap-2 border border-kp-outline/70 px-4 text-xs font-semibold text-kp-on-surface-variant hover:border-kp-outline hover:text-kp-on-surface"
-      )}
-    >
-      <Link href={href}>{children}</Link>
-    </Button>
   );
 }
 
@@ -320,27 +245,6 @@ export function OperationalDashboardView() {
     { errorRetryCount: 2, errorRetryInterval: 500 }
   );
   const [newTaskModalOpen, setNewTaskModalOpen] = useState(false);
-  const [taskModalCtx, setTaskModalCtx] = useState<DashboardTaskModalCtx>(EMPTY_DASH_TASK_CTX);
-
-  const handleTaskModalOpenChange = (open: boolean) => {
-    setNewTaskModalOpen(open);
-    if (!open) setTaskModalCtx({ ...EMPTY_DASH_TASK_CTX });
-  };
-
-  const openBlankTaskModal = () => {
-    setTaskModalCtx({ ...EMPTY_DASH_TASK_CTX });
-    setNewTaskModalOpen(true);
-  };
-
-  const openFocusTaskModal = (item: FocusDisplayItem) => {
-    setTaskModalCtx({
-      defaultContactId: contactIdFromAppHref(item.href),
-      defaultPropertyId: propertyIdFromAppHref(item.href),
-      initialTitle: `Focus: ${item.label}`,
-      initialDescription: [item.subtext, `Link: ${item.href}`].filter(Boolean).join("\n"),
-    });
-    setNewTaskModalOpen(true);
-  };
 
   const loading = statsLoading || showingsLoading || followLoading || dealsLoading || tasksLoading;
   const overdue = useMemo(() => followData?.overdue ?? [], [followData]);
@@ -369,283 +273,176 @@ export function OperationalDashboardView() {
   );
 
   const showingsNextAction = loading
-    ? "Loading schedule…"
+    ? "…"
     : nextShowingTodayActionLine(showings, now);
 
   const followUpsNextAction = loading
-    ? "Loading follow-ups…"
+    ? "…"
     : overdueFollowUpCount > 0
-      ? `${overdueFollowUpCount} follow-up${overdueFollowUpCount === 1 ? "" : "s"} overdue`
+      ? `${overdueFollowUpCount} overdue`
       : dueTodayFollowUpCount > 0
         ? `${dueTodayFollowUpCount} due today`
-        : "Nothing overdue or due today";
+        : "Clear";
 
   const tasksOverdueCount = tasksApi?.counts.openOverdue ?? 0;
   const tasksDueTodayCount = tasksApi?.counts.openDueToday ?? 0;
   const tasksDueCount = tasksOverdueCount + tasksDueTodayCount;
   const tasksNextAction = loading
-    ? "Loading tasks…"
+    ? "…"
     : tasksOverdueCount > 0 && tasksDueTodayCount > 0
-      ? `${tasksOverdueCount} overdue, ${tasksDueTodayCount} due today`
+      ? `${tasksOverdueCount} overdue · ${tasksDueTodayCount} today`
       : tasksOverdueCount > 0
-        ? `${tasksOverdueCount} overdue task${tasksOverdueCount === 1 ? "" : "s"}`
+        ? `${tasksOverdueCount} overdue`
         : tasksDueTodayCount > 0
           ? `${tasksDueTodayCount} due today`
-          : "No tasks due today or overdue";
-
-  const todayClear =
-    !loading && showingsToday === 0 && followUpsDueCount === 0 && tasksDueCount === 0;
+          : "Clear";
 
   const pipelineDealsSecondary =
-    activeDeals === 0 ? "No active deals — add one when you’re ready." : "Open pipeline for detail.";
+    activeDeals === 0 ? "None active" : "Pipeline detail";
 
   const pipelineListingsSecondary =
-    propertiesCount === 0 ? "No listings yet — add your first in PropertyVault." : "In PropertyVault.";
+    propertiesCount === 0 ? "Add a listing" : "In PropertyVault";
 
   const pipelineContactsSecondary = loading
-    ? "Loading attention signals…"
+    ? "…"
     : contactsAttention === 0
-      ? "No contacts need follow-up right now"
+      ? "None flagged"
       : overdueFollowUpCount > 0
         ? `${overdueFollowUpCount} overdue`
         : `${dueTodayFollowUpCount} due today`;
 
-  const focusSignals = useMemo(
-    (): FocusSignals => ({
-      overdue: overdueFollowUpCount,
-      showings: showingsToday,
-      contacts: contactsAttention,
-      tasksOverdue: tasksOverdueCount,
-      tasksDueToday: tasksDueTodayCount,
-    }),
-    [
-      overdueFollowUpCount,
-      showingsToday,
-      contactsAttention,
-      tasksOverdueCount,
-      tasksDueTodayCount,
-    ]
-  );
-
-  const focusCandidates = useMemo(
-    () =>
-      buildFocusCandidates({
-        loading,
-        overdueFollowUpCount,
-        showingsToday,
-        contactsAttention,
-        tasksOverdue: tasksOverdueCount,
-        tasksDueToday: tasksDueTodayCount,
-      }),
-    [
-      loading,
-      overdueFollowUpCount,
-      showingsToday,
-      contactsAttention,
-      tasksOverdueCount,
-      tasksDueTodayCount,
-    ]
-  );
-
-  const [focusStored, setFocusStored] = useState<FocusPersistedState>({ items: [] });
-  const [focusHydrated, setFocusHydrated] = useState(false);
-
-  useEffect(() => {
-    setFocusStored(loadFocusState());
-    setFocusHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!focusHydrated || focusCandidates === null) return;
-    setFocusStored((prev) => {
-      const next = reconcileFocusStorage(focusCandidates, prev.items, focusSignals);
-      if (focusPersistedListsEqual(prev.items, next)) return prev;
-      saveFocusState({ items: next });
-      return { items: next };
-    });
-  }, [focusHydrated, focusCandidates, focusSignals]);
-
-  const focusVisible = useMemo(() => {
-    if (focusCandidates === null) return [];
-    return filterVisibleFocusCandidates(focusCandidates, focusStored.items, focusSignals);
-  }, [focusCandidates, focusStored.items, focusSignals]);
-
-  const handleFocusComplete = (item: FocusDisplayItem) => {
-    setFocusStored((prev) => {
-      const next = { items: upsertFocusHide(prev.items, item, "completed", focusSignals) };
-      saveFocusState(next);
-      return next;
-    });
-  };
-
-  const handleFocusDismiss = (item: FocusDisplayItem) => {
-    setFocusStored((prev) => {
-      const next = { items: upsertFocusHide(prev.items, item, "dismissed", focusSignals) };
-      saveFocusState(next);
-      return next;
-    });
-  };
-
-  const handleFocusReset = () => {
-    setFocusStored(resetFocusPersistedState());
-  };
+  const moduleShowingHref = showingsToday > 0 ? "/showing-hq/showings" : "/showing-hq";
+  const moduleClientHref = contactsAttention > 0 ? "/showing-hq/follow-ups" : "/contacts";
 
   const moduleShowing = loading
-    ? "Loading schedule…"
+    ? "…"
     : showingsToday === 0
       ? "No showings today"
-      : `${showingsToday} showing${showingsToday === 1 ? "" : "s"} today`;
+      : `${showingsToday} today`;
 
   const moduleClient = loading
-    ? "Loading contacts…"
+    ? "…"
     : contactsAttention === 0
-      ? "No contacts need follow-up"
-      : `${contactsAttention} contact${contactsAttention === 1 ? "" : "s"} need follow-up`;
+      ? "No follow-ups due"
+      : `${contactsAttention} need attention`;
 
   const moduleFarm = farmUnavailable
-    ? "Farm areas unlock on Full CRM."
+    ? "CRM tier"
     : loading
-      ? "Loading farms…"
+      ? "…"
       : farmsNeedingUpdates === 0
-        ? "Farms are up to date"
-        : `${farmsNeedingUpdates} farm${farmsNeedingUpdates === 1 ? "" : "s"} need updates`;
+        ? "Up to date"
+        : `${farmsNeedingUpdates} need updates`;
 
   const moduleVault = loading
-    ? "Loading listings…"
+    ? "…"
     : propertiesCount === 0
-      ? "No active listings"
-      : `${propertiesCount} active listing${propertiesCount === 1 ? "" : "s"}`;
-
-  const moduleShowingCta =
-    showingsToday > 0 ? "View schedule" : "Open ShowingHQ";
-  const moduleClientCta =
-    contactsAttention > 0 ? "Review follow-ups" : "Open contacts";
-  const moduleFarmCta = farmsNeedingUpdates > 0 ? "Update farms" : "Review farms";
-  const moduleVaultCta = propertiesCount > 0 ? "Manage listings" : "Open vault";
-
-  const moduleShowingHref = showingsToday > 0 ? "/showing-hq/showings" : "/showing-hq";
-  const moduleClientHref =
-    contactsAttention > 0 ? "/showing-hq/follow-ups" : "/contacts";
+      ? "No listings"
+      : `${propertiesCount} listing${propertiesCount === 1 ? "" : "s"}`;
 
   return (
-    <div className="space-y-3 pb-8 sm:space-y-4">
-      <p className="max-w-xl text-[13px] leading-snug text-kp-on-surface-muted">
-        Today&apos;s work, a pipeline snapshot, and shortcuts into each module — built for doing, not
-        reporting.
-      </p>
+    <div className="space-y-5 pb-6 sm:space-y-6">
+      <PageHeader
+        title="Today"
+        subtitle="What needs attention right now across showings, follow-ups, tasks, and transactions."
+        actionsMenu={
+          <PageHeaderActionsMenu>
+            <PageHeaderActionItem href="/properties/new">Add property</PageHeaderActionItem>
+            <PageHeaderActionItem href="/transactions?new=1">New transaction</PageHeaderActionItem>
+            <PageHeaderActionItem href="/contacts?new=1">New contact</PageHeaderActionItem>
+            <PageHeaderActionItem href="/showing-hq/showings/new">New showing</PageHeaderActionItem>
+            <PageHeaderActionButton type="button" onClick={() => setNewTaskModalOpen(true)}>
+              New task
+            </PageHeaderActionButton>
+          </PageHeaderActionsMenu>
+        }
+        primaryAction={
+          <Link
+            href="/open-houses/new"
+            className={cn(
+              "inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-kp-bg transition-colors hover:opacity-95",
+              kpBtnSave,
+              "border-transparent"
+            )}
+          >
+            <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            Add open house
+          </Link>
+        }
+      />
 
-      <section aria-labelledby="dash-today" className="scroll-mt-2">
-        <h2
-          id="dash-today"
-          className="mb-2 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
-        >
-          Today
+      {/* Zone 1 — today strip */}
+      <section aria-labelledby="dash-today-strip">
+        <h2 id="dash-today-strip" className="sr-only">
+          Today at a glance
         </h2>
-        <DashboardTodayCalendarScheduleGrid
-          showings={showings}
-          loading={loading}
-          todayStats={
-            <>
-              {todayClear ? (
-                <p className="mb-2 text-sm font-semibold text-kp-on-surface">
-                  Nothing due today — showings, follow-ups, and tasks are clear
-                </p>
-              ) : null}
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 sm:gap-4">
-                {overdueFollowUpCount > 0 ? (
-                  <>
-                    <TodayMetricCard
-                      label="Follow-ups due"
-                      href="/showing-hq/follow-ups"
-                      icon={MessageSquare}
-                      loading={loading}
-                      count={followUpsDueCount}
-                      zeroPrimaryText="No follow-ups due"
-                      nextActionLine={followUpsNextAction}
-                      emphasis="elevated"
-                    />
-                    <TodayMetricCard
-                      label="Showings today"
-                      href="/showing-hq/showings"
-                      icon={Calendar}
-                      loading={loading}
-                      count={showingsToday}
-                      zeroPrimaryText="No showings today"
-                      nextActionLine={showingsNextAction}
-                      emphasis={showingsToday > 0 ? "accent" : "none"}
-                    />
-                    <TodayMetricCard
-                      label="Tasks due"
-                      href="/task-pilot"
-                      icon={CheckSquare}
-                      loading={loading}
-                      count={tasksDueCount}
-                      zeroPrimaryText="No tasks due today or overdue"
-                      nextActionLine={tasksNextAction}
-                      emphasis={
-                        tasksOverdueCount > 0
-                          ? "elevated"
-                          : tasksDueTodayCount > 0
-                            ? "accent"
-                            : "none"
-                      }
-                    />
-                  </>
-                ) : (
-                  <>
-                    <TodayMetricCard
-                      label="Showings today"
-                      href="/showing-hq/showings"
-                      icon={Calendar}
-                      loading={loading}
-                      count={showingsToday}
-                      zeroPrimaryText="No showings today"
-                      nextActionLine={showingsNextAction}
-                      emphasis={showingsToday > 0 ? "accent" : "none"}
-                    />
-                    <TodayMetricCard
-                      label="Tasks due"
-                      href="/task-pilot"
-                      icon={CheckSquare}
-                      loading={loading}
-                      count={tasksDueCount}
-                      zeroPrimaryText="No tasks due today or overdue"
-                      nextActionLine={tasksNextAction}
-                      emphasis={
-                        tasksOverdueCount > 0
-                          ? "elevated"
-                          : tasksDueTodayCount > 0
-                            ? "accent"
-                            : "none"
-                      }
-                    />
-                    <TodayMetricCard
-                      label="Follow-ups due"
-                      href="/showing-hq/follow-ups"
-                      icon={MessageSquare}
-                      loading={loading}
-                      count={followUpsDueCount}
-                      zeroPrimaryText="No follow-ups due"
-                      nextActionLine={followUpsNextAction}
-                      emphasis={followUpsDueCount > 0 ? "accent" : "none"}
-                    />
-                  </>
-                )}
-              </div>
-            </>
-          }
-        />
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+          <TodayStripCard
+            label="Showings today"
+            href="/showing-hq/showings"
+            icon={Calendar}
+            loading={loading}
+            count={showingsToday}
+            zeroPrimaryText="None"
+            nextActionLine={showingsNextAction}
+            emphasis={showingsToday > 0 ? "accent" : "none"}
+          />
+          <TodayStripCard
+            label="Tasks due"
+            href="/task-pilot"
+            icon={CheckSquare}
+            loading={loading}
+            count={tasksDueCount}
+            zeroPrimaryText="None due"
+            nextActionLine={tasksNextAction}
+            emphasis={
+              tasksOverdueCount > 0 ? "elevated" : tasksDueTodayCount > 0 ? "accent" : "none"
+            }
+          />
+          <TodayStripCard
+            label="Follow-ups due"
+            href="/showing-hq/follow-ups"
+            icon={MessageSquare}
+            loading={loading}
+            count={followUpsDueCount}
+            zeroPrimaryText="None"
+            nextActionLine={followUpsNextAction}
+            emphasis={followUpsDueCount > 0 ? "accent" : "none"}
+          />
+        </div>
       </section>
 
-      <section aria-labelledby="dash-pipeline">
+      {/* Zone 2 — primary work surface */}
+      <section aria-labelledby="dash-work-today" className="space-y-2">
         <h2
-          id="dash-pipeline"
-          className="mb-2 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
+          id="dash-work-today"
+          className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
         >
-          Pipeline snapshot
+          Your work today
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-          <PipelineCard
+        <div className="grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-5">
+          <div className="min-w-0">
+            <DashboardTodayCalendarScheduleGrid
+              showings={showings}
+              loading={loading}
+              todayStats={null}
+              hideAddButton
+            />
+          </div>
+          <TransactionAttentionSection embedded loading={loading} className="min-w-0" />
+        </div>
+      </section>
+
+      {/* Zone 3 — business snapshot */}
+      <section aria-labelledby="dash-snapshot" className="space-y-2">
+        <h2
+          id="dash-snapshot"
+          className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
+        >
+          Business snapshot
+        </h2>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
+          <SnapshotCard
             label="Active deals"
             href="/transactions/pipeline"
             icon={Handshake}
@@ -653,7 +450,7 @@ export function OperationalDashboardView() {
             primary={activeDeals}
             secondary={pipelineDealsSecondary}
           />
-          <PipelineCard
+          <SnapshotCard
             label="Active listings"
             href="/properties"
             icon={Building2}
@@ -661,7 +458,7 @@ export function OperationalDashboardView() {
             primary={propertiesCount}
             secondary={pipelineListingsSecondary}
           />
-          <PipelineCard
+          <SnapshotCard
             label="Contacts needing attention"
             href="/contacts"
             icon={Users}
@@ -672,210 +469,41 @@ export function OperationalDashboardView() {
         </div>
       </section>
 
-      <TransactionAttentionSection loading={loading} />
-
-      <section aria-labelledby="dash-focus">
-        <div className="mb-2 flex flex-wrap items-end justify-between gap-x-3 gap-y-1">
-          <h2
-            id="dash-focus"
-            className="font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
-          >
-            Focus
-          </h2>
-          {focusHydrated && !loading && focusStored.items.length > 0 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className={cn(
-                kpBtnTertiary,
-                "h-8 shrink-0 px-2.5 text-xs font-semibold text-kp-on-surface-variant hover:text-kp-on-surface"
-              )}
-              onClick={handleFocusReset}
-            >
-              Reset focus
-            </Button>
-          ) : null}
+      {/* Quiet module links */}
+      <footer className="border-t border-kp-outline/40 pt-4">
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-muted/90">
+          Quick links
+        </p>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-kp-on-surface-variant">
+          <Link href={moduleShowingHref} className="hover:text-kp-teal hover:underline">
+            ShowingHQ
+            <span className="ml-1 text-kp-on-surface-muted">({moduleShowing})</span>
+          </Link>
+          <Link href={moduleClientHref} className="hover:text-kp-teal hover:underline">
+            ClientKeep
+            <span className="ml-1 text-kp-on-surface-muted">({moduleClient})</span>
+          </Link>
+          <Link href="/farm-trackr" className="hover:text-kp-teal hover:underline">
+            FarmTrackr
+            <span className="ml-1 text-kp-on-surface-muted">({moduleFarm})</span>
+          </Link>
+          <Link href="/properties" className="hover:text-kp-teal hover:underline">
+            PropertyVault
+            <span className="ml-1 text-kp-on-surface-muted">({moduleVault})</span>
+          </Link>
+          <Link href="/transactions" className="hover:text-kp-teal hover:underline">
+            Transactions
+          </Link>
         </div>
-        <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm transition-colors">
-          {loading || !focusHydrated ? (
-            <ul className="space-y-1.5" aria-busy="true">
-              {[0, 1, 2].map((k) => (
-                <li
-                  key={k}
-                  className="h-14 animate-pulse rounded-lg bg-kp-surface-high/40"
-                  aria-hidden
-                />
-              ))}
-            </ul>
-          ) : focusVisible.length === 0 ? (
-            focusStored.items.length > 0 ? (
-              <div className="space-y-1.5">
-                <p className="text-sm font-semibold text-kp-on-surface">
-                  You&apos;ve cleared your focus queue
-                </p>
-                <p className="text-xs leading-relaxed text-kp-on-surface-muted">
-                  Use <span className="font-medium text-kp-on-surface-variant">Reset focus</span> to bring
-                  suggestions back, or they&apos;ll return when your counts change.
-                </p>
-              </div>
-            ) : (
-              <p className="text-sm leading-snug text-kp-on-surface-muted">
-                Nothing suggested for Focus right now.
-              </p>
-            )
-          ) : (
-            <ul className="space-y-1.5" aria-label="Focus queue">
-              {focusVisible.map((item, index) => (
-                <li
-                  key={item.id}
-                  className={cn(
-                    "rounded-lg border px-2.5 py-2 sm:px-3",
-                    index === 0
-                      ? "border-kp-teal/40 bg-kp-teal/[0.06]"
-                      : "border-kp-outline/80 bg-kp-surface-high/15"
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <Link
-                        href={item.href}
-                        className="text-sm font-semibold leading-snug text-kp-on-surface hover:text-kp-teal hover:underline"
-                      >
-                        {item.label}
-                      </Link>
-                      {item.subtext ? (
-                        <p className="mt-0.5 text-xs leading-snug text-kp-on-surface-muted">
-                          {item.subtext}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-0.5">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 gap-1 px-1.5 text-xs font-medium text-kp-on-surface-variant hover:bg-kp-surface-high/50 hover:text-kp-on-surface"
-                        aria-label={`Add task from focus: ${item.label}`}
-                        onClick={() => openFocusTaskModal(item)}
-                      >
-                        <CheckSquare className="h-3.5 w-3.5 text-kp-teal/90" aria-hidden />
-                        <span className="hidden sm:inline">Task</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 gap-1 px-1.5 text-xs font-medium text-kp-on-surface-variant hover:bg-kp-surface-high/50 hover:text-kp-on-surface"
-                        aria-label={`Complete: ${item.label}`}
-                        onClick={() => handleFocusComplete(item)}
-                      >
-                        <Check className="h-3.5 w-3.5 text-kp-teal/90" aria-hidden />
-                        <span className="hidden sm:inline">Complete</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 gap-1 px-1.5 text-xs font-medium text-kp-on-surface-variant hover:bg-kp-surface-high/50 hover:text-kp-on-surface"
-                        aria-label={`Dismiss: ${item.label}`}
-                        onClick={() => handleFocusDismiss(item)}
-                      >
-                        <X className="h-3.5 w-3.5 opacity-80" aria-hidden />
-                        <span className="hidden sm:inline">Dismiss</span>
-                      </Button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </section>
-
-      <section aria-labelledby="dash-modules">
-        <h2
-          id="dash-modules"
-          className="mb-2 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
-        >
-          Modules
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-4">
-          <ModuleShortcut
-            title="ShowingHQ"
-            contextLine={moduleShowing}
-            href={moduleShowingHref}
-            icon={Calendar}
-            ctaLabel={moduleShowingCta}
-          />
-          <ModuleShortcut
-            title="ClientKeep"
-            contextLine={moduleClient}
-            href={moduleClientHref}
-            icon={Users}
-            ctaLabel={moduleClientCta}
-          />
-          <ModuleShortcut
-            title="FarmTrackr"
-            contextLine={moduleFarm}
-            href="/farm-trackr"
-            icon={MapPin}
-            ctaLabel={moduleFarmCta}
-          />
-          <ModuleShortcut
-            title="PropertyVault"
-            contextLine={moduleVault}
-            href="/properties"
-            icon={Building2}
-            ctaLabel={moduleVaultCta}
-          />
-        </div>
-      </section>
-
-      <section aria-labelledby="dash-quick">
-        <h2
-          id="dash-quick"
-          className="mb-2 font-headline text-lg font-semibold tracking-tight text-kp-on-surface"
-        >
-          Quick actions
-        </h2>
-        <div className="rounded-xl border border-kp-outline/80 bg-kp-surface-high/20 p-3 shadow-none transition-colors md:p-3.5">
-          <div className="flex flex-wrap gap-2 md:gap-2.5">
-            <QuickActionLink href="/contacts?new=1">
-              <UserPlus className="h-4 w-4 shrink-0 opacity-90" />
-              New Contact
-            </QuickActionLink>
-            <QuickActionLink href="/showing-hq/showings/new">
-              <Calendar className="h-4 w-4 shrink-0 opacity-90" />
-              New Showing
-            </QuickActionLink>
-            <Button
-              type="button"
-              variant="outline"
-              className={cn(
-                kpBtnTertiary,
-                "h-9 min-h-9 justify-center gap-2 border border-kp-outline/70 px-4 text-xs font-semibold text-kp-on-surface-variant hover:border-kp-outline hover:text-kp-on-surface"
-              )}
-              onClick={() => openBlankTaskModal()}
-            >
-              <CheckSquare className="h-4 w-4 shrink-0 opacity-90" />
-              New Task
-            </Button>
-            <QuickActionLink href="/farm-trackr">
-              <MapPin className="h-4 w-4 shrink-0 opacity-90" />
-              Import Farm
-            </QuickActionLink>
-          </div>
-        </div>
-      </section>
+      </footer>
 
       <NewTaskModal
         open={newTaskModalOpen}
-        onOpenChange={handleTaskModalOpenChange}
-        defaultContactId={taskModalCtx.defaultContactId}
-        defaultPropertyId={taskModalCtx.defaultPropertyId}
-        initialTitle={taskModalCtx.initialTitle}
-        initialDescription={taskModalCtx.initialDescription}
+        onOpenChange={setNewTaskModalOpen}
+        defaultContactId={null}
+        defaultPropertyId={null}
+        initialTitle=""
+        initialDescription=""
         onCreated={() => void mutateTasks()}
       />
     </div>

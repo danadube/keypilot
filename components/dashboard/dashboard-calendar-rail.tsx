@@ -56,10 +56,13 @@ export function DashboardTodayCalendarScheduleGrid({
   showings,
   loading,
   todayStats,
+  hideAddButton = false,
 }: {
   showings: DashboardScheduleShowing[];
   loading: boolean;
   todayStats: ReactNode;
+  /** Hide inline Add showing — use page-level primary actions instead. */
+  hideAddButton?: boolean;
 }) {
   const today = useMemo(() => new Date(), []);
 
@@ -156,20 +159,22 @@ export function DashboardTodayCalendarScheduleGrid({
               <h3 className="min-w-0 font-headline text-lg font-semibold tracking-tight text-kp-on-surface">
                 {scheduleTitle}
               </h3>
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className={cn(
-                  kpBtnSecondary,
-                  "h-8 shrink-0 gap-1 px-2.5 text-xs font-semibold"
-                )}
-              >
-                <Link href="/showing-hq/showings/new" aria-label="Add showing">
-                  <Plus className="h-3.5 w-3.5" />
-                  Add
-                </Link>
-              </Button>
+              {hideAddButton ? null : (
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    kpBtnSecondary,
+                    "h-8 shrink-0 gap-1 px-2.5 text-xs font-semibold"
+                  )}
+                >
+                  <Link href="/showing-hq/showings/new" aria-label="Add showing">
+                    <Plus className="h-3.5 w-3.5" />
+                    Add
+                  </Link>
+                </Button>
+              )}
             </div>
 
             <div
