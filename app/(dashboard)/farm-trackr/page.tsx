@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ModuleGate } from "@/components/shared/ModuleGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import type { FarmStructureVisibility } from "@/lib/validations/farm-structure-v
 import { buildMailingListCsv } from "@/lib/farm/mailing/mailing-list-csv";
 import { FarmAreaMembersBulkPanel } from "./_components/farm-area-members-bulk-panel";
 import { FarmTrackrHealthSummaryStrip } from "./_components/farm-trackr-health-summary-strip";
-import { FarmTrackrImportWorkflow } from "./_components/farm-trackr-import-workflow";
+import { FarmTrackrImportModalFromQuery } from "./_components/farm-trackr-import-modal-from-query";
 import { FarmTrackrRecentImports } from "./_components/farm-trackr-recent-imports";
 import { FarmTrackrStructureVisibilityToggle } from "./_components/farm-trackr-structure-visibility";
 import { UI_COPY } from "@/lib/ui-copy";
@@ -432,57 +432,72 @@ export default function FarmTrackrPage() {
             />
           </div>
 
-          <div id="farm-trackr-create" className="grid gap-3 scroll-mt-6 sm:grid-cols-2">
-            <div className="rounded-lg border border-kp-outline/70 bg-kp-surface p-4">
-              <h3 className="text-sm font-medium text-kp-on-surface">New territory</h3>
-              <div className="mt-3 flex gap-2">
-                <Input
-                  value={newTerritoryName}
-                  onChange={(e) => setNewTerritoryName(e.target.value)}
-                  placeholder="e.g. South Palm Springs"
-                  className="h-9 border-kp-outline bg-kp-surface-high text-kp-on-surface"
-                />
-                <Button
-                  type="button"
-                  className={cn(kpBtnPrimary, "h-9 border-transparent px-3 text-xs")}
-                  onClick={() => void handleCreateTerritory()}
-                  disabled={!newTerritoryName.trim() || creatingTerritory}
-                >
-                  {creatingTerritory ? "Creating..." : "Create"}
-                </Button>
-              </div>
+          <div className="scroll-mt-4 space-y-2 border-b border-kp-outline/25 pb-2.5">
+            <div
+              id="farm-trackr-create-territory"
+              className="flex flex-wrap items-center gap-2 scroll-mt-4"
+            >
+              <Input
+                value={newTerritoryName}
+                onChange={(e) => setNewTerritoryName(e.target.value)}
+                placeholder="New territory name"
+                className="h-8 min-w-[10rem] flex-1 border-kp-outline/80 bg-kp-surface-high/80 text-sm text-kp-on-surface sm:max-w-md"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleCreateTerritory();
+                }}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                className={cn(kpBtnSecondary, "h-8 shrink-0 border-transparent px-2.5 text-xs")}
+                onClick={() => void handleCreateTerritory()}
+                disabled={!newTerritoryName.trim() || creatingTerritory}
+              >
+                {creatingTerritory ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  "Add"
+                )}
+              </Button>
             </div>
-
-            <div className="rounded-lg border border-kp-outline/70 bg-kp-surface p-4">
-              <h3 className="text-sm font-medium text-kp-on-surface">New farm area</h3>
-              <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                <select
-                  value={newAreaTerritoryId}
-                  onChange={(e) => setNewAreaTerritoryId(e.target.value)}
-                  className="h-9 rounded-md border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface"
-                >
-                  <option value="">Select territory</option>
-                  {formTerritories.map((territory) => (
-                    <option key={territory.id} value={territory.id}>
-                      {territory.name}
-                    </option>
-                  ))}
-                </select>
-                <Input
-                  value={newAreaName}
-                  onChange={(e) => setNewAreaName(e.target.value)}
-                  placeholder="e.g. Warm Sands"
-                  className="h-9 border-kp-outline bg-kp-surface-high text-kp-on-surface"
-                />
-                <Button
-                  type="button"
-                  className={cn(kpBtnPrimary, "h-9 border-transparent px-3 text-xs")}
-                  onClick={() => void handleCreateArea()}
-                  disabled={!newAreaTerritoryId || !newAreaName.trim() || creatingArea}
-                >
-                  {creatingArea ? "Creating..." : "Create"}
-                </Button>
-              </div>
+            <div
+              id="farm-trackr-create-area"
+              className="flex flex-wrap items-center gap-2 scroll-mt-4"
+            >
+              <select
+                value={newAreaTerritoryId}
+                onChange={(e) => setNewAreaTerritoryId(e.target.value)}
+                className="h-8 max-w-[11rem] shrink-0 rounded-md border border-kp-outline/80 bg-kp-surface-high/80 px-2 text-sm text-kp-on-surface"
+              >
+                <option value="">Territory…</option>
+                {formTerritories.map((territory) => (
+                  <option key={territory.id} value={territory.id}>
+                    {territory.name}
+                  </option>
+                ))}
+              </select>
+              <Input
+                value={newAreaName}
+                onChange={(e) => setNewAreaName(e.target.value)}
+                placeholder="New area name"
+                className="h-8 min-w-[8rem] flex-1 border-kp-outline/80 bg-kp-surface-high/80 text-sm text-kp-on-surface sm:max-w-xs"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleCreateArea();
+                }}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                className={cn(kpBtnSecondary, "h-8 shrink-0 border-transparent px-2.5 text-xs")}
+                onClick={() => void handleCreateArea()}
+                disabled={!newAreaTerritoryId || !newAreaName.trim() || creatingArea}
+              >
+                {creatingArea ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  "Add"
+                )}
+              </Button>
             </div>
           </div>
 
@@ -768,38 +783,30 @@ export default function FarmTrackrPage() {
         </div>
         </section>
 
-        <section id="imports" className="scroll-mt-6 space-y-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-kp-on-surface-muted">
-            Imports &amp; history
+        <section id="imports" className="scroll-mt-6 space-y-1.5">
+          <h2 className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+            Recent imports
           </h2>
-          <div className="overflow-hidden divide-y divide-kp-outline/60 rounded-lg border border-kp-outline/80 bg-kp-surface">
-            <div className="p-4">
-              <FarmTrackrImportWorkflow
-                onApplySuccess={() => {
-                  void loadData();
-                  setFarmImportHistoryTick((n) => n + 1);
-                }}
-              />
-            </div>
-            <div className="p-4">
-              <FarmTrackrRecentImports refreshKey={farmImportHistoryTick} />
-            </div>
+          <div className="rounded-lg border border-kp-outline/50 bg-kp-surface-high/5 p-3">
+            <FarmTrackrRecentImports refreshKey={farmImportHistoryTick} />
           </div>
+          <p className="text-[10px] text-kp-on-surface-muted">
+            New import: <span className="text-kp-on-surface-variant">Actions → Imports</span>
+          </p>
         </section>
 
-        <section id="farm-trackr-mailing" className="scroll-mt-6 space-y-2">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+        <section id="farm-trackr-mailing" className="scroll-mt-6 space-y-1.5">
+          <h2 className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
             Mailing list &amp; labels
           </h2>
-          <div className="rounded-lg border border-kp-outline/60 bg-kp-surface-high/10 p-4">
-            <div className="flex flex-wrap items-start gap-3">
-              <Mail className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal/90" />
+          <div className="rounded-lg border border-kp-outline/50 bg-kp-surface-high/10 p-3">
+            <div className="flex flex-wrap items-start gap-2">
+              <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-kp-teal/90" />
               <div className="min-w-0 flex-1">
-                <p className="text-xs text-kp-on-surface-variant">
-                  Active memberships with a full mailing address on the contact (deduped). CSV for mail merge;
-                  Avery 5160 sheet for browser print.
+                <p className="text-[11px] leading-snug text-kp-on-surface-variant">
+                  Active memberships with a full mailing address (deduped). CSV for merge; Avery 5160 for print.
                 </p>
-                <div className="mt-3 flex flex-wrap gap-3">
+                <div className="mt-2 flex flex-wrap gap-2">
                   <label className="flex items-center gap-2 text-xs text-kp-on-surface">
                     <input
                       type="radio"
@@ -832,7 +839,7 @@ export default function FarmTrackrPage() {
                     value={mailingTerritoryId}
                     onChange={(e) => setMailingTerritoryId(e.target.value)}
                     disabled={loading || formTerritories.length === 0}
-                    className="mt-2 h-9 w-full max-w-md rounded-md border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface sm:w-auto"
+                    className="mt-1.5 h-8 w-full max-w-md rounded-md border border-kp-outline/80 bg-kp-surface-high px-2 text-sm text-kp-on-surface sm:w-auto"
                   >
                     <option value="">Select territory…</option>
                     {formTerritories.map((t) => (
@@ -846,7 +853,7 @@ export default function FarmTrackrPage() {
                     value={mailingAreaId}
                     onChange={(e) => setMailingAreaId(e.target.value)}
                     disabled={loading || formAreas.length === 0}
-                    className="mt-2 h-9 w-full max-w-md rounded-md border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface sm:w-auto"
+                    className="mt-1.5 h-8 w-full max-w-md rounded-md border border-kp-outline/80 bg-kp-surface-high px-2 text-sm text-kp-on-surface sm:w-auto"
                   >
                     <option value="">Select farm area…</option>
                     {formAreas.map((a) => (
@@ -856,11 +863,11 @@ export default function FarmTrackrPage() {
                     ))}
                   </select>
                 )}
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-2 flex flex-wrap gap-1.5">
                   <Button
                     type="button"
                     variant="outline"
-                    className={cn(kpBtnSecondary, "h-8 border-transparent px-3 text-xs")}
+                    className={cn(kpBtnSecondary, "h-7 border-transparent px-2.5 text-[11px]")}
                     disabled={!!mailingBusy || loading}
                     onClick={() => void exportMailingCsv()}
                   >
@@ -872,7 +879,7 @@ export default function FarmTrackrPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    className={cn(kpBtnSecondary, "h-8 border-transparent px-3 text-xs")}
+                    className={cn(kpBtnSecondary, "h-7 border-transparent px-2.5 text-[11px]")}
                     disabled={!!mailingBusy || loading}
                     onClick={() => void printMailingLabels()}
                   >
@@ -885,12 +892,21 @@ export default function FarmTrackrPage() {
                   </Button>
                 </div>
                 {mailingHint ? (
-                  <p className="mt-2 text-xs text-kp-on-surface-variant">{mailingHint}</p>
+                  <p className="mt-1.5 text-[11px] text-kp-on-surface-variant">{mailingHint}</p>
                 ) : null}
               </div>
             </div>
           </div>
         </section>
+
+        <Suspense fallback={null}>
+          <FarmTrackrImportModalFromQuery
+            onApplySuccess={() => {
+              void loadData();
+              setFarmImportHistoryTick((n) => n + 1);
+            }}
+          />
+        </Suspense>
       </div>
     </ModuleGate>
   );

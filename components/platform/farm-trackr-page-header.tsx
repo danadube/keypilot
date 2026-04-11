@@ -6,6 +6,7 @@ import {
   PageHeaderActionButton,
   PageHeaderActionItem,
   PageHeaderActionsMenu,
+  PageHeaderActionsMenuSeparator,
   PageHeaderPrimaryAddMenu,
 } from "@/components/layout/PageHeader";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
@@ -32,14 +33,18 @@ export function FarmTrackrPageHeader({ className }: FarmTrackrPageHeaderProps) {
             <PageHeaderActionItem href="/farm-trackr/farms">Farms</PageHeaderActionItem>
             <PageHeaderActionItem href="/farm-trackr/lists">Lists</PageHeaderActionItem>
             <PageHeaderActionItem href="/farm-trackr/performance">Performance</PageHeaderActionItem>
-            <PageHeaderActionItem href="/farm-trackr#imports">Imports</PageHeaderActionItem>
+            <PageHeaderActionsMenuSeparator />
+            <PageHeaderActionItem href="/farm-trackr?import=open#imports">Imports</PageHeaderActionItem>
             <PageHeaderActionItem href="/contacts">Contacts</PageHeaderActionItem>
           </PageHeaderActionsMenu>
         }
         primaryAction={
           <PageHeaderPrimaryAddMenu>
-            <PageHeaderActionItem href="/farm-trackr#farm-trackr-create">
-              New territory or area
+            <PageHeaderActionItem href="/farm-trackr#farm-trackr-create-territory">
+              New territory
+            </PageHeaderActionItem>
+            <PageHeaderActionItem href="/farm-trackr#farm-trackr-create-area">
+              New farm area
             </PageHeaderActionItem>
             <PageHeaderActionItem href="/contacts?new=1">New contact</PageHeaderActionItem>
             <PageHeaderActionButton type="button" onClick={() => setNewTaskOpen(true)}>

@@ -85,6 +85,11 @@ const actionsSummaryClass = cn(
   "[&::-webkit-details-marker]:hidden"
 );
 
+/** Horizontal rule between groups inside {@link PageHeaderActionsMenu} or {@link PageHeaderPrimaryAddMenu}. */
+export function PageHeaderActionsMenuSeparator() {
+  return <div className="my-1 h-px bg-kp-outline/70" role="separator" aria-hidden />;
+}
+
 export function PageHeaderActionsMenu({ children }: { children: React.ReactNode }) {
   return (
     <details className="group relative">
