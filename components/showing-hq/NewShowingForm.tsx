@@ -39,7 +39,6 @@ import {
   combineLocalDateAndTimeToIso,
 } from "@/lib/datetime/local-scheduling";
 import { AF, afError } from "@/lib/ui/action-feedback";
-import { showingWorkflowTabHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 import { UI_COPY } from "@/lib/ui-copy";
 import { toast } from "sonner";
 
@@ -103,7 +102,12 @@ export function NewShowingForm() {
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error.message);
-      router.push(showingWorkflowTabHref(json.data.id, "prep"));
+      const id = json.data?.id as string | undefined;
+      if (id) {
+        router.push(`/showing-hq?newShowing=${encodeURIComponent(id)}`);
+      } else {
+        router.push("/showing-hq");
+      }
     } catch (err) {
       toast.error(afError(err, AF.couldntCreate));
     } finally {

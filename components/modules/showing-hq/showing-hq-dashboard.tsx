@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import useSWR from "swr";
 import { AlertCircle } from "lucide-react";
 import { apiFetcher } from "@/lib/fetcher";
@@ -29,6 +29,7 @@ import {
   ShowingHqAgentFollowUpsSection,
   type AgentFollowUpBuckets,
 } from "@/components/showing-hq/ShowingHqAgentFollowUpsSection";
+import { NewShowingScheduledBanner } from "@/components/showing-hq/new-showing-scheduled-banner";
 import { UI_COPY } from "@/lib/ui-copy";
 import { ShowingHqWorkbenchOverviewRail } from "@/components/showing-hq/ShowingHqTodayRailCard";
 import { ShowingHqPageHeader } from "@/components/modules/showing-hq/showing-hq-page-header";
@@ -408,6 +409,9 @@ export function ShowingHQDashboardView() {
   return (
     <div className="flex min-h-0 w-full flex-col bg-transparent">
       <ShowingHqPageHeader className="pb-2 pt-0 md:pb-3" />
+      <Suspense fallback={null}>
+        <NewShowingScheduledBanner />
+      </Suspense>
       <ShowingHQPriorityStrip
         workflowRows={workflowRows}
         nextEvent={nextEvent}
