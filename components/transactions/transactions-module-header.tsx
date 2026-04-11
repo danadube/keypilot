@@ -18,7 +18,7 @@ export interface TransactionsModuleHeaderProps {
 
 /**
  * Page-level lead for TransactionHQ: context line, optional metrics, actions.
- * Module title + tabs are provided by the dashboard shell and {@link TransactionsWorkspaceChrome}.
+ * Module title + shell are provided by the dashboard layout and {@link TransactionsWorkspaceChrome}.
  */
 export function TransactionsModuleHeader({
   subtitle,

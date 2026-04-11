@@ -652,7 +652,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           href="/transactions"
           className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
         >
-          Back to transactions
+          Back to TransactionHQ
         </Link>
       </div>
     );
@@ -666,7 +666,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           className="inline-flex items-center gap-1.5 text-sm text-kp-on-surface-variant transition-colors hover:text-kp-teal"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Transactions
+          TransactionHQ
         </Link>
 
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

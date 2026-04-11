@@ -1,8 +1,5 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
 import {
   KP_WORKSPACE_CHROME_BODY_GUTTER_CLASS,
   KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS,
@@ -18,8 +15,8 @@ export const CLIENT_KEEP_TAB_ITEMS = [
 export type ClientKeepTabId = (typeof CLIENT_KEEP_TAB_ITEMS)[number]["id"];
 
 /**
- * Active workspace tab for ClientKeep. Tags, communications hub, and other auxiliary
- * /client-keep/* routes (not tab targets) return null (no tab selected).
+ * Active workspace section for ClientKeep. Tags, communications hub, and other auxiliary
+ * /client-keep/* routes (not primary sections) return null.
  */
 export function getActiveClientKeepTabId(pathname: string): ClientKeepTabId | null {
   if (pathname.startsWith("/contacts")) return "contacts";
@@ -29,46 +26,8 @@ export function getActiveClientKeepTabId(pathname: string): ClientKeepTabId | nu
   return null;
 }
 
-export function ClientKeepTabBar({ className }: { className?: string }) {
-  const pathname = usePathname() ?? "";
-  const activeId = getActiveClientKeepTabId(pathname);
-
-  return (
-    <div className={cn("border-b border-kp-outline px-6 pb-3", className)}>
-      <div
-        role="tablist"
-        aria-label="ClientKeep primary navigation"
-        className="flex flex-wrap items-end gap-6 md:gap-8"
-      >
-        {CLIENT_KEEP_TAB_ITEMS.map((tab) => {
-          const isActive = tab.id === activeId;
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              role="tab"
-              aria-selected={isActive}
-              prefetch={true}
-              scroll={false}
-              className={cn(
-                "relative inline-flex py-3 text-base transition-colors md:text-[15px]",
-                "after:pointer-events-none after:absolute after:left-0 after:h-[2px] after:w-full after:transition-opacity after:duration-200",
-                isActive
-                  ? "font-semibold text-kp-on-surface after:bottom-[-6px] after:bg-kp-gold after:opacity-100"
-                  : "font-medium text-kp-on-surface-variant after:bottom-[-6px] after:bg-kp-outline after:opacity-0 hover:text-kp-on-surface hover:after:opacity-100"
-              )}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 /**
- * ClientKeep workspace: {@link PageHeader}, primary tabs, then page body.
+ * ClientKeep workspace: {@link PageHeader} (Actions = section nav), then page body.
  * Wraps /client-keep/* and /contacts/*.
  */
 export function ClientKeepWorkspaceChrome({
@@ -81,14 +40,6 @@ export function ClientKeepWorkspaceChrome({
       <div className={KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS}>
         <ClientKeepPageHeader className="pb-2 pt-0 md:pb-3" />
       </div>
-      <header
-        className={cn(
-          "overflow-hidden rounded-lg border border-kp-outline-variant bg-kp-surface",
-          KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS
-        )}
-      >
-        <ClientKeepTabBar />
-      </header>
       <div className={KP_WORKSPACE_CHROME_BODY_GUTTER_CLASS}>{children}</div>
     </div>
   );

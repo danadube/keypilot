@@ -6,8 +6,6 @@ export {
   TransactionsModuleHeader,
 } from "./transactions-module-header";
 export {
-  TransactionsModuleTabBar,
-  TransactionsModuleTabBarPanel,
   TRANSACTIONS_TAB_ITEMS,
   getActiveTransactionsTabId,
 } from "./transactions-module-tab-bar";

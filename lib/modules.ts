@@ -142,10 +142,10 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
   },
   transactions: {
     id: "transactions",
-    name: "Transactions",
+    name: "TransactionHQ",
     href: "/transactions",
     available: true,
-    /** Section switching is in-module (top tabs); no nested sidebar rows. */
+    /** Section switching is in PageHeader Actions; no nested sidebar rows. */
     sidebar: [],
   },
   insight: {

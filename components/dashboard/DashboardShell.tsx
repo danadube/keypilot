@@ -100,8 +100,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             {showWorkspaceMainContextBar ? <WorkspaceMainContextBar /> : null}
 
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
-              <main className="min-h-0 flex-1 bg-kp-bg px-5 pb-4 pt-3 md:px-7 md:pb-5 md:pt-4 lg:px-9">
-                <div className="mx-auto min-h-[50vh] w-full max-w-6xl">{children}</div>
+              <main className="min-h-0 flex-1 bg-kp-bg px-3 pb-4 pt-3 md:px-5 md:pb-5 md:pt-4 lg:px-6">
+                <div className="mx-auto min-h-[50vh] w-full max-w-none">{children}</div>
               </main>
             </div>
           </div>

@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 import { TransactionsListView } from "@/components/modules/transactions/transactions-list-view";
 
 export const metadata: Metadata = {
-  title: "Transactions | KeyPilot",
+  title: "TransactionHQ | KeyPilot",
   description:
     "Operational transaction management—net commission, status, deal context, and high-level production view.",
 };

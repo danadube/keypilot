@@ -4,6 +4,7 @@ import * as React from "react";
 import { ChevronDown, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { kpBtnSecondary, kpBtnSave } from "@/components/ui/kp-dashboard-button-tiers";
+import { getModulePageTitleTwoTone } from "@/lib/ui/module-page-title-two-tone";
 
 export type PageHeaderProps = {
   title?: string;
@@ -25,6 +26,9 @@ export function PageHeader({
 }: PageHeaderProps) {
   const hasRight = Boolean(actionsMenu || primaryAction);
   const hasLeftContent = Boolean(title || subtitle || leading);
+  const titleTone = title ? getModulePageTitleTwoTone(title) : undefined;
+  const titleHeadingClass =
+    "font-headline text-xl font-semibold tracking-tight md:text-2xl";
   return (
     <header
       className={cn(
@@ -45,9 +49,14 @@ export function PageHeader({
           <div className="min-w-0">
             {title ? (
               <>
-                <h1 className="font-headline text-xl font-semibold tracking-tight text-kp-on-surface md:text-2xl">
-                  {title}
-                </h1>
+                {titleTone ? (
+                  <h1 className={titleHeadingClass}>
+                    <span className="text-kp-on-surface-variant">{titleTone[0]}</span>
+                    <span className="text-kp-on-surface">{titleTone[1]}</span>
+                  </h1>
+                ) : (
+                  <h1 className={cn(titleHeadingClass, "text-kp-on-surface")}>{title}</h1>
+                )}
                 {subtitle ? (
                   <p className="mt-0.5 max-w-2xl text-sm leading-snug text-kp-on-surface-variant">
                     {subtitle}
