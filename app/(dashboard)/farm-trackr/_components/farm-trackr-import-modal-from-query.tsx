@@ -14,7 +14,7 @@ export function FarmTrackrImportModalFromQuery({ onApplySuccess }: Props) {
   const open = searchParams.get("import") === "open";
 
   const dismiss = () => {
-    router.replace("/farm-trackr#imports", { scroll: false });
+    router.replace("/farm-trackr", { scroll: false });
   };
 
   return (

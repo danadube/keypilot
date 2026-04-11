@@ -9,13 +9,13 @@ import {
   kpBtnPrimary,
   kpBtnSecondary,
 } from "@/components/ui/kp-dashboard-button-tiers";
-import { AlertCircle, Loader2, Mail, MapPinned, Printer } from "lucide-react";
+import { AlertCircle, Loader2, MapPinned } from "lucide-react";
 import type { FarmStructureVisibility } from "@/lib/validations/farm-structure-visibility";
-import { buildMailingListCsv } from "@/lib/farm/mailing/mailing-list-csv";
 import { FarmAreaMembersBulkPanel } from "./_components/farm-area-members-bulk-panel";
+import { FarmTrackrCreateModalFromQuery } from "./_components/farm-trackr-create-modal-from-query";
 import { FarmTrackrHealthSummaryStrip } from "./_components/farm-trackr-health-summary-strip";
 import { FarmTrackrImportModalFromQuery } from "./_components/farm-trackr-import-modal-from-query";
-import { FarmTrackrRecentImports } from "./_components/farm-trackr-recent-imports";
+import { FarmTrackrMailingModalFromQuery } from "./_components/farm-trackr-mailing-modal-from-query";
 import { FarmTrackrStructureVisibilityToggle } from "./_components/farm-trackr-structure-visibility";
 import { UI_COPY } from "@/lib/ui-copy";
 
@@ -42,19 +42,11 @@ export default function FarmTrackrPage() {
     useState<FarmStructureVisibility>("active");
   const [territories, setTerritories] = useState<Territory[]>([]);
   const [areas, setAreas] = useState<FarmArea[]>([]);
-  const [formTerritories, setFormTerritories] = useState<Territory[]>([]);
-  const [formAreas, setFormAreas] = useState<FarmArea[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const [newTerritoryName, setNewTerritoryName] = useState("");
-  const [newAreaName, setNewAreaName] = useState("");
-  const [newAreaTerritoryId, setNewAreaTerritoryId] = useState("");
-
   const [busyTerritoryId, setBusyTerritoryId] = useState<string | null>(null);
   const [busyAreaId, setBusyAreaId] = useState<string | null>(null);
-  const [creatingTerritory, setCreatingTerritory] = useState(false);
-  const [creatingArea, setCreatingArea] = useState(false);
 
   const [editingTerritoryId, setEditingTerritoryId] = useState<string | null>(null);
   const [editingTerritoryName, setEditingTerritoryName] = useState("");
@@ -62,36 +54,22 @@ export default function FarmTrackrPage() {
   const [editingAreaName, setEditingAreaName] = useState("");
 
   const [expandedMemberAreaId, setExpandedMemberAreaId] = useState<string | null>(null);
-  const [mailingScope, setMailingScope] = useState<"territory" | "area">("territory");
-  const [mailingTerritoryId, setMailingTerritoryId] = useState("");
-  const [mailingAreaId, setMailingAreaId] = useState("");
-  const [mailingBusy, setMailingBusy] = useState<"csv" | "print" | null>(null);
-  const [mailingHint, setMailingHint] = useState<string | null>(null);
-  const [farmImportHistoryTick, setFarmImportHistoryTick] = useState(0);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     setError(null);
     const v = encodeURIComponent(structureVisibility);
     try {
-      const [tRes, aRes, tAct, aAct] = await Promise.all([
+      const [tRes, aRes] = await Promise.all([
         fetch(`/api/v1/farm-territories?visibility=${v}`),
         fetch(`/api/v1/farm-areas?visibility=${v}`),
-        fetch(`/api/v1/farm-territories?visibility=active`),
-        fetch(`/api/v1/farm-areas?visibility=active`),
       ]);
       const territoryJson = await tRes.json();
       const areaJson = await aRes.json();
-      const tActiveJson = await tAct.json();
-      const aActiveJson = await aAct.json();
       if (territoryJson.error) throw new Error(territoryJson.error.message);
       if (areaJson.error) throw new Error(areaJson.error.message);
-      if (tActiveJson.error) throw new Error(tActiveJson.error.message);
-      if (aActiveJson.error) throw new Error(aActiveJson.error.message);
       setTerritories(territoryJson.data ?? []);
       setAreas(areaJson.data ?? []);
-      setFormTerritories(tActiveJson.data ?? []);
-      setFormAreas(aActiveJson.data ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : UI_COPY.errors.load("farm data"));
     } finally {
@@ -111,52 +89,6 @@ export default function FarmTrackrPage() {
     return byTerritory;
   }, [areas]);
 
-  const handleCreateTerritory = async () => {
-    if (!newTerritoryName.trim() || creatingTerritory) return;
-    setCreatingTerritory(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/v1/farm-territories", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newTerritoryName.trim() }),
-      });
-      const json = await res.json();
-      if (json.error) throw new Error(json.error.message ?? "Failed to create territory");
-      setNewTerritoryName("");
-      await loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create territory");
-    } finally {
-      setCreatingTerritory(false);
-    }
-  };
-
-  const handleCreateArea = async () => {
-    if (!newAreaName.trim() || !newAreaTerritoryId || creatingArea) return;
-    setCreatingArea(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/v1/farm-areas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          territoryId: newAreaTerritoryId,
-          name: newAreaName.trim(),
-        }),
-      });
-      const json = await res.json();
-      if (json.error) throw new Error(json.error.message ?? "Failed to create farm area");
-      setNewAreaName("");
-      setNewAreaTerritoryId("");
-      await loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create farm area");
-    } finally {
-      setCreatingArea(false);
-    }
-  };
-
   const saveTerritoryName = async (territoryId: string) => {
     if (!editingTerritoryName.trim() || busyTerritoryId) return;
     setBusyTerritoryId(territoryId);
@@ -170,7 +102,6 @@ export default function FarmTrackrPage() {
       const json = await res.json();
       if (json.error) throw new Error(json.error.message ?? "Failed to update territory");
       setTerritories((prev) => prev.map((t) => (t.id === territoryId ? json.data : t)));
-      setFormTerritories((prev) => prev.map((t) => (t.id === territoryId ? json.data : t)));
       setEditingTerritoryId(null);
       setEditingTerritoryName("");
     } catch (err) {
@@ -232,7 +163,6 @@ export default function FarmTrackrPage() {
       const json = await res.json();
       if (json.error) throw new Error(json.error.message ?? "Failed to update farm area");
       setAreas((prev) => prev.map((a) => (a.id === areaId ? json.data : a)));
-      setFormAreas((prev) => prev.map((a) => (a.id === areaId ? json.data : a)));
       setEditingAreaId(null);
       setEditingAreaName("");
     } catch (err) {
@@ -333,79 +263,6 @@ export default function FarmTrackrPage() {
     }
   };
 
-  const mailingQuerySuffix =
-    mailingScope === "territory"
-      ? mailingTerritoryId
-        ? `territoryId=${encodeURIComponent(mailingTerritoryId)}`
-        : ""
-      : mailingAreaId
-        ? `farmAreaId=${encodeURIComponent(mailingAreaId)}`
-        : "";
-
-  const exportMailingCsv = async () => {
-    if (!mailingQuerySuffix) {
-      setMailingHint("Choose a territory or farm area first.");
-      return;
-    }
-    setMailingBusy("csv");
-    setMailingHint(null);
-    try {
-      const res = await fetch(`/api/v1/farm/mailing-recipients?${mailingQuerySuffix}&format=json`);
-      const json = await res.json();
-      if (json.error) throw new Error(json.error.message ?? "Export failed");
-      const recipients = json.data?.recipients ?? [];
-      const summary = json.data?.summary;
-      const csv = buildMailingListCsv(recipients);
-      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `farm-mailing-${new Date().toISOString().slice(0, 10)}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
-      const n = summary?.contactCount ?? recipients.length;
-      const p = summary?.labelPages ?? 0;
-      setMailingHint(
-        `${n} contact${n === 1 ? "" : "s"} · ${p} label page${p === 1 ? "" : "s"} (Avery 5160)`
-      );
-    } catch (e) {
-      setMailingHint(e instanceof Error ? e.message : "Export failed");
-    } finally {
-      setMailingBusy(null);
-    }
-  };
-
-  const printMailingLabels = async () => {
-    if (!mailingQuerySuffix) {
-      setMailingHint("Choose a territory or farm area first.");
-      return;
-    }
-    setMailingBusy("print");
-    setMailingHint(null);
-    try {
-      const res = await fetch(`/api/v1/farm/mailing-recipients?${mailingQuerySuffix}&format=html`);
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error?.message ?? "Could not build label sheet");
-      }
-      const html = await res.text();
-      const w = window.open("", "_blank", "noopener,noreferrer");
-      if (!w) {
-        setMailingHint("Pop-up blocked — allow pop-ups to print labels.");
-        return;
-      }
-      w.document.open();
-      w.document.write(html);
-      w.document.close();
-      w.focus();
-      setMailingHint("Use the preview window → File → Print (Avery 5160, no margins scaling).");
-    } catch (e) {
-      setMailingHint(e instanceof Error ? e.message : "Print failed");
-    } finally {
-      setMailingBusy(null);
-    }
-  };
-
   return (
     <ModuleGate
       moduleId="farm-trackr"
@@ -413,7 +270,7 @@ export default function FarmTrackrPage() {
       valueProposition="Geographic farming intelligence and territory management for prospecting in your farm areas."
       backHref="/showing-hq"
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-5">
         {error ? (
           <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
             <AlertCircle className="h-4 w-4" />
@@ -423,7 +280,7 @@ export default function FarmTrackrPage() {
 
         <FarmTrackrHealthSummaryStrip visibility={structureVisibility} />
 
-        <section id="farm-trackr-structure" className="scroll-mt-6 space-y-3">
+        <section id="farm-trackr-structure" className="scroll-mt-6 space-y-4 pt-1">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-base font-semibold text-kp-on-surface">Territories &amp; farm areas</h2>
             <FarmTrackrStructureVisibilityToggle
@@ -432,76 +289,7 @@ export default function FarmTrackrPage() {
             />
           </div>
 
-          <div className="scroll-mt-4 space-y-2 border-b border-kp-outline/25 pb-2.5">
-            <div
-              id="farm-trackr-create-territory"
-              className="flex flex-wrap items-center gap-2 scroll-mt-4"
-            >
-              <Input
-                value={newTerritoryName}
-                onChange={(e) => setNewTerritoryName(e.target.value)}
-                placeholder="New territory name"
-                className="h-8 min-w-[10rem] flex-1 border-kp-outline/80 bg-kp-surface-high/80 text-sm text-kp-on-surface sm:max-w-md"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void handleCreateTerritory();
-                }}
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                className={cn(kpBtnSecondary, "h-8 shrink-0 border-transparent px-2.5 text-xs")}
-                onClick={() => void handleCreateTerritory()}
-                disabled={!newTerritoryName.trim() || creatingTerritory}
-              >
-                {creatingTerritory ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  "Add"
-                )}
-              </Button>
-            </div>
-            <div
-              id="farm-trackr-create-area"
-              className="flex flex-wrap items-center gap-2 scroll-mt-4"
-            >
-              <select
-                value={newAreaTerritoryId}
-                onChange={(e) => setNewAreaTerritoryId(e.target.value)}
-                className="h-8 max-w-[11rem] shrink-0 rounded-md border border-kp-outline/80 bg-kp-surface-high/80 px-2 text-sm text-kp-on-surface"
-              >
-                <option value="">Territory…</option>
-                {formTerritories.map((territory) => (
-                  <option key={territory.id} value={territory.id}>
-                    {territory.name}
-                  </option>
-                ))}
-              </select>
-              <Input
-                value={newAreaName}
-                onChange={(e) => setNewAreaName(e.target.value)}
-                placeholder="New area name"
-                className="h-8 min-w-[8rem] flex-1 border-kp-outline/80 bg-kp-surface-high/80 text-sm text-kp-on-surface sm:max-w-xs"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void handleCreateArea();
-                }}
-              />
-              <Button
-                type="button"
-                variant="secondary"
-                className={cn(kpBtnSecondary, "h-8 shrink-0 border-transparent px-2.5 text-xs")}
-                onClick={() => void handleCreateArea()}
-                disabled={!newAreaTerritoryId || !newAreaName.trim() || creatingArea}
-              >
-                {creatingArea ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  "Add"
-                )}
-              </Button>
-            </div>
-          </div>
-
-          <div className="space-y-3">
+          <div className="space-y-4 pb-2">
           {loading ? (
             <div className="flex items-center gap-2 rounded-xl border border-kp-outline bg-kp-surface px-4 py-3 text-sm text-kp-on-surface-variant">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -513,7 +301,7 @@ export default function FarmTrackrPage() {
                 ? "No archived territories."
                 : structureVisibility === "all"
                   ? "No territories yet."
-                  : "Create your first territory to start organizing farm areas."}
+                  : "Use Add → New territory to create your first territory, then add farm areas."}
             </div>
           ) : (
             territories.map((territory) => {
@@ -783,129 +571,14 @@ export default function FarmTrackrPage() {
         </div>
         </section>
 
-        <section id="imports" className="scroll-mt-6 space-y-1.5">
-          <h2 className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
-            Recent imports
-          </h2>
-          <div className="rounded-lg border border-kp-outline/50 bg-kp-surface-high/5 p-3">
-            <FarmTrackrRecentImports refreshKey={farmImportHistoryTick} />
-          </div>
-          <p className="text-[10px] text-kp-on-surface-muted">
-            New import: <span className="text-kp-on-surface-variant">Actions → Imports</span>
-          </p>
-        </section>
-
-        <section id="farm-trackr-mailing" className="scroll-mt-6 space-y-1.5">
-          <h2 className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
-            Mailing list &amp; labels
-          </h2>
-          <div className="rounded-lg border border-kp-outline/50 bg-kp-surface-high/10 p-3">
-            <div className="flex flex-wrap items-start gap-2">
-              <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-kp-teal/90" />
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] leading-snug text-kp-on-surface-variant">
-                  Active memberships with a full mailing address (deduped). CSV for merge; Avery 5160 for print.
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <label className="flex items-center gap-2 text-xs text-kp-on-surface">
-                    <input
-                      type="radio"
-                      name="mailing-scope"
-                      checked={mailingScope === "territory"}
-                      onChange={() => {
-                        setMailingScope("territory");
-                        setMailingAreaId("");
-                      }}
-                      className="h-3.5 w-3.5 border-kp-outline text-kp-teal"
-                    />
-                    Entire territory
-                  </label>
-                  <label className="flex items-center gap-2 text-xs text-kp-on-surface">
-                    <input
-                      type="radio"
-                      name="mailing-scope"
-                      checked={mailingScope === "area"}
-                      onChange={() => {
-                        setMailingScope("area");
-                        setMailingTerritoryId("");
-                      }}
-                      className="h-3.5 w-3.5 border-kp-outline text-kp-teal"
-                    />
-                    Single farm area
-                  </label>
-                </div>
-                {mailingScope === "territory" ? (
-                  <select
-                    value={mailingTerritoryId}
-                    onChange={(e) => setMailingTerritoryId(e.target.value)}
-                    disabled={loading || formTerritories.length === 0}
-                    className="mt-1.5 h-8 w-full max-w-md rounded-md border border-kp-outline/80 bg-kp-surface-high px-2 text-sm text-kp-on-surface sm:w-auto"
-                  >
-                    <option value="">Select territory…</option>
-                    {formTerritories.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <select
-                    value={mailingAreaId}
-                    onChange={(e) => setMailingAreaId(e.target.value)}
-                    disabled={loading || formAreas.length === 0}
-                    className="mt-1.5 h-8 w-full max-w-md rounded-md border border-kp-outline/80 bg-kp-surface-high px-2 text-sm text-kp-on-surface sm:w-auto"
-                  >
-                    <option value="">Select farm area…</option>
-                    {formAreas.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.territory.name} — {a.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(kpBtnSecondary, "h-7 border-transparent px-2.5 text-[11px]")}
-                    disabled={!!mailingBusy || loading}
-                    onClick={() => void exportMailingCsv()}
-                  >
-                    {mailingBusy === "csv" ? (
-                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                    ) : null}
-                    Export mailing list (CSV)
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(kpBtnSecondary, "h-7 border-transparent px-2.5 text-[11px]")}
-                    disabled={!!mailingBusy || loading}
-                    onClick={() => void printMailingLabels()}
-                  >
-                    {mailingBusy === "print" ? (
-                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Printer className="mr-1.5 h-3.5 w-3.5" />
-                    )}
-                    Print labels
-                  </Button>
-                </div>
-                {mailingHint ? (
-                  <p className="mt-1.5 text-[11px] text-kp-on-surface-variant">{mailingHint}</p>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </section>
-
         <Suspense fallback={null}>
-          <FarmTrackrImportModalFromQuery
-            onApplySuccess={() => {
-              void loadData();
-              setFarmImportHistoryTick((n) => n + 1);
-            }}
-          />
+          <FarmTrackrImportModalFromQuery onApplySuccess={() => void loadData()} />
+        </Suspense>
+        <Suspense fallback={null}>
+          <FarmTrackrCreateModalFromQuery onCreated={() => void loadData()} />
+        </Suspense>
+        <Suspense fallback={null}>
+          <FarmTrackrMailingModalFromQuery />
         </Suspense>
       </div>
     </ModuleGate>
