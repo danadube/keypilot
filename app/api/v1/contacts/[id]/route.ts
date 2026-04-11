@@ -127,6 +127,7 @@ export async function PUT(
     if (data.lastName !== undefined && data.lastName !== c.lastName) lines.push("Last name updated");
     if (
       (data.mailingStreet1 !== undefined && data.mailingStreet1 !== c.mailingStreet1) ||
+      (data.mailingStreet2 !== undefined && data.mailingStreet2 !== c.mailingStreet2) ||
       (data.mailingCity !== undefined && data.mailingCity !== c.mailingCity) ||
       (data.mailingState !== undefined && data.mailingState !== c.mailingState) ||
       (data.mailingZip !== undefined && data.mailingZip !== c.mailingZip)
@@ -135,7 +136,10 @@ export async function PUT(
     }
     if (
       (data.siteStreet1 !== undefined && data.siteStreet1 !== c.siteStreet1) ||
-      (data.siteCity !== undefined && data.siteCity !== c.siteCity)
+      (data.siteStreet2 !== undefined && data.siteStreet2 !== c.siteStreet2) ||
+      (data.siteCity !== undefined && data.siteCity !== c.siteCity) ||
+      (data.siteState !== undefined && data.siteState !== c.siteState) ||
+      (data.siteZip !== undefined && data.siteZip !== c.siteZip)
     ) {
       lines.push("Site address updated");
     }
