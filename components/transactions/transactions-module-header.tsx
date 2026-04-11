@@ -29,8 +29,8 @@ export function TransactionsModuleHeader({
   if (!subtitle && !summary && !actions) return null;
 
   return (
-    <div className={cn("flex flex-col gap-3 pb-3 pt-2", className)}>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <div className={cn("flex flex-col gap-2 pb-2 pt-1", className)}>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         {subtitle ? (
           <p className="max-w-2xl text-xs leading-relaxed text-kp-on-surface-variant">{subtitle}</p>
         ) : (
@@ -38,7 +38,7 @@ export function TransactionsModuleHeader({
         )}
         {actions ? <div className="shrink-0">{actions}</div> : null}
       </div>
-      {summary ? <div className="space-y-3">{summary}</div> : null}
+      {summary ? <div className="space-y-2">{summary}</div> : null}
     </div>
   );
 }

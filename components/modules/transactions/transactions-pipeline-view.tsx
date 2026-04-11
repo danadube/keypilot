@@ -79,12 +79,12 @@ export function TransactionsPipelineView() {
   const totalActive = activeRows.length;
 
   return (
-    <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
+    <div className="min-h-full rounded-2xl bg-kp-bg pb-8">
       <TransactionsModuleHeader
         subtitle="Pipeline — Active closings grouped by stage. Closed deals stay on the overview list."
       />
 
-      <div className="mt-6 space-y-6">
+      <div className="mt-3 space-y-5">
         {loading ? (
           <div className="flex min-h-[280px] items-center justify-center rounded-xl border border-kp-outline bg-kp-surface">
             <Loader2 className="h-6 w-6 animate-spin text-kp-on-surface-variant" />

@@ -84,13 +84,13 @@ export function MyCommissionsView() {
   }, [load]);
 
   return (
-    <div className="min-h-full rounded-2xl bg-kp-bg pb-10">
+    <div className="min-h-full rounded-2xl bg-kp-bg pb-8">
       <TransactionsModuleHeader
         subtitle="Commissions — Earnings on deals where you are assigned on a commission line. Open the parent transaction for full context."
       />
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
-        <div className="flex items-start gap-2 border-b border-kp-outline px-5 py-4">
+      <div className="mt-3 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
+        <div className="flex items-start gap-2 border-b border-kp-outline px-4 py-3">
           <Wallet className="mt-0.5 h-4 w-4 text-kp-teal" />
           <div>
             <p className="text-sm font-semibold text-kp-on-surface">Your assigned splits</p>
