@@ -8,84 +8,79 @@ import { cn } from "@/lib/utils";
 export function ShowingHQSkeleton() {
   return (
     <div className="flex min-h-0 w-full flex-col bg-transparent">
-      {/* Command strip */}
-      <div className="flex items-center justify-between rounded-xl border border-kp-outline bg-kp-surface px-5 py-4">
-        <div className="flex flex-col gap-1.5">
-          <BrandSkeleton className="h-4 w-48" />
-          <BrandSkeleton className="h-3 w-32" />
+      {/* Page header row (title + actions live in layout; this mirrors content start) */}
+      <div className="flex flex-wrap items-end justify-between gap-3 pb-3">
+        <div className="space-y-2">
+          <BrandSkeleton className="h-6 w-40" />
+          <BrandSkeleton className="h-3 w-64 max-w-full" />
         </div>
-        <div className="flex gap-2">
-          <BrandSkeleton className="h-8 w-28 rounded-lg" />
-          <BrandSkeleton className="h-8 w-28 rounded-lg" />
-        </div>
+        <BrandSkeleton className="h-9 w-28 rounded-lg" />
       </div>
 
-      {/* Metrics strip */}
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:mt-6">
-        {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="rounded-xl border border-kp-outline bg-kp-surface px-4 py-3.5">
-            <BrandSkeleton className="mb-2 h-3 w-24" />
-            <BrandSkeleton className="h-7 w-12" />
+      {/* Zone 1 — attention */}
+      <div className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <BrandSkeleton className="h-6 w-56" />
+            <BrandSkeleton className="h-3 w-full max-w-md" />
+          </div>
+          <BrandSkeleton className="h-9 w-36 rounded-lg" />
+        </div>
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="flex flex-wrap items-start justify-between gap-3 rounded-lg border border-kp-outline/20 bg-kp-surface-high/[0.06] px-3 py-3"
+          >
+            <div className="min-w-0 flex-1 space-y-2">
+              <BrandSkeleton className="h-3 w-20" />
+              <BrandSkeleton className="h-4 w-[85%] max-w-md" />
+              <BrandSkeleton className="h-3 w-[65%] max-w-sm" />
+            </div>
+            <BrandSkeleton className="h-8 w-24 shrink-0 rounded-md" />
           </div>
         ))}
       </div>
 
-      {/* Two-column grid */}
+      {/* Zone 2 — today */}
       <div
         className={cn(
-          "mt-9 grid grid-cols-1 gap-6 sm:mt-10",
-          "lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,1fr)] lg:items-start lg:gap-x-8"
+          "mt-6 rounded-xl border border-kp-outline/15 bg-kp-surface-high/[0.04] px-4 py-4",
+          "space-y-4"
         )}
       >
-        {/* Left column — attention items */}
-        <div className="flex flex-col gap-6">
-          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-            <BrandSkeleton className="mb-4 h-5 w-44" />
-            {[0, 1, 2, 3].map((i) => (
-              <div key={i} className="flex items-center gap-3 py-3 border-b border-kp-outline last:border-0">
-                <BrandSkeleton className="h-8 w-8 shrink-0 rounded-lg" />
-                <div className="flex flex-col gap-1.5 flex-1">
-                  <BrandSkeleton className="h-3.5 w-3/4" />
-                  <BrandSkeleton className="h-3 w-1/2" />
-                </div>
-                <BrandSkeleton className="h-6 w-16 rounded-full shrink-0" />
-              </div>
-            ))}
-          </div>
-          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-            <BrandSkeleton className="mb-4 h-5 w-36" />
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="flex items-center gap-3 py-3 border-b border-kp-outline last:border-0">
-                <BrandSkeleton className="h-8 w-8 shrink-0 rounded-lg" />
-                <div className="flex flex-col gap-1.5 flex-1">
-                  <BrandSkeleton className="h-3.5 w-2/3" />
-                  <BrandSkeleton className="h-3 w-40" />
-                </div>
-              </div>
-            ))}
+        <div className="flex items-start gap-2">
+          <BrandSkeleton className="h-4 w-4 shrink-0 rounded" />
+          <div className="space-y-2">
+            <BrandSkeleton className="h-4 w-24" />
+            <BrandSkeleton className="h-3 w-52 max-w-full" />
           </div>
         </div>
-
-        {/* Right column — schedule + actions */}
-        <div className="flex flex-col gap-5">
-          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-            <BrandSkeleton className="mb-3 h-4 w-28" />
-            {[0, 1].map((i) => (
-              <div key={i} className="flex items-center gap-3 py-2.5">
-                <BrandSkeleton className="h-6 w-12 shrink-0" />
-                <BrandSkeleton className="h-3.5 flex-1" />
-              </div>
-            ))}
+        <BrandSkeleton className="h-3 w-28" />
+        {[0, 1].map((i) => (
+          <div key={i} className="flex items-center gap-3 py-2">
+            <BrandSkeleton className="h-3 w-14" />
+            <BrandSkeleton className="h-3 flex-1" />
           </div>
-          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-            <BrandSkeleton className="mb-3 h-4 w-24" />
-            <div className="grid grid-cols-2 gap-2">
-              {[0, 1, 2, 3].map((i) => (
-                <BrandSkeleton key={i} className="h-9 rounded-lg" />
-              ))}
+        ))}
+        <div className="border-t border-kp-outline/15 pt-4">
+          <BrandSkeleton className="h-3 w-32" />
+          {[0, 1].map((i) => (
+            <div key={i} className="mt-2 flex gap-2">
+              <BrandSkeleton className="h-3 w-40" />
+              <BrandSkeleton className="h-3 flex-1" />
             </div>
-          </div>
+          ))}
         </div>
+      </div>
+
+      {/* Zone 3 — support */}
+      <div className="mt-6 space-y-4 border-t border-kp-outline/10 pt-6">
+        <div className="rounded-xl border border-kp-outline/20 bg-kp-surface-high/[0.06] p-4">
+          <BrandSkeleton className="h-4 w-40" />
+          <BrandSkeleton className="mt-2 h-3 w-full max-w-sm" />
+        </div>
+        <BrandSkeleton className="h-3 w-36" />
+        <BrandSkeleton className="h-16 w-full max-w-lg rounded-lg" />
       </div>
     </div>
   );

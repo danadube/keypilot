@@ -11,11 +11,7 @@ import {
 } from "@/components/showing-hq/GettingStartedCard";
 import {
   RecentOutputsRailSection,
-  ShowingHQMetricsStrip,
-  ShowingHQPriorityStrip,
-  TodayScheduleSection,
   WhatNeedsAttentionSection,
-  buildCommandStripPriorityLine,
   buildNeedsAttentionItems,
   buildTodayScheduleRows,
   buildUpNextRows,
@@ -31,7 +27,7 @@ import {
 } from "@/components/showing-hq/ShowingHqAgentFollowUpsSection";
 import { NewShowingScheduledBanner } from "@/components/showing-hq/new-showing-scheduled-banner";
 import { UI_COPY } from "@/lib/ui-copy";
-import { ShowingHqWorkbenchOverviewRail } from "@/components/showing-hq/ShowingHqTodayRailCard";
+import { ShowingHqTodayZone } from "@/components/showing-hq/ShowingHqTodayRailCard";
 import { ShowingHqPageHeader } from "@/components/modules/showing-hq/showing-hq-page-header";
 import { cn } from "@/lib/utils";
 
@@ -233,10 +229,6 @@ export function ShowingHQDashboardView() {
       : [];
 
   const todaysScheduleList = Array.isArray(data.todaysSchedule) ? data.todaysSchedule : [];
-  /** Schedule is authoritative when present; avoids conflating legacy `todaysShowings` naming with private showings. */
-  const openHousesTodayCount = Array.isArray(data.todaysSchedule)
-    ? todaysScheduleList.filter((s) => s.type === "open_house").length
-    : todaysOpenHousesList.length;
 
   const upcoming = Array.isArray(data.upcomingOpenHouses) ? data.upcomingOpenHouses : [];
   const privateShowingsAttention = Array.isArray(data.privateShowingsAttention)
@@ -336,25 +328,23 @@ export function ShowingHQDashboardView() {
 
   const awaitingCount = needsFollowUp.filter((r) => r.reasonLabel === "Awaiting response").length;
 
-  const upcomingCount = stats.upcomingThisWeekCount ?? 0;
   const draftsWaitingCount = stats.buyerAgentEmailDraftsPending ?? followUpTasks.length;
-  const visitorsLastOpenHouse = recentReports[0]?.visitorCount ?? 0;
-  const nextEvent =
-    data.nextShowing != null
-      ? {
-          id: data.nextShowing.id,
-          kind: data.nextShowing.kind,
-          address: data.nextShowing.address,
-          at: data.nextShowing.at,
-        }
-      : null;
+  const nextUpPrimary = upNextRows[0] ?? null;
+  const mainAttentionRows = workflowRows.filter(
+    (r) => r.queueGroup === "action_now" || r.queueGroup === "waiting"
+  );
 
-  const priorityLine = buildCommandStripPriorityLine({
-    workflowRows,
-    nextEvent,
-    now: attentionNow,
-    formatMediumDate,
-  });
+  const agentUrgentCount =
+    data.agentFollowUps != null
+      ? data.agentFollowUps.overdue.length + data.agentFollowUps.dueToday.length
+      : 0;
+
+  const primaryShortcut =
+    draftsWaitingCount > 0
+      ? { label: "Review drafts", href: "/showing-hq/follow-ups/drafts" as const }
+      : agentUrgentCount > 0
+        ? { label: "Start follow-ups", href: "/showing-hq/follow-ups" as const }
+        : null;
 
   const recentReportOutputs = recentReports.map((r) => ({
     id: r.id,
@@ -366,45 +356,6 @@ export function ShowingHQDashboardView() {
   const latestReportDraftsPending = latestReport
     ? followUpTasks.filter((t) => t.openHouse.id === latestReport.id).length
     : 0;
-  const metricTiles = [
-    {
-      key: "upcoming-events",
-      label: "Upcoming events",
-      value: String(upcomingCount),
-      hint:
-        upcomingCount === 0
-          ? "None this week"
-          : upcomingCount === 1
-            ? "1 this week"
-            : "This week",
-    },
-    {
-      key: "drafts-waiting",
-      label: "Drafts waiting",
-      value: String(draftsWaitingCount),
-      hint: draftsWaitingCount === 0 ? "All clear" : "Review or send",
-    },
-    {
-      key: "last-oh-visitors",
-      label: "Last open house",
-      value: String(visitorsLastOpenHouse),
-      hint: "Latest open house",
-    },
-    {
-      key: "awaiting-response",
-      label: "Awaiting response",
-      value: String(awaitingCount),
-      hint: awaitingCount === 0 ? "All clear" : "Awaiting reply",
-    },
-  ];
-  const nextUpPrimary = upNextRows[0] ?? null;
-  const planAheadRows = workflowRows.filter((r) => r.queueGroup === "upcoming");
-  const mainAttentionRows = workflowRows.filter(
-    (r) => r.queueGroup === "action_now" || r.queueGroup === "waiting"
-  );
-  const topRow = workflowRows[0] ?? null;
-  const topStripRowKey =
-    topRow?.queueGroup === "upcoming" ? topRow.key : null;
 
   return (
     <div className="flex min-h-0 w-full flex-col bg-transparent">
@@ -412,47 +363,37 @@ export function ShowingHQDashboardView() {
       <Suspense fallback={null}>
         <NewShowingScheduledBanner />
       </Suspense>
-      <ShowingHQPriorityStrip
-        workflowRows={workflowRows}
-        nextEvent={nextEvent}
-        priorityLine={priorityLine}
-        formatTime={formatTime}
-      />
-      <ShowingHQMetricsStrip
-        emphasis="subdued"
-        className="mt-2 sm:mt-2.5"
-        items={metricTiles}
+
+      {/* Zone 1 — primary attention */}
+      <WhatNeedsAttentionSection
+        rows={mainAttentionRows}
+        groups={["action_now", "waiting"]}
+        primaryShortcut={primaryShortcut}
+        className="mt-1"
       />
 
-      <div
-        className={cn(
-          "mt-3 grid grid-cols-1 gap-3 sm:mt-4",
-          "lg:grid-cols-[minmax(0,1.35fr)_minmax(272px,1fr)] lg:items-start lg:gap-x-5",
-          "xl:gap-x-6"
-        )}
-      >
-        <div className="min-w-0">
-          <WhatNeedsAttentionSection rows={mainAttentionRows} groups={["action_now", "waiting"]} />
-        </div>
-
-        <aside className="min-w-0 lg:sticky lg:top-4 lg:self-start">
-          <ShowingHqWorkbenchOverviewRail
-            showingsToday={stats.privateShowingsToday ?? 0}
-            openHousesToday={openHousesTodayCount}
-            draftsWaiting={draftsWaitingCount}
-            awaitingResponse={awaitingCount}
-            upNextRows={upNextRows}
-            planAheadRows={planAheadRows}
-            topPriorityRowKey={topStripRowKey}
-            formatTime={formatTime}
-            formatShortDate={formatShortDate}
-          />
-        </aside>
+      {/* Zone 2 — today (schedule + near-term; single operational block) */}
+      <div className="mt-5 sm:mt-6">
+        <ShowingHqTodayZone
+          todayScheduleRows={todayScheduleRows}
+          upNextRows={upNextRows}
+          draftQueueCount={draftsWaitingCount}
+          awaitingCount={awaitingCount}
+          nextUp={nextUpPrimary}
+          formatTime={formatTime}
+          formatShortDate={formatShortDate}
+        />
       </div>
 
-      <div className="mt-4 space-y-3 border-t border-kp-outline/12 pt-4">
+      {/* Zone 3 — secondary / support */}
+      <div
+        className={cn(
+          "mt-6 space-y-5 border-t border-kp-outline/10 pt-6",
+          "text-kp-on-surface-variant"
+        )}
+      >
         {data.agentFollowUps === null ? (
-          <section className="rounded-lg border border-amber-500/20 bg-amber-500/[0.04] px-3 py-3 sm:px-4">
+          <section className="rounded-lg border border-amber-500/15 bg-amber-500/[0.03] px-3 py-3 sm:px-4">
             <p className="text-xs font-medium text-kp-on-surface">Person follow-ups</p>
             <p className="mt-1 text-xs text-kp-on-surface-variant">Couldn&apos;t load this section.</p>
             <button
@@ -464,7 +405,9 @@ export function ShowingHQDashboardView() {
             </button>
           </section>
         ) : data.agentFollowUps ? (
-          <ShowingHqAgentFollowUpsSection buckets={data.agentFollowUps} onRefresh={refetchDashboard} />
+          <div className="opacity-[0.97]">
+            <ShowingHqAgentFollowUpsSection buckets={data.agentFollowUps} onRefresh={refetchDashboard} />
+          </div>
         ) : null}
 
         <RecentOutputsRailSection
@@ -477,17 +420,7 @@ export function ShowingHQDashboardView() {
           loadFailed={Boolean(data.recentReportsLoadFailed)}
           formatShortDate={formatShortDate}
           formatTime={formatTime}
-          className="opacity-95"
-        />
-
-        <TodayScheduleSection
-          rows={todayScheduleRows}
-          draftQueueCount={draftsWaitingCount}
-          awaitingCount={awaitingCount}
-          nextUp={nextUpPrimary}
-          formatTime={formatTime}
-          tone="support"
-          hideUpNextSummaryLine
+          className="opacity-90"
         />
 
         {showGettingStarted && !gettingStartedDismissed ? (

@@ -45,7 +45,7 @@ export function ShowingHqPageHeader({ className }: ShowingHqPageHeaderProps) {
         subtitle={SHOWING_HQ_PAGE_SUBTITLE}
         actionsMenu={
           <PageHeaderActionsMenu>
-            <ActionsMenuGroupLabel>Views</ActionsMenuGroupLabel>
+            <ActionsMenuGroupLabel>Workspace</ActionsMenuGroupLabel>
             <PageHeaderActionItem href="/showing-hq">Overview</PageHeaderActionItem>
             <PageHeaderActionItem href="/showing-hq/showings">Showings</PageHeaderActionItem>
             <PageHeaderActionItem href="/open-houses">Open houses</PageHeaderActionItem>

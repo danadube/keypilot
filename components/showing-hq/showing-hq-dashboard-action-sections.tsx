@@ -1249,29 +1249,50 @@ export function WhatNeedsAttentionSection({
   rows,
   groups = ["action_now", "waiting"],
   className,
+  title = "What needs attention today",
+  primaryShortcut,
 }: {
   rows: WorkflowAttentionRow[];
   /** Defaults to Do now + Waiting only; use `upcoming` when you need the full queue. */
   groups?: WorkflowAttentionRow["queueGroup"][];
   className?: string;
+  /** Dominant workbench title — keep a single “attention” concept on the page. */
+  title?: string;
+  /** One emphasized route-level action (e.g. Review drafts) so the page has a clear first move. */
+  primaryShortcut?: { label: string; href: string } | null;
 }) {
   const groupOrder = groups;
 
   return (
     <section
-      className={cn("border-b border-kp-outline/20 pb-4 pt-0.5", className)}
+      className={cn("pb-1 pt-0.5", className)}
       aria-labelledby="what-needs-attention-heading"
     >
-      <div className="mb-2.5">
-        <h2
-          id="what-needs-attention-heading"
-          className="text-sm font-semibold tracking-tight text-kp-on-surface"
-        >
-          What needs attention
-        </h2>
+      <div className="mb-3 flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h2
+            id="what-needs-attention-heading"
+            className="text-base font-semibold tracking-tight text-kp-on-surface sm:text-[17px]"
+          >
+            {title}
+          </h2>
+          <p className="mt-1 max-w-xl text-[11px] leading-snug text-kp-on-surface-muted sm:text-xs">
+            Drafts, follow-ups, and urgent queue items — work from the top down.
+          </p>
+        </div>
+        {primaryShortcut ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(kpBtnPrimary, "h-9 shrink-0 border-transparent px-3.5 text-[12px] font-semibold")}
+            asChild
+          >
+            <Link href={primaryShortcut.href}>{primaryShortcut.label}</Link>
+          </Button>
+        ) : null}
       </div>
       {rows.length === 0 ? (
-        <div className="py-1">
+        <div className="rounded-lg bg-kp-surface-high/[0.06] px-3 py-3 sm:px-4">
           <p className="text-xs font-normal leading-snug text-kp-on-surface-variant">
             Nothing in Do now or Waiting on others.
           </p>
@@ -1287,14 +1308,16 @@ export function WhatNeedsAttentionSection({
                   {QUEUE_GROUP_LABEL[group]}
                 </h3>
                 <ul className="space-y-1.5">
-                  {inGroup.map((row) => {
+                  {inGroup.map((row, idx) => {
                     const vis = QUEUE_ROW_VISUAL[row.visualKind];
+                    const isFirstAction = group === "action_now" && idx === 0;
                     return (
                       <li
                         key={row.key}
                         className={cn(
-                          "flex flex-wrap items-start justify-between gap-2.5 rounded-md border border-kp-outline/35 bg-kp-surface-high/[0.12] py-2.5 pl-2.5 pr-2 sm:pl-3 sm:pr-3",
-                          vis.border
+                          "flex flex-wrap items-start justify-between gap-2.5 rounded-lg border border-kp-outline/20 bg-kp-surface-high/[0.08] py-2.5 pl-2.5 pr-2 sm:pl-3 sm:pr-3",
+                          vis.border,
+                          isFirstAction && "border-kp-teal/25 bg-kp-teal/[0.06]"
                         )}
                       >
                         <div className="min-w-0 flex-1 space-y-1">
@@ -1316,7 +1339,7 @@ export function WhatNeedsAttentionSection({
                           variant="outline"
                           size="sm"
                           className={cn(
-                            group === "action_now" ? kpBtnPrimary : kpBtnSecondary,
+                            isFirstAction ? kpBtnPrimary : kpBtnSecondary,
                             "h-8 shrink-0 border-transparent px-2.5 text-[11px] font-medium"
                           )}
                           asChild
@@ -1373,6 +1396,12 @@ export function TodayScheduleSection({
   tone = "default",
   /** Hide the “upcoming after today” line when the overview rail already shows Up next. */
   hideUpNextSummaryLine = false,
+  /**
+   * `minimal` — event list only (draft queue + summary rail live in the primary attention zone).
+   */
+  scheduleLayout = "timeline",
+  headingText = "Today's schedule",
+  showHeading = true,
 }: {
   rows: TodayScheduleRow[];
   draftQueueCount: number;
@@ -1382,70 +1411,90 @@ export function TodayScheduleSection({
   className?: string;
   tone?: "default" | "support";
   hideUpNextSummaryLine?: boolean;
+  scheduleLayout?: "timeline" | "minimal";
+  headingText?: string;
+  showHeading?: boolean;
 }) {
   const support = tone === "support";
+  const minimal = scheduleLayout === "minimal";
   return (
     <section
       className={cn(
         support
           ? "border-t border-kp-outline/12 pt-3"
           : "border-b border-kp-outline/20 pb-3 pt-0.5 sm:pb-4",
+        minimal && "border-0 pb-0 pt-0",
         className
       )}
       aria-labelledby="today-schedule-heading"
     >
-      <h2
-        id="today-schedule-heading"
-        className={cn(support ? "text-[11px] font-medium text-kp-on-surface-muted" : "text-xs font-medium text-kp-on-surface")}
-      >
-        Today&apos;s schedule
-      </h2>
-      <ul className="mt-2.5 border-l border-kp-outline/45 pl-3.5">
-        <li className="relative pb-2.5">
-          <span className="absolute -left-[15px] top-1.5 h-2 w-2 rounded-full bg-kp-teal/75" aria-hidden />
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">All day</p>
-          <p className="mt-0.5 text-[12px] text-kp-on-surface">
-            {rows.length === 0
-              ? "Nothing scheduled today."
-              : `${rows.length} event${rows.length === 1 ? "" : "s"} today.`}
+      {showHeading ? (
+        <h2
+          id="today-schedule-heading"
+          className={cn(
+            support ? "text-[11px] font-medium text-kp-on-surface-muted" : "text-xs font-medium text-kp-on-surface",
+            minimal && "text-[11px] font-medium uppercase tracking-wide text-kp-on-surface-muted"
+          )}
+        >
+          {headingText}
+        </h2>
+      ) : null}
+      {minimal ? (
+        rows.length === 0 ? (
+          <p className={cn("mt-1 text-[12px] text-kp-on-surface-variant", showHeading && "mt-2")}>
+            Nothing scheduled for today.
           </p>
-        </li>
-        <li className="relative border-t border-kp-outline/35 py-2.5">
-          <span className="absolute -left-[15px] top-3 h-2 w-2 rounded-full bg-amber-400/80" aria-hidden />
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
-            Draft queue
-          </p>
-          <p className="mt-0.5 text-[12px] text-kp-on-surface">
-            <span className="tabular-nums font-semibold text-kp-on-surface">{draftQueueCount}</span> draft
-            {draftQueueCount === 1 ? "" : "s"} to review
-            <span className="mx-1 text-kp-outline/45">·</span>
-            <span className="tabular-nums font-semibold text-kp-on-surface">{awaitingCount}</span> awaiting
-            reply
-          </p>
-        </li>
-        {!hideUpNextSummaryLine ? (
-          <li className="relative border-t border-kp-outline/35 pt-2.5">
-            <span className="absolute -left-[15px] top-3 h-2 w-2 rounded-full bg-sky-400/80" aria-hidden />
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
-              Upcoming after today
-            </p>
-            {nextUp ? (
-              <p className="mt-0.5 text-[12px] text-kp-on-surface">
-                {nextUp.kind === "open_house" ? "Open house" : "Private showing"} · {formatTime(nextUp.at)} ·{" "}
-                {nextUp.address}
-              </p>
-            ) : (
-              <p className="mt-0.5 text-[12px] text-kp-on-surface-muted">Nothing after today.</p>
-            )}
-          </li>
-        ) : null}
-      </ul>
-      {rows.length === 0 ? (
-        <p className="mt-2.5 text-xs leading-relaxed text-kp-on-surface-variant sm:text-sm">
-          Nothing on the calendar today.
-        </p>
+        ) : null
       ) : (
-        <ul className="mt-2.5 space-y-2">
+        <ul className="mt-2.5 border-l border-kp-outline/45 pl-3.5">
+          <li className="relative pb-2.5">
+            <span className="absolute -left-[15px] top-1.5 h-2 w-2 rounded-full bg-kp-teal/75" aria-hidden />
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">All day</p>
+            <p className="mt-0.5 text-[12px] text-kp-on-surface">
+              {rows.length === 0
+                ? "Nothing scheduled today."
+                : `${rows.length} event${rows.length === 1 ? "" : "s"} today.`}
+            </p>
+          </li>
+          <li className="relative border-t border-kp-outline/35 py-2.5">
+            <span className="absolute -left-[15px] top-3 h-2 w-2 rounded-full bg-amber-400/80" aria-hidden />
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+              Draft queue
+            </p>
+            <p className="mt-0.5 text-[12px] text-kp-on-surface">
+              <span className="tabular-nums font-semibold text-kp-on-surface">{draftQueueCount}</span> draft
+              {draftQueueCount === 1 ? "" : "s"} to review
+              <span className="mx-1 text-kp-outline/45">·</span>
+              <span className="tabular-nums font-semibold text-kp-on-surface">{awaitingCount}</span> awaiting
+              reply
+            </p>
+          </li>
+          {!hideUpNextSummaryLine ? (
+            <li className="relative border-t border-kp-outline/35 pt-2.5">
+              <span className="absolute -left-[15px] top-3 h-2 w-2 rounded-full bg-sky-400/80" aria-hidden />
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+                Upcoming after today
+              </p>
+              {nextUp ? (
+                <p className="mt-0.5 text-[12px] text-kp-on-surface">
+                  {nextUp.kind === "open_house" ? "Open house" : "Private showing"} · {formatTime(nextUp.at)} ·{" "}
+                  {nextUp.address}
+                </p>
+              ) : (
+                <p className="mt-0.5 text-[12px] text-kp-on-surface-muted">Nothing after today.</p>
+              )}
+            </li>
+          ) : null}
+        </ul>
+      )}
+      {rows.length === 0 ? (
+        minimal ? null : (
+          <p className="mt-2.5 text-xs leading-relaxed text-kp-on-surface-variant sm:text-sm">
+            Nothing on the calendar today.
+          </p>
+        )
+      ) : (
+        <ul className={cn("mt-2.5 space-y-2", minimal && "mt-3")}>
           {rows.map((row) => (
             <li
               key={`${row.kind}-${row.id}`}
