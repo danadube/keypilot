@@ -1244,7 +1244,7 @@ export function ShowingHQCommandStrip({
   );
 }
 
-/** Primary queue — strongest surface on the page. */
+/** Primary queue — strongest surface on the page (Do now + Waiting in one unified block). */
 export function WhatNeedsAttentionSection({
   rows,
   groups = ["action_now", "waiting"],
@@ -1268,93 +1268,89 @@ export function WhatNeedsAttentionSection({
       className={cn("min-w-0 pb-1 pt-0.5", className)}
       aria-labelledby="what-needs-attention-heading"
     >
-      <div className="mb-3 flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
+      <div className="rounded-xl border border-kp-outline/25 bg-kp-surface-high/[0.07] p-3 sm:p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <h2
             id="what-needs-attention-heading"
             className="text-base font-semibold tracking-tight text-kp-on-surface sm:text-[17px]"
           >
             {title}
           </h2>
-          <p className="mt-1 max-w-xl text-[11px] leading-snug text-kp-on-surface-muted sm:text-xs">
-            Drafts, follow-ups, and urgent queue items — work from the top down.
-          </p>
+          {primaryShortcut ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(kpBtnPrimary, "h-8 shrink-0 border-transparent px-3 text-[11px] font-semibold sm:h-9 sm:px-3.5 sm:text-[12px]")}
+              asChild
+            >
+              <Link href={primaryShortcut.href}>{primaryShortcut.label}</Link>
+            </Button>
+          ) : null}
         </div>
-        {primaryShortcut ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className={cn(kpBtnPrimary, "h-9 shrink-0 border-transparent px-3.5 text-[12px] font-semibold")}
-            asChild
-          >
-            <Link href={primaryShortcut.href}>{primaryShortcut.label}</Link>
-          </Button>
-        ) : null}
-      </div>
-      {rows.length === 0 ? (
-        <div className="rounded-lg bg-kp-surface-high/[0.06] px-3 py-3 sm:px-4">
-          <p className="text-xs font-normal leading-snug text-kp-on-surface-variant">
-            Nothing in Do now or Waiting on others.
+
+        {rows.length === 0 ? (
+          <p className="mt-3 text-xs leading-snug text-kp-on-surface-variant">
+            You&apos;re clear — nothing in Do now or Waiting.
           </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {groupOrder.map((group) => {
-            const inGroup = rows.filter((r) => r.queueGroup === group);
-            if (inGroup.length === 0) return null;
-            return (
-              <div key={group} className="space-y-1.5">
-                <h3 className="text-[11px] font-medium uppercase tracking-wide text-kp-on-surface-muted">
-                  {QUEUE_GROUP_LABEL[group]}
-                </h3>
-                <ul className="space-y-1.5">
-                  {inGroup.map((row, idx) => {
-                    const vis = QUEUE_ROW_VISUAL[row.visualKind];
-                    const isFirstAction = group === "action_now" && idx === 0;
-                    return (
-                      <li
-                        key={row.key}
-                        className={cn(
-                          "flex flex-wrap items-start justify-between gap-2.5 rounded-lg border border-kp-outline/20 bg-kp-surface-high/[0.08] py-2.5 pl-2.5 pr-2 sm:pl-3 sm:pr-3",
-                          vis.border,
-                          isFirstAction && "border-kp-teal/25 bg-kp-teal/[0.06]"
-                        )}
-                      >
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <span
-                            className={cn(
-                              "inline-flex rounded px-1.5 py-0.5 text-[11px] font-medium leading-none",
-                              vis.pill
-                            )}
-                          >
-                            {row.categoryTitle}
-                          </span>
-                          <p className="text-[13px] font-medium leading-snug text-kp-on-surface">
-                            {row.primaryLine}
-                          </p>
-                          <p className="text-[11px] leading-snug text-kp-on-surface-variant">{row.metaLine}</p>
-                          <p className="text-[11px] leading-snug text-kp-on-surface-muted">{row.contextLine}</p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
+        ) : (
+          <div className="mt-3 space-y-3 border-t border-kp-outline/15 pt-3">
+            {groupOrder.map((group) => {
+              const inGroup = rows.filter((r) => r.queueGroup === group);
+              if (inGroup.length === 0) return null;
+              return (
+                <div key={group} className="space-y-1.5">
+                  <h3 className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+                    {QUEUE_GROUP_LABEL[group]}
+                  </h3>
+                  <ul className="space-y-1.5">
+                    {inGroup.map((row, idx) => {
+                      const vis = QUEUE_ROW_VISUAL[row.visualKind];
+                      const isFirstAction = group === "action_now" && idx === 0;
+                      return (
+                        <li
+                          key={row.key}
                           className={cn(
-                            isFirstAction ? kpBtnPrimary : kpBtnSecondary,
-                            "h-8 shrink-0 border-transparent px-2.5 text-[11px] font-medium"
+                            "flex flex-wrap items-start justify-between gap-2 rounded-md border border-kp-outline/18 bg-kp-bg/20 py-2 pl-2 pr-2 sm:pl-2.5 sm:pr-2.5",
+                            vis.border,
+                            isFirstAction && "border-kp-teal/30 bg-kp-teal/[0.07]"
                           )}
-                          asChild
                         >
-                          <Link href={row.href}>{row.ctaLabel}</Link>
-                        </Button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                          <div className="min-w-0 flex-1 space-y-0.5">
+                            <span
+                              className={cn(
+                                "inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium leading-none",
+                                vis.pill
+                              )}
+                            >
+                              {row.categoryTitle}
+                            </span>
+                            <p className="text-[13px] font-medium leading-snug text-kp-on-surface">
+                              {row.primaryLine}
+                            </p>
+                            <p className="text-[11px] leading-snug text-kp-on-surface-variant">{row.metaLine}</p>
+                            <p className="text-[10px] leading-snug text-kp-on-surface-muted">{row.contextLine}</p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={cn(
+                              isFirstAction ? kpBtnPrimary : kpBtnSecondary,
+                              "h-7 shrink-0 border-transparent px-2 text-[11px] font-medium sm:h-8"
+                            )}
+                            asChild
+                          >
+                            <Link href={row.href}>{row.ctaLabel}</Link>
+                          </Button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -1733,6 +1729,7 @@ export function RecentOutputsRailSection({
   formatShortDate,
   formatTime,
   className,
+  variant = "default",
 }: {
   reports: RecentReportOutputRow[];
   latestSummary?: { represented: number | null; unrepresented: number | null; draftsPending: number };
@@ -1741,17 +1738,30 @@ export function RecentOutputsRailSection({
   formatShortDate: (iso: string) => string;
   formatTime: (iso: string) => string;
   className?: string;
+  /** `compact` — single-line links; for ShowingHQ support rail. */
+  variant?: "default" | "compact";
 }) {
+  const compact = variant === "compact";
+
   if (loadFailed) {
     return (
       <section
-        className={cn("rounded-md border border-kp-outline/30 bg-kp-bg/40 px-3 py-2.5 sm:px-3.5", className)}
+        className={cn(
+          compact ? "rounded-md border border-kp-outline/15 px-2.5 py-2" : "rounded-md border border-kp-outline/30 bg-kp-bg/40 px-3 py-2.5 sm:px-3.5",
+          className
+        )}
         aria-labelledby="recent-outputs-heading"
       >
-        <h2 id="recent-outputs-heading" className="text-xs font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+        <h2
+          id="recent-outputs-heading"
+          className={cn(
+            "text-kp-on-surface-variant",
+            compact ? "text-[10px] font-medium uppercase tracking-wide" : "text-xs font-semibold uppercase tracking-wide"
+          )}
+        >
           Recent reports
         </h2>
-        <p className="mt-2 text-xs leading-relaxed text-kp-on-surface-variant sm:text-sm">
+        <p className={cn("text-kp-on-surface-variant", compact ? "mt-1 text-[11px]" : "mt-2 text-xs sm:text-sm")}>
           Couldn&apos;t load. Try refreshing.
         </p>
       </section>
@@ -1760,6 +1770,34 @@ export function RecentOutputsRailSection({
   if (reports.length === 0) return null;
   const top = reports.slice(0, 4);
   const latest = top[0] ?? null;
+
+  if (compact) {
+    return (
+      <section className={cn("min-w-0", className)} aria-labelledby="recent-outputs-heading">
+        <h2
+          id="recent-outputs-heading"
+          className="text-[10px] font-medium uppercase tracking-wide text-kp-on-surface-muted"
+        >
+          Recent reports
+        </h2>
+        <ul className="mt-1.5 space-y-1">
+          {top.map((r) => (
+            <li key={r.id}>
+              <Link
+                href={`/open-houses/${r.id}/report`}
+                className="block truncate text-[11px] leading-snug text-kp-on-surface-variant hover:text-kp-teal"
+              >
+                <span className="text-kp-on-surface/90">{r.address}</span>
+                <span className="text-kp-outline/45"> · </span>
+                {r.visitorCount} visitors · {formatShortDate(r.endAt)}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+    );
+  }
+
   return (
     <section className={cn("pb-1 pt-0.5", className)} aria-labelledby="recent-outputs-heading">
       <h2 id="recent-outputs-heading" className="text-[11px] font-medium uppercase tracking-wide text-kp-on-surface-muted">

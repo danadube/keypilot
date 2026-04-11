@@ -13,7 +13,6 @@ import {
   RecentOutputsRailSection,
   WhatNeedsAttentionSection,
   buildNeedsAttentionItems,
-  buildTodayScheduleRows,
   buildUpNextRows,
   buildWorkflowAttentionRows,
   mergeWorkflowAttentionRowsWithSupra,
@@ -301,17 +300,6 @@ export function ShowingHQDashboardView() {
     formatMediumDate
   );
 
-  const todayScheduleRows = buildTodayScheduleRows(
-    todaysScheduleList.map((s) => ({
-      type: s.type,
-      id: s.id,
-      at: s.at,
-      property: s.property,
-      readinessLabel: s.readinessLabel,
-    })),
-    needsAttentionItems
-  );
-
   const upNextRows = buildUpNextRows(
     attentionNow,
     todaysScheduleList.map((s) => ({
@@ -372,20 +360,19 @@ export function ShowingHQDashboardView() {
       />
 
       {/* Zone 2 — today (schedule + near-term; single operational block) */}
-      <div className="mt-5 min-w-0 sm:mt-6">
+      <div className="mt-4 min-w-0 sm:mt-5">
         <ShowingHqTodayZone
-          todayScheduleRows={todayScheduleRows}
-          upNextRows={upNextRows}
-          draftQueueCount={draftsWaitingCount}
-          awaitingCount={awaitingCount}
           nextUp={nextUpPrimary}
+          scheduledTodayCount={todaysScheduleList.length}
+          draftsWaiting={draftsWaitingCount}
+          repliesWaiting={awaitingCount}
           formatTime={formatTime}
           formatShortDate={formatShortDate}
         />
       </div>
 
       {/* Zone 3 — secondary / support */}
-      <div className="mt-6 min-w-0 space-y-5 border-t border-kp-outline/10 pt-6">
+      <div className="mt-5 min-w-0 space-y-4 border-t border-kp-outline/10 pt-5">
         {data.agentFollowUps === null ? (
           <section className="rounded-lg border border-amber-500/15 bg-amber-500/[0.03] px-3 py-3 sm:px-4">
             <p className="text-xs font-medium text-kp-on-surface">Person follow-ups</p>
@@ -399,9 +386,11 @@ export function ShowingHQDashboardView() {
             </button>
           </section>
         ) : data.agentFollowUps ? (
-          <div className="opacity-[0.97]">
-            <ShowingHqAgentFollowUpsSection buckets={data.agentFollowUps} onRefresh={refetchDashboard} />
-          </div>
+          <ShowingHqAgentFollowUpsSection
+            buckets={data.agentFollowUps}
+            onRefresh={refetchDashboard}
+            compactWhenEmpty
+          />
         ) : null}
 
         <RecentOutputsRailSection
@@ -414,7 +403,7 @@ export function ShowingHQDashboardView() {
           loadFailed={Boolean(data.recentReportsLoadFailed)}
           formatShortDate={formatShortDate}
           formatTime={formatTime}
-          className="opacity-90"
+          variant="compact"
         />
 
         {showGettingStarted && !gettingStartedDismissed ? (
