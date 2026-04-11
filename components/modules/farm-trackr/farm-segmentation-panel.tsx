@@ -9,15 +9,12 @@ type AreaRow = {
   id: string;
   name: string;
   description: string | null;
-  sortOrder: number;
-  createdAt: string;
 };
 
 type TerritoryRow = {
   id: string;
   name: string;
   description: string | null;
-  sortOrder: number;
   areas: AreaRow[];
 };
 
@@ -35,6 +32,42 @@ function errorMessage(json: unknown, fallback: string): string {
   return fallback;
 }
 
+type ApiTerritory = {
+  id: string;
+  name: string;
+  description: string | null;
+  createdAt: string;
+};
+
+type ApiArea = {
+  id: string;
+  name: string;
+  description: string | null;
+  territoryId: string;
+};
+
+function mergeTerritoriesWithAreas(
+  territories: ApiTerritory[],
+  areas: ApiArea[]
+): TerritoryRow[] {
+  const byTerritoryId = new Map<string, AreaRow[]>();
+  for (const a of areas) {
+    const list = byTerritoryId.get(a.territoryId) ?? [];
+    list.push({
+      id: a.id,
+      name: a.name,
+      description: a.description,
+    });
+    byTerritoryId.set(a.territoryId, list);
+  }
+  return territories.map((t) => ({
+    id: t.id,
+    name: t.name,
+    description: t.description,
+    areas: byTerritoryId.get(t.id) ?? [],
+  }));
+}
+
 export function FarmSegmentationPanel() {
   const [territories, setTerritories] = useState<TerritoryRow[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -48,14 +81,25 @@ export function FarmSegmentationPanel() {
 
   const load = useCallback(async () => {
     setListError(null);
-    const res = await fetch("/api/v1/farm-territories");
-    const json = await res.json().catch(() => null);
-    if (!res.ok) {
-      setListError(errorMessage(json, "Could not load territories"));
+    const [terrRes, areaRes] = await Promise.all([
+      fetch("/api/v1/farm-territories"),
+      fetch("/api/v1/farm-areas"),
+    ]);
+    const terrJson = await terrRes.json().catch(() => null);
+    const areaJson = await areaRes.json().catch(() => null);
+    if (!terrRes.ok) {
+      setListError(errorMessage(terrJson, "Could not load territories"));
       setTerritories([]);
       return;
     }
-    setTerritories((json?.data as TerritoryRow[]) ?? []);
+    if (!areaRes.ok) {
+      setListError(errorMessage(areaJson, "Could not load farm areas"));
+      setTerritories([]);
+      return;
+    }
+    const rawTerritories = (terrJson?.data as ApiTerritory[]) ?? [];
+    const rawAreas = (areaJson?.data as ApiArea[]) ?? [];
+    setTerritories(mergeTerritoriesWithAreas(rawTerritories, rawAreas));
   }, []);
 
   useEffect(() => {
@@ -159,11 +203,11 @@ export function FarmSegmentationPanel() {
         {(territories ?? []).map((t) => (
           <li key={t.id} className="rounded-lg border border-kp-outline/80 bg-kp-bg/40 p-4">
             <div className="text-sm font-medium text-kp-on-surface">{t.name}</div>
-            {t.areas.length === 0 ? (
+            {(t.areas ?? []).length === 0 ? (
               <p className="mt-2 text-xs text-kp-on-surface-variant">No areas yet.</p>
             ) : (
               <ul className="mt-2 list-inside list-disc text-xs text-kp-on-surface-variant">
-                {t.areas.map((a) => (
+                {(t.areas ?? []).map((a) => (
                   <li key={a.id} className="text-kp-on-surface">
                     <span className="font-medium">{a.name}</span>
                   </li>
