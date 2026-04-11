@@ -7,7 +7,6 @@ import {
   CalendarClock,
   ClipboardList,
   Inbox,
-  PlusSquare,
   QrCode,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -490,24 +489,24 @@ export const QUEUE_ROW_VISUAL: Record<
   { border: string; pill: string }
 > = {
   feedback: {
-    border: "border-l-2 border-violet-400",
-    pill: "text-violet-300 bg-violet-500/10",
+    border: "border-l border-l-violet-400/40",
+    pill: "text-kp-on-surface-variant bg-kp-surface-high/60",
   },
   awaiting: {
-    border: "border-l-2 border-amber-400/55",
-    pill: "text-amber-300/90 bg-amber-500/[0.07]",
+    border: "border-l border-l-amber-400/35",
+    pill: "text-kp-on-surface-variant bg-kp-surface-high/60",
   },
   prep: {
-    border: "border-l-2 border-blue-400",
-    pill: "text-blue-300 bg-blue-500/10",
+    border: "border-l border-l-blue-400/35",
+    pill: "text-kp-on-surface-variant bg-kp-surface-high/60",
   },
   report_followup: {
-    border: "border-l-2 border-emerald-400",
-    pill: "text-emerald-300 bg-emerald-500/10",
+    border: "border-l border-l-emerald-400/35",
+    pill: "text-kp-on-surface-variant bg-kp-surface-high/60",
   },
   supra: {
-    border: "border-l-2 border-sky-400",
-    pill: "text-sky-200 bg-sky-500/14",
+    border: "border-l border-l-sky-400/35",
+    pill: "text-kp-on-surface-variant bg-kp-surface-high/60",
   },
 };
 
@@ -637,27 +636,53 @@ export type DashboardMetricTile = {
 export function ShowingHQMetricsStrip({
   items,
   className,
+  emphasis = "default",
 }: {
   items: DashboardMetricTile[];
   className?: string;
+  /** `subdued` — lower contrast, less vertical space (secondary to priority strip). */
+  emphasis?: "default" | "subdued";
 }) {
   if (items.length === 0) return null;
+  const subdued = emphasis === "subdued";
   return (
     <section
       className={cn(
-        "grid grid-cols-2 gap-2 rounded-md border border-kp-outline/40 bg-kp-surface-high/[0.06] p-2 sm:grid-cols-4",
+        "grid grid-cols-2 gap-x-3 sm:grid-cols-4",
+        subdued ? "gap-y-0 border-b border-kp-outline/15 pb-2" : "gap-y-1 border-b border-kp-outline/20 pb-3",
         className
       )}
       aria-label="ShowingHQ quick metrics"
     >
       {items.map((item) => (
-        <div key={item.key} className="rounded-md px-2 py-1.5">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-kp-on-surface-muted">
+        <div key={item.key} className={cn("min-w-0 px-0", subdued ? "py-0" : "py-0.5")}>
+          <p
+            className={cn(
+              "font-normal uppercase tracking-wide text-kp-on-surface-muted",
+              subdued ? "text-[9px] opacity-80" : "text-[10px]"
+            )}
+          >
             {item.label}
           </p>
-          <p className="mt-0.5 text-base font-semibold tabular-nums text-kp-on-surface">{item.value}</p>
+          <p
+            className={cn(
+              "mt-0.5 tabular-nums",
+              subdued
+                ? "text-xs font-normal text-kp-on-surface-muted"
+                : "text-sm font-medium text-kp-on-surface"
+            )}
+          >
+            {item.value}
+          </p>
           {item.hint ? (
-            <p className="mt-0.5 text-[10px] leading-snug text-kp-on-surface-muted">{item.hint}</p>
+            <p
+              className={cn(
+                "leading-snug text-kp-on-surface-muted",
+                subdued ? "mt-0 text-[9px] opacity-75" : "mt-0.5 text-[10px]"
+              )}
+            >
+              {item.hint}
+            </p>
           ) : null}
         </div>
       ))}
@@ -1023,7 +1048,87 @@ function formatShortDayAndTime(iso: string, formatTime: (s: string) => string): 
   return `${day} ${formatTime(iso)}`;
 }
 
-/** Operational context only — next event + counts (page title/date live in shell header). */
+/**
+ * Single top callout for ShowingHQ workbench: one headline, one support line, one CTA.
+ * Uses the highest-priority workflow row when present; otherwise next calendar event or empty-state.
+ */
+export function ShowingHQPriorityStrip({
+  workflowRows,
+  nextEvent,
+  priorityLine,
+  formatTime,
+}: {
+  workflowRows: WorkflowAttentionRow[];
+  nextEvent: {
+    id: string;
+    address: string;
+    at: string;
+    kind: "showing" | "open_house";
+  } | null;
+  priorityLine: string | null;
+  formatTime: (iso: string) => string;
+}) {
+  const top = workflowRows.length > 0 ? workflowRows[0] : null;
+
+  const eventHref =
+    nextEvent == null
+      ? null
+      : nextEvent.kind === "open_house"
+        ? openHouseWorkflowTabHref(nextEvent.id, "prep")
+        : showingWorkflowTabHref(nextEvent.id, "prep");
+
+  const eventKindShort = nextEvent?.kind === "open_house" ? "Open house" : "Private showing";
+
+  let headline: string;
+  let support: string;
+  let ctaHref: string;
+  let ctaLabel: string;
+
+  if (top) {
+    headline = top.primaryLine;
+    support = top.metaLine;
+    ctaHref = top.href;
+    ctaLabel = top.ctaLabel;
+  } else if (nextEvent && eventHref) {
+    headline = nextEvent.address;
+    support =
+      priorityLine ??
+      `${eventKindShort} · ${formatShortDayAndTime(nextEvent.at, formatTime)}`;
+    ctaHref = eventHref;
+    ctaLabel = "Finish prep";
+  } else {
+    headline = "You're caught up";
+    support =
+      priorityLine ??
+      "Nothing in your queue right now. Add a showing or open house when you're ready.";
+    ctaHref = "/showing-hq/showings/new";
+    ctaLabel = "New showing";
+  }
+
+  return (
+    <section className="border-b border-kp-outline/30 pb-3 pt-0.5" aria-labelledby="priority-strip-heading">
+      <h2
+        id="priority-strip-heading"
+        className="text-[13px] font-semibold leading-snug text-kp-on-surface sm:text-sm"
+      >
+        {headline}
+      </h2>
+      <p className="mt-1 max-w-3xl text-[11px] leading-snug text-kp-on-surface-muted sm:text-xs">{support}</p>
+      <div className="mt-2.5">
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(kpBtnPrimary, "h-8 px-3 text-[12px] font-semibold")}
+          asChild
+        >
+          <Link href={ctaHref}>{ctaLabel}</Link>
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+/** Deprecated: workbench uses ShowingHQPriorityStrip. Kept for reference. */
 export function ShowingHQCommandStrip({
   nextEvent,
   upcomingCount,
@@ -1059,40 +1164,38 @@ export function ShowingHQCommandStrip({
 
   return (
     <header
-      className="w-full rounded-lg border border-kp-outline/55 bg-kp-surface-high/[0.08] px-4 py-3.5 sm:px-5 sm:py-4"
+      className="w-full border-b border-kp-outline/25 pb-3 pt-0.5 sm:pb-3.5"
       aria-label="Next event and schedule stats"
     >
       {priorityLine ? (
-        <p className="mb-2 max-w-3xl text-sm font-medium leading-snug text-kp-on-surface sm:text-[15px]">
+        <p className="mb-2 max-w-3xl text-xs font-normal leading-snug text-kp-on-surface-variant sm:text-sm">
           {priorityLine}
         </p>
       ) : null}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-kp-on-surface-muted">
             Next event on deck
           </p>
           {nextEvent ? (
             <>
-              <h2 className="mt-0.5 truncate text-base font-semibold text-kp-on-surface sm:text-lg">
+              <h2 className="mt-0.5 truncate text-sm font-semibold text-kp-on-surface sm:text-base">
                 {nextEvent.address}
               </h2>
-              <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-kp-on-surface-muted">
-                <span className="font-medium text-kp-on-surface/95">{eventKindLabel}</span>
-                <span className="text-kp-outline/45">·</span>
+              <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-kp-on-surface-muted sm:text-sm">
+                <span className="font-medium text-kp-on-surface/90">{eventKindLabel}</span>
+                <span className="text-kp-outline/40">·</span>
                 <span>{formatShortDayAndTime(nextEvent.at, formatTime)}</span>
                 {eventStartsLabel ? (
                   <>
-                    <span className="text-kp-outline/45">·</span>
-                    <span className="inline-flex rounded-md border border-kp-gold/30 bg-kp-gold/[0.07] px-1.5 py-0.5 font-semibold text-kp-gold">
-                      {eventStartsLabel}
-                    </span>
+                    <span className="text-kp-outline/40">·</span>
+                    <span className="tabular-nums text-kp-on-surface-variant">{eventStartsLabel}</span>
                   </>
                 ) : null}
               </p>
             </>
           ) : (
-            <p className="mt-1 text-sm leading-snug text-kp-on-surface-muted">
+            <p className="mt-1 text-xs leading-snug text-kp-on-surface-muted sm:text-sm">
               No upcoming event.
             </p>
           )}
@@ -1119,13 +1222,16 @@ export function ShowingHQCommandStrip({
               </Link>
             </Button>
           ) : (
-            <Button variant="outline" size="sm" className={cn(kpBtnPrimary, "h-8 px-3 text-[12px]")} asChild>
-              <Link href="/showing-hq/showings/new">Add showing</Link>
-            </Button>
+            <Link
+              href="/showing-hq/showings/new"
+              className="text-xs font-medium text-kp-teal underline-offset-2 hover:underline sm:text-[13px]"
+            >
+              New showing
+            </Link>
           )}
         </div>
       </div>
-      <p className="mt-2 text-xs leading-relaxed text-kp-on-surface-muted">
+      <p className="mt-2 text-[11px] leading-relaxed text-kp-on-surface-muted sm:text-xs">
         <span className="font-medium tabular-nums text-kp-on-surface">{actionNowCount}</span> action now
         <span className="mx-1 text-kp-outline/40">•</span>
         <span className="font-medium tabular-nums text-kp-on-surface">{upcomingCount}</span> upcoming
@@ -1141,106 +1247,77 @@ export function ShowingHQCommandStrip({
 /** Primary queue — strongest surface on the page. */
 export function WhatNeedsAttentionSection({
   rows,
+  groups = ["action_now", "waiting"],
   className,
 }: {
   rows: WorkflowAttentionRow[];
+  /** Defaults to Do now + Waiting only; use `upcoming` when you need the full queue. */
+  groups?: WorkflowAttentionRow["queueGroup"][];
   className?: string;
 }) {
-  const groupOrder: WorkflowAttentionRow["queueGroup"][] = ["action_now", "waiting", "upcoming"];
+  const groupOrder = groups;
 
   return (
     <section
-      className={cn(
-        "rounded-lg border border-kp-outline/70 bg-kp-surface px-4 py-3.5 sm:px-5 sm:py-4",
-        className
-      )}
+      className={cn("border-b border-kp-outline/20 pb-4 pt-0.5", className)}
       aria-labelledby="what-needs-attention-heading"
     >
-      <div className="mb-3 border-b border-kp-outline/45 pb-2.5">
+      <div className="mb-2.5">
         <h2
           id="what-needs-attention-heading"
-          className="text-base font-semibold tracking-tight text-kp-on-surface sm:text-lg"
+          className="text-sm font-semibold tracking-tight text-kp-on-surface"
         >
           What needs attention
         </h2>
-        <p className="mt-1 text-sm leading-snug text-kp-on-surface-muted">
-          Priority work for showings and open houses.
-        </p>
       </div>
       {rows.length === 0 ? (
-        <div className="space-y-2 py-2">
-          <p className="text-[13px] font-medium leading-snug text-kp-on-surface">
-            Queue is clear.
+        <div className="py-1">
+          <p className="text-xs font-normal leading-snug text-kp-on-surface-variant">
+            Nothing in Do now or Waiting on others.
           </p>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="space-y-4">
           {groupOrder.map((group) => {
             const inGroup = rows.filter((r) => r.queueGroup === group);
             if (inGroup.length === 0) return null;
             return (
-              <div key={group} className="space-y-2">
-                <h3
-                  className={cn(
-                    "text-[12px] font-semibold uppercase tracking-wider",
-                    group === "action_now"
-                      ? "text-amber-300/85"
-                      : group === "upcoming"
-                        ? "text-sky-300"
-                        : "text-kp-on-surface-muted"
-                  )}
-                >
+              <div key={group} className="space-y-1.5">
+                <h3 className="text-[11px] font-medium uppercase tracking-wide text-kp-on-surface-muted">
                   {QUEUE_GROUP_LABEL[group]}
                 </h3>
-                <ul
-                  className={cn(
-                    "space-y-2 rounded-lg p-2",
-                    group === "action_now"
-                      ? "border border-amber-400/30 bg-amber-500/[0.05]"
-                      : group === "upcoming"
-                        ? "border border-sky-500/28 bg-sky-500/[0.045]"
-                        : "border border-kp-outline/45 bg-kp-bg/20"
-                  )}
-                >
-                  {inGroup.map((row, indexInGroup) => {
+                <ul className="space-y-1.5">
+                  {inGroup.map((row) => {
                     const vis = QUEUE_ROW_VISUAL[row.visualKind];
-                    const spotlight =
-                      group === "action_now" && indexInGroup < 3 && inGroup.length > 0;
                     return (
                       <li
                         key={row.key}
                         className={cn(
-                          "flex flex-wrap items-start justify-between gap-3 rounded-lg border border-kp-outline/60 bg-kp-surface-high/35 py-3 pl-3 pr-3 sm:pl-3 sm:pr-3.5",
-                          vis.border,
-                          spotlight &&
-                            "border-amber-500/25 bg-amber-500/[0.045]"
+                          "flex flex-wrap items-start justify-between gap-2.5 rounded-md border border-kp-outline/35 bg-kp-surface-high/[0.12] py-2.5 pl-2.5 pr-2 sm:pl-3 sm:pr-3",
+                          vis.border
                         )}
                       >
-                        <div className="min-w-0 flex-1 space-y-1.5">
+                        <div className="min-w-0 flex-1 space-y-1">
                           <span
                             className={cn(
-                              "inline-flex rounded-md px-2 py-0.5 text-[12px] font-semibold leading-none",
+                              "inline-flex rounded px-1.5 py-0.5 text-[11px] font-medium leading-none",
                               vis.pill
                             )}
                           >
                             {row.categoryTitle}
                           </span>
-                          <p className="text-[14px] font-semibold leading-snug text-kp-on-surface">
+                          <p className="text-[13px] font-medium leading-snug text-kp-on-surface">
                             {row.primaryLine}
                           </p>
-                          <p className="text-[12px] font-medium leading-snug text-kp-on-surface-variant">
-                            {row.metaLine}
-                          </p>
-                          <p className="text-[12px] leading-snug text-kp-on-surface-variant">
-                            {row.contextLine}
-                          </p>
+                          <p className="text-[11px] leading-snug text-kp-on-surface-variant">{row.metaLine}</p>
+                          <p className="text-[11px] leading-snug text-kp-on-surface-muted">{row.contextLine}</p>
                         </div>
                         <Button
                           variant="outline"
                           size="sm"
                           className={cn(
                             group === "action_now" ? kpBtnPrimary : kpBtnSecondary,
-                            "h-8 shrink-0 border-transparent px-3 text-[12px] font-semibold"
+                            "h-8 shrink-0 border-transparent px-2.5 text-[11px] font-medium"
                           )}
                           asChild
                         >
@@ -1292,6 +1369,10 @@ export function TodayScheduleSection({
   nextUp,
   formatTime,
   className,
+  /** Softer chrome for the lower workbench stack. */
+  tone = "default",
+  /** Hide the “upcoming after today” line when the overview rail already shows Up next. */
+  hideUpNextSummaryLine = false,
 }: {
   rows: TodayScheduleRow[];
   draftQueueCount: number;
@@ -1299,16 +1380,24 @@ export function TodayScheduleSection({
   nextUp: UpNextRow | null;
   formatTime: (iso: string) => string;
   className?: string;
+  tone?: "default" | "support";
+  hideUpNextSummaryLine?: boolean;
 }) {
+  const support = tone === "support";
   return (
     <section
       className={cn(
-        "rounded-lg border border-kp-outline/50 bg-kp-surface/50 px-3 py-3 sm:px-3.5 sm:py-3.5",
+        support
+          ? "border-t border-kp-outline/12 pt-3"
+          : "border-b border-kp-outline/20 pb-3 pt-0.5 sm:pb-4",
         className
       )}
       aria-labelledby="today-schedule-heading"
     >
-      <h2 id="today-schedule-heading" className="text-sm font-semibold text-kp-on-surface">
+      <h2
+        id="today-schedule-heading"
+        className={cn(support ? "text-[11px] font-medium text-kp-on-surface-muted" : "text-xs font-medium text-kp-on-surface")}
+      >
         Today&apos;s schedule
       </h2>
       <ul className="mt-2.5 border-l border-kp-outline/45 pl-3.5">
@@ -1334,20 +1423,22 @@ export function TodayScheduleSection({
             reply
           </p>
         </li>
-        <li className="relative border-t border-kp-outline/35 pt-2.5">
-          <span className="absolute -left-[15px] top-3 h-2 w-2 rounded-full bg-sky-400/80" aria-hidden />
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
-            Upcoming after today
-          </p>
-          {nextUp ? (
-            <p className="mt-0.5 text-[12px] text-kp-on-surface">
-              {nextUp.kind === "open_house" ? "Open house" : "Private showing"} · {formatTime(nextUp.at)} ·{" "}
-              {nextUp.address}
+        {!hideUpNextSummaryLine ? (
+          <li className="relative border-t border-kp-outline/35 pt-2.5">
+            <span className="absolute -left-[15px] top-3 h-2 w-2 rounded-full bg-sky-400/80" aria-hidden />
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+              Upcoming after today
             </p>
-          ) : (
-            <p className="mt-0.5 text-[12px] text-kp-on-surface-muted">Nothing after today.</p>
-          )}
-        </li>
+            {nextUp ? (
+              <p className="mt-0.5 text-[12px] text-kp-on-surface">
+                {nextUp.kind === "open_house" ? "Open house" : "Private showing"} · {formatTime(nextUp.at)} ·{" "}
+                {nextUp.address}
+              </p>
+            ) : (
+              <p className="mt-0.5 text-[12px] text-kp-on-surface-muted">Nothing after today.</p>
+            )}
+          </li>
+        ) : null}
       </ul>
       {rows.length === 0 ? (
         <p className="mt-2.5 text-xs leading-relaxed text-kp-on-surface-variant sm:text-sm">
@@ -1532,19 +1623,16 @@ export function UpNextRailSection({
 }) {
   return (
     <section
-      className={cn(
-        "rounded-lg border border-kp-outline/40 bg-kp-surface/45 px-3 py-3 sm:px-3.5 sm:py-3",
-        className
-      )}
+      className={cn("border-b border-kp-outline/20 pb-3 pt-0.5", className)}
       aria-labelledby="up-next-heading"
     >
-      <div className="mb-1.5 flex items-start gap-1.5">
-        <CalendarClock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-kp-on-surface-variant/70" aria-hidden />
+      <div className="mb-1 flex items-start gap-1.5">
+        <CalendarClock className="mt-0.5 h-3 w-3 shrink-0 text-kp-on-surface-muted" aria-hidden />
         <div>
-          <h2 id="up-next-heading" className="text-sm font-semibold text-kp-on-surface">
+          <h2 id="up-next-heading" className="text-xs font-medium text-kp-on-surface">
             Up next
           </h2>
-          <p className="text-xs leading-snug text-kp-on-surface-variant">Upcoming</p>
+          <p className="text-[11px] leading-snug text-kp-on-surface-muted">After now</p>
         </div>
       </div>
       {rows.length === 0 ? (
@@ -1623,15 +1711,12 @@ export function RecentOutputsRailSection({
   const top = reports.slice(0, 4);
   const latest = top[0] ?? null;
   return (
-    <section
-      className={cn("rounded-lg border border-kp-outline/40 bg-kp-surface/40 px-3 py-2.5 sm:px-3.5", className)}
-      aria-labelledby="recent-outputs-heading"
-    >
-      <h2 id="recent-outputs-heading" className="text-xs font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+    <section className={cn("pb-1 pt-0.5", className)} aria-labelledby="recent-outputs-heading">
+      <h2 id="recent-outputs-heading" className="text-[11px] font-medium uppercase tracking-wide text-kp-on-surface-muted">
         Recent reports
       </h2>
       {latest ? (
-        <div className="mt-2 rounded-md border border-kp-outline/50 bg-kp-surface-high/20 px-2.5 py-2">
+        <div className="mt-2 rounded-md border border-kp-outline/25 bg-kp-surface-high/[0.08] px-2.5 py-2">
           <p className="text-[12px] font-medium text-kp-on-surface">Last open house</p>
           <p className="mt-0.5 text-[12px] text-kp-on-surface-muted">{latest.address}</p>
           <p className="mt-1 text-[11px] text-kp-on-surface-muted">
@@ -1692,32 +1777,14 @@ export function QuickActionsRailSection({
 }) {
   const signInHref =
     nextEvent?.kind === "open_house" ? `/open-houses/${nextEvent.id}/sign-in` : null;
-  const primaryAction: "drafts" | "sign-in" | "new-open-house" = hasDrafts
-    ? "drafts"
-    : signInHref
-      ? "sign-in"
-      : "new-open-house";
+  const primaryAction: "drafts" | "sign-in" = hasDrafts ? "drafts" : signInHref ? "sign-in" : "drafts";
   return (
-    <section className="rounded-lg border border-kp-outline/35 bg-kp-bg/[0.22] px-3 py-3 sm:px-3.5">
+    <section className="border-b border-kp-outline/20 pb-3 pt-0.5 sm:px-0">
       <div className="mb-1 flex items-center gap-1.5">
-        <ClipboardList className="h-3.5 w-3.5 text-kp-on-surface-muted" />
-        <h2 className="text-sm font-semibold text-kp-on-surface-muted">Quick actions</h2>
+        <ClipboardList className="h-3 w-3 text-kp-on-surface-muted" aria-hidden />
+        <h2 className="text-xs font-medium text-kp-on-surface-muted">Quick actions</h2>
       </div>
-      <div className="mt-2.5 flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn(
-            primaryAction === "new-open-house" ? kpBtnPrimary : kpBtnSecondary,
-            "h-7 px-2.5 text-[11px]"
-          )}
-          asChild
-        >
-          <Link href="/open-houses/new">
-            <PlusSquare className="mr-1 h-3.5 w-3.5" />
-            New open house
-          </Link>
-        </Button>
+      <div className="mt-2 flex flex-wrap gap-1.5">
         {signInHref ? (
           <Button
             variant="outline"

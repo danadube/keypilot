@@ -24,15 +24,14 @@ import {
   Search,
   X,
   BookmarkPlus,
-  Layers,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MetricCard } from "@/components/ui/metric-card";
+import { ShowingHQMetricsStrip } from "@/components/showing-hq/showing-hq-dashboard-action-sections";
+import { ShowingHqPageHeader } from "@/components/modules/showing-hq/showing-hq-page-header";
 import { SectionTabs } from "@/components/ui/section-tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { BrandTablePagination } from "@/components/ui/BrandTablePagination";
-import { DashboardContextStrip } from "@/components/dashboard/DashboardContextStrip";
 import {
   MAX_SHOWINGHQ_SAVED_VIEW_NAME_LENGTH,
   addSavedOpenHousesView,
@@ -652,65 +651,38 @@ export function OpenHousesListView() {
     });
   }
 
+  const metricsItems = [
+    {
+      key: "total",
+      label: "Total events",
+      value: loading ? "—" : String(openHouses.length),
+      hint:
+        !loading && openHouses.length > 0 && hasListFilters
+          ? "Matches filters"
+          : undefined,
+    },
+    {
+      key: "active",
+      label: "Active / upcoming",
+      value: loading ? "—" : String(activeOrUpcoming.length),
+      hint: liveEvents.length > 0 ? `${liveEvents.length} live` : undefined,
+    },
+    {
+      key: "visitors",
+      label: "Total visitors",
+      value: loading ? "—" : String(totalVisitors),
+      hint: totalVisitors === 0 && !loading ? "None yet" : undefined,
+    },
+  ];
+
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
-      <div className="flex flex-col gap-3 px-6 pb-3 pt-3 sm:flex-row sm:items-end sm:justify-between sm:px-8">
-        <DashboardContextStrip
-          className="min-w-0 flex-1 sm:max-w-2xl"
-          message="Create and manage public events — QR sign-in, visitors, and follow-ups per event."
-        />
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Link
-            href="/showing-hq/saved-views"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-kp-outline px-2.5 py-1.5 text-xs font-medium text-kp-on-surface-variant transition-colors hover:border-kp-outline/60 hover:text-kp-on-surface"
-          >
-            <Layers className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Saved views</span>
-          </Link>
-          <Link
-            href="/open-houses/sign-in"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-kp-outline px-2.5 py-1.5 text-xs font-medium text-kp-on-surface-variant transition-colors hover:border-kp-outline/60 hover:text-kp-on-surface"
-          >
-            <QrCode className="h-4 w-4" />
-            <span className="hidden sm:inline">Sign-in page</span>
-          </Link>
-          <Link
-            href="/open-houses/new"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-kp-gold px-3 py-1.5 text-xs font-semibold text-kp-bg transition-colors hover:bg-kp-gold-bright focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-gold focus-visible:ring-offset-2 focus-visible:ring-offset-kp-bg"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            New open house
-          </Link>
-        </div>
+      <div className="px-6 pb-2 pt-1 sm:px-8">
+        <ShowingHqPageHeader />
       </div>
 
-      <div className="grid gap-3 px-6 pb-4 sm:grid-cols-3 sm:px-8">
-        <MetricCard
-          label="Total events"
-          value={loading ? "—" : openHouses.length}
-          accent="gold"
-          sub={
-            !loading && openHouses.length > 0 && hasListFilters
-              ? "Matches address bar filters"
-              : undefined
-          }
-        />
-        <MetricCard
-          label="Active / upcoming"
-          value={loading ? "—" : activeOrUpcoming.length}
-          accent="teal"
-          sub={
-            liveEvents.length > 0
-              ? `${liveEvents.length} live right now`
-              : undefined
-          }
-        />
-        <MetricCard
-          label="Total visitors"
-          value={loading ? "—" : totalVisitors}
-          accent="default"
-          sub={totalVisitors === 0 && !loading ? "None captured yet" : undefined}
-        />
+      <div className="px-6 pb-3 sm:px-8">
+        <ShowingHQMetricsStrip items={metricsItems} />
       </div>
 
       {hasData && nextUp && <NextUpBanner event={nextUp} />}
