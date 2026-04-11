@@ -1265,7 +1265,7 @@ export function WhatNeedsAttentionSection({
 
   return (
     <section
-      className={cn("pb-1 pt-0.5", className)}
+      className={cn("min-w-0 pb-1 pt-0.5", className)}
       aria-labelledby="what-needs-attention-heading"
     >
       <div className="mb-3 flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between">
@@ -1420,6 +1420,7 @@ export function TodayScheduleSection({
   return (
     <section
       className={cn(
+        "min-w-0",
         support
           ? "border-t border-kp-outline/12 pt-3"
           : "border-b border-kp-outline/20 pb-3 pt-0.5 sm:pb-4",

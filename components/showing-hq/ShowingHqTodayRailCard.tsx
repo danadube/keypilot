@@ -35,7 +35,10 @@ export function ShowingHqTodayZone({
 }) {
   return (
     <section
-      className={cn("rounded-xl bg-kp-surface-high/[0.05] px-3 py-3.5 sm:px-4 sm:py-4", className)}
+      className={cn(
+        "relative min-w-0 overflow-x-hidden rounded-xl bg-kp-surface-high/[0.05] px-3 py-3.5 sm:px-4 sm:py-4",
+        className
+      )}
       aria-labelledby="showinghq-today-zone-heading"
     >
       <div className="mb-3 flex items-start gap-2.5">

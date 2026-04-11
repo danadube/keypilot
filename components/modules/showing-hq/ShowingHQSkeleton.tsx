@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
  */
 export function ShowingHQSkeleton() {
   return (
-    <div className="flex min-h-0 w-full flex-col bg-transparent">
+    <div className="relative flex min-h-0 w-full min-w-0 flex-col bg-transparent">
       {/* Page header row (title + actions live in layout; this mirrors content start) */}
       <div className="flex flex-wrap items-end justify-between gap-3 pb-3">
         <div className="space-y-2">

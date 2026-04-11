@@ -29,7 +29,6 @@ import { NewShowingScheduledBanner } from "@/components/showing-hq/new-showing-s
 import { UI_COPY } from "@/lib/ui-copy";
 import { ShowingHqTodayZone } from "@/components/showing-hq/ShowingHqTodayRailCard";
 import { ShowingHqPageHeader } from "@/components/modules/showing-hq/showing-hq-page-header";
-import { cn } from "@/lib/utils";
 
 // ── Types (mirrored from API) ───────────────────────────────────────────────
 
@@ -358,7 +357,7 @@ export function ShowingHQDashboardView() {
     : 0;
 
   return (
-    <div className="flex min-h-0 w-full flex-col bg-transparent">
+    <div className="relative flex min-h-0 w-full min-w-0 flex-col bg-transparent">
       <ShowingHqPageHeader className="pb-2 pt-0 md:pb-3" />
       <Suspense fallback={null}>
         <NewShowingScheduledBanner />
@@ -373,7 +372,7 @@ export function ShowingHQDashboardView() {
       />
 
       {/* Zone 2 — today (schedule + near-term; single operational block) */}
-      <div className="mt-5 sm:mt-6">
+      <div className="mt-5 min-w-0 sm:mt-6">
         <ShowingHqTodayZone
           todayScheduleRows={todayScheduleRows}
           upNextRows={upNextRows}
@@ -386,12 +385,7 @@ export function ShowingHQDashboardView() {
       </div>
 
       {/* Zone 3 — secondary / support */}
-      <div
-        className={cn(
-          "mt-6 space-y-5 border-t border-kp-outline/10 pt-6",
-          "text-kp-on-surface-variant"
-        )}
-      >
+      <div className="mt-6 min-w-0 space-y-5 border-t border-kp-outline/10 pt-6">
         {data.agentFollowUps === null ? (
           <section className="rounded-lg border border-amber-500/15 bg-amber-500/[0.03] px-3 py-3 sm:px-4">
             <p className="text-xs font-medium text-kp-on-surface">Person follow-ups</p>

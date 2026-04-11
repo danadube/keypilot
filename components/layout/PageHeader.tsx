@@ -32,13 +32,13 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        "bg-transparent pb-4 pt-1 md:pb-5 md:pt-1.5",
+        "min-w-0 bg-transparent pb-4 pt-1 md:pb-5 md:pt-1.5",
         className
       )}
     >
       <div
         className={cn(
-          "flex flex-col gap-2.5",
+          "flex min-w-0 flex-col gap-2.5",
           hasRight &&
             hasLeftContent &&
             "sm:flex-row sm:items-start sm:justify-between sm:gap-4",
@@ -102,7 +102,7 @@ export function PageHeaderActionsMenu({ children }: { children: React.ReactNode 
       </summary>
       <div
         className={cn(
-          "absolute right-0 z-[98] mt-1 hidden min-w-[12rem] rounded-lg border border-kp-outline bg-kp-surface py-1 shadow-lg",
+          "absolute right-0 z-40 mt-1 hidden min-w-[12rem] rounded-lg border border-kp-outline bg-kp-surface py-1 shadow-lg",
           "group-open:block"
         )}
         role="menu"
@@ -133,7 +133,7 @@ export function PageHeaderPrimaryAddMenu({ children }: { children: React.ReactNo
       </summary>
       <div
         className={cn(
-          "absolute right-0 z-[98] mt-1 hidden min-w-[12rem] rounded-lg border border-kp-outline bg-kp-surface py-1 shadow-lg",
+          "absolute right-0 z-40 mt-1 hidden min-w-[12rem] rounded-lg border border-kp-outline bg-kp-surface py-1 shadow-lg",
           "group-open:block"
         )}
         role="menu"
