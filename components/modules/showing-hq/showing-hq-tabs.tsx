@@ -47,16 +47,11 @@ export function ShowingHqTabBar({ className }: { className?: string }) {
   const activeId = getActiveShowingHqTabId(pathname);
 
   return (
-    <div
-      className={cn(
-        "border-b border-kp-outline px-6 pb-3",
-        className
-      )}
-    >
+    <div className={cn("border-b border-kp-outline/60 px-4 pb-2.5 md:px-5", className)}>
       <div
         role="tablist"
         aria-label="ShowingHQ workspace tabs"
-        className="flex flex-wrap items-end gap-6 md:gap-8"
+        className="flex flex-wrap items-end gap-5 md:gap-7"
       >
         {SHOWING_HQ_TAB_ITEMS.map((tab) => {
           const isActive = tab.id === activeId;
@@ -69,11 +64,11 @@ export function ShowingHqTabBar({ className }: { className?: string }) {
               prefetch={true}
               scroll={false}
               className={cn(
-                "relative inline-flex py-3 text-base transition-colors md:text-[15px]",
+                "relative inline-flex py-2.5 text-sm transition-colors md:text-[15px]",
                 "after:pointer-events-none after:absolute after:left-0 after:h-[2px] after:w-full after:transition-opacity after:duration-200",
                 isActive
-                  ? "font-semibold text-kp-on-surface after:bottom-[-6px] after:bg-kp-gold after:opacity-100"
-                  : "font-medium text-kp-on-surface-variant after:bottom-[-6px] after:bg-kp-outline after:opacity-0 hover:text-kp-on-surface hover:after:opacity-100"
+                  ? "font-semibold text-kp-on-surface after:bottom-[-5px] after:bg-kp-gold after:opacity-100"
+                  : "font-medium text-kp-on-surface-variant after:bottom-[-5px] after:bg-kp-outline/80 after:opacity-0 hover:text-kp-on-surface hover:after:opacity-100"
               )}
             >
               {tab.label}
@@ -95,32 +90,32 @@ export function ShowingHqWorkspaceChrome({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-0 flex-col gap-1.5">
-      <header className="overflow-hidden rounded-lg border border-kp-outline-variant bg-kp-surface">
+    <div className="flex min-h-0 flex-col gap-1">
+      <header className="overflow-hidden rounded-lg border border-kp-outline/50 bg-kp-surface-high/[0.04]">
         <ShowingHqTabBar />
-        <div className="flex flex-col gap-1.5 px-3.5 py-1.5 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-2">
-          <p className="text-sm leading-normal text-kp-on-surface-muted">
-            Switch areas. Saved views keep filters.
+        <div className="flex flex-col gap-1 px-3 py-1.5 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-1.5">
+          <p className="text-xs leading-snug text-kp-on-surface-muted">
+            Workspace areas below — saved views keep your filters.
           </p>
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
             <details className="group relative">
               <summary
                 className={cn(
-                  "flex cursor-pointer list-none items-center gap-1 rounded-lg border border-kp-outline bg-kp-surface-high px-2.5 py-1.5 text-xs font-medium text-kp-on-surface-variant transition-colors hover:text-kp-on-surface",
+                  "flex cursor-pointer list-none items-center gap-1 rounded-md border border-kp-outline/50 bg-transparent px-2 py-1 text-[11px] font-medium text-kp-on-surface-muted transition-colors hover:border-kp-outline/80 hover:text-kp-on-surface",
                   "[&::-webkit-details-marker]:hidden"
                 )}
               >
-                <Bookmark className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                <Bookmark className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
                 Saved views
                 <ChevronDown
-                  className="h-3.5 w-3.5 shrink-0 opacity-70 transition-transform group-open:rotate-180"
+                  className="h-3 w-3 shrink-0 opacity-60 transition-transform group-open:rotate-180"
                   aria-hidden
                 />
               </summary>
-              <div className="absolute right-0 z-30 mt-1 min-w-[12rem] rounded-lg border border-kp-outline bg-kp-surface py-1 shadow-lg">
+              <div className="absolute right-0 z-30 mt-1 min-w-[11rem] rounded-md border border-kp-outline/80 bg-kp-surface py-1 shadow-md">
                 <Link
                   href="/showing-hq/saved-views"
-                  className="block px-3 py-2 text-xs text-kp-on-surface hover:bg-kp-surface-high"
+                  className="block px-2.5 py-1.5 text-[11px] text-kp-on-surface hover:bg-kp-surface-high"
                 >
                   Manage saved views…
                 </Link>
@@ -130,22 +125,22 @@ export function ShowingHqWorkspaceChrome({
             <Link
               href="/showing-hq/showings/new"
               className={cn(
-                "inline-flex items-center gap-1 rounded-lg border border-kp-outline px-2.5 py-1.5 text-xs font-medium text-kp-on-surface transition-colors hover:bg-kp-surface-high",
+                "inline-flex items-center gap-1 rounded-md border border-kp-outline/60 px-2 py-1 text-[11px] font-medium text-kp-on-surface-variant transition-colors hover:border-kp-outline hover:bg-kp-surface-high/50 hover:text-kp-on-surface",
                 kpBtnSecondary
               )}
             >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
+              <Plus className="h-3 w-3" aria-hidden />
               Showing
             </Link>
             <Link
               href="/open-houses/new"
               className={cn(
-                "inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-kp-bg transition-colors hover:opacity-95",
+                "inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-kp-bg transition-colors hover:opacity-95",
                 kpBtnPrimary,
-                "border-transparent"
+                "border border-transparent"
               )}
             >
-              <Plus className="h-3.5 w-3.5" aria-hidden />
+              <Plus className="h-3 w-3" aria-hidden />
               Open house
             </Link>
           </div>

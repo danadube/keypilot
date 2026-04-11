@@ -645,20 +645,19 @@ export function ShowingHQMetricsStrip({
   return (
     <section
       className={cn(
-        "grid grid-cols-2 gap-2.5 rounded-lg border border-kp-outline-variant/60 bg-kp-surface-high/10 p-2.5 sm:grid-cols-4",
+        "grid grid-cols-2 gap-2 rounded-md border border-kp-outline/40 bg-kp-surface-high/[0.06] p-2 sm:grid-cols-4",
         className
       )}
       aria-label="ShowingHQ quick metrics"
     >
       {items.map((item) => (
-        <div
-          key={item.key}
-          className="rounded-md border border-kp-outline-variant/50 bg-kp-surface/50 px-2.5 py-2"
-        >
-          <p className="text-[11px] font-medium text-kp-on-surface-variant">{item.label}</p>
-          <p className="mt-0.5 text-lg font-bold tabular-nums text-kp-on-surface">{item.value}</p>
+        <div key={item.key} className="rounded-md px-2 py-1.5">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-kp-on-surface-muted">
+            {item.label}
+          </p>
+          <p className="mt-0.5 text-base font-semibold tabular-nums text-kp-on-surface">{item.value}</p>
           {item.hint ? (
-            <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-variant">{item.hint}</p>
+            <p className="mt-0.5 text-[10px] leading-snug text-kp-on-surface-muted">{item.hint}</p>
           ) : null}
         </div>
       ))}
@@ -1060,22 +1059,22 @@ export function ShowingHQCommandStrip({
 
   return (
     <header
-      className="w-full rounded-xl border border-kp-teal/60 bg-kp-surface-high/28 px-4 py-4 sm:px-5 sm:py-5"
+      className="w-full rounded-lg border border-kp-outline/55 bg-kp-surface-high/[0.08] px-4 py-3.5 sm:px-5 sm:py-4"
       aria-label="Next event and schedule stats"
     >
       {priorityLine ? (
-        <p className="mb-2.5 max-w-3xl text-sm font-semibold leading-snug text-kp-on-surface sm:text-[15px]">
+        <p className="mb-2 max-w-3xl text-sm font-medium leading-snug text-kp-on-surface sm:text-[15px]">
           {priorityLine}
         </p>
       ) : null}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
             Next event on deck
           </p>
           {nextEvent ? (
             <>
-              <h2 className="mt-0.5 truncate text-lg font-bold text-kp-on-surface sm:text-xl">
+              <h2 className="mt-0.5 truncate text-base font-semibold text-kp-on-surface sm:text-lg">
                 {nextEvent.address}
               </h2>
               <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-kp-on-surface-muted">
@@ -1126,7 +1125,7 @@ export function ShowingHQCommandStrip({
           )}
         </div>
       </div>
-      <p className="mt-2.5 text-sm leading-relaxed text-kp-on-surface-muted">
+      <p className="mt-2 text-xs leading-relaxed text-kp-on-surface-muted">
         <span className="font-medium tabular-nums text-kp-on-surface">{actionNowCount}</span> action now
         <span className="mx-1 text-kp-outline/40">•</span>
         <span className="font-medium tabular-nums text-kp-on-surface">{upcomingCount}</span> upcoming
@@ -1152,20 +1151,19 @@ export function WhatNeedsAttentionSection({
   return (
     <section
       className={cn(
-        "rounded-xl border-2 border-kp-outline/80 bg-kp-surface px-4 py-4 sm:px-5 sm:py-5",
-        "shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset]",
+        "rounded-lg border border-kp-outline/70 bg-kp-surface px-4 py-3.5 sm:px-5 sm:py-4",
         className
       )}
       aria-labelledby="what-needs-attention-heading"
     >
-      <div className="mb-4 border-b border-kp-outline/55 pb-3">
+      <div className="mb-3 border-b border-kp-outline/45 pb-2.5">
         <h2
           id="what-needs-attention-heading"
-          className="text-lg font-semibold tracking-tight text-kp-on-surface sm:text-xl"
+          className="text-base font-semibold tracking-tight text-kp-on-surface sm:text-lg"
         >
           What needs attention
         </h2>
-        <p className="mt-1.5 text-sm leading-relaxed text-kp-on-surface-variant">
+        <p className="mt-1 text-sm leading-snug text-kp-on-surface-muted">
           Priority work for showings and open houses.
         </p>
       </div>

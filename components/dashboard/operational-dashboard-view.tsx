@@ -3,22 +3,14 @@
 import { useMemo, useState, type ComponentType, type ReactNode } from "react";
 import useSWR from "swr";
 import Link from "next/link";
-import {
-  Building2,
-  Calendar,
-  CheckSquare,
-  Handshake,
-  MessageSquare,
-  Plus,
-  Users,
-} from "lucide-react";
+import { Building2, Calendar, CheckSquare, Handshake, MessageSquare, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { kpBtnSave } from "@/components/ui/kp-dashboard-button-tiers";
 import {
   PageHeader,
   PageHeaderActionItem,
   PageHeaderActionButton,
   PageHeaderActionsMenu,
+  PageHeaderPrimaryAddMenu,
 } from "@/components/layout/PageHeader";
 import {
   DashboardTodayCalendarScheduleGrid,
@@ -348,26 +340,19 @@ export function OperationalDashboardView() {
         actionsMenu={
           <PageHeaderActionsMenu>
             <PageHeaderActionItem href="/properties/new">Add property</PageHeaderActionItem>
-            <PageHeaderActionItem href="/transactions?new=1">New transaction</PageHeaderActionItem>
-            <PageHeaderActionItem href="/contacts?new=1">New contact</PageHeaderActionItem>
-            <PageHeaderActionItem href="/showing-hq/showings/new">New showing</PageHeaderActionItem>
-            <PageHeaderActionButton type="button" onClick={() => setNewTaskModalOpen(true)}>
-              New task
-            </PageHeaderActionButton>
+            <PageHeaderActionItem href="/task-pilot">Task Pilot</PageHeaderActionItem>
           </PageHeaderActionsMenu>
         }
         primaryAction={
-          <Link
-            href="/open-houses/new"
-            className={cn(
-              "inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-kp-bg transition-colors hover:opacity-95",
-              kpBtnSave,
-              "border-transparent"
-            )}
-          >
-            <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
-            Add open house
-          </Link>
+          <PageHeaderPrimaryAddMenu>
+            <PageHeaderActionItem href="/showing-hq/showings/new">New showing</PageHeaderActionItem>
+            <PageHeaderActionItem href="/open-houses/new">New open house</PageHeaderActionItem>
+            <PageHeaderActionButton type="button" onClick={() => setNewTaskModalOpen(true)}>
+              New task
+            </PageHeaderActionButton>
+            <PageHeaderActionItem href="/transactions?new=1">New transaction</PageHeaderActionItem>
+            <PageHeaderActionItem href="/contacts?new=1">New contact</PageHeaderActionItem>
+          </PageHeaderPrimaryAddMenu>
         }
       />
 

@@ -1,9 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import { kpBtnSecondary, kpBtnSave } from "@/components/ui/kp-dashboard-button-tiers";
 
 export type PageHeaderProps = {
   title: string;
@@ -68,6 +68,37 @@ export function PageHeaderActionsMenu({ children }: { children: React.ReactNode 
         Actions
         <ChevronDown
           className="h-3.5 w-3.5 shrink-0 opacity-70 transition-transform group-open:rotate-180"
+          aria-hidden
+        />
+      </summary>
+      <div
+        className={cn(
+          "absolute right-0 z-[98] mt-1 hidden min-w-[12rem] rounded-lg border border-kp-outline bg-kp-surface py-1 shadow-lg",
+          "group-open:block"
+        )}
+        role="menu"
+      >
+        {children}
+      </div>
+    </details>
+  );
+}
+
+const primaryAddSummaryClass = cn(
+  kpBtnSave,
+  "flex h-9 cursor-pointer list-none items-center gap-1.5 rounded-lg border border-transparent px-3 text-xs font-semibold text-kp-bg shadow-sm transition-colors hover:opacity-95",
+  "[&::-webkit-details-marker]:hidden"
+);
+
+/** Gold primary “+ Add” control — same panel pattern as `PageHeaderActionsMenu`. */
+export function PageHeaderPrimaryAddMenu({ children }: { children: React.ReactNode }) {
+  return (
+    <details className="group relative">
+      <summary className={primaryAddSummaryClass}>
+        <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        Add
+        <ChevronDown
+          className="h-3.5 w-3.5 shrink-0 opacity-80 transition-transform group-open:rotate-180"
           aria-hidden
         />
       </summary>

@@ -33,6 +33,7 @@ import {
 } from "@/components/showing-hq/ShowingHqAgentFollowUpsSection";
 import { UI_COPY } from "@/lib/ui-copy";
 import { ShowingHqTodayRailCard } from "@/components/showing-hq/ShowingHqTodayRailCard";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { cn } from "@/lib/utils";
 
 // ── Types (mirrored from API) ───────────────────────────────────────────────
@@ -408,6 +409,11 @@ export function ShowingHQDashboardView() {
 
   return (
     <div className="flex min-h-0 w-full flex-col bg-transparent">
+      <PageHeader
+        className="pb-3 pt-0 md:pb-4"
+        title="Workbench"
+        subtitle="Priority queue, today's schedule, and supporting rails — same tools, calmer layout."
+      />
       <ShowingHQCommandStrip
         nextEvent={nextEvent}
         upcomingCount={upcomingCount}
@@ -417,16 +423,16 @@ export function ShowingHQDashboardView() {
         formatTime={formatTime}
         priorityLine={priorityLine}
       />
-      <ShowingHQMetricsStrip className="mt-5 sm:mt-6" items={metricTiles} />
+      <ShowingHQMetricsStrip className="mt-4 sm:mt-5" items={metricTiles} />
 
       <div
         className={cn(
-          "mt-9 grid grid-cols-1 gap-6 sm:mt-10",
-          "lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,1fr)] lg:items-start lg:gap-x-8",
-          "xl:gap-x-9"
+          "mt-6 grid grid-cols-1 gap-5 sm:mt-7",
+          "lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,1fr)] lg:items-start lg:gap-x-7",
+          "xl:gap-x-8"
         )}
       >
-        <div className="flex min-w-0 flex-col gap-6 lg:gap-7">
+        <div className="flex min-w-0 flex-col gap-5 lg:gap-6">
           <WhatNeedsAttentionSection rows={workflowRows} />
           {data.agentFollowUps === null ? (
             <section className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3.5">
@@ -460,7 +466,7 @@ export function ShowingHQDashboardView() {
           ) : null}
         </div>
 
-        <aside className="flex min-w-0 flex-col gap-5">
+        <aside className="flex min-w-0 flex-col gap-4 lg:gap-5">
           <ShowingHqTodayRailCard
             showingsToday={stats.privateShowingsToday ?? 0}
             openHousesToday={openHousesTodayCount}
