@@ -51,8 +51,8 @@ export function PageHeader({
               <>
                 {titleTone ? (
                   <h1 className={titleHeadingClass}>
-                    <span className="text-kp-on-surface-variant">{titleTone[0]}</span>
-                    <span className="text-kp-on-surface">{titleTone[1]}</span>
+                    <span className="text-kp-on-surface">{titleTone[0]}</span>
+                    <span className="text-kp-teal">{titleTone[1]}</span>
                   </h1>
                 ) : (
                   <h1 className={cn(titleHeadingClass, "text-kp-on-surface")}>{title}</h1>

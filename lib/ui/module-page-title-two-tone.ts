@@ -1,6 +1,7 @@
 /**
- * Split labels for major module page titles — first segment quieter, second primary.
- * Used by {@link PageHeader} when `title` matches a key exactly.
+ * Split labels for major module page titles — first segment primary on-surface,
+ * second segment brand teal accent (see {@link PageHeader}).
+ * Used when `title` matches a key exactly.
  */
 export const MODULE_PAGE_TITLE_TWO_TONE: Readonly<
   Record<string, readonly [string, string]>
