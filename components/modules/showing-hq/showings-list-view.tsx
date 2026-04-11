@@ -747,10 +747,7 @@ export function ShowingsListView() {
         </div>
       ) : null}
       <div className="px-6 pb-2 pt-1 sm:px-8">
-        <ShowingHqPageHeader
-          title="Showings"
-          subtitle="Private appointments from Supra or manual entry — separate from public open houses."
-        />
+        <ShowingHqPageHeader />
       </div>
 
       {/* ── Review focus (summary strip) ───── */}

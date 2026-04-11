@@ -4,10 +4,7 @@ import { ShowingHqPageHeader } from "@/components/modules/showing-hq/showing-hq-
 export default function ShowingHQEmailDraftsPage() {
   return (
     <div className="flex flex-col gap-4">
-      <ShowingHqPageHeader
-        title="Email drafts"
-        subtitle="AI-generated visitor follow-up drafts and call reminders."
-      />
+      <ShowingHqPageHeader />
       <FollowUpsView />
     </div>
   );

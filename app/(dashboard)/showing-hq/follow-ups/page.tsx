@@ -4,10 +4,7 @@ import { ShowingHqPageHeader } from "@/components/modules/showing-hq/showing-hq-
 export default function ShowingHQFollowUpsPage() {
   return (
     <div className="flex flex-col gap-4">
-      <ShowingHqPageHeader
-        title="Follow-ups"
-        subtitle="Active tasks — overdue, due today, and coming up across open houses and showings."
-      />
+      <ShowingHqPageHeader />
       <FollowUpTasksView />
     </div>
   );

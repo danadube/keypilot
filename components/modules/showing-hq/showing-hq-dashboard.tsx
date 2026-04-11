@@ -407,11 +407,7 @@ export function ShowingHQDashboardView() {
 
   return (
     <div className="flex min-h-0 w-full flex-col bg-transparent">
-      <ShowingHqPageHeader
-        className="pb-2 pt-0 md:pb-3"
-        title="Workbench"
-        subtitle="Queue, calendar, and follow-ups in one place."
-      />
+      <ShowingHqPageHeader className="pb-2 pt-0 md:pb-3" />
       <ShowingHQPriorityStrip
         workflowRows={workflowRows}
         nextEvent={nextEvent}

@@ -235,10 +235,7 @@ export function VisitorsListView() {
 
   return (
     <div className="flex flex-col gap-4">
-      <ShowingHqPageHeader
-        title="Visitors"
-        subtitle="Sign-ins from open houses — follow-up and lead status."
-      />
+      <ShowingHqPageHeader />
       {/* Summary strip + filters */}
       <div className="border-b border-kp-outline/20 pb-4">
         <div className="flex flex-wrap items-center gap-4">

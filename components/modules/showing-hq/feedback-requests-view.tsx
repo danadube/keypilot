@@ -79,10 +79,7 @@ export function FeedbackRequestsView() {
 
   return (
     <div className="flex flex-col gap-4">
-      <ShowingHqPageHeader
-        title="Feedback"
-        subtitle="Visitor form requests and buyer-agent email drafts from showings."
-      />
+      <ShowingHqPageHeader />
       {buyerAgentDraftShowings.length > 0 && (
         <div className="border-b border-kp-outline/20 pb-4">
           <div className="mb-2">

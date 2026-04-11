@@ -1,8 +1,4 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
+import type { ReactNode } from "react";
 
 export const SHOWING_HQ_TAB_ITEMS = [
   { id: "showings", label: "Showings", href: "/showing-hq/showings" },
@@ -39,68 +35,40 @@ export function getActiveShowingHqTabId(pathname: string): ShowingHqTabId | null
   return null;
 }
 
-export function ShowingHqTabBar({ className }: { className?: string }) {
-  const pathname = usePathname() ?? "";
-  const activeId = getActiveShowingHqTabId(pathname);
+/**
+ * Short label for the current ShowingHQ surface (pathname-derived).
+ * Used as a quiet cue — not a page title.
+ */
+export function getShowingHqQuietViewLabel(pathname: string): string {
+  const base = (pathname.split("?")[0] ?? "").replace(/\/$/, "") || "/";
 
-  return (
-    <div
-      className={cn(
-        "flex flex-wrap items-end justify-between gap-x-4 gap-y-1 border-b border-kp-outline/25 pb-0",
-        className
-      )}
-    >
-      <div
-        role="tablist"
-        aria-label="ShowingHQ workspace tabs"
-        className="flex flex-wrap items-end gap-1 sm:gap-3"
-      >
-        {SHOWING_HQ_TAB_ITEMS.map((tab) => {
-          const isActive = tab.id === activeId;
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              role="tab"
-              aria-selected={isActive}
-              prefetch={true}
-              scroll={false}
-              className={cn(
-                "relative inline-flex py-1.5 text-xs transition-colors md:text-[13px]",
-                "after:pointer-events-none after:absolute after:left-0 after:h-px after:w-full after:transition-opacity after:duration-200",
-                isActive
-                  ? "font-medium text-kp-on-surface after:bottom-0 after:bg-kp-gold/90 after:opacity-100"
-                  : "font-normal text-kp-on-surface-muted after:bottom-0 after:bg-kp-outline/50 after:opacity-0 hover:text-kp-on-surface hover:after:opacity-100"
-              )}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
-      </div>
-      <Link
-        href="/showing-hq/saved-views"
-        className="shrink-0 py-1.5 text-[11px] font-normal text-kp-on-surface-muted underline-offset-4 transition-colors hover:text-kp-on-surface md:text-xs"
-      >
-        Manage saved views
-      </Link>
-    </div>
-  );
+  if (base === "/showing-hq") return "Overview";
+
+  if (base.startsWith("/showing-hq/follow-ups/drafts")) return "Email drafts";
+  if (base.startsWith("/showing-hq/follow-ups")) return "Follow-ups";
+
+  if (base.startsWith("/showing-hq/activity")) return "Activity";
+  if (base.startsWith("/showing-hq/analytics")) return "Analytics";
+  if (base.startsWith("/showing-hq/supra-inbox")) return "Supra inbox";
+  if (base.startsWith("/showing-hq/saved-views")) return "Saved views";
+
+  const tab = getActiveShowingHqTabId(pathname);
+  if (tab === "showings") return "Showings";
+  if (tab === "open-houses") return "Open houses";
+  if (tab === "visitors") return "Visitors";
+  if (tab === "feedback") return "Feedback";
+
+  return "ShowingHQ";
 }
 
 /**
- * ShowingHQ workspace chrome: lightweight tab navigation only.
- * Add / Actions live in ShowingHqPageHeader on each surface.
+ * Layout wrapper for /showing-hq/* and /open-houses/* — no extra top chrome;
+ * view switching lives in ShowingHqPageHeader Actions.
  */
 export function ShowingHqWorkspaceChrome({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
-  return (
-    <div className="flex min-h-0 flex-col gap-2">
-      <ShowingHqTabBar className="px-0 pt-0.5" />
-      <div className="min-h-0 flex-1">{children}</div>
-    </div>
-  );
+  return <>{children}</>;
 }

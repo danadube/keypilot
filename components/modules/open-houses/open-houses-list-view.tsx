@@ -678,10 +678,7 @@ export function OpenHousesListView() {
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
       <div className="px-6 pb-2 pt-1 sm:px-8">
-        <ShowingHqPageHeader
-          title="Open houses"
-          subtitle="Public events — QR sign-in, visitors, and follow-ups per event."
-        />
+        <ShowingHqPageHeader />
       </div>
 
       <div className="px-6 pb-3 sm:px-8">
