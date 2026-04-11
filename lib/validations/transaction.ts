@@ -9,7 +9,19 @@ const TransactionStatusEnum = z.enum([
   "FALLEN_APART",
 ]);
 
-const TransactionSideEnum = z.enum(["BUY", "SELL"]);
+export const TransactionKindEnum = z.enum(["SALE", "REFERRAL_RECEIVED"]);
+
+/** GET /api/v1/transactions list filters (all optional). */
+export const TransactionsListQuerySchema = z.object({
+  status: TransactionStatusEnum.optional(),
+  transactionKind: TransactionKindEnum.optional(),
+  brokerage: z.string().max(200).optional(),
+  q: z.string().max(200).optional(),
+  closingYear: z.coerce.number().int().min(1990).max(2100).optional(),
+});
+
+/** Loose JSON object for broker-specific commission assumptions (validated again in domain). */
+const CommissionInputsJsonSchema = z.record(z.string(), z.unknown()).optional().nullable();
 
 export const CreateTransactionSchema = z.object({
   // Accept any non-empty string — DB FK constraint handles invalid IDs.
@@ -18,40 +30,32 @@ export const CreateTransactionSchema = z.object({
   /** Optional CRM deal; API enforces same user and same property as this transaction. */
   dealId: z.string().uuid().optional(),
   status: TransactionStatusEnum.optional(),
-  /** Omit on import-created rows; API requires this for manual POST /transactions. */
-  side: TransactionSideEnum.optional(),
+  transactionKind: TransactionKindEnum.optional(),
+  primaryContactId: z.string().uuid().optional().nullable(),
+  externalSource: z.string().max(100).optional().nullable(),
+  externalSourceId: z.string().max(500).optional().nullable(),
   closingDate: z.coerce.date().optional().nullable(),
   salePrice: z.number().positive().optional().nullable(),
   brokerageName: z.string().max(200).optional().nullable(),
   notes: z.string().max(5000).optional().nullable(),
-  /** Optional single “base” commission line created with the transaction. */
-  baseCommissionAmount: z.number().positive().optional(),
+  commissionInputs: CommissionInputsJsonSchema,
 });
 
 export const UpdateTransactionSchema = z.object({
   /** Set to unlink; omit to leave unchanged. */
   dealId: z.string().uuid().nullable().optional(),
   status: TransactionStatusEnum.optional(),
-  side: TransactionSideEnum.nullable().optional(),
+  transactionKind: TransactionKindEnum.optional(),
+  primaryContactId: z.string().uuid().nullable().optional(),
+  externalSource: z.string().max(100).optional().nullable(),
+  externalSourceId: z.string().max(500).optional().nullable(),
   // z.coerce.date() accepts "2026-04-15" (plain date) and ISO datetime strings,
   // normalizing both to a Date object for Prisma. nullable() allows clearing the field.
   closingDate: z.coerce.date().optional().nullable(),
   salePrice: z.number().positive().optional().nullable(),
   brokerageName: z.string().max(200).optional().nullable(),
   notes: z.string().max(5000).optional().nullable(),
-  /**
-   * When there are zero or one commission lines, set/update that line.
-   * When multiple lines exist, API returns 400 — use commission endpoints instead.
-   */
-  baseCommissionAmount: z.number().positive().nullable().optional(),
-});
-
-export const ArchiveTransactionBodySchema = z.object({
-  archive: z.literal(true),
-});
-
-export const UnarchiveTransactionBodySchema = z.object({
-  unarchive: z.literal(true),
+  commissionInputs: CommissionInputsJsonSchema,
 });
 
 export const CreateCommissionSchema = z.object({
@@ -66,6 +70,14 @@ export const CreateCommissionSchema = z.object({
 
 export const UpdateCommissionSchema = CreateCommissionSchema.partial();
 
+export const ArchiveTransactionBodySchema = z.object({
+  archive: z.literal(true),
+});
+
+export const UnarchiveTransactionBodySchema = z.object({
+  unarchive: z.literal(true),
+});
+
 export const CreateTransactionChecklistItemSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(500),
   dueDate: z.coerce.date().optional().nullable(),
@@ -78,6 +90,8 @@ export const UpdateTransactionChecklistItemSchema = z.object({
   dueDate: z.coerce.date().optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
 });
+
+export type TransactionsListQuery = z.infer<typeof TransactionsListQuerySchema>;
 
 export type CreateTransactionInput = z.infer<typeof CreateTransactionSchema>;
 export type UpdateTransactionInput = z.infer<typeof UpdateTransactionSchema>;

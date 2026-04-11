@@ -7,19 +7,14 @@ import {
   responseIfDealIdUniqueViolation,
   transactionLinkedDealSelect,
 } from "@/lib/transaction-deal-link";
-import {
-  ArchiveTransactionBodySchema,
-  UnarchiveTransactionBodySchema,
-  UpdateTransactionSchema,
-} from "@/lib/validations/transaction";
+import { UpdateTransactionSchema } from "@/lib/validations/transaction";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
-import { recordTransactionActivity } from "@/lib/transactions/record-transaction-activity";
-import {
-  recordActivitiesForTransactionPatch,
-  type TxScalarSnapshot,
-} from "@/lib/transactions/transaction-patch-activities";
+import { mergeCommissionInputs } from "@/lib/transactions/commission-inputs";
+import { computeTransactionFinancials } from "@/lib/transactions/transaction-financials";
+import { assertPrimaryContactAccessible } from "@/lib/transactions/assert-primary-contact";
+import { serializeTransactionDecimals } from "@/lib/transactions/serialize-transaction";
 import type { Prisma } from "@prisma/client";
-import { applyBaseCommissionAmountForTransaction } from "@/lib/transactions/apply-base-commission";
+import type { TransactionKind } from "@prisma/client";
 
 const propertySelect = {
   id: true,
@@ -29,39 +24,11 @@ const propertySelect = {
   zip: true,
 } as const;
 
-const transactionDetailInclude = {
-  property: { select: propertySelect },
-  deal: { select: transactionLinkedDealSelect },
-  commissions: { orderBy: { createdAt: "asc" } },
-  committedImportSessions: {
-    select: {
-      id: true,
-      fileName: true,
-      selectedBrokerage: true,
-      detectedBrokerage: true,
-      parserProfile: true,
-      parserProfileVersion: true,
-      createdAt: true,
-    },
-    orderBy: { createdAt: "desc" },
-    take: 1,
-  },
-  _count: {
-    select: {
-      checklistItems: { where: { isComplete: false } },
-    },
-  },
+const primaryContactSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
 } as const;
-
-function jsonTransactionDetail(
-  row: Prisma.TransactionGetPayload<{ include: typeof transactionDetailInclude }>
-) {
-  const { _count, ...rest } = row;
-  return {
-    ...rest,
-    checklistIncompleteCount: _count.checklistItems,
-  };
-}
 
 export async function GET(
   _req: NextRequest,
@@ -77,13 +44,19 @@ export async function GET(
     const transaction = await withRLSContext(user.id, (tx) =>
       tx.transaction.findFirst({
         where: { id, userId: user.id },
-        include: transactionDetailInclude,
+        include: {
+          property: { select: propertySelect },
+          deal: { select: transactionLinkedDealSelect },
+          primaryContact: { select: primaryContactSelect },
+          commissions: { orderBy: { createdAt: "asc" } },
+        },
       })
     );
 
     if (!transaction) return apiError("Transaction not found", 404);
-
-    return NextResponse.json({ data: jsonTransactionDetail(transaction) });
+    return NextResponse.json({
+      data: { ...transaction, ...serializeTransactionDecimals(transaction) },
+    });
   } catch (e) {
     return apiErrorFromCaught(e);
   }
@@ -101,46 +74,6 @@ export async function PATCH(
     const { id } = await params;
 
     const body = await req.json();
-    const archiveParse = ArchiveTransactionBodySchema.safeParse(body);
-    const unarchiveParse = UnarchiveTransactionBodySchema.safeParse(body);
-
-    if (archiveParse.success || unarchiveParse.success) {
-      const transaction = await withRLSContext(user.id, async (tx) => {
-        const existing = await tx.transaction.findFirst({
-          where: { id, userId: user.id },
-          select: { id: true, deletedAt: true },
-        });
-        if (!existing) return null;
-
-        const row = await tx.transaction.update({
-          where: { id },
-          data: { deletedAt: archiveParse.success ? new Date() : null },
-          include: transactionDetailInclude,
-        });
-
-        if (archiveParse.success && !existing.deletedAt) {
-          await recordTransactionActivity(tx, {
-            transactionId: id,
-            actorUserId: user.id,
-            type: "TRANSACTION_UPDATED",
-            summary: "Archived transaction",
-          });
-        } else if (unarchiveParse.success && existing.deletedAt) {
-          await recordTransactionActivity(tx, {
-            transactionId: id,
-            actorUserId: user.id,
-            type: "TRANSACTION_UPDATED",
-            summary: "Restored transaction from archive",
-          });
-        }
-
-        return row;
-      });
-
-      if (!transaction) return apiError("Transaction not found", 404);
-      return NextResponse.json({ data: jsonTransactionDetail(transaction) });
-    }
-
     const parsed = UpdateTransactionSchema.safeParse(body);
     if (!parsed.success) {
       return apiError(parsed.error.issues[0]?.message ?? "Invalid input", 400);
@@ -152,13 +85,10 @@ export async function PATCH(
         select: {
           id: true,
           propertyId: true,
-          status: true,
-          side: true,
+          transactionKind: true,
           salePrice: true,
-          closingDate: true,
           brokerageName: true,
-          notes: true,
-          dealId: true,
+          commissionInputs: true,
         },
       });
       if (!existing) return null;
@@ -166,21 +96,35 @@ export async function PATCH(
       const {
         dealId: dealIdPatch,
         status,
-        side,
+        transactionKind: kindPatch,
+        primaryContactId: primaryPatch,
+        externalSource: extSrcPatch,
+        externalSourceId: extIdPatch,
         closingDate,
         salePrice,
         brokerageName,
         notes,
-        baseCommissionAmount,
+        commissionInputs: ciPatch,
       } = parsed.data;
 
       const data: Prisma.TransactionUncheckedUpdateInput = {};
-      if (side !== undefined) data.side = side;
       if (status !== undefined) data.status = status;
       if (closingDate !== undefined) data.closingDate = closingDate;
       if (salePrice !== undefined) data.salePrice = salePrice;
       if (brokerageName !== undefined) data.brokerageName = brokerageName;
       if (notes !== undefined) data.notes = notes;
+      if (kindPatch !== undefined) data.transactionKind = kindPatch;
+      if (extSrcPatch !== undefined) data.externalSource = extSrcPatch;
+      if (extIdPatch !== undefined) data.externalSourceId = extIdPatch;
+
+      if (primaryPatch !== undefined) {
+        if (primaryPatch === null) {
+          data.primaryContactId = null;
+        } else {
+          await assertPrimaryContactAccessible(tx, primaryPatch);
+          data.primaryContactId = primaryPatch;
+        }
+      }
 
       if (dealIdPatch !== undefined) {
         if (dealIdPatch === null) {
@@ -195,55 +139,53 @@ export async function PATCH(
         }
       }
 
-      const hasScalarUpdates = Object.keys(data).length > 0;
+      const nextKind = (kindPatch ?? existing.transactionKind) as TransactionKind;
+      const nextPrice =
+        salePrice !== undefined ? salePrice : existing.salePrice;
+      const nextBrokerage =
+        brokerageName !== undefined ? brokerageName : existing.brokerageName;
+      const nextCi = mergeCommissionInputs(
+        existing.commissionInputs,
+        ciPatch !== undefined ? ciPatch : undefined
+      );
 
-      if (hasScalarUpdates) {
-        const beforeSnapshot: TxScalarSnapshot = {
-          status: existing.status,
-          side: existing.side,
-          salePrice: existing.salePrice,
-          closingDate: existing.closingDate,
-          brokerageName: existing.brokerageName,
-          notes: existing.notes,
-          dealId: existing.dealId,
-        };
-
-        const updated = await tx.transaction.update({
-          where: { id },
-          data,
-          include: transactionDetailInclude,
-        });
-
-        const afterSnapshot: TxScalarSnapshot = {
-          status: updated.status,
-          side: updated.side,
-          salePrice: updated.salePrice,
-          closingDate: updated.closingDate,
-          brokerageName: updated.brokerageName,
-          notes: updated.notes,
-          dealId: updated.dealId,
-        };
-
-        await recordActivitiesForTransactionPatch(tx, {
-          transactionId: id,
-          actorUserId: user.id,
-          before: beforeSnapshot,
-          after: afterSnapshot,
-        });
-      }
-
-      if (baseCommissionAmount !== undefined) {
-        await applyBaseCommissionAmountForTransaction(tx, id, baseCommissionAmount);
-      }
-
-      return tx.transaction.findFirst({
-        where: { id, userId: user.id },
-        include: transactionDetailInclude,
+      const fin = computeTransactionFinancials({
+        transactionKind: nextKind,
+        salePrice: nextPrice,
+        brokerageName: nextBrokerage,
+        commissionInputsJson: nextCi,
       });
+      if (!fin.ok) {
+        throw Object.assign(new Error(fin.error), { status: 400 });
+      }
+
+      data.commissionInputs = fin.commissionInputs;
+      data.gci = fin.gci ?? undefined;
+      data.adjustedGci = fin.adjustedGci ?? undefined;
+      data.referralDollar = fin.referralDollar ?? undefined;
+      data.totalBrokerageFees = fin.totalBrokerageFees ?? undefined;
+      data.nci = fin.nci ?? undefined;
+      data.netVolume = fin.netVolume ?? undefined;
+
+      const include = {
+        property: { select: propertySelect },
+        deal: { select: transactionLinkedDealSelect },
+        primaryContact: { select: primaryContactSelect },
+        commissions: { orderBy: { createdAt: "asc" } as const },
+      };
+
+      const updated = await tx.transaction.update({
+        where: { id },
+        data,
+        include,
+      });
+      return updated;
     });
 
     if (!transaction) return apiError("Transaction not found", 404);
-    return NextResponse.json({ data: jsonTransactionDetail(transaction) });
+    return NextResponse.json({
+      data: { ...transaction, ...serializeTransactionDecimals(transaction) },
+    });
   } catch (e) {
     const uniqueResp = responseIfDealIdUniqueViolation(e);
     if (uniqueResp) return uniqueResp;
@@ -259,7 +201,7 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  req: NextRequest,
+  _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -268,12 +210,6 @@ export async function DELETE(
       return apiError("CRM features require Full CRM tier", 403);
     }
     const { id } = await params;
-    if (req.nextUrl.searchParams.get("force") !== "1") {
-      return apiError(
-        "Delete is permanent. Archive this transaction instead, or confirm permanent delete.",
-        409
-      );
-    }
 
     const deleted = await withRLSContext(user.id, async (tx) => {
       const existing = await tx.transaction.findFirst({

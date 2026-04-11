@@ -1,11 +1,15 @@
 import type { ComponentProps } from "react";
 import type { TransactionSide as TransactionSideEnum } from "@prisma/client";
 import Link from "next/link";
-import { ExternalLink, User } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import {
+  getProductionValueDisplay,
+  TRANSACTION_KIND_LABELS,
+} from "@/lib/transactions/production-list-value";
 
 // ── Types & labels ────────────────────────────────────────────────────────────
 
@@ -17,26 +21,43 @@ export type TxStatus =
   | "CLOSED"
   | "FALLEN_APART";
 
-/** Mirrors `transactionLinkedDealSelect` on GET /api/v1/transactions. */
-export type TransactionLinkedDealRow = {
-  id: string;
-  status: string;
-  contact: { id: string; firstName: string; lastName: string };
-};
+export type TxKind = "SALE" | "REFERRAL_RECEIVED";
 
 export type TxSide = "BUY" | "SELL";
+
+export const SIDE_LABELS: Record<TransactionSideEnum, string> = {
+  BUY: "Buy",
+  SELL: "Sell",
+};
+
+/** Short label for detail rails; em dash when unknown. */
+export function formatTransactionSideLabel(side: TxSide | null | undefined) {
+  if (side === "BUY") return "Buy";
+  if (side === "SELL") return "Sell";
+  return "—";
+}
 
 export type TransactionRow = {
   id: string;
   status: TxStatus;
-  /** Nullable until set on create/edit — URL `side=` filters on this field. */
-  side?: TransactionSideEnum | null;
-  deletedAt?: string | null;
+  transactionKind?: TxKind;
   salePrice: string | number | null;
   closingDate: string | null;
   brokerageName: string | null;
   notes: string | null;
   createdAt: string;
+  gci?: number | null;
+  adjustedGci?: number | null;
+  referralDollar?: number | null;
+  totalBrokerageFees?: number | null;
+  nci?: number | null;
+  netVolume?: number | null;
+  commissionInputs?: Record<string, unknown> | null;
+  primaryContact?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  } | null;
   property: {
     id: string;
     address1: string;
@@ -44,27 +65,7 @@ export type TransactionRow = {
     state: string;
     zip: string;
   };
-  deal?: TransactionLinkedDealRow | null;
 };
-
-export const SIDE_LABELS: Record<TransactionSideEnum, string> = {
-  BUY: "Buy",
-  SELL: "Sell",
-};
-
-/** Short label for tables and summaries; use em dash when unknown. */
-export function formatTransactionSideLabel(side: TxSide | null | undefined) {
-  if (side === "BUY") return "Buy";
-  if (side === "SELL") return "Sell";
-  return "—";
-}
-
-/** One-line copy for compact list rows when side is unset. */
-export function transactionSideSummaryLine(side: TxSide | null | undefined) {
-  if (side === "BUY") return "Buy side";
-  if (side === "SELL") return "Sell side";
-  return "Side not set";
-}
 
 export const STATUS_LABELS: Record<TxStatus, string> = {
   LEAD: "Lead",
@@ -126,24 +127,17 @@ export function formatDate(iso: string | null) {
   });
 }
 
-export const TH =
-  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted";
-export const TD = "px-4 py-3.5 text-sm";
-
+/** Fields required for “needs setup” / attention signals (aligned with production list inputs). */
 export type TransactionSetupGap = "salePrice" | "closingDate" | "brokerageName";
 
-export function getTransactionSetupGaps(t: Pick<TransactionRow, "salePrice" | "closingDate" | "brokerageName">) {
+export function getTransactionSetupGaps(
+  t: Pick<TransactionRow, "salePrice" | "closingDate" | "brokerageName">
+): TransactionSetupGap[] {
   const gaps: TransactionSetupGap[] = [];
   if (t.salePrice == null || t.salePrice === "") gaps.push("salePrice");
   if (!t.closingDate) gaps.push("closingDate");
   if (!t.brokerageName?.trim()) gaps.push("brokerageName");
   return gaps;
-}
-
-export function isTransactionNeedsSetup(
-  t: Pick<TransactionRow, "salePrice" | "closingDate" | "brokerageName">
-) {
-  return getTransactionSetupGaps(t).length > 0;
 }
 
 export function setupGapLabel(gap: TransactionSetupGap) {
@@ -157,16 +151,178 @@ export function setupGapLabel(gap: TransactionSetupGap) {
   }
 }
 
-export function getImportProvenance(notes: string | null | undefined) {
-  const match = /^Imported from statement \((.+)\)$/i.exec((notes ?? "").trim());
-  if (!match) return null;
-  return { sourceFile: match[1] };
+export const TH =
+  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
+export const TD = "px-4 py-3.5 text-sm";
+
+function salePriceToNumber(v: string | number | null | undefined): number | null {
+  if (v == null || v === "") return null;
+  const n = typeof v === "string" ? parseFloat(v) : v;
+  return Number.isFinite(n) ? n : null;
+}
+
+function formatProductionMoney(n: number) {
+  return n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+}
+
+/** Scan-first production row: address and context left, money right. */
+export function TransactionsProductionRow({
+  row: t,
+  onDeleted,
+}: {
+  row: TransactionRow;
+  onDeleted?: () => void;
+}) {
+  const kind = t.transactionKind ?? "SALE";
+  const money = getProductionValueDisplay({
+    transactionKind: kind,
+    salePrice: salePriceToNumber(t.salePrice),
+    gci: t.gci ?? null,
+    nci: t.nci ?? null,
+    commissionInputs: t.commissionInputs,
+  });
+
+  const pc = t.primaryContact;
+  const contactLine =
+    pc && [pc.firstName, pc.lastName].filter(Boolean).join(" ").trim();
+
+  const listPrice = salePriceToNumber(t.salePrice);
+
+  async function handleDelete() {
+    if (!onDeleted) return;
+    if (
+      !window.confirm(
+        "Delete this transaction permanently? This cannot be undone."
+      )
+    ) {
+      return;
+    }
+    const res = await fetch(`/api/v1/transactions/${t.id}`, { method: "DELETE" });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      window.alert(
+        json?.error?.message ?? "Could not delete transaction."
+      );
+      return;
+    }
+    onDeleted();
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6",
+        "bg-kp-surface transition-colors hover:bg-kp-surface-high/80"
+      )}
+    >
+      <div className="min-w-0 flex-1 space-y-2">
+        <div>
+          <Link
+            href={`/transactions/${t.id}`}
+            className="font-semibold text-kp-on-surface hover:text-kp-teal hover:underline"
+          >
+            {t.property.address1}
+          </Link>
+          <p className="text-xs text-kp-on-surface-variant">
+            {t.property.city}, {t.property.state} {t.property.zip}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge variant={statusBadgeVariant(t.status)}>
+            {STATUS_LABELS[t.status]}
+          </StatusBadge>
+          <span className="rounded-md border border-kp-outline-variant bg-kp-surface-high px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+            {TRANSACTION_KIND_LABELS[kind]}
+          </span>
+          {t.brokerageName ? (
+            <span
+              className="max-w-[200px] truncate text-[11px] text-kp-on-surface-variant"
+              title={t.brokerageName}
+            >
+              {t.brokerageName}
+            </span>
+          ) : null}
+        </div>
+        {contactLine && pc ? (
+          <p className="text-xs text-kp-on-surface-variant">
+            Contact:{" "}
+            <Link href={`/contacts/${pc.id}`} className="text-kp-teal hover:underline">
+              {contactLine}
+            </Link>
+          </p>
+        ) : null}
+        <p className="text-[11px] text-kp-on-surface-variant">
+          Close {formatDate(t.closingDate)}
+          {listPrice != null && listPrice > 0 ? ` · List ${formatMoney(t.salePrice)}` : null}
+        </p>
+      </div>
+
+      <div className="flex shrink-0 flex-col items-stretch gap-3 sm:items-end sm:text-right">
+        <div>
+          {money.type === "incomplete" ? (
+            <>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600/90 dark:text-amber-400/90">
+                Needs setup
+              </p>
+              <p className="mt-1 text-sm font-medium text-kp-on-surface">{money.message}</p>
+            </>
+          ) : money.type === "nci" ? (
+            <>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                Net (NCI)
+              </p>
+              <p className="mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-kp-on-surface">
+                {formatProductionMoney(money.amount)}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                Gross (GCI)
+              </p>
+              <p className="mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-kp-on-surface">
+                {formatProductionMoney(money.amount)}
+              </p>
+              <p className="mt-1 max-w-[220px] text-[11px] leading-snug text-amber-700/90 dark:text-amber-400/85 sm:ml-auto">
+                {money.hint}
+              </p>
+            </>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className={cn(kpBtnSecondary, "h-8 border px-3 text-xs")}
+            asChild
+          >
+            <Link href={`/transactions/${t.id}`} className="inline-flex items-center gap-1.5">
+              Open details
+              <ExternalLink className="h-3 w-3 opacity-70" />
+            </Link>
+          </Button>
+          {onDeleted ? (
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              className="h-8 rounded-lg px-2 text-xs text-kp-on-surface-variant underline-offset-2 hover:text-red-500 hover:underline"
+            >
+              Delete
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /** Full-width list table row (overview list). */
 export function TransactionsListTableRow({ row: t, index: i }: { row: TransactionRow; index: number }) {
-  const needsSetup = isTransactionNeedsSetup(t);
-  const importProvenance = getImportProvenance(t.notes);
   return (
     <tr
       className={cn(
@@ -175,94 +331,16 @@ export function TransactionsListTableRow({ row: t, index: i }: { row: Transactio
       )}
     >
       <td className={TD}>
-        <Link
-          href={`/properties/${t.property.id}`}
-          className="font-medium text-kp-on-surface hover:text-kp-teal hover:underline"
-        >
-          {t.property.address1}
-        </Link>
+        <p className="font-medium text-kp-on-surface">{t.property.address1}</p>
         <p className="text-xs text-kp-on-surface-variant">
           {t.property.city}, {t.property.state} {t.property.zip}
         </p>
-        <p className="mt-0.5 text-[11px] text-kp-on-surface-muted sm:hidden">
-          {transactionSideSummaryLine(t.side)}
-        </p>
-        {t.deal ? (
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-            <User className="h-3 w-3 shrink-0 text-kp-on-surface-muted" aria-hidden />
-            <Link
-              href={`/contacts/${t.deal.contact.id}`}
-              className="font-medium text-kp-teal hover:underline"
-            >
-              {[t.deal.contact.firstName, t.deal.contact.lastName].filter(Boolean).join(" ") || "Contact"}
-            </Link>
-            <span className="text-kp-on-surface-variant">·</span>
-            <Link href={`/deals/${t.deal.id}`} className="text-kp-on-surface-variant hover:text-kp-teal hover:underline">
-              CRM deal
-            </Link>
-          </div>
-        ) : (
-          <p className="mt-2 text-[11px] text-kp-on-surface-muted">
-            No CRM deal — add a contact link from the transaction detail.
-          </p>
-        )}
-        {t.deletedAt && (
-          <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-amber-300">
-            Archived
-          </p>
-        )}
-        {needsSetup && (
-          <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-rose-300">
-            Needs setup
-          </p>
-        )}
-        {importProvenance && (
-          <p
-            className="mt-1 max-w-[240px] truncate text-[11px] font-semibold uppercase tracking-wide text-kp-teal"
-            title={`Imported from statement (${importProvenance.sourceFile})`}
-          >
-            Imported statement
-          </p>
-        )}
-        <span className="mt-1 inline-flex flex-wrap items-center gap-2 sm:hidden">
+        <span className="mt-1 inline-block sm:hidden">
           <StatusBadge variant={statusBadgeVariant(t.status)}>{STATUS_LABELS[t.status]}</StatusBadge>
-          {t.side ? (
-            <span className="rounded-md border border-kp-outline bg-kp-surface-high px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-              {SIDE_LABELS[t.side]}
-            </span>
-          ) : null}
         </span>
       </td>
-      <td className={cn(TD, "hidden sm:table-cell tabular-nums text-kp-on-surface-variant")}>
-        {formatTransactionSideLabel(t.side)}
-      </td>
       <td className={cn(TD, "hidden sm:table-cell")}>
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge variant={statusBadgeVariant(t.status)}>{STATUS_LABELS[t.status]}</StatusBadge>
-          {t.side ? (
-            <span className="rounded-md border border-kp-outline bg-kp-surface-high px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-              {SIDE_LABELS[t.side]}
-            </span>
-          ) : null}
-          {t.deletedAt ? (
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-amber-300">
-              Archived
-            </span>
-          ) : null}
-          {needsSetup ? (
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-rose-300">
-              Needs setup
-            </span>
-          ) : null}
-          {importProvenance ? (
-            <span
-              className="max-w-[140px] truncate text-[11px] font-semibold uppercase tracking-wide text-kp-teal"
-              title={`Imported from statement (${importProvenance.sourceFile})`}
-            >
-              Imported
-            </span>
-          ) : null}
-        </div>
+        <StatusBadge variant={statusBadgeVariant(t.status)}>{STATUS_LABELS[t.status]}</StatusBadge>
       </td>
       <td className={cn(TD, "hidden tabular-nums text-kp-on-surface md:table-cell")}>
         {formatMoney(t.salePrice)}
@@ -298,30 +376,11 @@ export function PipelineTableRow({ row: t, index: i }: { row: TransactionRow; in
       )}
     >
       <td className={TD}>
-        <Link
-          href={`/properties/${t.property.id}`}
-          className="font-medium text-kp-on-surface hover:text-kp-teal hover:underline"
-        >
-          {t.property.address1}
-        </Link>
+        <p className="font-medium text-kp-on-surface">{t.property.address1}</p>
         <p className="text-xs text-kp-on-surface-variant">
           {t.property.city}, {t.property.state} {t.property.zip}
         </p>
-        {t.deal ? (
-          <p className="mt-1.5 text-[11px] text-kp-on-surface-variant">
-            <Link href={`/contacts/${t.deal.contact.id}`} className="text-kp-teal hover:underline">
-              {[t.deal.contact.firstName, t.deal.contact.lastName].filter(Boolean).join(" ")}
-            </Link>
-            <span className="text-kp-on-surface-muted"> · </span>
-            <Link href={`/deals/${t.deal.id}`} className="hover:text-kp-teal hover:underline">
-              Deal
-            </Link>
-          </p>
-        ) : (
-          <p className="mt-1.5 text-[11px] text-kp-on-surface-muted">No deal link</p>
-        )}
       </td>
-      <td className={cn(TD, "text-kp-on-surface-variant")}>{formatTransactionSideLabel(t.side)}</td>
       <td className={cn(TD, "tabular-nums text-kp-on-surface")}>{formatMoney(t.salePrice)}</td>
       <td className={cn(TD, "text-kp-on-surface-variant")}>{formatDate(t.closingDate)}</td>
       <td className={cn(TD, "text-right")}>

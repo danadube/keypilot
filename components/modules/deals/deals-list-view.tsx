@@ -1,8 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import useSWR from "swr";
-import { apiFetcher } from "@/lib/fetcher";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -20,7 +18,6 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { SectionTabs } from "@/components/ui/section-tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { CreateDealModal } from "./create-deal-modal";
-import { UI_COPY } from "@/lib/ui-copy";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -99,22 +96,32 @@ const ACTIVE_STAGES: DealStatus[] = ["INTERESTED", "SHOWING", "OFFER", "NEGOTIAT
 // ── Data fetching ─────────────────────────────────────────────────────────────
 
 function useDeals(statusFilter: StatusTabValue) {
-  const url =
-    statusFilter !== "__all__"
-      ? `/api/v1/deals?status=${encodeURIComponent(statusFilter)}`
-      : "/api/v1/deals";
+  const [deals, setDeals] = useState<Deal[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const { data, error: rawError, isLoading, mutate: reload } = useSWR<Deal[]>(
-    url,
-    apiFetcher,
-    { errorRetryCount: 2, errorRetryInterval: 500 }
-  );
+  function load(status: StatusTabValue) {
+    setError(null);
+    setLoading(true);
+    const url =
+      status !== "__all__"
+        ? `/api/v1/deals?status=${encodeURIComponent(status)}`
+        : "/api/v1/deals";
+    fetch(url)
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.error) setError(json.error.message);
+        else setDeals(json.data ?? []);
+      })
+      .catch(() => setError("Failed to load deals"))
+      .finally(() => setLoading(false));
+  }
 
-  const loading = isLoading && !data;
-  const error = rawError instanceof Error ? rawError.message : rawError ? String(rawError) : null;
-  const deals = data ?? [];
+  useEffect(() => {
+    load(statusFilter);
+  }, [statusFilter]);
 
-  return { deals, loading, error, reload };
+  return { deals, loading, error, reload: () => load(statusFilter) };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -163,7 +170,7 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
         onClick={onRetry}
         className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
       >
-        {UI_COPY.errors.retry}
+        Try again
       </button>
     </div>
   );
@@ -185,7 +192,7 @@ function EmptyState({ isFiltered, onReset }: { isFiltered: boolean; onReset: () 
           </>
         ) : (
           <>
-            <p className="text-sm font-medium text-kp-on-surface">{UI_COPY.empty.noneYet("deals")}</p>
+            <p className="text-sm font-medium text-kp-on-surface">No deals yet</p>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant">
               Deals link contacts and properties to track your transaction pipeline.
             </p>
@@ -223,7 +230,7 @@ function SearchInput({
         onChange={(e) => onChange(e.target.value)}
         className={cn(
           "h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high pl-8 pr-8",
-          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-placeholder",
+          "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
           "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
         )}
       />
@@ -243,7 +250,7 @@ function SearchInput({
 // ── Table ─────────────────────────────────────────────────────────────────────
 
 const TH =
-  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted";
+  "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
 const TD = "px-4 py-3.5 text-sm";
 
 function DealsTable({ deals }: { deals: Deal[] }) {
@@ -350,17 +357,23 @@ function DealsTable({ deals }: { deals: Deal[] }) {
  * Route: app/(dashboard)/deals/page.tsx
  */
 export function DealsListView() {
-  const router = useRouter();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<StatusTabValue>("__all__");
   const [search, setSearch] = useState("");
-  const createOpen = searchParams.get("new") === "1";
+  const [createOpen, setCreateOpen] = useState(false);
 
   // viewMode stub — "list" only for now; "kanban" deferred
   const [viewMode] = useState<"list" | "kanban">("list");
   void viewMode; // suppress unused warning until Kanban branch is added
 
   const { deals, loading, error, reload } = useDeals(statusFilter);
+
+  useEffect(() => {
+    if (searchParams.get("new") !== "1") return;
+    setCreateOpen(true);
+    router.replace("/deals", { scroll: false });
+  }, [searchParams, router]);
 
   // Client-side search on top of server-filtered results
   const visibleDeals = useMemo(() => {
@@ -393,24 +406,16 @@ export function DealsListView() {
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
       {/* ── Page header ─────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4 px-6 pb-4 pt-3 sm:px-8">
+      <div className="px-6 pb-4 pt-3 sm:px-8">
         <div>
           <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
             Deals
           </h1>
           <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-            Transaction pipeline — contacts linked to properties
+            Transaction pipeline — contacts linked to properties. Use{" "}
+            <span className="font-medium text-kp-on-surface">+ New</span> in the header to add a deal.
           </p>
         </div>
-        <button
-          onClick={() => router.replace("/deals?new=1", { scroll: false })}
-          className={cn(
-            "mt-0.5 shrink-0 rounded-lg bg-kp-gold px-3 py-1.5 text-xs font-semibold text-kp-bg",
-            "transition-colors hover:bg-kp-gold-bright"
-          )}
-        >
-          + New Deal
-        </button>
       </div>
 
       {/* ── Metric cards ─────────────────────────────────────────────────── */}
@@ -500,7 +505,7 @@ export function DealsListView() {
 
       <CreateDealModal
         open={createOpen}
-        onClose={() => router.replace("/deals", { scroll: false })}
+        onClose={() => setCreateOpen(false)}
       />
     </div>
   );
