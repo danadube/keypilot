@@ -636,27 +636,53 @@ export type DashboardMetricTile = {
 export function ShowingHQMetricsStrip({
   items,
   className,
+  emphasis = "default",
 }: {
   items: DashboardMetricTile[];
   className?: string;
+  /** `subdued` — lower contrast, less vertical space (secondary to priority strip). */
+  emphasis?: "default" | "subdued";
 }) {
   if (items.length === 0) return null;
+  const subdued = emphasis === "subdued";
   return (
     <section
       className={cn(
-        "grid grid-cols-2 gap-x-3 gap-y-1 border-b border-kp-outline/20 pb-3 sm:grid-cols-4",
+        "grid grid-cols-2 gap-x-3 sm:grid-cols-4",
+        subdued ? "gap-y-0 border-b border-kp-outline/15 pb-2" : "gap-y-1 border-b border-kp-outline/20 pb-3",
         className
       )}
       aria-label="ShowingHQ quick metrics"
     >
       {items.map((item) => (
-        <div key={item.key} className="min-w-0 px-0 py-0.5">
-          <p className="text-[10px] font-normal uppercase tracking-wide text-kp-on-surface-muted">
+        <div key={item.key} className={cn("min-w-0 px-0", subdued ? "py-0" : "py-0.5")}>
+          <p
+            className={cn(
+              "font-normal uppercase tracking-wide text-kp-on-surface-muted",
+              subdued ? "text-[9px] opacity-80" : "text-[10px]"
+            )}
+          >
             {item.label}
           </p>
-          <p className="mt-0.5 text-sm font-medium tabular-nums text-kp-on-surface">{item.value}</p>
+          <p
+            className={cn(
+              "mt-0.5 tabular-nums",
+              subdued
+                ? "text-xs font-normal text-kp-on-surface-muted"
+                : "text-sm font-medium text-kp-on-surface"
+            )}
+          >
+            {item.value}
+          </p>
           {item.hint ? (
-            <p className="mt-0.5 text-[10px] leading-snug text-kp-on-surface-muted">{item.hint}</p>
+            <p
+              className={cn(
+                "leading-snug text-kp-on-surface-muted",
+                subdued ? "mt-0 text-[9px] opacity-75" : "mt-0.5 text-[10px]"
+              )}
+            >
+              {item.hint}
+            </p>
           ) : null}
         </div>
       ))}
@@ -1022,7 +1048,87 @@ function formatShortDayAndTime(iso: string, formatTime: (s: string) => string): 
   return `${day} ${formatTime(iso)}`;
 }
 
-/** Operational context only — next event + counts (page title/date live in shell header). */
+/**
+ * Single top callout for ShowingHQ workbench: one headline, one support line, one CTA.
+ * Uses the highest-priority workflow row when present; otherwise next calendar event or empty-state.
+ */
+export function ShowingHQPriorityStrip({
+  workflowRows,
+  nextEvent,
+  priorityLine,
+  formatTime,
+}: {
+  workflowRows: WorkflowAttentionRow[];
+  nextEvent: {
+    id: string;
+    address: string;
+    at: string;
+    kind: "showing" | "open_house";
+  } | null;
+  priorityLine: string | null;
+  formatTime: (iso: string) => string;
+}) {
+  const top = workflowRows.length > 0 ? workflowRows[0] : null;
+
+  const eventHref =
+    nextEvent == null
+      ? null
+      : nextEvent.kind === "open_house"
+        ? openHouseWorkflowTabHref(nextEvent.id, "prep")
+        : showingWorkflowTabHref(nextEvent.id, "prep");
+
+  const eventKindShort = nextEvent?.kind === "open_house" ? "Open house" : "Private showing";
+
+  let headline: string;
+  let support: string;
+  let ctaHref: string;
+  let ctaLabel: string;
+
+  if (top) {
+    headline = top.primaryLine;
+    support = top.metaLine;
+    ctaHref = top.href;
+    ctaLabel = top.ctaLabel;
+  } else if (nextEvent && eventHref) {
+    headline = nextEvent.address;
+    support =
+      priorityLine ??
+      `${eventKindShort} · ${formatShortDayAndTime(nextEvent.at, formatTime)}`;
+    ctaHref = eventHref;
+    ctaLabel = "Finish prep";
+  } else {
+    headline = "You're caught up";
+    support =
+      priorityLine ??
+      "Nothing in your queue right now. Add a showing or open house when you're ready.";
+    ctaHref = "/showing-hq/showings/new";
+    ctaLabel = "New showing";
+  }
+
+  return (
+    <section className="border-b border-kp-outline/30 pb-3 pt-0.5" aria-labelledby="priority-strip-heading">
+      <h2
+        id="priority-strip-heading"
+        className="text-[13px] font-semibold leading-snug text-kp-on-surface sm:text-sm"
+      >
+        {headline}
+      </h2>
+      <p className="mt-1 max-w-3xl text-[11px] leading-snug text-kp-on-surface-muted sm:text-xs">{support}</p>
+      <div className="mt-2.5">
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(kpBtnPrimary, "h-8 px-3 text-[12px] font-semibold")}
+          asChild
+        >
+          <Link href={ctaHref}>{ctaLabel}</Link>
+        </Button>
+      </div>
+    </section>
+  );
+}
+
+/** Deprecated: workbench uses ShowingHQPriorityStrip. Kept for reference. */
 export function ShowingHQCommandStrip({
   nextEvent,
   upcomingCount,
@@ -1141,12 +1247,15 @@ export function ShowingHQCommandStrip({
 /** Primary queue — strongest surface on the page. */
 export function WhatNeedsAttentionSection({
   rows,
+  groups = ["action_now", "waiting"],
   className,
 }: {
   rows: WorkflowAttentionRow[];
+  /** Defaults to Do now + Waiting only; use `upcoming` when you need the full queue. */
+  groups?: WorkflowAttentionRow["queueGroup"][];
   className?: string;
 }) {
-  const groupOrder: WorkflowAttentionRow["queueGroup"][] = ["action_now", "waiting", "upcoming"];
+  const groupOrder = groups;
 
   return (
     <section
@@ -1160,13 +1269,12 @@ export function WhatNeedsAttentionSection({
         >
           What needs attention
         </h2>
-        <p className="mt-0.5 text-xs leading-snug text-kp-on-surface-muted">
-          Priority work for showings and open houses.
-        </p>
       </div>
       {rows.length === 0 ? (
         <div className="py-1">
-          <p className="text-xs font-normal leading-snug text-kp-on-surface-variant">Queue is clear.</p>
+          <p className="text-xs font-normal leading-snug text-kp-on-surface-variant">
+            Nothing in Do now or Waiting on others.
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -1261,6 +1369,10 @@ export function TodayScheduleSection({
   nextUp,
   formatTime,
   className,
+  /** Softer chrome for the lower workbench stack. */
+  tone = "default",
+  /** Hide the “upcoming after today” line when the overview rail already shows Up next. */
+  hideUpNextSummaryLine = false,
 }: {
   rows: TodayScheduleRow[];
   draftQueueCount: number;
@@ -1268,13 +1380,24 @@ export function TodayScheduleSection({
   nextUp: UpNextRow | null;
   formatTime: (iso: string) => string;
   className?: string;
+  tone?: "default" | "support";
+  hideUpNextSummaryLine?: boolean;
 }) {
+  const support = tone === "support";
   return (
     <section
-      className={cn("border-b border-kp-outline/20 pb-3 pt-0.5 sm:pb-4", className)}
+      className={cn(
+        support
+          ? "border-t border-kp-outline/12 pt-3"
+          : "border-b border-kp-outline/20 pb-3 pt-0.5 sm:pb-4",
+        className
+      )}
       aria-labelledby="today-schedule-heading"
     >
-      <h2 id="today-schedule-heading" className="text-xs font-medium text-kp-on-surface">
+      <h2
+        id="today-schedule-heading"
+        className={cn(support ? "text-[11px] font-medium text-kp-on-surface-muted" : "text-xs font-medium text-kp-on-surface")}
+      >
         Today&apos;s schedule
       </h2>
       <ul className="mt-2.5 border-l border-kp-outline/45 pl-3.5">
@@ -1300,20 +1423,22 @@ export function TodayScheduleSection({
             reply
           </p>
         </li>
-        <li className="relative border-t border-kp-outline/35 pt-2.5">
-          <span className="absolute -left-[15px] top-3 h-2 w-2 rounded-full bg-sky-400/80" aria-hidden />
-          <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
-            Upcoming after today
-          </p>
-          {nextUp ? (
-            <p className="mt-0.5 text-[12px] text-kp-on-surface">
-              {nextUp.kind === "open_house" ? "Open house" : "Private showing"} · {formatTime(nextUp.at)} ·{" "}
-              {nextUp.address}
+        {!hideUpNextSummaryLine ? (
+          <li className="relative border-t border-kp-outline/35 pt-2.5">
+            <span className="absolute -left-[15px] top-3 h-2 w-2 rounded-full bg-sky-400/80" aria-hidden />
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+              Upcoming after today
             </p>
-          ) : (
-            <p className="mt-0.5 text-[12px] text-kp-on-surface-muted">Nothing after today.</p>
-          )}
-        </li>
+            {nextUp ? (
+              <p className="mt-0.5 text-[12px] text-kp-on-surface">
+                {nextUp.kind === "open_house" ? "Open house" : "Private showing"} · {formatTime(nextUp.at)} ·{" "}
+                {nextUp.address}
+              </p>
+            ) : (
+              <p className="mt-0.5 text-[12px] text-kp-on-surface-muted">Nothing after today.</p>
+            )}
+          </li>
+        ) : null}
       </ul>
       {rows.length === 0 ? (
         <p className="mt-2.5 text-xs leading-relaxed text-kp-on-surface-variant sm:text-sm">
