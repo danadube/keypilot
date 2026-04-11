@@ -76,12 +76,8 @@ export function ContactActivityTimeline({
           </p>
         </div>
       ) : (
-        <ul className="relative space-y-0">
-          <span
-            className="pointer-events-none absolute bottom-2 left-[5.25rem] top-2 hidden w-px bg-kp-outline/50 sm:block"
-            aria-hidden
-          />
-          {activities.map((a, i) => {
+        <ul className="space-y-0">
+          {activities.map((a) => {
             const { label, colorClass } =
               a.activityType === "NOTE_ADDED" && a.body.startsWith("Record updated:")
                 ? { label: "Record update", colorClass: "text-kp-on-surface-variant" }
@@ -90,17 +86,24 @@ export function ContactActivityTimeline({
               <li
                 key={a.id}
                 className={cn(
-                  "relative flex flex-col gap-1 py-3.5 sm:flex-row sm:items-start sm:gap-4",
-                  i < activities.length - 1 && "border-b border-kp-outline/40"
+                  "border-b border-kp-outline/40 py-3.5 last:border-b-0",
+                  "flex flex-col gap-1.5 sm:grid sm:grid-cols-[88px_16px_minmax(0,1fr)] sm:items-stretch sm:gap-x-0 sm:gap-y-0"
                 )}
               >
                 <time
                   dateTime={a.occurredAt}
-                  className="shrink-0 text-xs tabular-nums text-kp-on-surface-variant sm:w-28 sm:pt-0.5"
+                  className="w-full shrink-0 text-xs tabular-nums text-kp-on-surface-variant sm:w-[88px] sm:max-w-[88px] sm:pt-0.5"
                 >
                   {formatContactDateTime(a.occurredAt)}
                 </time>
-                <div className="min-w-0 flex-1 sm:pl-2">
+                {/* Rail: dedicated middle column (desktop); line only here, not on content */}
+                <div
+                  className="hidden min-h-0 w-[16px] shrink-0 flex-col items-center self-stretch sm:flex"
+                  aria-hidden
+                >
+                  <div className="w-px flex-1 bg-kp-outline/50" />
+                </div>
+                <div className="min-w-0">
                   <span
                     className={cn(
                       "mb-0.5 block text-[10px] font-semibold uppercase tracking-wide",
@@ -109,7 +112,7 @@ export function ContactActivityTimeline({
                   >
                     {label}
                   </span>
-                  <p className="text-sm leading-snug text-kp-on-surface">{a.body}</p>
+                  <p className="break-words text-sm leading-snug text-kp-on-surface">{a.body}</p>
                 </div>
               </li>
             );
