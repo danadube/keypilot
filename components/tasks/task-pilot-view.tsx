@@ -5,11 +5,9 @@ import useSWR from "swr";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { apiFetcher } from "@/lib/fetcher";
-import { CheckSquare, ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { kpBtnPrimary } from "@/components/ui/kp-dashboard-button-tiers";
+import { ChevronDown } from "lucide-react";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
+import { TaskPilotPageHeader } from "@/components/platform/task-pilot-page-header";
 import { TaskPilotRow, type TaskRowBucket } from "@/components/tasks/task-pilot-row";
 import type { SerializedTask } from "@/lib/tasks/task-serialize";
 import {
@@ -197,18 +195,7 @@ export function TaskPilotView() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold text-kp-on-surface">TaskPilot</h1>
-          <p className="mt-0.5 text-sm leading-snug text-kp-on-surface-variant">
-            Fast checks, due times, and priority — without leaving the list.
-          </p>
-        </div>
-        <Button type="button" size="sm" className={cn(kpBtnPrimary)} onClick={() => setModalOpen(true)}>
-          <CheckSquare className="mr-1.5 h-4 w-4" />
-          New task
-        </Button>
-      </div>
+      <TaskPilotPageHeader onNewTask={() => setModalOpen(true)} />
 
       {payload ? <TaskPilotFilterBar matchCount={matchCount} /> : null}
 

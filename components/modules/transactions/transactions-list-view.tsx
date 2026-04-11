@@ -7,8 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, Loader2, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BrandTablePagination } from "@/components/ui/BrandTablePagination";
-import { Button } from "@/components/ui/button";
-import { kpBtnSave } from "@/components/ui/kp-dashboard-button-tiers";
 import { CreateTransactionModal } from "./create-transaction-modal";
 import {
   type TransactionRow,
@@ -202,7 +200,6 @@ export function TransactionsListView() {
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg">
       <TransactionsModuleHeader
-        subtitle="Overview — Closings, sale details, commission splits, and lifecycle state."
         summary={
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
             <div className="rounded-md border border-kp-outline/50 bg-kp-surface-high/[0.2] px-2.5 py-1.5">
@@ -222,18 +219,6 @@ export function TransactionsListView() {
               <p className="text-sm font-semibold tabular-nums text-amber-200/90">{summary.archived}</p>
             </div>
           </div>
-        }
-        actions={
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() =>
-              router.replace(buildTransactionsPageHref(listState, { keepNewModal: true }), { scroll: false })
-            }
-            className={cn(kpBtnSave, "h-9 border-transparent px-3 text-xs")}
-          >
-            + Add transaction
-          </Button>
         }
       />
 

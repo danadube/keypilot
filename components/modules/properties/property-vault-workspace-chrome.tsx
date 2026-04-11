@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { PropertyVaultPageHeader } from "@/components/platform/property-vault-page-header";
 import {
   KP_WORKSPACE_CHROME_BODY_GUTTER_CLASS,
   KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS,
@@ -62,7 +63,7 @@ export function PropertyVaultTabBar({ className }: { className?: string }) {
 }
 
 /**
- * PropertyVault workspace: module-level tabs + page body. Shell provides the module title.
+ * PropertyVault workspace: {@link PageHeader}, module tabs, then page body.
  */
 export function PropertyVaultWorkspaceChrome({
   children,
@@ -71,6 +72,9 @@ export function PropertyVaultWorkspaceChrome({
 }) {
   return (
     <div className="flex min-h-0 flex-col gap-1.5">
+      <div className={KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS}>
+        <PropertyVaultPageHeader className="pb-2 pt-0 md:pb-3" />
+      </div>
       <header
         className={cn(
           "overflow-hidden rounded-lg border border-kp-outline-variant bg-kp-surface",

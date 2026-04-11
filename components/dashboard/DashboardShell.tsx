@@ -12,7 +12,8 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { WorkspaceMainContextBar } from "@/components/dashboard/WorkspaceMainContextBar";
 import { cn } from "@/lib/utils";
 import { KP_APP_HEADER_HEIGHT_PX } from "@/lib/shell-top-bar";
-import { isShowingHQContext, isWorkspaceContext } from "@/lib/showing-hq/isShowingHQContext";
+import { isWorkspaceContext } from "@/lib/showing-hq/isShowingHQContext";
+import { hidesWorkspaceMainContextBar } from "@/lib/shell/hides-workspace-main-context-bar";
 
 const MOBILE_DRAWER_TRANSITION_MS = 200;
 
@@ -76,8 +77,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const base = (pathname.split("?")[0] ?? "").replace(/\/$/, "") || "/";
   const isCommandCenter = base === "/dashboard" || base === "/";
   const workspaceShell = isWorkspaceContext(pathname) && !isCommandCenter;
-  /** ShowingHQ uses in-page Actions + Add only — skip the module strip under the app header. */
-  const showWorkspaceMainContextBar = workspaceShell && !isShowingHQContext(pathname);
+  /** In-page {@link PageHeader} carries module identity — skip the duplicate module/date strip. */
+  const showWorkspaceMainContextBar = workspaceShell && !hidesWorkspaceMainContextBar(pathname);
   const [mobileNavOpen, setMobileNavOpen] = React.useState(false);
 
   React.useEffect(() => {
