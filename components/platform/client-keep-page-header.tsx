@@ -38,7 +38,9 @@ export function ClientKeepPageHeader({ className }: ClientKeepPageHeaderProps) {
     </PageHeaderActionsMenu>
   );
 
-  const actionsMenu = onContactDetail ? contactDetailActions : workspaceMenu;
+  /** On contact detail, prefer injected client Actions; until ready, keep Workspace so the header never loses a left control. */
+  const actionsMenu =
+    onContactDetail && contactDetailActions != null ? contactDetailActions : workspaceMenu;
 
   const primaryAction = (
     <Link href="/contacts?new=1" className={pageHeaderPrimaryCtaLinkClass}>
