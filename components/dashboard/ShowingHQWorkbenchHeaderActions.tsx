@@ -3,12 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useClerk, useUser } from "@clerk/nextjs";
-import { CheckSquare, ChevronDown, Plus } from "lucide-react";
-import { mutate as swrMutate } from "swr";
-import { Button } from "@/components/ui/button";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
-import { NewTaskModal } from "@/components/tasks/new-task-modal";
 
 const menuItemClass =
   "block w-full px-3 py-2 text-left text-xs text-kp-on-surface transition-colors hover:bg-kp-surface-high";
@@ -34,32 +30,22 @@ function buildAvatarCandidates(profile: BrandingProfile | null, clerkImageUrl: s
   return out;
 }
 
-type ShowingHQWorkbenchHeaderActionsProps = {
-  /** When false, only account avatar/name/menu render (hides + New). Defaults to true everywhere. */
-  showNewMenu?: boolean;
-};
-
-export function ShowingHQWorkbenchHeaderActions({
-  showNewMenu = true,
-}: ShowingHQWorkbenchHeaderActionsProps) {
-  const [newOpen, setNewOpen] = useState(false);
-  const [taskModalOpen, setTaskModalOpen] = useState(false);
+/** Account avatar + menu for the global app header (creation lives in page-level headers). */
+export function ShowingHQWorkbenchHeaderActions() {
   const [accountOpen, setAccountOpen] = useState(false);
   const [brandingProfile, setBrandingProfile] = useState<BrandingProfile | null>(null);
   const [avatarFailIndex, setAvatarFailIndex] = useState(0);
-  const newRef = useRef<HTMLDivElement>(null);
   const accountRef = useRef<HTMLDivElement>(null);
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
-      if (!newRef.current?.contains(e.target as Node)) setNewOpen(false);
       if (!accountRef.current?.contains(e.target as Node)) setAccountOpen(false);
     }
-    if (newOpen || accountOpen) document.addEventListener("mousedown", onDoc);
+    if (accountOpen) document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
-  }, [newOpen, accountOpen]);
+  }, [accountOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,102 +85,7 @@ export function ShowingHQWorkbenchHeaderActions({
     "Account";
 
   return (
-    <div className="flex shrink-0 items-center gap-2 md:gap-2">
-      {showNewMenu ? (
-        <div className="relative" ref={newRef}>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={cn(kpBtnSecondary, "h-7 gap-1 px-2.5 text-[11px] [&_svg]:h-3 [&_svg]:w-3")}
-            onClick={() => setNewOpen((o) => !o)}
-            aria-expanded={newOpen}
-            aria-haspopup="menu"
-          >
-            <Plus className="shrink-0" />
-            New
-            <ChevronDown className="shrink-0 opacity-70" />
-          </Button>
-          {newOpen ? (
-            <div
-              className="absolute right-0 top-full z-50 mt-1 min-w-[11rem] rounded-lg border border-kp-outline bg-kp-surface py-1 shadow-lg"
-              role="menu"
-            >
-              <Link
-                href="/showing-hq/showings/new"
-                className={menuItemClass}
-                role="menuitem"
-                onClick={() => setNewOpen(false)}
-              >
-                New Showing
-              </Link>
-              <Link
-                href="/open-houses/new"
-                className={menuItemClass}
-                role="menuitem"
-                onClick={() => setNewOpen(false)}
-              >
-                New Open House
-              </Link>
-              <Link
-                href="/transactions?new=1"
-                className={menuItemClass}
-                role="menuitem"
-                onClick={() => setNewOpen(false)}
-              >
-                New Transaction
-              </Link>
-              <Link
-                href="/deals?new=1"
-                className={menuItemClass}
-                role="menuitem"
-                onClick={() => setNewOpen(false)}
-              >
-                New Deal
-              </Link>
-              <Link
-                href="/properties/new"
-                className={menuItemClass}
-                role="menuitem"
-                onClick={() => setNewOpen(false)}
-              >
-                New Property
-              </Link>
-              <Link
-                href="/contacts?new=1"
-                className={menuItemClass}
-                role="menuitem"
-                onClick={() => setNewOpen(false)}
-              >
-                New Contact
-              </Link>
-              <button
-                type="button"
-                className={cn(menuItemClass, "flex w-full items-center gap-2")}
-                role="menuitem"
-                onClick={() => {
-                  setNewOpen(false);
-                  setTaskModalOpen(true);
-                }}
-              >
-                <CheckSquare className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-                New Task
-              </button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      <NewTaskModal
-        open={taskModalOpen}
-        onOpenChange={setTaskModalOpen}
-        defaultContactId={null}
-        defaultPropertyId={null}
-        initialTitle=""
-        initialDescription=""
-        onCreated={() => void swrMutate("/api/v1/tasks")}
-      />
-
+    <div className="flex shrink-0 items-center gap-2 md:gap-2.5">
       <div className="relative" ref={accountRef}>
         <button
           type="button"

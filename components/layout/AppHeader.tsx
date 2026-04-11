@@ -20,7 +20,8 @@ export type AppHeaderProps = {
 };
 
 /**
- * Full-width platform chrome above the sidebar — logo, search, notifications, help, New, account.
+ * Full-width platform chrome above the sidebar — logo, search, notifications, help, account.
+ * Creation flows use page-level PageHeader (Actions + Add), not the global bar.
  */
 export function AppHeader({ className, onOpenMobileNav }: AppHeaderProps) {
   return (
@@ -80,7 +81,7 @@ export function AppHeader({ className, onOpenMobileNav }: AppHeaderProps) {
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-0.5 md:gap-1.5">
+      <div className="flex shrink-0 items-center gap-1 md:gap-2">
         <button
           type="button"
           className="rounded-md p-2 text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-slate-100 md:p-2"
@@ -97,7 +98,7 @@ export function AppHeader({ className, onOpenMobileNav }: AppHeaderProps) {
         >
           <CircleHelp className="h-[18px] w-[18px]" />
         </Link>
-        <ShowingHQWorkbenchHeaderActions showNewMenu={true} />
+        <ShowingHQWorkbenchHeaderActions />
       </div>
     </header>
   );
