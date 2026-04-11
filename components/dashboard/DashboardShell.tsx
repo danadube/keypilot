@@ -40,11 +40,10 @@ function MobileDrawer({
 
   if (!show) return null;
 
-  /** Below global AppHeader (z-100) so menu, search, and account stay usable while open. */
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-[95] lg:hidden"
-      style={{ top: KP_APP_HEADER_HEIGHT_PX }}
+      style={{ top: `${KP_APP_HEADER_HEIGHT_PX}px` }}
     >
       <div
         className={cn(

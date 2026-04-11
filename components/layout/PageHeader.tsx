@@ -72,7 +72,10 @@ export function PageHeaderActionsMenu({ children }: { children: React.ReactNode 
         />
       </summary>
       <div
-        className="absolute right-0 z-40 mt-1 min-w-[12rem] rounded-lg border border-kp-outline bg-kp-surface py-1 shadow-lg"
+        className={cn(
+          "absolute right-0 z-40 mt-1 hidden min-w-[12rem] rounded-lg border border-kp-outline bg-kp-surface py-1 shadow-lg",
+          "group-open:block"
+        )}
         role="menu"
       >
         {children}
