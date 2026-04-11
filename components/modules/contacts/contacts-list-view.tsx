@@ -39,7 +39,13 @@ import {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type ContactStatus = "LEAD" | "CONTACTED" | "NURTURING" | "READY" | "LOST";
+type ContactStatus =
+  | "FARM"
+  | "LEAD"
+  | "CONTACTED"
+  | "NURTURING"
+  | "READY"
+  | "LOST";
 
 type Contact = {
   id: string;
@@ -61,6 +67,7 @@ function statusBadgeVariant(
   s: ContactStatus | null | undefined
 ): React.ComponentProps<typeof StatusBadge>["variant"] {
   switch (s) {
+    case "FARM":       return "draft";     // farm / pre-lead pool
     case "LEAD":       return "pending";   // gold — incoming potential
     case "CONTACTED":  return "upcoming";  // gold-bright — we've reached out
     case "NURTURING":  return "active";    // teal — actively engaged
@@ -72,6 +79,7 @@ function statusBadgeVariant(
 
 function statusLabel(s: ContactStatus | null | undefined): string {
   switch (s) {
+    case "FARM":       return "Farm";
     case "LEAD":       return "Lead";
     case "CONTACTED":  return "Contacted";
     case "NURTURING":  return "Nurturing";

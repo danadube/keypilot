@@ -20,6 +20,7 @@ import {
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { computeDetailLivePreview } from "@/lib/transactions/detail-financial-preview";
+import { parseOptionalFiniteNumberInput } from "@/lib/transactions/parse-optional-finite-number-input";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -404,14 +405,14 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
 
   const draftCommissionInputs = useMemo((): Record<string, unknown> => {
     const ci: Record<string, unknown> = {};
-    const pct = commissionPctInput.trim();
-    ci.commissionPct = pct ? parseFloat(pct) : null;
-    const rp = referralPctInput.trim();
-    ci.referralPct = rp ? parseFloat(rp) : null;
-    const rf = referralFeeReceivedInput.trim();
-    ci.referralFeeReceived = rf ? parseFloat(rf) : null;
-    const nciO = nciOverrideInput.trim();
-    ci.nci = nciO ? parseFloat(nciO) : null;
+    const pct = parseOptionalFiniteNumberInput(commissionPctInput);
+    ci.commissionPct = pct.invalid ? null : pct.value;
+    const rp = parseOptionalFiniteNumberInput(referralPctInput);
+    ci.referralPct = rp.invalid ? null : rp.value;
+    const rf = parseOptionalFiniteNumberInput(referralFeeReceivedInput);
+    ci.referralFeeReceived = rf.invalid ? null : rf.value;
+    const nciO = parseOptionalFiniteNumberInput(nciOverrideInput);
+    ci.nci = nciO.invalid ? null : nciO.value;
     return ci;
   }, [commissionPctInput, referralPctInput, referralFeeReceivedInput, nciOverrideInput]);
 
@@ -479,16 +480,22 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     const pc = primaryContactIdInput.trim();
     body.primaryContactId = pc ? pc : null;
 
-    const ci: Record<string, unknown> = {};
-    const pct = commissionPctInput.trim();
-    ci.commissionPct = pct ? parseFloat(pct) : null;
-    const rp = referralPctInput.trim();
-    ci.referralPct = rp ? parseFloat(rp) : null;
-    const rf = referralFeeReceivedInput.trim();
-    ci.referralFeeReceived = rf ? parseFloat(rf) : null;
-    const nciO = nciOverrideInput.trim();
-    ci.nci = nciO ? parseFloat(nciO) : null;
-    body.commissionInputs = ci;
+    const pct = parseOptionalFiniteNumberInput(commissionPctInput);
+    const rp = parseOptionalFiniteNumberInput(referralPctInput);
+    const rf = parseOptionalFiniteNumberInput(referralFeeReceivedInput);
+    const nciO = parseOptionalFiniteNumberInput(nciOverrideInput);
+    if (pct.invalid || rp.invalid || rf.invalid || nciO.invalid) {
+      setSaveError(
+        "Enter valid numbers for commission fields (or leave them blank)."
+      );
+      return;
+    }
+    body.commissionInputs = {
+      commissionPct: pct.value,
+      referralPct: rp.value,
+      referralFeeReceived: rf.value,
+      nci: nciO.value,
+    };
 
     setSaving(true);
     setSaveError(null);
