@@ -1,6 +1,5 @@
 "use client";
 
-import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   PageHeader,
@@ -10,7 +9,10 @@ import {
   PageHeaderPrimaryAddMenu,
 } from "@/components/layout/PageHeader";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
-import { getShowingHqQuietViewLabel } from "@/components/modules/showing-hq/showing-hq-tabs";
+
+const SHOWING_HQ_PAGE_TITLE = "ShowingHQ";
+const SHOWING_HQ_PAGE_SUBTITLE =
+  "Queue, calendar, and follow-ups in one place.";
 
 export type ShowingHqPageHeaderProps = {
   className?: string;
@@ -29,21 +31,18 @@ function ActionsMenuDivider() {
 }
 
 /**
- * ShowingHQ page chrome: quiet view label, Actions (views + tools), and Add.
+ * ShowingHQ page chrome: module title, Actions (views + tools), and Add.
  * Creation flows live under Add; navigation under Actions.
  */
 export function ShowingHqPageHeader({ className }: ShowingHqPageHeaderProps) {
-  const pathname = usePathname() ?? "";
-  const viewLabel = getShowingHqQuietViewLabel(pathname);
   const [newTaskModalOpen, setNewTaskModalOpen] = useState(false);
 
   return (
     <>
       <PageHeader
         className={className}
-        leading={
-          <p className="text-[11px] font-medium text-kp-on-surface-muted md:text-xs">{viewLabel}</p>
-        }
+        title={SHOWING_HQ_PAGE_TITLE}
+        subtitle={SHOWING_HQ_PAGE_SUBTITLE}
         actionsMenu={
           <PageHeaderActionsMenu>
             <ActionsMenuGroupLabel>Views</ActionsMenuGroupLabel>
