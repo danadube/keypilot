@@ -60,7 +60,7 @@ export function AppHeader({ className, onOpenMobileNav }: AppHeaderProps) {
         </Link>
 
         <div className="hidden min-h-0 min-w-0 flex-1 md:flex">
-          <div className="relative w-full max-w-2xl min-w-[12rem]">
+          <div className="relative w-full max-w-xl min-w-[11rem] sm:min-w-[12rem]">
             <Search
               className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"
               aria-hidden
