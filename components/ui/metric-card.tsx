@@ -10,7 +10,7 @@ interface MetricCardProps {
   /** Optional rendered in the bottom-right of the card */
   action?: React.ReactNode;
   accent?: MetricCardAccent;
-  /** Lighter, smaller treatment — e.g. list page KPI rows where the table is primary. */
+  /** Lighter, smaller treatment — e.g. list page KPI rows where the table is primary. Still uses `accent` for value color. */
   variant?: "default" | "compact";
   className?: string;
 }
@@ -34,6 +34,13 @@ export function MetricCard({
   className,
 }: MetricCardProps) {
   const compact = variant === "compact";
+  const valueAccentClass =
+    accent === "gold"
+      ? "text-kp-gold"
+      : accent === "teal"
+        ? "text-kp-teal"
+        : "text-kp-on-surface";
+
   return (
     <div
       className={cn(
@@ -59,13 +66,8 @@ export function MetricCard({
           className={cn(
             "font-semibold tabular-nums leading-none",
             compact
-              ? "mt-1 text-base text-kp-on-surface"
-              : cn(
-                  "mt-2 font-headline text-[2rem]",
-                  accent === "gold" && "text-kp-gold",
-                  accent === "teal" && "text-kp-teal",
-                  accent === "default" && "text-kp-on-surface"
-                )
+              ? cn("mt-1 text-base", valueAccentClass)
+              : cn("mt-2 font-headline text-[2rem]", valueAccentClass)
           )}
         >
           {value}
