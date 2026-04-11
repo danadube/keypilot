@@ -652,7 +652,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           href="/transactions"
           className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
         >
-          Back to TransactionHQ
+          Back to your deals
         </Link>
       </div>
     );
@@ -666,7 +666,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           className="inline-flex items-center gap-1.5 text-sm text-kp-on-surface-variant transition-colors hover:text-kp-teal"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          TransactionHQ
+          Your deals
         </Link>
 
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -701,8 +701,8 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
               <div>
                 <h2 className="text-sm font-semibold text-kp-on-surface">Financial workspace</h2>
                 <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-                  Enter the core deal economics — preview updates live. Save to persist what Production and
-                  reports use.
+                  Enter the core deal economics — preview updates live. Save so your deal list and reports stay
+                  accurate.
                 </p>
               </div>
             </div>

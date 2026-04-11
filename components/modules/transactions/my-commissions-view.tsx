@@ -89,7 +89,7 @@ export function MyCommissionsView() {
           <div>
             <p className="text-sm font-semibold text-kp-on-surface">Your assigned splits</p>
             <p className="text-xs text-kp-on-surface-variant">
-              Read-only — edits happen on each transaction&apos;s detail page.
+              Read-only — edits happen on each deal&apos;s detail page.
             </p>
           </div>
         </div>

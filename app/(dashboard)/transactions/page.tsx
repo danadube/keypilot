@@ -6,7 +6,7 @@ import { TransactionsListView } from "@/components/modules/transactions/transact
 export const metadata: Metadata = {
   title: "TransactionHQ | KeyPilot",
   description:
-    "Operational transaction management—net commission, status, deal context, and high-level production view.",
+    "TransactionHQ — net commission, deal status, and closing context in one place.",
 };
 
 function TransactionsListFallback() {

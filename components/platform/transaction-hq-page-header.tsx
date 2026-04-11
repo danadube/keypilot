@@ -12,15 +12,15 @@ import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import { useState } from "react";
 
 const DEFAULT_SUBTITLE =
-  "Closings, sale details, commission splits, and lifecycle state.";
+  "Your closings and referrals — net commission and deal status at a glance.";
 
 function subtitleForPath(pathname: string): string {
   const base = pathname.split("?")[0] ?? "";
   if (base.startsWith("/transactions/pipeline")) {
-    return "Pipeline — active closings by stage. Closed deals stay on the overview list.";
+    return "Active pipeline by stage — closed deals stay on the overview.";
   }
   if (base.startsWith("/transactions/commissions")) {
-    return "Your assigned commission lines — open the parent transaction for full context.";
+    return "Commission lines assigned to you — open a deal for full context.";
   }
   return DEFAULT_SUBTITLE;
 }
@@ -48,7 +48,7 @@ export function TransactionHqPageHeader({ className }: TransactionHqPageHeaderPr
         }
         primaryAction={
           <PageHeaderPrimaryAddMenu>
-            <PageHeaderActionItem href="/transactions?new=1">New transaction</PageHeaderActionItem>
+            <PageHeaderActionItem href="/transactions?new=1">New deal</PageHeaderActionItem>
             <PageHeaderActionButton type="button" onClick={() => setNewTaskOpen(true)}>
               New task
             </PageHeaderActionButton>

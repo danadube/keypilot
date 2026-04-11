@@ -2,22 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Banknote,
-  Search,
-  X,
-  AlertCircle,
-  Loader2,
-  LayoutDashboard,
-} from "lucide-react";
+import { Search, X, AlertCircle, Loader2, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { SectionTabs } from "@/components/ui/section-tabs";
 import { CreateTransactionModal } from "./create-transaction-modal";
 import {
   type TransactionRow,
   TransactionsProductionRow,
 } from "./transactions-shared";
 import { getProductionValueDisplay } from "@/lib/transactions/production-list-value";
+import { DealStatusFilterChips } from "./deal-status-filter-chips";
 
 const STATUS_TABS = [
   { label: "All", value: "__all__" },
@@ -108,9 +101,9 @@ function EmptyState({ isFiltered, onReset }: { isFiltered: boolean; onReset: () 
           </>
         ) : (
           <>
-            <p className="text-sm font-medium text-kp-on-surface">No transactions yet</p>
+            <p className="text-sm font-medium text-kp-on-surface">No deals yet</p>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-              Add a transaction to track production and commission.
+              Add a deal from the header to track commission and closing details.
             </p>
           </>
         )}
@@ -129,7 +122,7 @@ function EmptyState({ isFiltered, onReset }: { isFiltered: boolean; onReset: () 
 }
 
 /**
- * Production list — value-first scan of closings and referrals.
+ * TransactionHQ overview — value-first scan of closings and referrals.
  *
  * API: GET /api/v1/transactions?status=&transactionKind=&brokerage=&q=&closingYear=
  */
@@ -175,7 +168,7 @@ export function TransactionsListView() {
         if (json.error) setError(json.error.message ?? "Failed to load");
         else setRows(json.data ?? []);
       })
-      .catch(() => setError("Failed to load transactions"))
+      .catch(() => setError("Failed to load deals"))
       .finally(() => setLoading(false));
   }, [statusFilter, kindFilter, brokerageFilter, debouncedQ, closingYear]);
 
@@ -230,44 +223,29 @@ export function TransactionsListView() {
     setDebouncedQ("");
   }
 
-  const tabs = STATUS_TABS.map((t) => ({
+  const statusChipOptions = STATUS_TABS.map((t) => ({
     label: t.label,
     value: t.value,
   }));
 
   return (
-    <div className="min-h-full rounded-2xl bg-kp-bg">
-      <div className="px-6 pb-4 pt-3 sm:px-8">
-        <div>
-          <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
-            Production
-          </h1>
-          <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-            Scan net commission, spot gaps, open a deal when you need the breakdown. Use{" "}
-            <span className="font-medium text-kp-on-surface">+ New</span> in the header to add a transaction.
-          </p>
-        </div>
-      </div>
-
-      <div className="mx-6 mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
-        <div className="flex flex-col gap-3 border-b border-kp-outline px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-2">
-            <Banknote className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" />
-            <div>
-              <p className="text-sm font-semibold text-kp-on-surface">Your deals</p>
-              <p className="text-xs text-kp-on-surface-variant">
-                Filters run on the server; search includes address and linked contact name
-              </p>
-            </div>
+    <div className="min-h-full bg-kp-bg pb-10">
+      <div className="px-6 pt-1 sm:px-8">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-kp-on-surface">Your deals</h2>
+            <p className="mt-0.5 max-w-xl text-sm text-kp-on-surface-variant">
+              Filters run on the server. Search matches address, city, and linked contact name.
+            </p>
           </div>
           {showContent && rows.length > 0 ? (
-            <div className="text-right text-xs tabular-nums text-kp-on-surface-variant">
+            <div className="shrink-0 text-right text-xs tabular-nums text-kp-on-surface-variant">
               <p>
                 <span className="font-medium text-kp-on-surface">{summary.total}</span> shown
                 {summary.withNci > 0 ? (
                   <>
                     {" "}
-                    ·{" "}
+                    · Net{" "}
                     <span className="font-medium text-kp-on-surface">
                       {summary.nciTotal.toLocaleString("en-US", {
                         style: "currency",
@@ -275,7 +253,7 @@ export function TransactionsListView() {
                         maximumFractionDigits: 0,
                       })}
                     </span>{" "}
-                    net (NCI) across {summary.withNci} with net
+                    on {summary.withNci} deal{summary.withNci === 1 ? "" : "s"}
                   </>
                 ) : null}
               </p>
@@ -287,110 +265,111 @@ export function TransactionsListView() {
             </div>
           ) : null}
         </div>
+      </div>
 
+      <div className="mx-6 mt-6 space-y-6 sm:mx-8">
         {showContent && (rows.length > 0 || isFiltered) ? (
-          <div className="border-b border-kp-outline px-5">
-            <SectionTabs
-              tabs={tabs}
+          <div className="space-y-4">
+            <DealStatusFilterChips
+              options={statusChipOptions}
               active={statusFilter}
               onChange={(v) => setStatusFilter(v as StatusTabValue)}
+              ariaLabel="Filter deals by status"
             />
-          </div>
-        ) : null}
 
-        {showContent && (rows.length > 0 || isFiltered) ? (
-          <div className="space-y-3 border-b border-kp-outline-variant px-5 py-3">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-kp-on-surface-variant" />
-              <input
-                type="text"
-                placeholder="Search address, city, or contact name…"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className={cn(
-                  "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high pl-8 pr-8",
-                  "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
-                  "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                )}
-              />
-              {searchInput ? (
-                <button
-                  type="button"
-                  onClick={() => setSearchInput("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-kp-on-surface-variant hover:text-kp-on-surface"
-                  aria-label="Clear search"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-              <div className="w-full sm:w-auto sm:min-w-[140px]">
-                <label
-                  htmlFor="prod-kind"
-                  className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
-                >
-                  Kind
-                </label>
-                <select
-                  id="prod-kind"
-                  value={kindFilter}
-                  onChange={(e) => setKindFilter(e.target.value as KindFilter)}
-                  className={cn(
-                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
-                    "text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                  )}
-                >
-                  {KIND_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="w-full sm:w-auto sm:min-w-[160px]">
-                <label
-                  htmlFor="prod-year"
-                  className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
-                >
-                  Closing year
-                </label>
-                <select
-                  id="prod-year"
-                  value={closingYear}
-                  onChange={(e) => setClosingYear(e.target.value)}
-                  className={cn(
-                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
-                    "text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                  )}
-                >
-                  {yearOpts.map((o) => (
-                    <option key={o.value || "any"} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="w-full flex-1 sm:min-w-[200px]">
-                <label
-                  htmlFor="prod-brokerage"
-                  className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
-                >
-                  Brokerage contains
-                </label>
+            <div className="space-y-3">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-kp-on-surface-variant" />
                 <input
-                  id="prod-brokerage"
                   type="text"
-                  value={brokerageFilter}
-                  onChange={(e) => setBrokerageFilter(e.target.value)}
-                  placeholder="e.g. KW"
+                  placeholder="Search address, city, or contact…"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className={cn(
-                    "h-9 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
-                    "text-kp-on-surface placeholder:text-kp-on-surface-variant",
-                    "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                    "h-9 w-full rounded-lg border border-kp-outline/90 bg-kp-surface-high pl-8 pr-8",
+                    "text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                    "transition-colors focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
                   )}
                 />
+                {searchInput ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearchInput("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-kp-on-surface-variant hover:text-kp-on-surface"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                ) : null}
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+                <div className="w-full sm:w-auto sm:min-w-[140px]">
+                  <label
+                    htmlFor="prod-kind"
+                    className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                  >
+                    Kind
+                  </label>
+                  <select
+                    id="prod-kind"
+                    value={kindFilter}
+                    onChange={(e) => setKindFilter(e.target.value as KindFilter)}
+                    className={cn(
+                      "h-9 w-full rounded-lg border border-kp-outline/90 bg-kp-surface-high px-3 text-sm",
+                      "text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                    )}
+                  >
+                    {KIND_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="w-full sm:w-auto sm:min-w-[160px]">
+                  <label
+                    htmlFor="prod-year"
+                    className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                  >
+                    Closing year
+                  </label>
+                  <select
+                    id="prod-year"
+                    value={closingYear}
+                    onChange={(e) => setClosingYear(e.target.value)}
+                    className={cn(
+                      "h-9 w-full rounded-lg border border-kp-outline/90 bg-kp-surface-high px-3 text-sm",
+                      "text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                    )}
+                  >
+                    {yearOpts.map((o) => (
+                      <option key={o.value || "any"} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="w-full flex-1 sm:min-w-[200px]">
+                  <label
+                    htmlFor="prod-brokerage"
+                    className="mb-1 block text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
+                  >
+                    Brokerage contains
+                  </label>
+                  <input
+                    id="prod-brokerage"
+                    type="text"
+                    value={brokerageFilter}
+                    onChange={(e) => setBrokerageFilter(e.target.value)}
+                    placeholder="e.g. KW"
+                    className={cn(
+                      "h-9 w-full rounded-lg border border-kp-outline/90 bg-kp-surface-high px-3 text-sm",
+                      "text-kp-on-surface placeholder:text-kp-on-surface-variant",
+                      "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                    )}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -403,7 +382,7 @@ export function TransactionsListView() {
         ) : rows.length === 0 ? (
           <EmptyState isFiltered={isFiltered} onReset={handleClearFilters} />
         ) : (
-          <div className="divide-y divide-kp-outline-variant">
+          <div className="flex flex-col gap-4">
             {rows.map((t) => (
               <TransactionsProductionRow key={t.id} row={t} onDeleted={load} />
             ))}

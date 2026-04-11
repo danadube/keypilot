@@ -516,7 +516,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
       onClose();
       router.push(`/transactions/${id}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create transaction");
+      toast.error(err instanceof Error ? err.message : "Failed to create deal");
       setSubmitting(false);
     }
   }
@@ -593,7 +593,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
         <div className="flex items-start justify-between border-b border-kp-outline px-6 py-5">
           <div>
             <h2 id="create-transaction-title" className="font-headline text-lg font-semibold text-kp-on-surface">
-              New transaction
+              New deal
             </h2>
             <p className="mt-0.5 text-sm text-kp-on-surface-variant">
               Manual entry or statement import. Everything stays editable.

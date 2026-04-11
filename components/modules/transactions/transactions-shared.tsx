@@ -1,15 +1,24 @@
+"use client";
+
 import type { ComponentProps } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TransactionSide as TransactionSideEnum } from "@prisma/client";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import {
+  getDealCardCommissionSubline,
   getProductionValueDisplay,
   TRANSACTION_KIND_LABELS,
 } from "@/lib/transactions/production-list-value";
+import {
+  getTransactionSetupGaps,
+  setupGapLabel,
+  type TransactionSetupGap,
+} from "@/lib/transactions/transaction-setup-gaps";
 
 // ── Types & labels ────────────────────────────────────────────────────────────
 
@@ -127,29 +136,8 @@ export function formatDate(iso: string | null) {
   });
 }
 
-/** Fields required for “needs setup” / attention signals (aligned with production list inputs). */
-export type TransactionSetupGap = "salePrice" | "closingDate" | "brokerageName";
-
-export function getTransactionSetupGaps(
-  t: Pick<TransactionRow, "salePrice" | "closingDate" | "brokerageName">
-): TransactionSetupGap[] {
-  const gaps: TransactionSetupGap[] = [];
-  if (t.salePrice == null || t.salePrice === "") gaps.push("salePrice");
-  if (!t.closingDate) gaps.push("closingDate");
-  if (!t.brokerageName?.trim()) gaps.push("brokerageName");
-  return gaps;
-}
-
-export function setupGapLabel(gap: TransactionSetupGap) {
-  switch (gap) {
-    case "salePrice":
-      return "sale price";
-    case "closingDate":
-      return "closing date";
-    case "brokerageName":
-      return "brokerage";
-  }
-}
+export type { TransactionSetupGap };
+export { getTransactionSetupGaps, setupGapLabel };
 
 export const TH =
   "px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant";
@@ -169,7 +157,76 @@ function formatProductionMoney(n: number) {
   });
 }
 
-/** Scan-first production row: address and context left, money right. */
+function DealRowActionsMenu({
+  dealHref,
+  onDelete,
+}: {
+  dealHref: string;
+  onDelete?: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDocMouseDown(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, [open]);
+
+  return (
+    <div className="relative shrink-0" ref={wrapRef}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label="Deal actions"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-kp-outline/80",
+          "text-kp-on-surface-variant transition-colors hover:border-kp-outline hover:bg-kp-surface-high hover:text-kp-on-surface"
+        )}
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className="absolute right-0 top-full z-20 mt-1 min-w-[180px] rounded-lg border border-kp-outline bg-kp-surface py-1 shadow-lg"
+        >
+          <Link
+            role="menuitem"
+            href={dealHref}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-kp-on-surface hover:bg-kp-surface-high"
+            onClick={() => setOpen(false)}
+          >
+            Open deal
+            <ExternalLink className="h-3.5 w-3.5 opacity-60" />
+          </Link>
+          {onDelete ? (
+            <button
+              role="menuitem"
+              type="button"
+              className="w-full px-3 py-2 text-left text-sm text-red-500 hover:bg-kp-surface-high"
+              onClick={() => {
+                setOpen(false);
+                void onDelete();
+              }}
+            >
+              Delete deal…
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Scan-first deal row: address and context left, commission block right. */
 export function TransactionsProductionRow({
   row: t,
   onDeleted,
@@ -186,6 +243,21 @@ export function TransactionsProductionRow({
     commissionInputs: t.commissionInputs,
   });
 
+  const subline = getDealCardCommissionSubline(
+    {
+      transactionKind: kind,
+      salePrice: salePriceToNumber(t.salePrice),
+      gci: t.gci ?? null,
+      nci: t.nci ?? null,
+      commissionInputs: t.commissionInputs,
+    },
+    money
+  );
+
+  const setupGaps = getTransactionSetupGaps(t);
+  const showSetupBanner =
+    setupGaps.length > 0 || money.type === "gci" || (money.type === "incomplete" && setupGaps.length > 0);
+
   const pc = t.primaryContact;
   const contactLine =
     pc && [pc.firstName, pc.lastName].filter(Boolean).join(" ").trim();
@@ -194,19 +266,13 @@ export function TransactionsProductionRow({
 
   async function handleDelete() {
     if (!onDeleted) return;
-    if (
-      !window.confirm(
-        "Delete this transaction permanently? This cannot be undone."
-      )
-    ) {
+    if (!window.confirm("Delete this deal permanently? This cannot be undone.")) {
       return;
     }
     const res = await fetch(`/api/v1/transactions/${t.id}`, { method: "DELETE" });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      window.alert(
-        json?.error?.message ?? "Could not delete transaction."
-      );
+      window.alert(json?.error?.message ?? "Could not delete deal.");
       return;
     }
     onDeleted();
@@ -215,27 +281,30 @@ export function TransactionsProductionRow({
   return (
     <div
       className={cn(
-        "flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6",
-        "bg-kp-surface transition-colors hover:bg-kp-surface-high/80"
+        "flex flex-col gap-4 rounded-2xl bg-kp-surface p-5 sm:flex-row sm:items-start sm:justify-between sm:gap-6",
+        "transition-colors hover:bg-kp-surface-high/50"
       )}
     >
-      <div className="min-w-0 flex-1 space-y-2">
-        <div>
-          <Link
-            href={`/transactions/${t.id}`}
-            className="font-semibold text-kp-on-surface hover:text-kp-teal hover:underline"
-          >
-            {t.property.address1}
-          </Link>
-          <p className="text-xs text-kp-on-surface-variant">
-            {t.property.city}, {t.property.state} {t.property.zip}
-          </p>
+      <div className="min-w-0 flex-1 space-y-2.5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <Link
+              href={`/transactions/${t.id}`}
+              className="font-semibold text-kp-on-surface hover:text-kp-teal hover:underline"
+            >
+              {t.property.address1}
+            </Link>
+            <p className="text-xs text-kp-on-surface-variant">
+              {t.property.city}, {t.property.state} {t.property.zip}
+            </p>
+          </div>
+          <DealRowActionsMenu dealHref={`/transactions/${t.id}`} onDelete={onDeleted ? handleDelete : undefined} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge variant={statusBadgeVariant(t.status)}>
             {STATUS_LABELS[t.status]}
           </StatusBadge>
-          <span className="rounded-md border border-kp-outline-variant bg-kp-surface-high px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+          <span className="rounded-md border border-kp-outline-variant/80 bg-kp-bg/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
             {TRANSACTION_KIND_LABELS[kind]}
           </span>
           {t.brokerageName ? (
@@ -261,60 +330,51 @@ export function TransactionsProductionRow({
         </p>
       </div>
 
-      <div className="flex shrink-0 flex-col items-stretch gap-3 sm:items-end sm:text-right">
-        <div>
+      <div className="flex min-w-0 shrink-0 flex-col gap-2 sm:max-w-[min(100%,280px)] sm:items-end sm:text-right">
+        {showSetupBanner ? (
+          <p className="text-[11px] font-medium text-amber-700/95 dark:text-amber-400/90">
+            ⚠ Missing setup
+            {setupGaps.length > 0 ? ` · ${setupGaps.map(setupGapLabel).join(", ")}` : ""}
+            {money.type === "gci" ? " · Open deal to finalize net" : ""}
+          </p>
+        ) : null}
+
+        <div className="w-full rounded-xl bg-kp-bg/80 px-4 py-3 sm:w-auto">
           {money.type === "incomplete" ? (
             <>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600/90 dark:text-amber-400/90">
-                Needs setup
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                Commission
               </p>
-              <p className="mt-1 text-sm font-medium text-kp-on-surface">{money.message}</p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-kp-on-surface">—</p>
+              <p className="mt-1 text-xs leading-snug text-kp-on-surface-variant">{money.message}</p>
             </>
           ) : money.type === "nci" ? (
             <>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-                Net (NCI)
+                Net commission
               </p>
-              <p className="mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-kp-on-surface">
+              <p className="mt-0.5 text-right text-2xl font-bold tabular-nums tracking-tight text-kp-on-surface">
                 {formatProductionMoney(money.amount)}
               </p>
+              {subline ? (
+                <p className="mt-1 max-w-[260px] text-right text-[11px] leading-snug text-kp-on-surface-variant sm:ml-auto">
+                  {subline}
+                </p>
+              ) : null}
             </>
           ) : (
             <>
               <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-                Gross (GCI)
+                Gross commission (GCI)
               </p>
-              <p className="mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-kp-on-surface">
+              <p className="mt-0.5 text-right text-2xl font-bold tabular-nums tracking-tight text-kp-on-surface">
                 {formatProductionMoney(money.amount)}
               </p>
-              <p className="mt-1 max-w-[220px] text-[11px] leading-snug text-amber-700/90 dark:text-amber-400/85 sm:ml-auto">
+              <p className="mt-1 max-w-[260px] text-right text-[11px] leading-snug text-amber-800/90 dark:text-amber-400/85 sm:ml-auto">
                 {money.hint}
               </p>
             </>
           )}
-        </div>
-
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className={cn(kpBtnSecondary, "h-8 border px-3 text-xs")}
-            asChild
-          >
-            <Link href={`/transactions/${t.id}`} className="inline-flex items-center gap-1.5">
-              Open details
-              <ExternalLink className="h-3 w-3 opacity-70" />
-            </Link>
-          </Button>
-          {onDeleted ? (
-            <button
-              type="button"
-              onClick={() => void handleDelete()}
-              className="h-8 rounded-lg px-2 text-xs text-kp-on-surface-variant underline-offset-2 hover:text-red-500 hover:underline"
-            >
-              Delete
-            </button>
-          ) : null}
         </div>
       </div>
     </div>

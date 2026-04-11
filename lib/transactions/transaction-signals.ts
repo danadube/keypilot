@@ -13,8 +13,8 @@ import type { TransactionStatus } from "@prisma/client";
 import {
   getTransactionSetupGaps,
   setupGapLabel,
-  type TxStatus,
-} from "@/components/modules/transactions/transactions-shared";
+} from "@/lib/transactions/transaction-setup-gaps";
+import type { TxStatus } from "@/components/modules/transactions/transactions-shared";
 
 /** Default horizon for “closing soon” — aligned with transaction detail UX. */
 export const TRANSACTION_CLOSING_SOON_DAYS = 30;

@@ -129,3 +129,41 @@ export const TRANSACTION_KIND_LABELS: Record<TxKind, string> = {
   SALE: "Sale",
   REFERRAL_RECEIVED: "Referral",
 };
+
+function formatUsdCompact(n: number) {
+  return n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+}
+
+/**
+ * Second line under the primary commission figure on deal cards (scan context only).
+ */
+export function getDealCardCommissionSubline(
+  row: ProductionListRowInput,
+  money: ProductionValueDisplay
+): string | null {
+  const kind = row.transactionKind ?? "SALE";
+  const gci = row.gci != null && Number.isFinite(row.gci) ? row.gci : null;
+  const nci = row.nci != null && Number.isFinite(row.nci) ? row.nci : null;
+
+  if (money.type === "incomplete") return null;
+
+  if (money.type === "nci") {
+    if (kind === "REFERRAL_RECEIVED") {
+      return "Referral — net to you";
+    }
+    if (gci != null && gci > 0 && nci != null && Math.abs(gci - nci) > 0.5) {
+      return `${formatUsdCompact(gci)} GCI → ${formatUsdCompact(nci)} net`;
+    }
+    return "Net after brokerage, splits & fees";
+  }
+
+  if (money.type === "gci") {
+    return money.hint;
+  }
+
+  return null;
+}
