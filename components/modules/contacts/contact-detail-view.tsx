@@ -17,6 +17,7 @@ import { ContactMailingAddressCard } from "./contact-mailing-address-card";
 import { ContactSiteAddressCard } from "./contact-site-address-card";
 import { ContactFarmMembershipsPanel } from "./contact-farm-memberships-panel";
 import { ContactTasksPanel } from "./contact-tasks-panel";
+import { useClientKeepChrome } from "@/components/modules/client-keep/client-keep-chrome-context";
 import type {
   ContactDetailActivity,
   ContactDetailContact,
@@ -42,6 +43,7 @@ function LoadingState() {
 
 export function ContactDetailView({ id }: { id: string }) {
   const { hasCrm: hasCrmAccess } = useProductTier();
+  const { setContactDetailActions } = useClientKeepChrome();
 
   const {
     data: contact,
@@ -389,6 +391,34 @@ export function ContactDetailView({ id }: { id: string }) {
     el?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, []);
 
+  useEffect(() => {
+    if (loading || error || !contact) {
+      setContactDetailActions(null);
+      return;
+    }
+    setContactDetailActions(
+      <ContactDetailActionsMenu
+        contactId={id}
+        contact={contact}
+        hasCrmAccess={hasCrmAccess}
+        onScrollToNote={scrollToActivityNote}
+        onRefreshTimeline={() => void reloadActivities()}
+        onRefreshContact={() => void reloadContact()}
+      />
+    );
+    return () => setContactDetailActions(null);
+  }, [
+    loading,
+    error,
+    contact,
+    id,
+    hasCrmAccess,
+    scrollToActivityNote,
+    reloadActivities,
+    reloadContact,
+    setContactDetailActions,
+  ]);
+
   const initials = useMemo(() => {
     const a = contact?.firstName?.trim()?.[0] ?? "";
     const b = contact?.lastName?.trim()?.[0] ?? "";
@@ -404,123 +434,110 @@ export function ContactDetailView({ id }: { id: string }) {
   const isAssignedToMe = contact.assignedToUserId === currentUserId;
 
   return (
-    <div className="flex flex-col gap-5">
-      <div className="flex justify-end">
-        <ContactDetailActionsMenu
-          contactId={id}
-          contact={contact}
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,300px)] lg:items-start lg:gap-5">
+      <ContactDetailIdentityColumn
+        className="order-2 lg:order-none"
+        fullName={fullName}
+        initials={initials}
+        contact={contact}
+        hasCrmAccess={hasCrmAccess}
+        currentUserId={currentUserId}
+        isAssignedToMe={isAssignedToMe}
+        tagName={tagName}
+        addingTag={addingTag}
+        onTagNameChange={setTagName}
+        onAddTag={addTag}
+        onRemoveTag={removeTag}
+        onAssignToMe={assignToMe}
+        onUnassign={unassign}
+      />
+
+      <div className="order-1 flex min-w-0 flex-col gap-4 lg:order-none">
+        <ContactActivityTimeline
+          activities={activities}
           hasCrmAccess={hasCrmAccess}
-          onScrollToNote={scrollToActivityNote}
-          onRefreshTimeline={() => void reloadActivities()}
-          onRefreshContact={() => void reloadContact()}
+          noteBody={noteBody}
+          addingNote={addingNote}
+          onNoteBodyChange={setNoteBody}
+          onAddNote={addNote}
+          workspace
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,300px)] lg:items-start lg:gap-5">
-        <ContactDetailIdentityColumn
-          className="order-2 lg:order-none"
-          fullName={fullName}
-          initials={initials}
-          contact={contact}
-          hasCrmAccess={hasCrmAccess}
-          currentUserId={currentUserId}
-          isAssignedToMe={isAssignedToMe}
-          tagName={tagName}
-          addingTag={addingTag}
-          onTagNameChange={setTagName}
-          onAddTag={addTag}
-          onRemoveTag={removeTag}
-          onAssignToMe={assignToMe}
-          onUnassign={unassign}
-        />
-
-        <div className="order-1 flex min-w-0 flex-col gap-4 lg:order-none">
-          <ContactActivityTimeline
-            activities={activities}
-            hasCrmAccess={hasCrmAccess}
-            noteBody={noteBody}
-            addingNote={addingNote}
-            onNoteBodyChange={setNoteBody}
-            onAddNote={addNote}
-            workspace
-          />
+      <aside className="order-3 flex min-w-0 flex-col gap-3 lg:order-none">
+        <div className="space-y-3 pl-0 lg:border-l lg:border-kp-outline/25 lg:pl-3">
+          <ContactBusinessContextRail contact={contact} />
+          {hasCrmAccess ? (
+            <ContactFollowUpsPanel
+              reminders={reminders}
+              reminderDue={reminderDue}
+              reminderBody={reminderBody}
+              addingReminder={addingReminder}
+              patchingReminderId={patchingReminderId}
+              onReminderDueChange={setReminderDue}
+              onReminderBodyChange={setReminderBody}
+              onAddReminder={addReminder}
+              onReminderDone={(rid) => updateReminderStatus(rid, "DONE")}
+              onReminderDismiss={(rid) => updateReminderStatus(rid, "DISMISSED")}
+              hideScheduleForm
+            />
+          ) : null}
+          <ContactTasksPanel contactId={id} hideAddButton />
         </div>
 
-        <aside className="order-3 flex min-w-0 flex-col gap-3 lg:order-none">
-          <div className="space-y-3 pl-0 lg:border-l lg:border-kp-outline/25 lg:pl-3">
-            <ContactBusinessContextRail contact={contact} />
+        <details className="group rounded-lg border border-kp-outline/35 bg-kp-surface-high/[0.04] [&_summary::-webkit-details-marker]:hidden">
+          <summary className="cursor-pointer list-none px-3 py-2.5 text-left transition-colors hover:bg-kp-surface-high/30">
+            <span className="text-xs font-medium text-kp-on-surface">Reference & records</span>
+            <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-variant">
+              Farm memberships, mailing/site addresses, background notes
+            </p>
+          </summary>
+          <div className="space-y-3 border-t border-kp-outline/35 px-3 pb-3 pt-2">
             {hasCrmAccess ? (
-              <ContactFollowUpsPanel
-                reminders={reminders}
-                reminderDue={reminderDue}
-                reminderBody={reminderBody}
-                addingReminder={addingReminder}
-                patchingReminderId={patchingReminderId}
-                onReminderDueChange={setReminderDue}
-                onReminderBodyChange={setReminderBody}
-                onAddReminder={addReminder}
-                onReminderDone={(rid) => updateReminderStatus(rid, "DONE")}
-                onReminderDismiss={(rid) => updateReminderStatus(rid, "DISMISSED")}
-                hideScheduleForm
+              <ContactFarmMembershipsPanel
+                memberships={farmMemberships}
+                farmAreas={farmAreas}
+                selectedFarmAreaId={selectedFarmAreaId}
+                addingFarmMembership={addingFarmMembership}
+                onSelectedFarmAreaIdChange={setSelectedFarmAreaId}
+                onAddFarmMembership={addFarmMembership}
+                onArchiveFarmMembership={archiveFarmMembership}
               />
             ) : null}
-            <ContactTasksPanel contactId={id} hideAddButton />
+            <ContactMailingAddressCard
+              street1={mailStreet1}
+              street2={mailStreet2}
+              city={mailCity}
+              state={mailState}
+              zip={mailZip}
+              saving={savingMailing}
+              onStreet1Change={setMailStreet1}
+              onStreet2Change={setMailStreet2}
+              onCityChange={setMailCity}
+              onStateChange={setMailState}
+              onZipChange={setMailZip}
+              onSave={saveMailingAddress}
+              collapsible
+            />
+            <ContactSiteAddressCard
+              street1={siteStreet1}
+              street2={siteStreet2}
+              city={siteCity}
+              state={siteState}
+              zip={siteZip}
+              saving={savingSite}
+              onStreet1Change={setSiteStreet1}
+              onStreet2Change={setSiteStreet2}
+              onCityChange={setSiteCity}
+              onStateChange={setSiteState}
+              onZipChange={setSiteZip}
+              onSave={saveSiteAddress}
+              collapsible
+            />
+            <ContactNotesCard notes={contact.notes} referenceDensity />
           </div>
-
-          <details className="group rounded-lg border border-kp-outline/35 bg-kp-surface-high/[0.04] [&_summary::-webkit-details-marker]:hidden">
-            <summary className="cursor-pointer list-none px-3 py-2.5 text-left transition-colors hover:bg-kp-surface-high/30">
-              <span className="text-xs font-medium text-kp-on-surface">Reference & records</span>
-              <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-variant">
-                Farm memberships, mailing/site addresses, background notes
-              </p>
-            </summary>
-            <div className="space-y-3 border-t border-kp-outline/35 px-3 pb-3 pt-2">
-              {hasCrmAccess ? (
-                <ContactFarmMembershipsPanel
-                  memberships={farmMemberships}
-                  farmAreas={farmAreas}
-                  selectedFarmAreaId={selectedFarmAreaId}
-                  addingFarmMembership={addingFarmMembership}
-                  onSelectedFarmAreaIdChange={setSelectedFarmAreaId}
-                  onAddFarmMembership={addFarmMembership}
-                  onArchiveFarmMembership={archiveFarmMembership}
-                />
-              ) : null}
-              <ContactMailingAddressCard
-                street1={mailStreet1}
-                street2={mailStreet2}
-                city={mailCity}
-                state={mailState}
-                zip={mailZip}
-                saving={savingMailing}
-                onStreet1Change={setMailStreet1}
-                onStreet2Change={setMailStreet2}
-                onCityChange={setMailCity}
-                onStateChange={setMailState}
-                onZipChange={setMailZip}
-                onSave={saveMailingAddress}
-                collapsible
-              />
-              <ContactSiteAddressCard
-                street1={siteStreet1}
-                street2={siteStreet2}
-                city={siteCity}
-                state={siteState}
-                zip={siteZip}
-                saving={savingSite}
-                onStreet1Change={setSiteStreet1}
-                onStreet2Change={setSiteStreet2}
-                onCityChange={setSiteCity}
-                onStateChange={setSiteState}
-                onZipChange={setSiteZip}
-                onSave={saveSiteAddress}
-                collapsible
-              />
-              <ContactNotesCard notes={contact.notes} referenceDensity />
-            </div>
-          </details>
-        </aside>
-      </div>
+        </details>
+      </aside>
     </div>
   );
 }

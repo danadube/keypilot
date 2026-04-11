@@ -126,6 +126,12 @@ const primaryAddSummaryClass = cn(
   "[&::-webkit-details-marker]:hidden"
 );
 
+/** Gold primary CTA — single link (no dropdown), e.g. ClientKeep “Add client”. */
+export const pageHeaderPrimaryCtaLinkClass = cn(
+  kpBtnSave,
+  "inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-transparent px-3 text-xs font-semibold text-kp-bg shadow-sm transition-colors hover:opacity-95"
+);
+
 /** Gold primary “+ Add” control — same panel pattern as `PageHeaderActionsMenu`. */
 export function PageHeaderPrimaryAddMenu({ children }: { children: React.ReactNode }) {
   return (

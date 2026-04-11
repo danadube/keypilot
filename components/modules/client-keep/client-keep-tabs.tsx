@@ -4,6 +4,7 @@ import {
   KP_WORKSPACE_CHROME_BODY_GUTTER_CLASS,
   KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS,
 } from "@/lib/shell/workspace-chrome-gutter";
+import { ClientKeepChromeProvider } from "@/components/modules/client-keep/client-keep-chrome-context";
 import { ClientKeepPageHeader } from "@/components/platform/client-keep-page-header";
 
 export const CLIENT_KEEP_TAB_ITEMS = [
@@ -36,11 +37,13 @@ export function ClientKeepWorkspaceChrome({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-0 flex-col gap-1.5">
-      <div className={KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS}>
-        <ClientKeepPageHeader className="pb-2 pt-0 md:pb-3" />
+    <ClientKeepChromeProvider>
+      <div className="flex min-h-0 flex-col gap-1.5">
+        <div className={KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS}>
+          <ClientKeepPageHeader className="pb-2 pt-0 md:pb-3" />
+        </div>
+        <div className={KP_WORKSPACE_CHROME_BODY_GUTTER_CLASS}>{children}</div>
       </div>
-      <div className={KP_WORKSPACE_CHROME_BODY_GUTTER_CLASS}>{children}</div>
-    </div>
+    </ClientKeepChromeProvider>
   );
 }
