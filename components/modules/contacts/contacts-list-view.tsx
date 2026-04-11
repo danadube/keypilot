@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MetricCard } from "@/components/ui/metric-card";
-import { SectionTabs } from "@/components/ui/section-tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { CreateContactModal } from "./create-contact-modal";
@@ -233,6 +232,57 @@ function EmptyState({ isFiltered, onReset }: { isFiltered: boolean; onReset: () 
   );
 }
 
+/** Inline status filters (not navigation) — syncs URL via parent `onChange`. */
+function ContactStatusFilterChips({
+  active,
+  allTabCount,
+  showAllTabCount,
+  onChange,
+}: {
+  active: StatusTabValue;
+  allTabCount?: number;
+  showAllTabCount: boolean;
+  onChange: (v: StatusTabValue) => void;
+}) {
+  return (
+    <div
+      className="flex flex-col gap-2 border-b border-kp-outline-variant px-5 py-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2"
+      role="group"
+      aria-label="Filter by contact status"
+    >
+      <span className="shrink-0 text-xs text-kp-on-surface-variant">Status:</span>
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+        {STATUS_TAB_VALUES.map((t) => {
+          const isSelected = active === t.value;
+          const showCount =
+            t.value === "__all__" && showAllTabCount && allTabCount !== undefined;
+          return (
+            <button
+              key={t.value}
+              type="button"
+              aria-pressed={isSelected}
+              onClick={() => onChange(t.value)}
+              className={cn(
+                "inline-flex max-w-full items-center gap-1 rounded-md border px-2 py-1 text-xs font-normal transition-colors",
+                isSelected
+                  ? "border-kp-teal/45 bg-kp-teal/10 text-kp-teal"
+                  : "border-kp-outline-variant/80 bg-kp-bg/80 text-kp-on-surface-variant hover:border-kp-outline hover:text-kp-on-surface"
+              )}
+            >
+              {t.label}
+              {showCount && (
+                <span className="tabular-nums text-[11px] font-medium opacity-90">
+                  {allTabCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Search input ──────────────────────────────────────────────────────────────
 
 function SearchInput({
@@ -435,7 +485,7 @@ function ContactsTable({
  * - hasCrm gating for Status/Assigned/Tags columns
  * Adds:
  * - Client-side search over fetched data (no backend change)
- * - SectionTabs replaces the Select dropdown (same re-fetch trigger)
+ * - Inline status filter chips (same URL + re-fetch behavior as before)
  * - MetricCard summary strip
  * - StatusBadge for all contact statuses
  *
@@ -485,17 +535,8 @@ export function ContactsListView() {
   const readyCount     = useMemo(() => contacts.filter((c) => c.status === "READY").length,                   [contacts]);
   const nurturingCount = useMemo(() => contacts.filter((c) => c.status === "NURTURING" || c.status === "CONTACTED").length, [contacts]);
 
-  // SectionTabs with per-status counts — only count when unfiltered
-  // (showing count for current filter would be redundant — just show total)
+  /** "All" status + show total count on the All chip only in that mode */
   const isUnfiltered = statusFilter === "__all__";
-  const tabs = STATUS_TAB_VALUES.map((t) => ({
-    label: t.label,
-    value: t.value,
-    count:
-      t.value === "__all__" && isUnfiltered
-        ? contacts.length
-        : undefined,
-  }));
 
   const isFiltered =
     statusFilter !== "__all__" || search.trim().length > 0 || tagIdFilter !== null;
@@ -548,30 +589,7 @@ export function ContactsListView() {
   const showContent = !loading && !error;
 
   return (
-    <div className="min-h-full rounded-2xl bg-kp-bg">
-      {/* ── Page header ─────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-start justify-between gap-3 px-6 pb-4 pt-3 sm:px-8">
-        <div>
-          <h1 className="font-headline text-[1.75rem] font-semibold leading-tight tracking-tight text-kp-on-surface">
-            Contacts
-          </h1>
-          <p className="mt-0.5 text-sm text-kp-on-surface-variant">
-            Leads from open house sign-ins. Use{" "}
-            <span className="font-medium text-kp-on-surface">+ New</span> in the header to add a contact.
-          </p>
-        </div>
-        {canSaveSegment && (
-          <button
-            type="button"
-            onClick={openSaveSegmentModal}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-xs font-medium text-kp-on-surface transition-colors hover:border-kp-teal/40 hover:bg-kp-teal/5"
-          >
-            <BookmarkPlus className="h-3.5 w-3.5 text-kp-teal" aria-hidden />
-            Save segment
-          </button>
-        )}
-      </div>
-
+    <div className="min-h-full rounded-2xl bg-kp-bg pt-2 sm:pt-3">
       {/* ── Metric cards (CRM tier only) ─────────────────────────────────── */}
       {hasCrm && (
         <div className="grid gap-3 px-6 pb-4 sm:grid-cols-3 sm:px-8">
@@ -599,12 +617,14 @@ export function ContactsListView() {
       <div className="mx-6 mb-8 overflow-hidden rounded-xl border border-kp-outline bg-kp-surface sm:mx-8">
         {/* Panel header */}
         <div className="flex items-start justify-between gap-4 border-b border-kp-outline px-5 py-4">
-          <div className="space-y-1">
+          <div className="min-w-0 space-y-1">
             <p className="text-sm font-semibold text-kp-on-surface">
               Leads from open houses
             </p>
             <p className="text-xs text-kp-on-surface-variant">
-              Contacts who signed in at your open house events
+              Contacts who signed in at your open house events. Use{" "}
+              <span className="font-medium text-kp-on-surface">+ New</span> in the page header to add a
+              contact.
             </p>
             {tagIdFilter && (
               <p className="text-xs text-kp-teal">
@@ -624,31 +644,41 @@ export function ContactsListView() {
               </p>
             )}
           </div>
-          {showContent && contacts.length > 0 && (
-            <span className="shrink-0 text-xs tabular-nums text-kp-on-surface-variant">
-              {visibleContacts.length}
-              {visibleContacts.length !== contacts.length && ` / ${contacts.length}`}{" "}
-              {contacts.length === 1 ? "contact" : "contacts"}
-            </span>
-          )}
+          <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center sm:gap-3">
+            {canSaveSegment && (
+              <button
+                type="button"
+                onClick={openSaveSegmentModal}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-kp-outline bg-kp-surface-high px-2.5 py-1.5 text-xs font-medium text-kp-on-surface transition-colors hover:border-kp-teal/40 hover:bg-kp-teal/5"
+              >
+                <BookmarkPlus className="h-3.5 w-3.5 text-kp-teal" aria-hidden />
+                Save segment
+              </button>
+            )}
+            {showContent && contacts.length > 0 && (
+              <span className="text-xs tabular-nums text-kp-on-surface-variant">
+                {visibleContacts.length}
+                {visibleContacts.length !== contacts.length && ` / ${contacts.length}`}{" "}
+                {contacts.length === 1 ? "contact" : "contacts"}
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Status tabs (hasCrm only — non-CRM users can't filter by status) */}
-        {showContent && contacts.length > 0 && hasCrm && (
-          <div className="border-b border-kp-outline px-5">
-            <SectionTabs
-              tabs={tabs}
-              active={statusFilter}
-              onChange={(v) => {
-                setSearch(""); // clear search when switching status tabs
-                const next = v as StatusTabValue;
-                setStatusFilter(next);
-                router.replace(segmentToHref(next, tagIdFilter), {
-                  scroll: false,
-                });
-              }}
-            />
-          </div>
+        {/* Status filters (hasCrm only) — not navigation; URL stays in sync */}
+        {showContent && hasCrm && (
+          <ContactStatusFilterChips
+            active={statusFilter}
+            allTabCount={contacts.length}
+            showAllTabCount={isUnfiltered}
+            onChange={(next) => {
+              setSearch("");
+              setStatusFilter(next);
+              router.replace(segmentToHref(next, tagIdFilter), {
+                scroll: false,
+              });
+            }}
+          />
         )}
 
         {/* Search bar (shown when data is loaded and there's something to search) */}
