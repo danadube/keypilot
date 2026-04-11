@@ -1,59 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Prisma, TransactionSide, TransactionStatus } from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
-import { withRLSContext, withRLSContextOrFallbackAdmin } from "@/lib/db-context";
+import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import {
+  assertValidTransactionDealLink,
   responseIfDealIdUniqueViolation,
   transactionLinkedDealSelect,
 } from "@/lib/transaction-deal-link";
-import { CreateTransactionSchema } from "@/lib/validations/transaction";
-import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import {
-  createTransactionForUser,
-  transactionPropertySelect,
-} from "@/lib/transactions/create-transaction";
-import { ACTIVE_TRANSACTION_STATUSES } from "@/lib/transactions/list-query";
+  CreateTransactionSchema,
+  TransactionsListQuerySchema,
+} from "@/lib/validations/transaction";
+import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { mergeCommissionInputs } from "@/lib/transactions/commission-inputs";
+import { computeTransactionFinancials } from "@/lib/transactions/transaction-financials";
+import { assertPrimaryContactAccessible } from "@/lib/transactions/assert-primary-contact";
+import { serializeTransactionDecimals } from "@/lib/transactions/serialize-transaction";
+import type { Prisma } from "@prisma/client";
+import { TransactionStatus } from "@prisma/client";
 
-function parseStatusFilter(raw: string | null): "ACTIVE" | TransactionStatus | null {
-  if (raw == null || raw.trim() === "") return null;
-  const u = raw.trim().toUpperCase();
-  if (u === "ACTIVE") return "ACTIVE";
-  if (Object.values(TransactionStatus).includes(u as TransactionStatus)) {
-    return u as TransactionStatus;
-  }
-  return null;
-}
+const propertySelect = {
+  id: true,
+  address1: true,
+  city: true,
+  state: true,
+  zip: true,
+} as const;
 
-function parseSideFilter(raw: string | null): TransactionSide | null {
-  if (raw == null || raw.trim() === "") return null;
-  const u = raw.trim().toUpperCase();
-  if (u === "BUY" || u === "SELL") return u as TransactionSide;
-  return null;
-}
-
-function buildSearchWhere(term: string): Prisma.TransactionWhereInput {
-  const t = term.trim();
-  if (t.length === 0) return {};
-  const contains: Prisma.StringFilter = { contains: t, mode: "insensitive" };
-  return {
-    OR: [
-      { property: { address1: contains } },
-      { property: { city: contains } },
-      { brokerageName: contains },
-      { notes: contains },
-      {
-        deal: {
-          is: {
-            contact: {
-              OR: [{ firstName: contains }, { lastName: contains }],
-            },
-          },
-        },
-      },
-    ],
-  };
-}
+const primaryContactSelect = {
+  id: true,
+  firstName: true,
+  lastName: true,
+} as const;
 
 export async function GET(req: NextRequest) {
   try {
@@ -63,72 +41,70 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url);
-    const showArchived = searchParams.get("showArchived") === "1" || searchParams.get("archived") === "1";
-    const setupOnly = searchParams.get("setup") === "1";
-    const statusRaw = searchParams.get("status");
-    const sideParsed = parseSideFilter(searchParams.get("side"));
-    const qRaw = searchParams.get("q");
-    const q = typeof qRaw === "string" ? qRaw.trim().slice(0, 200) : "";
-
-    const statusFilter = parseStatusFilter(statusRaw);
-
-    const andParts: Prisma.TransactionWhereInput[] = [
-      { userId: user.id },
-      ...(showArchived ? [] : [{ deletedAt: null }]),
-    ];
-
-    if (statusFilter === "ACTIVE") {
-      andParts.push({ status: { in: ACTIVE_TRANSACTION_STATUSES } });
-    } else if (statusFilter != null) {
-      andParts.push({ status: statusFilter });
+    const listParsed = TransactionsListQuerySchema.safeParse({
+      status: searchParams.get("status") || undefined,
+      transactionKind: searchParams.get("transactionKind") || undefined,
+      brokerage: (() => {
+        const b = searchParams.get("brokerage");
+        return b && b.trim() ? b.trim() : undefined;
+      })(),
+      q: (() => {
+        const s = searchParams.get("q");
+        return s && s.trim() ? s.trim() : undefined;
+      })(),
+      closingYear: searchParams.get("closingYear") || undefined,
+    });
+    if (!listParsed.success) {
+      return apiError(listParsed.error.issues[0]?.message ?? "Invalid query", 400);
     }
+    const { status, transactionKind, brokerage, q, closingYear } = listParsed.data;
 
-    if (sideParsed) {
-      andParts.push({ side: sideParsed });
+    const filters: Prisma.TransactionWhereInput[] = [{ userId: user.id }];
+    if (status) filters.push({ status: status as TransactionStatus });
+    if (transactionKind) filters.push({ transactionKind });
+    if (brokerage) {
+      filters.push({
+        brokerageName: { contains: brokerage, mode: "insensitive" },
+      });
     }
-
-    if (setupOnly) {
-      andParts.push({
+    if (closingYear != null) {
+      filters.push({
+        closingDate: {
+          gte: new Date(Date.UTC(closingYear, 0, 1)),
+          lt: new Date(Date.UTC(closingYear + 1, 0, 1)),
+        },
+      });
+    }
+    if (q) {
+      filters.push({
         OR: [
-          { salePrice: null },
-          { closingDate: null },
-          { brokerageName: null },
-          { brokerageName: "" },
+          { property: { address1: { contains: q, mode: "insensitive" } } },
+          { property: { city: { contains: q, mode: "insensitive" } } },
+          { primaryContact: { firstName: { contains: q, mode: "insensitive" } } },
+          { primaryContact: { lastName: { contains: q, mode: "insensitive" } } },
         ],
       });
     }
 
-    const searchWhere = buildSearchWhere(q);
-    if (Object.keys(searchWhere).length > 0) {
-      andParts.push(searchWhere);
-    }
-
-    const where: Prisma.TransactionWhereInput =
-      andParts.length === 1 ? andParts[0]! : { AND: andParts };
-
-    const transactions = await withRLSContextOrFallbackAdmin(
-      user.id,
-      "api/v1/transactions:get",
-      (tx) =>
-        tx.transaction.findMany({
-          where,
-          include: {
-            property: { select: transactionPropertySelect },
-            deal: { select: transactionLinkedDealSelect },
-          },
-          orderBy: { createdAt: "desc" },
-        })
+    const transactions = await withRLSContext(user.id, (tx) =>
+      tx.transaction.findMany({
+        where: { AND: filters },
+        include: {
+          property: { select: propertySelect },
+          deal: { select: transactionLinkedDealSelect },
+          primaryContact: { select: primaryContactSelect },
+        },
+        orderBy: { createdAt: "desc" },
+      })
     );
 
-    return NextResponse.json({ data: transactions });
+    return NextResponse.json({
+      data: transactions.map((t) => ({
+        ...t,
+        ...serializeTransactionDecimals(t),
+      })),
+    });
   } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError) {
-      console.error("[GET /api/v1/transactions] Prisma", {
-        code: e.code,
-        meta: e.meta,
-      });
-      return apiErrorFromCaught(e, { log: false });
-    }
     return apiErrorFromCaught(e);
   }
 }
@@ -145,19 +121,99 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return apiError(parsed.error.issues[0]?.message ?? "Invalid input", 400);
     }
-    if (parsed.data.side === undefined) {
-      return apiError("Transaction side (BUY or SELL) is required", 400);
-    }
 
-    const transaction = await withRLSContext(user.id, (tx) =>
-      createTransactionForUser({
-        tx,
-        userId: user.id,
-        input: parsed.data,
-      })
+    const {
+      propertyId,
+      dealId,
+      status: createStatus,
+      transactionKind,
+      primaryContactId,
+      externalSource,
+      externalSourceId,
+      salePrice,
+      closingDate,
+      brokerageName,
+      notes,
+      commissionInputs: commissionInputsBody,
+    } = parsed.data;
+
+    const transaction = await withRLSContext(user.id, async (tx) => {
+      // FK scope validation — runs under RLS so findFirst returns null if the
+      // property belongs to another user (properties RLS: createdByUserId = current).
+      const property = await tx.property.findFirst({
+        where: { id: propertyId },
+        select: { id: true },
+      });
+      if (!property) {
+        throw Object.assign(new Error("Property not found or not accessible"), {
+          status: 404,
+        });
+      }
+
+      if (dealId) {
+        await assertValidTransactionDealLink(tx, {
+          userId: user.id,
+          propertyId,
+          dealId,
+        });
+      }
+
+      if (primaryContactId) {
+        await assertPrimaryContactAccessible(tx, primaryContactId);
+      }
+
+      const kind = transactionKind ?? "SALE";
+      const mergedCi = mergeCommissionInputs({}, commissionInputsBody ?? {});
+      const fin = computeTransactionFinancials({
+        transactionKind: kind,
+        salePrice: salePrice ?? null,
+        brokerageName: brokerageName ?? null,
+        commissionInputsJson: mergedCi,
+      });
+      if (!fin.ok) {
+        throw Object.assign(new Error(fin.error), { status: 400 });
+      }
+
+      const created = await tx.transaction.create({
+        data: {
+          propertyId,
+          userId: user.id,
+          ...(dealId !== undefined && { dealId }),
+          ...(createStatus !== undefined && { status: createStatus }),
+          transactionKind: kind,
+          ...(primaryContactId !== undefined ? { primaryContactId } : {}),
+          ...(externalSource !== undefined ? { externalSource } : {}),
+          ...(externalSourceId !== undefined ? { externalSourceId } : {}),
+          ...(salePrice !== undefined && { salePrice }),
+          ...(closingDate !== undefined && { closingDate }),
+          ...(brokerageName !== undefined && { brokerageName }),
+          ...(notes !== undefined && { notes }),
+          commissionInputs: fin.commissionInputs,
+          gci: fin.gci,
+          adjustedGci: fin.adjustedGci,
+          referralDollar: fin.referralDollar,
+          totalBrokerageFees: fin.totalBrokerageFees,
+          nci: fin.nci,
+          netVolume: fin.netVolume,
+        },
+        include: {
+          property: { select: propertySelect },
+          deal: { select: transactionLinkedDealSelect },
+          primaryContact: { select: primaryContactSelect },
+        },
+      });
+      return created;
+    });
+
+    return NextResponse.json(
+      {
+        data: {
+          ...transaction,
+          ...serializeTransactionDecimals(transaction),
+        },
+      },
+      { status: 201 }
     );
-
-    return NextResponse.json({ data: transaction }, { status: 201 });
   } catch (e) {
     const uniqueResp = responseIfDealIdUniqueViolation(e);
     if (uniqueResp) return uniqueResp;

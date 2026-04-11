@@ -1,26 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prismaAdmin } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { canAccessContact } from "@/lib/contacts/contact-access";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { UpdateContactSchema } from "@/lib/validations/contact";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { getContactIfAccessible } from "@/lib/contacts/contact-access";
+import type { Prisma } from "@prisma/client";
 
-async function getContactForDashboard(contactId: string, userId: string) {
-  const allowed = await canAccessContact(contactId, userId);
-  if (!allowed) return null;
-
-  return prismaAdmin.contact.findFirst({
-    where: { id: contactId, deletedAt: null },
-    include: {
-      contactTags: { include: { tag: true } },
-      followUpReminders: {
-        where: { userId, status: "PENDING" },
-        orderBy: { dueAt: "asc" },
-        take: 10,
-      },
+function detailInclude(userId: string): Prisma.ContactInclude {
+  return {
+    contactTags: { include: { tag: true } },
+    followUpReminders: {
+      where: { userId, status: "PENDING" },
+      orderBy: { dueAt: "asc" },
+      take: 10,
     },
-  });
+  };
 }
 
 export async function GET(
@@ -29,7 +24,7 @@ export async function GET(
 ) {
   try {
     const user = await getCurrentUser();
-    const contact = await getContactForDashboard(params.id, user.id);
+    const contact = await getContactIfAccessible(params.id, user.id, detailInclude(user.id));
 
     if (!contact) {
       return NextResponse.json(
@@ -50,7 +45,7 @@ export async function PUT(
 ) {
   try {
     const user = await getCurrentUser();
-    const contact = await getContactForDashboard(params.id, user.id);
+    const contact = await getContactIfAccessible(params.id, user.id);
 
     if (!contact) {
       return NextResponse.json(

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prismaAdmin } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { canAccessContact } from "@/lib/contacts/contact-access";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { LogCommunicationSchema } from "@/lib/validations/communication";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { canAccessContact } from "@/lib/contacts/contact-access";
 
 export async function POST(
   req: NextRequest,

@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withRLSContext } from "@/lib/db-context";
 import { getCurrentUser } from "@/lib/auth";
-import { canAccessContact } from "@/lib/contacts/contact-access";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { CreateReminderSchema } from "@/lib/validations/reminder";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { canAccessContact } from "@/lib/contacts/contact-access";
 
 export async function GET(
   _req: NextRequest,

@@ -7,6 +7,7 @@ import type { Prisma } from "@prisma/client";
 export function contactAccessScope(userId: string): Prisma.ContactWhereInput {
   return {
     OR: [
+      { createdByUserId: userId },
       { assignedToUserId: userId },
       {
         openHouseVisits: {

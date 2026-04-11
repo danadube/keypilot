@@ -17,6 +17,7 @@ import { FarmTrackrHealthSummaryStrip } from "./_components/farm-trackr-health-s
 import { FarmTrackrImportWorkflow } from "./_components/farm-trackr-import-workflow";
 import { FarmTrackrRecentImports } from "./_components/farm-trackr-recent-imports";
 import { FarmTrackrStructureVisibilityToggle } from "./_components/farm-trackr-structure-visibility";
+import { FarmSegmentationPanel } from "@/components/modules/farm-trackr/farm-segmentation-panel";
 import { UI_COPY } from "@/lib/ui-copy";
 
 type Territory = {
@@ -432,6 +433,8 @@ export default function FarmTrackrPage() {
         ) : null}
 
         <FarmTrackrHealthSummaryStrip visibility={structureVisibility} />
+
+        <FarmSegmentationPanel />
 
         <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
           <div className="flex flex-wrap items-start gap-3">

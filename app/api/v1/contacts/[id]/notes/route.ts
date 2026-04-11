@@ -1,20 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prismaAdmin } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { canAccessContact } from "@/lib/contacts/contact-access";
 import { requireCrmAccess } from "@/lib/product-tier";
 import { AddNoteSchema } from "@/lib/validations/note";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { canAccessContact } from "@/lib/contacts/contact-access";
 
 export const dynamic = "force-dynamic";
-
-async function getContactIfAccessible(contactId: string, userId: string) {
-  const allowed = await canAccessContact(contactId, userId);
-  if (!allowed) return null;
-  return prismaAdmin.contact.findFirst({
-    where: { id: contactId, deletedAt: null },
-  });
-}
 
 export async function POST(
   req: NextRequest,
@@ -25,8 +17,7 @@ export async function POST(
     requireCrmAccess(user.productTier);
     const { id: contactId } = await params;
 
-    const contact = await getContactIfAccessible(contactId, user.id);
-    if (!contact) {
+    if (!(await canAccessContact(contactId, user.id))) {
       return apiError("Contact not found", 404);
     }
 
