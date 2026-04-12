@@ -81,7 +81,7 @@ export function TransactionDetailOperationsCue({
     lines.push({
       key: "checklist",
       tone: "info",
-      text: `${checklistOpenCount} open document${checklistOpenCount === 1 ? "" : "s"} in the pipeline — update statuses in the center column.`,
+      text: `${checklistOpenCount} open document${checklistOpenCount === 1 ? "" : "s"} in the pipeline — update statuses in the checklist below.`,
     });
   }
 

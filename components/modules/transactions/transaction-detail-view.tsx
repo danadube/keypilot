@@ -9,12 +9,11 @@ import { apiFetcher } from "@/lib/fetcher";
 import { ArrowLeft, MapPin, Loader2, AlertCircle, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { entityDetailWorkspaceGridClassName } from "@/components/layout/entity-detail-workspace-grid";
+import { transactionDetailWorkspaceGridClassName } from "@/components/layout/entity-detail-workspace-grid";
 import { TransactionDetailActivityPanel } from "@/components/modules/transactions/transaction-detail-activity-panel";
 import { TransactionDetailActionsMenu } from "@/components/modules/transactions/transaction-detail-actions-menu";
 import { TransactionDetailOperationsCue } from "@/components/modules/transactions/transaction-detail-operations-cue";
 import { TransactionProgressWorkspace } from "@/components/modules/transactions/transaction-progress-workspace";
-import { TransactionDetailTasksRail } from "@/components/modules/transactions/transaction-detail-tasks-rail";
 import { useTransactionHqChromeSetDetailActionsOptional } from "@/components/modules/transactions/transaction-hq-chrome-context";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -254,9 +253,10 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
         </Link>
       </div>
 
-      <div className={cn("px-6 pb-8 pt-4 sm:px-8", entityDetailWorkspaceGridClassName)}>
+      <div className={cn("px-6 pb-8 pt-4 sm:px-8", transactionDetailWorkspaceGridClassName)}>
         {/* Identity — what deal, for whom, which property */}
-        <div className="order-2 flex min-w-0 flex-col gap-4 lg:order-none">
+        <div className="order-2 flex min-w-0 flex-col gap-4 lg:order-none lg:sticky lg:top-4 lg:self-start">
+          {operationsCue}
           <section className="rounded-xl border border-kp-outline/50 bg-kp-surface/50 p-5">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
               Deal
@@ -378,8 +378,8 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           </section>
         </div>
 
-        {/* Primary work surface */}
-        <div className="order-1 min-w-0 lg:order-none">
+        {/* Primary work surface — documents first; activity is secondary below */}
+        <div className="order-1 min-w-0 space-y-6 lg:order-none">
           <TransactionProgressWorkspace
             transactionId={transactionId}
             stageStatus={txn.status}
@@ -397,18 +397,11 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             }}
             className="border-kp-outline shadow-md"
           />
-        </div>
-
-        {/* Support rail */}
-        <aside className="order-3 min-w-0 space-y-4 lg:order-none lg:border-l lg:border-kp-outline/25 lg:pl-3">
-          {operationsCue}
-          <TransactionDetailActivityPanel transactionId={transactionId} />
-          <TransactionDetailTasksRail
-            propertyId={txn.property.id}
-            primaryContactId={txn.primaryContactId}
-            onTaskCreated={() => void refreshTransactionActivity()}
+          <TransactionDetailActivityPanel
+            transactionId={transactionId}
+            className="rounded-xl border border-kp-outline/35 bg-kp-surface/25"
           />
-        </aside>
+        </div>
       </div>
     </div>
   );

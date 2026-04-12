@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import {
@@ -12,6 +12,9 @@ import {
   Link2,
   ListChecks,
   CalendarClock,
+  ChevronDown,
+  Upload,
+  RefreshCw,
 } from "lucide-react";
 import { apiFetcher } from "@/lib/fetcher";
 import { cn } from "@/lib/utils";
@@ -106,6 +109,11 @@ const DOC_STATUS_OPTIONS: { value: DocumentStatus; label: string }[] = [
   { value: "uploaded", label: "Uploaded" },
   { value: "complete", label: "Complete" },
 ];
+
+/** Opt-in via `.env.local`: `NEXT_PUBLIC_KEYPILOT_TXN_LEGACY_CHECKLIST=1` */
+const SHOW_LEGACY_CHECKLIST =
+  typeof process !== "undefined" &&
+  process.env.NEXT_PUBLIC_KEYPILOT_TXN_LEGACY_CHECKLIST === "1";
 
 function docStatusForScan(s: DocumentStatus): {
   label: string;
@@ -281,6 +289,54 @@ function pipelinePositionHint(status: TxStatus, side: PipelineSide): string {
     : "Pipeline hint: often Pre-Offer → Offer Submission early in the deal.";
 }
 
+function DealProgressStrip({
+  complete,
+  total,
+  pct,
+}: {
+  complete: number;
+  total: number;
+  pct: number;
+}) {
+  const safePct = Math.min(100, Math.max(0, pct));
+  return (
+    <div className="mt-4 rounded-lg border border-kp-outline/40 bg-kp-bg/45 px-3 py-2.5" role="status">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface">
+          Deal progress
+        </span>
+        <span className="text-xs tabular-nums text-kp-on-surface">
+          {complete} of {total} complete · {safePct}%
+        </span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-kp-surface-high/90">
+        <div
+          className="h-full rounded-full bg-kp-teal/90 transition-[width] duration-300"
+          style={{ width: `${safePct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function displayAttachmentLabel(raw: string): string {
+  const t = raw.trim();
+  if (!t) return "";
+  if (t.startsWith("Local: ")) return t.slice(7);
+  if (t.startsWith("attached:")) return t.slice("attached:".length);
+  if (isAbsoluteHttpUrl(t)) {
+    try {
+      const u = new URL(t);
+      const path = u.pathname.length > 32 ? `${u.pathname.slice(0, 32)}…` : u.pathname;
+      return `${u.hostname.replace(/^www\./, "")}${path || ""}`;
+    } catch {
+      return "Link";
+    }
+  }
+  const base = t.split(/[/\\]/).pop();
+  return base || t;
+}
+
 export function TransactionProgressWorkspace({
   transactionId,
   stageStatus,
@@ -452,6 +508,37 @@ export function TransactionProgressWorkspace({
     return map;
   }, [pipelineRows, resolvedSide]);
 
+  const pipelineActive = useMemo(() => {
+    if (!resolvedSide) return false;
+    if (useEnginePipeline && engineTry?.ok) return true;
+    if (pipelineRows.length > 0) return true;
+    return false;
+  }, [resolvedSide, useEnginePipeline, engineTry, pipelineRows.length]);
+
+  const progressStats = useMemo(() => {
+    if (useEnginePipeline && engineTry?.ok) {
+      const total = engineTry.instances.length;
+      if (total === 0) return null;
+      let complete = 0;
+      for (const inst of engineTry.instances) {
+        const row = paperworkBySourceRuleId.get(inst.sourceRuleId);
+        const st = row?.docStatus ?? instanceStatusToDocumentStatus(inst.status);
+        if (st === "complete") complete++;
+      }
+      return { complete, total, pct: Math.round((complete / total) * 100) };
+    }
+    if (resolvedSide && pipelineRows.length > 0) {
+      let complete = 0;
+      for (const row of pipelineRows) {
+        const m = tryParsePipelineMeta(row.notes);
+        if (m?.docStatus === "complete") complete++;
+      }
+      const total = pipelineRows.length;
+      return { complete, total, pct: Math.round((complete / total) * 100) };
+    }
+    return null;
+  }, [useEnginePipeline, engineTry, paperworkBySourceRuleId, resolvedSide, pipelineRows]);
+
   const canChangeSide =
     pipelineRows.length === 0 &&
     formEnginePersistedRows.length === 0 &&
@@ -583,30 +670,39 @@ export function TransactionProgressWorkspace({
       )}
       aria-labelledby="txn-pipeline-heading"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-kp-outline/35 pb-4">
         <div className="flex min-w-0 items-start gap-2">
           <Layers className="mt-0.5 h-5 w-5 shrink-0 text-kp-teal" aria-hidden />
           <div>
             <h2 id="txn-pipeline-heading" className="text-base font-semibold text-kp-on-surface">
-              Documents by stage
+              Document workflow
             </h2>
-            <p className="mt-1 max-w-prose text-xs text-kp-on-surface-variant">
-              Work the deal in order: set representation, then work document requirements for your state (or
-              load a saved checklist), and update each row as documents move. Economics stay on Financial
-              &amp; records.
+            <p className="mt-0.5 max-w-prose text-xs text-kp-on-surface-variant">
+              Requirements by stage — move the deal forward with uploads and status. Economics stay on{" "}
+              <Link
+                href={`/transactions/${transactionId}/financial`}
+                className="font-medium text-kp-teal underline-offset-2 hover:underline"
+              >
+                Financial &amp; records
+              </Link>
+              .
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-                Deal record status
+                Deal status
               </span>
               <StatusBadge variant={statusBadgeVariant(stageStatus)}>
                 {STATUS_LABELS[stageStatus]}
               </StatusBadge>
             </div>
-            <p className="mt-2 text-[11px] text-kp-on-surface-variant">{pipelinePositionHint(stageStatus, resolvedSide ?? "SELL")}</p>
+            {!pipelineActive ? (
+              <p className="mt-1.5 text-[11px] text-kp-on-surface-variant">
+                {pipelinePositionHint(stageStatus, resolvedSide ?? "SELL")}
+              </p>
+            ) : null}
           </div>
         </div>
-        <ListChecks className="h-4 w-4 shrink-0 text-kp-on-surface-muted opacity-60" aria-hidden />
+        <ListChecks className="mt-1 h-4 w-4 shrink-0 text-kp-on-surface-muted opacity-70" aria-hidden />
       </div>
 
       {engineFallbackMessage ? (
@@ -629,41 +725,23 @@ export function TransactionProgressWorkspace({
         </div>
       ) : (
         <>
-          <div
-            id="txn-pipeline-setup"
-            className="mt-5 overflow-hidden rounded-xl border border-kp-teal/30 bg-gradient-to-b from-kp-teal/[0.08] via-kp-surface/95 to-kp-surface shadow-sm"
-          >
-            <div className="border-b border-kp-outline/25 bg-kp-teal/[0.04] px-4 py-3 sm:px-5">
-              <p className="text-xs font-semibold text-kp-on-surface">Pipeline workflow</p>
-              <p className="mt-0.5 text-[11px] text-kp-on-surface-variant">
-                Standard first steps for this transaction — same surface before and after rows load.
-              </p>
-            </div>
-
-            <div className="space-y-0 px-4 py-4 sm:px-5">
-              <div className="flex gap-3 sm:gap-4">
-                <div
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-kp-teal/20 text-xs font-bold text-kp-teal"
-                  aria-hidden
-                >
-                  1
-                </div>
-                <div className="min-w-0 flex-1 space-y-2">
-                  <div>
-                    <h3 className="text-sm font-semibold text-kp-on-surface">Who are you representing?</h3>
-                    <p className="mt-1 text-[11px] leading-relaxed text-kp-on-surface-variant">
-                      Saved on the transaction. You can change this until checklist rows are loaded for this
-                      deal.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
+          {!pipelineActive ? (
+            <div
+              id="txn-pipeline-setup"
+              className="mt-4 rounded-lg border border-kp-outline/50 bg-kp-surface-high/30 px-3 py-3 sm:px-4"
+            >
+              <p className="text-xs font-semibold text-kp-on-surface">Pipeline setup</p>
+              <div className="mt-3 space-y-3">
+                <div>
+                  <p className="text-[11px] font-medium text-kp-on-surface">Representation</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
                       disabled={archived || savingSide || !canChangeSide}
                       className={cn(
-                        "h-10 min-w-[7.5rem] border-kp-outline/80 text-xs font-medium",
+                        "h-9 min-w-[7rem] border-kp-outline/80 text-xs font-medium",
                         resolvedSide === "SELL"
                           ? cn(kpBtnPrimary, "border-kp-teal/50 bg-kp-teal/20 text-kp-teal hover:bg-kp-teal/25")
                           : kpBtnSecondary
@@ -678,7 +756,7 @@ export function TransactionProgressWorkspace({
                       variant="outline"
                       disabled={archived || savingSide || !canChangeSide}
                       className={cn(
-                        "h-10 min-w-[7.5rem] border-kp-outline/80 text-xs font-medium",
+                        "h-9 min-w-[7rem] border-kp-outline/80 text-xs font-medium",
                         resolvedSide === "BUY"
                           ? cn(kpBtnPrimary, "border-kp-teal/50 bg-kp-teal/20 text-kp-teal hover:bg-kp-teal/25")
                           : kpBtnSecondary
@@ -689,137 +767,40 @@ export function TransactionProgressWorkspace({
                     </Button>
                   </div>
                   {!resolvedSide ? (
-                    <p className="text-[11px] text-kp-on-surface-variant">
-                      Choose a side to unlock step 2.
+                    <p className="mt-1.5 text-[11px] text-kp-on-surface-variant">
+                      Choose a side to load document requirements.
                     </p>
                   ) : !canChangeSide ? (
-                    <p className="text-[11px] text-kp-on-surface-variant">
-                      Side is fixed while document requirements or saved pipeline rows exist. Remove pipeline
-                      rows to switch, or use a new transaction.
+                    <p className="mt-1.5 text-[11px] text-kp-on-surface-variant">
+                      Side stays fixed while document rows exist. Use a new transaction to switch.
                     </p>
                   ) : (
-                    <p className="text-[11px] font-medium text-kp-teal/90">
-                      {resolvedSide === "SELL" ? "Listing" : "Buyer"} selected — continue to step 2.
+                    <p className="mt-1.5 text-[11px] font-medium text-kp-teal">
+                      {resolvedSide === "SELL" ? "Listing" : "Buyer"} — load checklist below.
                     </p>
                   )}
                 </div>
-              </div>
 
-              {resolvedSide ? (
-                <div className="mt-5 flex gap-3 border-t border-kp-outline/25 pt-5 sm:gap-4">
-                  <div
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-kp-teal/20 text-xs font-bold text-kp-teal"
-                    aria-hidden
-                  >
-                    2
-                  </div>
-                  <div className="min-w-0 flex-1 space-y-3">
-                    <div>
-                      <h3 className="text-sm font-semibold text-kp-on-surface">
-                        {useEnginePipeline
-                          ? "Document requirements"
-                          : !paperworkCtx
-                            ? "State-based requirements"
-                            : "Load the California checklist"}
-                      </h3>
-                      <p className="mt-1 text-[11px] leading-relaxed text-kp-on-surface-variant">
-                        {useEnginePipeline ? (
-                          <>
-                            Rows below are generated from the forms catalog for{" "}
-                            <span className="font-medium text-kp-on-surface">{jurisdictionLabel ?? "this state"}</span>
-                            . Custom rows still appear under &quot;Other checklist items.&quot;
-                          </>
-                        ) : !paperworkCtx ? (
-                          <>
-                            Add a US state on the linked property to unlock jurisdiction-aware rows. You can
-                            still load the California checklist manually or add custom items.
-                          </>
-                        ) : (
-                          <>
-                            Adds CAR-style rows (RLA, TDS, RPA, etc.) as trackable items. You can still add
-                            custom rows later; they appear below under &quot;Other checklist items.&quot;
-                          </>
-                        )}
+                {resolvedSide ? (
+                  <div className="border-t border-kp-outline/35 pt-3">
+                    {useEnginePipeline && engineTry && engineTry.ok === false ? (
+                      <p className="text-[11px] leading-snug text-kp-on-surface-variant">
+                        Forms catalog did not load for this deal. Add property state where needed, or load the
+                        California checklist.
                       </p>
-                    </div>
-
-                    {useEnginePipeline ? (
-                      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-                        <div className="rounded-lg border border-kp-teal/25 bg-kp-teal/[0.06] px-3 py-2">
-                          <p className="text-[11px] font-semibold text-kp-on-surface">
-                            {jurisdictionLabel ? `${jurisdictionLabel} · forms catalog` : "Forms catalog"}
-                          </p>
-                          <p className="text-[11px] text-kp-on-surface-variant">
-                            {engineTry?.ok
-                              ? `${engineTry.instances.length} document row${engineTry.instances.length === 1 ? "" : "s"} · jump to a stage or scroll the list.`
-                              : ""}
-                          </p>
-                        </div>
-                        {engineStageEntries.length > 0 ? (
-                          <div className="w-full min-w-[12rem] max-w-xs space-y-1 sm:w-auto">
-                            <label
-                              htmlFor="txn-pipeline-stage-jump"
-                              className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant"
-                            >
-                              Focus stage
-                            </label>
-                            <Select
-                              value={
-                                stageJump &&
-                                engineStageEntries.some((e) => e.stageKey === stageJump)
-                                  ? stageJump
-                                  : "__none__"
-                              }
-                              onValueChange={(v) => {
-                                if (v === "__none__") {
-                                  setStageJump("");
-                                  return;
-                                }
-                                setStageJump(v);
-                                requestAnimationFrame(() => {
-                                  const id = `txn-stage-${v.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
-                                  document.getElementById(id)?.scrollIntoView({
-                                    behavior: "smooth",
-                                    block: "start",
-                                  });
-                                });
-                              }}
-                            >
-                              <SelectTrigger
-                                id="txn-pipeline-stage-jump"
-                                className="h-9 border-kp-outline/70 bg-kp-surface text-xs"
-                              >
-                                <SelectValue placeholder="Jump to a stage…" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="__none__" className="text-kp-on-surface-variant">
-                                  Jump to a stage…
-                                </SelectItem>
-                                {engineStageEntries.map((e) => (
-                                  <SelectItem key={e.stageKey} value={e.stageKey}>
-                                    {e.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        ) : null}
-                      </div>
                     ) : !paperworkCtx ? (
-                      <div className="rounded-lg border border-kp-outline/35 bg-kp-bg/35 px-3 py-2">
-                        <p className="text-[11px] leading-relaxed text-kp-on-surface-variant">
-                          The linked property needs a state for automated requirements. You can still use
-                          &quot;Load checklist rows&quot; for California deals or add custom checklist items.
-                        </p>
-                      </div>
+                      <p className="text-[11px] leading-snug text-kp-on-surface-variant">
+                        Set a US state on the linked property for automated rows, or load the California
+                        checklist.
+                      </p>
                     ) : pipelineRows.length === 0 ? (
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                         <p className="text-xs text-kp-on-surface">
-                          Ready to create{" "}
+                          Load{" "}
                           <span className="font-medium">
                             {resolvedSide === "SELL" ? "listing-side" : "buyer-side"}
                           </span>{" "}
-                          document rows (California CAR pipeline).
+                          CAR pipeline rows.
                         </p>
                         <Button
                           type="button"
@@ -827,7 +808,7 @@ export function TransactionProgressWorkspace({
                           disabled={archived || seeding || busy}
                           className={cn(
                             kpBtnPrimary,
-                            "h-10 shrink-0 bg-kp-teal/25 text-xs font-semibold text-kp-teal hover:bg-kp-teal/35"
+                            "h-9 shrink-0 bg-kp-teal/25 text-xs font-semibold text-kp-teal hover:bg-kp-teal/35"
                           )}
                           onClick={() => void seedPipeline()}
                         >
@@ -836,78 +817,17 @@ export function TransactionProgressWorkspace({
                           ) : (
                             <>
                               <FileText className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                              Load checklist rows
+                              Load checklist
                             </>
                           )}
                         </Button>
                       </div>
-                    ) : (
-                      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-                        <div className="rounded-lg border border-kp-teal/25 bg-kp-teal/[0.06] px-3 py-2">
-                          <p className="text-[11px] font-semibold text-kp-on-surface">
-                            Checklist active
-                          </p>
-                          <p className="text-[11px] text-kp-on-surface-variant">
-                            {pipelineRows.length} pipeline row{pipelineRows.length === 1 ? "" : "s"} · jump to a
-                            stage or scroll the list.
-                          </p>
-                        </div>
-                        <div className="w-full min-w-[12rem] max-w-xs space-y-1 sm:w-auto">
-                          <label
-                            htmlFor="txn-pipeline-stage-jump"
-                            className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant"
-                          >
-                            Focus stage
-                          </label>
-                          <Select
-                            value={
-                              stageJump &&
-                              PIPELINE_STAGE_ORDER[resolvedSide].includes(stageJump as PipelineStageKey)
-                                ? stageJump
-                                : "__none__"
-                            }
-                            onValueChange={(v) => {
-                              if (v === "__none__") {
-                                setStageJump("");
-                                return;
-                              }
-                              setStageJump(v);
-                              requestAnimationFrame(() => {
-                                document.getElementById(`txn-stage-${v}`)?.scrollIntoView({
-                                  behavior: "smooth",
-                                  block: "start",
-                                });
-                              });
-                            }}
-                          >
-                            <SelectTrigger
-                              id="txn-pipeline-stage-jump"
-                              className="h-9 border-kp-outline/70 bg-kp-surface text-xs"
-                            >
-                              <SelectValue placeholder="Jump to a stage…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__none__" className="text-kp-on-surface-variant">
-                                Jump to a stage…
-                              </SelectItem>
-                              {PIPELINE_STAGE_ORDER[resolvedSide].map((key) => (
-                                <SelectItem key={key} value={key}>
-                                  {PIPELINE_STAGE_LABELS[key]}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    )}
+                    ) : null}
                   </div>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="border-t border-kp-outline/25 bg-kp-surface-high/20 px-4 py-2.5 sm:px-5">
-              <p className="text-[10px] text-kp-on-surface-variant">
-                Sale price, commissions, CRM deal, splits:{" "}
+                ) : null}
+              </div>
+              <p className="mt-3 border-t border-kp-outline/35 pt-2 text-[10px] text-kp-on-surface-variant">
+                Pricing &amp; splits:{" "}
                 <Link
                   href={`/transactions/${transactionId}/financial`}
                   className="font-medium text-kp-teal underline-offset-2 hover:underline"
@@ -916,9 +836,160 @@ export function TransactionProgressWorkspace({
                 </Link>
               </p>
             </div>
-          </div>
+          ) : useEnginePipeline && engineTry?.ok ? (
+            <div
+              id="txn-pipeline-setup"
+              className="mt-4 flex flex-col gap-3 rounded-lg border border-kp-outline/45 bg-kp-surface-high/40 px-3 py-2.5 sm:flex-row sm:items-end sm:justify-between"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold leading-snug text-kp-on-surface">
+                  <span className="font-normal text-kp-on-surface-variant">Pipeline · </span>
+                  {jurisdictionLabel ?? "Forms"} · {engineStageEntries.length} stages ·{" "}
+                  {engineTry.instances.length} documents
+                </p>
+                <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">
+                  {resolvedSide === "SELL" ? "Listing" : "Buyer"} ·{" "}
+                  {!canChangeSide
+                    ? "Side locked while rows exist."
+                    : "You can change side until new rows are added."}
+                </p>
+              </div>
+              {engineStageEntries.length > 0 ? (
+                <div className="w-full min-w-[11rem] max-w-xs space-y-1 sm:w-52">
+                  <label
+                    htmlFor="txn-pipeline-stage-jump-engine"
+                    className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface"
+                  >
+                    Focus stage
+                  </label>
+                  <Select
+                    value={
+                      stageJump && engineStageEntries.some((e) => e.stageKey === stageJump)
+                        ? stageJump
+                        : "__none__"
+                    }
+                    onValueChange={(v) => {
+                      if (v === "__none__") {
+                        setStageJump("");
+                        return;
+                      }
+                      setStageJump(v);
+                      requestAnimationFrame(() => {
+                        const id = `txn-stage-${v.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+                        document.getElementById(id)?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        });
+                      });
+                    }}
+                  >
+                    <SelectTrigger
+                      id="txn-pipeline-stage-jump-engine"
+                      className="h-9 border-kp-outline/70 bg-kp-surface text-xs text-kp-on-surface [&>span]:text-kp-on-surface data-[placeholder]:text-kp-on-surface-variant"
+                    >
+                      <SelectValue placeholder="Jump to a stage…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem
+                        value="__none__"
+                        className="text-xs text-kp-on-surface-variant focus:text-kp-on-surface"
+                      >
+                        Jump to a stage…
+                      </SelectItem>
+                      {engineStageEntries.map((e) => (
+                        <SelectItem
+                          key={e.stageKey}
+                          value={e.stageKey}
+                          className="text-xs text-kp-on-surface focus:text-kp-on-surface"
+                        >
+                          {e.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+            </div>
+          ) : pipelineRows.length > 0 && resolvedSide ? (
+            <div
+              id="txn-pipeline-setup"
+              className="mt-4 flex flex-col gap-3 rounded-lg border border-kp-outline/45 bg-kp-surface-high/40 px-3 py-2.5 sm:flex-row sm:items-end sm:justify-between"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold leading-snug text-kp-on-surface">
+                  <span className="font-normal text-kp-on-surface-variant">Pipeline · </span>
+                  California {resolvedSide === "SELL" ? "listing" : "buyer"} · {pipelineRows.length} rows ·{" "}
+                  {PIPELINE_STAGE_ORDER[resolvedSide].length} stages
+                </p>
+                <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">
+                  {!canChangeSide ? "Side locked while rows exist." : null}
+                </p>
+              </div>
+              <div className="w-full min-w-[11rem] max-w-xs space-y-1 sm:w-52">
+                <label
+                  htmlFor="txn-pipeline-stage-jump-ca"
+                  className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface"
+                >
+                  Focus stage
+                </label>
+                <Select
+                  value={
+                    stageJump &&
+                    PIPELINE_STAGE_ORDER[resolvedSide].includes(stageJump as PipelineStageKey)
+                      ? stageJump
+                      : "__none__"
+                  }
+                  onValueChange={(v) => {
+                    if (v === "__none__") {
+                      setStageJump("");
+                      return;
+                    }
+                    setStageJump(v);
+                    requestAnimationFrame(() => {
+                      document.getElementById(`txn-stage-${v}`)?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start",
+                      });
+                    });
+                  }}
+                >
+                  <SelectTrigger
+                    id="txn-pipeline-stage-jump-ca"
+                    className="h-9 border-kp-outline/70 bg-kp-surface text-xs text-kp-on-surface [&>span]:text-kp-on-surface data-[placeholder]:text-kp-on-surface-variant"
+                  >
+                    <SelectValue placeholder="Jump to a stage…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      value="__none__"
+                      className="text-xs text-kp-on-surface-variant focus:text-kp-on-surface"
+                    >
+                      Jump to a stage…
+                    </SelectItem>
+                    {PIPELINE_STAGE_ORDER[resolvedSide].map((key) => (
+                      <SelectItem
+                        key={key}
+                        value={key}
+                        className="text-xs text-kp-on-surface focus:text-kp-on-surface"
+                      >
+                        {PIPELINE_STAGE_LABELS[key]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          ) : null}
 
-          <div className="mt-6 space-y-6">
+          {progressStats ? (
+            <DealProgressStrip
+              complete={progressStats.complete}
+              total={progressStats.total}
+              pct={progressStats.pct}
+            />
+          ) : null}
+
+          <div className="mt-4 space-y-4">
             {busy ? (
               <ul className="space-y-2" aria-busy="true">
                 {[0, 1, 2, 3].map((i) => (
@@ -943,18 +1014,18 @@ export function TransactionProgressWorkspace({
                       const stageTotal = engineStageEntries.length;
                       return (
                         <div key={stageKey} id={`txn-stage-${safeId}`} className="scroll-mt-28">
-                          <div className="flex flex-wrap items-start justify-between gap-2 rounded-t-lg border border-b-0 border-kp-outline/50 bg-kp-surface-high/30 px-3 py-2.5 sm:px-4">
+                          <div className="flex flex-wrap items-start justify-between gap-2 rounded-t-lg border border-b-0 border-kp-outline/50 bg-kp-surface-high/30 px-2.5 py-1.5 sm:px-3">
                             <div>
-                              <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface">
                                 Stage {stageIndex} of {stageTotal}
                               </p>
                               <h3 className="mt-0.5 text-sm font-semibold text-kp-on-surface">{label}</h3>
                             </div>
-                            <span className="shrink-0 rounded-md bg-kp-surface/80 px-2 py-1 text-[11px] tabular-nums text-kp-on-surface-variant">
-                              {openCount} open · {items.length} total
+                            <span className="shrink-0 rounded-md bg-kp-surface/90 px-2 py-0.5 text-[11px] tabular-nums text-kp-on-surface">
+                              {items.length - openCount} of {items.length} complete in stage · {openCount} open
                             </span>
                           </div>
-                          <ul className="space-y-2 rounded-b-lg border border-t-0 border-kp-outline/50 bg-kp-surface/40 px-3 py-3 sm:px-4">
+                          <ul className="space-y-1.5 rounded-b-lg border border-t-0 border-kp-outline/50 bg-kp-surface/40 px-2 py-2 sm:px-2.5">
                             {items.map((inst) => (
                               <FormEngineDocumentRow
                                 key={inst.sourceRuleId}
@@ -988,18 +1059,19 @@ export function TransactionProgressWorkspace({
                         const stageTotal = PIPELINE_STAGE_ORDER[resolvedSide].length;
                         return (
                           <div key={stageKey} id={`txn-stage-${stageKey}`} className="scroll-mt-28">
-                            <div className="flex flex-wrap items-start justify-between gap-2 rounded-t-lg border border-b-0 border-kp-outline/50 bg-kp-surface-high/30 px-3 py-2.5 sm:px-4">
+                            <div className="flex flex-wrap items-start justify-between gap-2 rounded-t-lg border border-b-0 border-kp-outline/50 bg-kp-surface-high/30 px-2.5 py-1.5 sm:px-3">
                               <div>
-                                <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface">
                                   Stage {stageIndex} of {stageTotal}
                                 </p>
                                 <h3 className="mt-0.5 text-sm font-semibold text-kp-on-surface">{label}</h3>
                               </div>
-                              <span className="shrink-0 rounded-md bg-kp-surface/80 px-2 py-1 text-[11px] tabular-nums text-kp-on-surface-variant">
-                                {openCount} open · {stageItems.length} total
+                              <span className="shrink-0 rounded-md bg-kp-surface/90 px-2 py-0.5 text-[11px] tabular-nums text-kp-on-surface">
+                                {stageItems.length - openCount} of {stageItems.length} complete in stage ·{" "}
+                                {openCount} open
                               </span>
                             </div>
-                            <ul className="space-y-2 rounded-b-lg border border-t-0 border-kp-outline/50 bg-kp-surface/40 px-3 py-3 sm:px-4">
+                            <ul className="space-y-1.5 rounded-b-lg border border-t-0 border-kp-outline/50 bg-kp-surface/40 px-2 py-2 sm:px-2.5">
                               {stageItems
                                 .slice()
                                 .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -1020,20 +1092,23 @@ export function TransactionProgressWorkspace({
                       })
                     : null}
 
-                {legacyRows.length > 0 ? (
-                  <div className="rounded-lg border border-dashed border-kp-outline/25 bg-kp-bg/40 px-3 py-3 opacity-90">
-                    <h3 className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant/90">
-                      Other checklist items
+                {SHOW_LEGACY_CHECKLIST && legacyRows.length > 0 ? (
+                  <div className="rounded-lg border border-dashed border-amber-500/30 bg-amber-500/[0.06] px-3 py-2.5">
+                    <h3 className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface">
+                      Legacy checklist (debug)
                     </h3>
                     <p className="mt-1 text-[10px] leading-snug text-kp-on-surface-variant">
-                      Custom or pre-pipeline rows — secondary to the California pipeline above. Manage in
-                      your checklist tools or remove when obsolete.
+                      Pre-pipeline rows — opt-in via{" "}
+                      <code className="rounded bg-kp-surface-high/80 px-1 text-[10px]">
+                        NEXT_PUBLIC_KEYPILOT_TXN_LEGACY_CHECKLIST=1
+                      </code>
+                      .
                     </p>
                     <ul className="mt-2 space-y-1">
                       {legacyRows.map((row) => (
                         <li
                           key={row.id}
-                          className="rounded border border-kp-outline/20 bg-kp-surface/30 px-2 py-1.5 text-[11px] leading-snug text-kp-on-surface-muted"
+                          className="rounded border border-kp-outline/20 bg-kp-surface/30 px-2 py-1.5 text-[11px] leading-snug text-kp-on-surface-variant"
                         >
                           {row.title}
                         </li>
@@ -1047,6 +1122,137 @@ export function TransactionProgressWorkspace({
         </>
       )}
     </section>
+  );
+}
+
+function DocumentAttachField({
+  value,
+  onChange,
+  disabled,
+  idPrefix,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  disabled?: boolean;
+  idPrefix: string;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const hasPointer = Boolean(value.trim());
+  const showOpen = isAbsoluteHttpUrl(value);
+  const label = displayAttachmentLabel(value);
+
+  const onPick = (file: File | undefined) => {
+    if (!file) return;
+    onChange(`Local: ${file.name}`);
+  };
+
+  return (
+    <div className="space-y-2 sm:col-span-2">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface">Document</p>
+      {!hasPointer ? (
+        <div
+          className={cn(
+            "flex min-h-[5rem] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-kp-outline/55 bg-kp-bg/35 px-3 py-3 text-center transition-colors",
+            !disabled && "hover:border-kp-teal/45 hover:bg-kp-teal/[0.04]",
+            disabled && "cursor-not-allowed opacity-60"
+          )}
+          role="button"
+          tabIndex={disabled ? -1 : 0}
+          onClick={() => !disabled && inputRef.current?.click()}
+          onKeyDown={(e) => {
+            if (disabled) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              inputRef.current?.click();
+            }
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            if (disabled) return;
+            onPick(e.dataTransfer.files?.[0]);
+          }}
+        >
+          <Upload className="h-5 w-5 text-kp-teal" aria-hidden />
+          <span className="text-xs font-medium text-kp-on-surface">Drop a file or browse</span>
+          <span className="text-[10px] text-kp-on-surface-variant">Saved as a reference when you click Save</span>
+          <input
+            ref={inputRef}
+            type="file"
+            className="sr-only"
+            accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
+            disabled={disabled}
+            onChange={(e) => onPick(e.target.files?.[0])}
+          />
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-kp-outline/50 bg-kp-surface-high/45 px-3 py-2">
+          <FileText className="h-4 w-4 shrink-0 text-kp-teal" aria-hidden />
+          <span className="min-w-0 flex-1 truncate text-xs font-medium text-kp-on-surface" title={label}>
+            {label}
+          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {showOpen ? (
+              <a
+                href={value.trim()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-8 items-center rounded-md border border-kp-teal/40 bg-kp-teal/10 px-2.5 text-xs font-medium text-kp-teal hover:bg-kp-teal/18"
+              >
+                <ExternalLink className="mr-1 h-3.5 w-3.5" aria-hidden />
+                View
+              </a>
+            ) : null}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 px-2 text-xs text-kp-on-surface"
+              disabled={disabled}
+              onClick={() => inputRef.current?.click()}
+            >
+              <RefreshCw className="mr-1 h-3.5 w-3.5" aria-hidden />
+              Replace
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-xs text-kp-on-surface-variant hover:text-kp-on-surface"
+              disabled={disabled}
+              onClick={() => onChange("")}
+            >
+              Remove
+            </Button>
+            <input
+              ref={inputRef}
+              type="file"
+              className="sr-only"
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
+              disabled={disabled}
+              onChange={(e) => onPick(e.target.files?.[0])}
+            />
+          </div>
+        </div>
+      )}
+      <details className="rounded-md border border-kp-outline/40 bg-kp-bg/30 px-2 py-1.5">
+        <summary className="cursor-pointer select-none text-[11px] font-medium text-kp-on-surface">
+          Paste link or path (advanced)
+        </summary>
+        <input
+          id={`${idPrefix}-adv`}
+          type="text"
+          value={value}
+          disabled={disabled}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="https://… or folder path"
+          className="mt-2 h-9 w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
+        />
+      </details>
+    </div>
   );
 }
 
@@ -1073,6 +1279,7 @@ function FormEngineDocumentRow({
   const [docUrl, setDocUrl] = useState(h0.docUrl);
   const [comments, setComments] = useState(h0.comments);
   const [dueLocal, setDueLocal] = useState(h0.dueYmd);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     const h = paperworkRowHydration(instance, persistedPaperwork);
@@ -1096,7 +1303,6 @@ function FormEngineDocumentRow({
   const scan = docStatusForScan(docStatus);
   const dueLine = dueScanLine(dueLocal, docStatus);
   const hasFilePointer = Boolean(docUrl.trim());
-  const showOpenLink = isAbsoluteHttpUrl(docUrl);
 
   const bucket = instance.bucket;
   const leftAccent =
@@ -1115,150 +1321,143 @@ function FormEngineDocumentRow({
         leftAccent
       )}
     >
-      <div className="border-b border-kp-outline/35 bg-kp-surface-high/35 px-3 py-2.5 sm:px-3.5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold leading-snug text-kp-on-surface">{instance.title}</p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              <span
-                className={cn(
-                  "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                  bucketBadgeClass(bucket)
-                )}
-              >
-                {bucketLabel(bucket)}
-              </span>
-              <span className="rounded bg-kp-surface-high/80 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-kp-on-surface-variant">
-                {instance.shortCode}
-              </span>
-              {instance.providerId ? (
-                <span className="text-[10px] font-medium uppercase text-kp-on-surface-muted">
-                  {instance.providerId}
-                </span>
-              ) : null}
-            </div>
-          </div>
-          <div className="flex min-w-0 flex-col gap-1.5 sm:max-w-[min(100%,20rem)] sm:items-end">
-            <StatusBadge variant={scan.variant} dot>
-              {scan.label}
-            </StatusBadge>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] sm:justify-end">
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 tabular-nums text-kp-on-surface-variant",
-                  dueLine.warn && "font-medium text-amber-600 dark:text-amber-300/90"
-                )}
-              >
-                <CalendarClock className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-                {dueLine.text}
-              </span>
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1",
-                  hasFilePointer ? "text-kp-teal" : "text-kp-on-surface-muted"
-                )}
-              >
-                <Link2 className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-                {hasFilePointer ? "File linked" : "No file linked"}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-3 py-3 sm:px-3.5">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-          Update row
-        </p>
-        <div className="mt-2 grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1">
-            <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">Status</label>
-            <Select
-              value={docStatus}
-              disabled={archived || disabled}
-              onValueChange={(v) => setDocStatus(v as DocumentStatus)}
+      <button
+        type="button"
+        className="flex w-full items-start gap-2 border-b border-kp-outline/35 bg-kp-surface-high/35 px-2.5 py-2 text-left sm:gap-2.5 sm:px-3"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+      >
+        <ChevronDown
+          className={cn(
+            "mt-0.5 h-4 w-4 shrink-0 text-kp-on-surface transition-transform",
+            expanded && "rotate-180"
+          )}
+          aria-hidden
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold leading-snug text-kp-on-surface">{instance.title}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <span
+              className={cn(
+                "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                bucketBadgeClass(bucket)
+              )}
             >
-              <SelectTrigger className="h-9 border-kp-outline/70 bg-kp-surface text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DOC_STATUS_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {bucketLabel(bucket)}
+            </span>
+            <span className="rounded bg-kp-surface-high/80 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-kp-on-surface">
+              {instance.shortCode}
+            </span>
+            {instance.providerId ? (
+              <span className="text-[10px] font-medium uppercase text-kp-on-surface-variant">
+                {instance.providerId}
+              </span>
+            ) : null}
           </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">Due date</label>
-            <input
-              type="date"
-              value={dueLocal}
-              disabled={archived || disabled}
-              onChange={(e) => setDueLocal(e.target.value)}
-              className="h-9 w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
-            />
-          </div>
-          <div className="space-y-1 sm:col-span-2">
-            <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">
-              Executed document (URL or path)
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={docUrl}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-0.5 pl-1 text-right">
+          <StatusBadge variant={scan.variant} dot>
+            {scan.label}
+          </StatusBadge>
+          <span
+            className={cn(
+              "inline-flex max-w-[11rem] items-center gap-1 text-[10px] tabular-nums text-kp-on-surface-variant sm:max-w-[14rem]",
+              dueLine.warn && "font-medium text-amber-600 dark:text-amber-300/90"
+            )}
+          >
+            <CalendarClock className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
+            <span className="leading-tight">{dueLine.text}</span>
+          </span>
+          <span
+            className={cn(
+              "inline-flex max-w-[11rem] items-center gap-1 text-[10px] font-medium leading-tight sm:max-w-[14rem]",
+              hasFilePointer ? "text-kp-teal" : "text-kp-on-surface-variant"
+            )}
+          >
+            <Link2 className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
+            <span className="truncate">
+              {hasFilePointer ? displayAttachmentLabel(docUrl) || "Linked" : "No attachment"}
+            </span>
+          </span>
+        </div>
+      </button>
+
+      {expanded ? (
+        <div className="space-y-3 px-3 py-3 sm:px-3.5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold uppercase text-kp-on-surface">Status</label>
+              <Select
+                value={docStatus}
                 disabled={archived || disabled}
-                onChange={(e) => setDocUrl(e.target.value)}
-                placeholder="https://… or drive path"
-                className="h-9 min-w-0 flex-1 rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
+                onValueChange={(v) => setDocStatus(v as DocumentStatus)}
+              >
+                <SelectTrigger className="h-9 border-kp-outline/70 bg-kp-surface text-xs text-kp-on-surface [&>span]:text-kp-on-surface">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DOC_STATUS_OPTIONS.map((o) => (
+                    <SelectItem
+                      key={o.value}
+                      value={o.value}
+                      className="text-xs text-kp-on-surface focus:text-kp-on-surface"
+                    >
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold uppercase text-kp-on-surface">Due date</label>
+              <input
+                type="date"
+                value={dueLocal}
+                disabled={archived || disabled}
+                onChange={(e) => setDueLocal(e.target.value)}
+                className="h-9 w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
               />
-              {showOpenLink ? (
-                <a
-                  href={docUrl.trim()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex h-9 shrink-0 items-center gap-1 rounded-md border border-kp-teal/40 bg-kp-teal/10 px-2.5 text-xs font-medium text-kp-teal hover:bg-kp-teal/20"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                  Open
-                </a>
-              ) : null}
+            </div>
+            <DocumentAttachField
+              value={docUrl}
+              onChange={setDocUrl}
+              disabled={archived || disabled}
+              idPrefix={`fe-${instance.sourceRuleId}`}
+            />
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-[10px] font-semibold uppercase text-kp-on-surface">Notes</label>
+              <textarea
+                value={comments}
+                disabled={archived || disabled}
+                onChange={(e) => setComments(e.target.value)}
+                rows={2}
+                placeholder="Counterparty, delivery method, version, exceptions…"
+                className="w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1.5 text-xs text-kp-on-surface"
+              />
             </div>
           </div>
-          <div className="space-y-1 sm:col-span-2">
-            <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">Notes</label>
-            <textarea
-              value={comments}
+
+          <div className="flex justify-end border-t border-kp-outline/25 pt-3">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
               disabled={archived || disabled}
-              onChange={(e) => setComments(e.target.value)}
-              rows={2}
-              placeholder="Counterparty, delivery method, version, exceptions…"
-              className="w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1.5 text-xs text-kp-on-surface"
-            />
+              className="h-8 text-xs text-kp-on-surface"
+              onClick={() => {
+                onSave({
+                  docStatus,
+                  dueYmd: dueLocal.trim(),
+                  docUrl: docUrl.trim(),
+                  comments: comments.trim(),
+                });
+              }}
+            >
+              {disabled ? "Saving…" : "Save"}
+            </Button>
           </div>
         </div>
-
-        <div className="mt-3 flex justify-end border-t border-kp-outline/25 pt-3">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={archived || disabled}
-            className="h-8 text-xs"
-            onClick={() => {
-              onSave({
-                docStatus,
-                dueYmd: dueLocal.trim(),
-                docUrl: docUrl.trim(),
-                comments: comments.trim(),
-              });
-            }}
-          >
-            {disabled ? "Saving…" : "Save row"}
-          </Button>
-        </div>
-      </div>
+      ) : null}
     </li>
   );
 }
@@ -1281,6 +1480,7 @@ function PipelineDocumentRow({
   const [dueLocal, setDueLocal] = useState(
     row.dueDate ? row.dueDate.slice(0, 10) : ""
   );
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     const m = tryParsePipelineMeta(row.notes);
@@ -1299,151 +1499,143 @@ function PipelineDocumentRow({
   const scan = docStatusForScan(docStatus);
   const dueLine = dueScanLine(dueLocal, docStatus);
   const hasFilePointer = Boolean(docUrl.trim());
-  const showOpenLink = isAbsoluteHttpUrl(docUrl);
 
   return (
     <li className="overflow-hidden rounded-lg border border-kp-outline/55 bg-kp-surface shadow-sm">
-      <div className="border-b border-kp-outline/35 bg-kp-surface-high/35 px-3 py-2.5 sm:px-3.5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold leading-snug text-kp-on-surface">{row.title}</p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-              <span
-                className={cn(
-                  "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                  meta.requirement === "required"
-                    ? "bg-amber-500/15 text-amber-900 dark:text-amber-200"
-                    : "bg-kp-teal/12 text-kp-teal"
-                )}
-              >
-                {meta.requirement === "required" ? "Required" : "Conditional"}
-              </span>
-              <span className="rounded bg-kp-surface-high/80 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-kp-on-surface-variant">
-                {meta.code}
-              </span>
-            </div>
-          </div>
-          <div className="flex min-w-0 flex-col gap-1.5 sm:max-w-[min(100%,20rem)] sm:items-end">
-            <StatusBadge variant={scan.variant} dot>
-              {scan.label}
-            </StatusBadge>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] sm:justify-end">
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1 tabular-nums text-kp-on-surface-variant",
-                  dueLine.warn && "font-medium text-amber-600 dark:text-amber-300/90"
-                )}
-              >
-                <CalendarClock className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-                {dueLine.text}
-              </span>
-              <span
-                className={cn(
-                  "inline-flex items-center gap-1",
-                  hasFilePointer ? "text-kp-teal" : "text-kp-on-surface-muted"
-                )}
-              >
-                <Link2 className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-                {hasFilePointer ? "File linked" : "No file linked"}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="px-3 py-3 sm:px-3.5">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-          Update row
-        </p>
-        <div className="mt-2 grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1">
-            <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">Status</label>
-            <Select
-              value={docStatus}
-              disabled={archived || disabled}
-              onValueChange={(v) => setDocStatus(v as DocumentStatus)}
+      <button
+        type="button"
+        className="flex w-full items-start gap-2 border-b border-kp-outline/35 bg-kp-surface-high/35 px-2.5 py-2 text-left sm:gap-2.5 sm:px-3"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+      >
+        <ChevronDown
+          className={cn(
+            "mt-0.5 h-4 w-4 shrink-0 text-kp-on-surface transition-transform",
+            expanded && "rotate-180"
+          )}
+          aria-hidden
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold leading-snug text-kp-on-surface">{row.title}</p>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <span
+              className={cn(
+                "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                meta.requirement === "required"
+                  ? "bg-amber-500/15 text-amber-900 dark:text-amber-200"
+                  : "bg-kp-teal/12 text-kp-teal"
+              )}
             >
-              <SelectTrigger className="h-9 border-kp-outline/70 bg-kp-surface text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DOC_STATUS_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {meta.requirement === "required" ? "Required" : "Conditional"}
+            </span>
+            <span className="rounded bg-kp-surface-high/80 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-kp-on-surface">
+              {meta.code}
+            </span>
           </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">Due date</label>
-            <input
-              type="date"
-              value={dueLocal}
-              disabled={archived || disabled}
-              onChange={(e) => setDueLocal(e.target.value)}
-              className="h-9 w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
-            />
-          </div>
-          <div className="space-y-1 sm:col-span-2">
-            <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">
-              Executed document (URL or path)
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={docUrl}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-0.5 pl-1 text-right">
+          <StatusBadge variant={scan.variant} dot>
+            {scan.label}
+          </StatusBadge>
+          <span
+            className={cn(
+              "inline-flex max-w-[11rem] items-center gap-1 text-[10px] tabular-nums text-kp-on-surface-variant sm:max-w-[14rem]",
+              dueLine.warn && "font-medium text-amber-600 dark:text-amber-300/90"
+            )}
+          >
+            <CalendarClock className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
+            <span className="leading-tight">{dueLine.text}</span>
+          </span>
+          <span
+            className={cn(
+              "inline-flex max-w-[11rem] items-center gap-1 text-[10px] font-medium leading-tight sm:max-w-[14rem]",
+              hasFilePointer ? "text-kp-teal" : "text-kp-on-surface-variant"
+            )}
+          >
+            <Link2 className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
+            <span className="truncate">
+              {hasFilePointer ? displayAttachmentLabel(docUrl) || "Linked" : "No attachment"}
+            </span>
+          </span>
+        </div>
+      </button>
+
+      {expanded ? (
+        <div className="space-y-3 px-3 py-3 sm:px-3.5">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold uppercase text-kp-on-surface">Status</label>
+              <Select
+                value={docStatus}
                 disabled={archived || disabled}
-                onChange={(e) => setDocUrl(e.target.value)}
-                placeholder="https://… or drive path"
-                className="h-9 min-w-0 flex-1 rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
+                onValueChange={(v) => setDocStatus(v as DocumentStatus)}
+              >
+                <SelectTrigger className="h-9 border-kp-outline/70 bg-kp-surface text-xs text-kp-on-surface [&>span]:text-kp-on-surface">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DOC_STATUS_OPTIONS.map((o) => (
+                    <SelectItem
+                      key={o.value}
+                      value={o.value}
+                      className="text-xs text-kp-on-surface focus:text-kp-on-surface"
+                    >
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-semibold uppercase text-kp-on-surface">Due date</label>
+              <input
+                type="date"
+                value={dueLocal}
+                disabled={archived || disabled}
+                onChange={(e) => setDueLocal(e.target.value)}
+                className="h-9 w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
               />
-              {showOpenLink ? (
-                <a
-                  href={docUrl.trim()}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex h-9 shrink-0 items-center gap-1 rounded-md border border-kp-teal/40 bg-kp-teal/10 px-2.5 text-xs font-medium text-kp-teal hover:bg-kp-teal/20"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                  Open
-                </a>
-              ) : null}
+            </div>
+            <DocumentAttachField
+              value={docUrl}
+              onChange={setDocUrl}
+              disabled={archived || disabled}
+              idPrefix={`pl-${row.id}`}
+            />
+            <div className="space-y-1 sm:col-span-2">
+              <label className="text-[10px] font-semibold uppercase text-kp-on-surface">Notes</label>
+              <textarea
+                value={comments}
+                disabled={archived || disabled}
+                onChange={(e) => setComments(e.target.value)}
+                rows={2}
+                placeholder="Counterparty, delivery method, version, exceptions…"
+                className="w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1.5 text-xs text-kp-on-surface"
+              />
             </div>
           </div>
-          <div className="space-y-1 sm:col-span-2">
-            <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">Notes</label>
-            <textarea
-              value={comments}
+
+          <div className="flex justify-end border-t border-kp-outline/25 pt-3">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
               disabled={archived || disabled}
-              onChange={(e) => setComments(e.target.value)}
-              rows={2}
-              placeholder="Counterparty, delivery method, version, exceptions…"
-              className="w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1.5 text-xs text-kp-on-surface"
-            />
+              className="h-8 text-xs text-kp-on-surface"
+              onClick={() => {
+                const next = mergePipelineMeta(meta, {
+                  docStatus,
+                  docUrl: docUrl.trim() || undefined,
+                  comments: comments.trim() || undefined,
+                });
+                onSave(next, dueLocal.trim() || null);
+              }}
+            >
+              {disabled ? "Saving…" : "Save"}
+            </Button>
           </div>
         </div>
-
-        <div className="mt-3 flex justify-end border-t border-kp-outline/25 pt-3">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={archived || disabled}
-            className="h-8 text-xs"
-            onClick={() => {
-              const next = mergePipelineMeta(meta, {
-                docStatus,
-                docUrl: docUrl.trim() || undefined,
-                comments: comments.trim() || undefined,
-              });
-              onSave(next, dueLocal.trim() || null);
-            }}
-          >
-            {disabled ? "Saving…" : "Save row"}
-          </Button>
-        </div>
-      </div>
+      ) : null}
     </li>
   );
 }
