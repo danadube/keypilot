@@ -48,7 +48,10 @@ function formatUsd(n: number | null | undefined) {
 /** Command center section labels — shared spacing and alignment above cards */
 const dashSectionLabelClass =
   "text-[11px] font-semibold uppercase tracking-wider leading-none text-kp-on-surface-muted";
-const dashSectionHeadRowClass = "mb-2 flex min-h-[1.125rem] items-center justify-between gap-2 px-0.5";
+/** Shared flex row for label + optional trailing action (listings, activity, priority). */
+const dashSectionHeadRowBaseClass =
+  "flex min-h-[1.125rem] items-baseline justify-between gap-2 px-0.5";
+const dashSectionHeadRowClass = cn(dashSectionHeadRowBaseClass, "mb-2");
 
 function SnapshotTile({
   href,
@@ -318,15 +321,45 @@ export function OperationalDashboardView() {
         </div>
       </section>
 
-      {/* 3 — Today + priority */}
-      <section aria-labelledby="dash-today-work" className="space-y-2">
-        <div className={dashSectionHeadRowClass}>
-          <h2 id="dash-today-work" className={dashSectionLabelClass}>
-            Today&apos;s work
-          </h2>
-        </div>
-        <div className="grid min-h-0 gap-3 lg:grid-cols-12 lg:items-stretch lg:gap-4 lg:max-h-[min(26rem,min(52vh,560px))]">
-          <div className="min-h-0 min-w-0 lg:col-span-8">
+      {/* 3 — Today + priority: one grid so both section labels share the same row + baseline (lg). */}
+      <section
+        aria-labelledby="dash-today-work"
+        className="space-y-0"
+      >
+        <div
+          className={cn(
+            "grid min-h-0 grid-cols-1 gap-x-3 gap-y-2",
+            "lg:grid-cols-12 lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-x-4 lg:gap-y-2",
+            "lg:max-h-[min(26rem,min(52vh,560px))]"
+          )}
+        >
+          <div
+            className={cn(
+              dashSectionHeadRowBaseClass,
+              "order-1 min-w-0 lg:order-none lg:col-span-8 lg:row-start-1"
+            )}
+          >
+            <h2 id="dash-today-work" className={dashSectionLabelClass}>
+              Today&apos;s work
+            </h2>
+          </div>
+          <div
+            className={cn(
+              dashSectionHeadRowBaseClass,
+              "order-3 min-w-0 lg:order-none lg:col-span-4 lg:row-start-1"
+            )}
+          >
+            <h2 id="dash-priority-heading" className={dashSectionLabelClass}>
+              Priority tasks
+            </h2>
+            <Link
+              href="/task-pilot"
+              className="shrink-0 text-[11px] font-semibold leading-none tracking-normal text-kp-teal hover:underline"
+            >
+              All
+            </Link>
+          </div>
+          <div className="order-2 min-h-0 min-w-0 lg:order-none lg:col-span-8 lg:row-start-2 lg:min-h-0">
             <CommandCenterSchedulePanel
               showings={showings}
               followUpsAll={followUpsAll}
@@ -337,18 +370,7 @@ export function OperationalDashboardView() {
               className="h-full min-h-0"
             />
           </div>
-          <div className="flex min-h-0 min-w-0 flex-col lg:col-span-4">
-            <div className={dashSectionHeadRowClass}>
-              <h2 id="dash-priority-heading" className={dashSectionLabelClass}>
-                Priority tasks
-              </h2>
-              <Link
-                href="/task-pilot"
-                className="text-[11px] font-semibold text-kp-teal hover:underline"
-              >
-                All
-              </Link>
-            </div>
+          <div className="order-4 flex min-h-0 min-w-0 flex-col lg:order-none lg:col-span-4 lg:row-start-2">
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-kp-outline bg-kp-surface p-3 shadow-sm sm:p-3.5">
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pr-0.5 [-webkit-overflow-scrolling:touch]">
                 {loading ? (
