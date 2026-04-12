@@ -230,6 +230,21 @@ export function CommandCenterSchedulePanel({
   useEffect(() => {
     const tick = () => setCurrentTime(new Date());
     const id = setInterval(tick, 60_000);
+
+    /** Fire at next local midnight so we are not up to ~60s late after the day rolls over (interval alone). */
+    let midnightTimer: ReturnType<typeof setTimeout> | undefined;
+    const scheduleMidnightTick = () => {
+      if (midnightTimer != null) clearTimeout(midnightTimer);
+      const now = new Date();
+      const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0);
+      const ms = Math.max(0, nextMidnight.getTime() - now.getTime());
+      midnightTimer = setTimeout(() => {
+        tick();
+        scheduleMidnightTick();
+      }, ms);
+    };
+    scheduleMidnightTick();
+
     const onVisible = () => {
       if (typeof document !== "undefined" && document.visibilityState === "visible") tick();
     };
@@ -238,6 +253,7 @@ export function CommandCenterSchedulePanel({
     }
     return () => {
       clearInterval(id);
+      if (midnightTimer != null) clearTimeout(midnightTimer);
       if (typeof document !== "undefined") {
         document.removeEventListener("visibilitychange", onVisible);
       }
@@ -292,6 +308,7 @@ export function CommandCenterSchedulePanel({
   );
 
   const selectedIsToday = isSameLocalDay(selectedDay, currentTime);
+  /** Live wall clock for now/next within the day; day boundaries use `currentTime` (refreshed at midnight + interval). */
   const nowMs = Date.now();
   let scheduleNowIndex = -1;
   let scheduleNextIndex = -1;
