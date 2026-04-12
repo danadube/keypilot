@@ -9,6 +9,9 @@ import {
   ExternalLink,
   FileText,
   Layers,
+  Link2,
+  ListChecks,
+  CalendarClock,
 } from "lucide-react";
 import { apiFetcher } from "@/lib/fetcher";
 import { cn } from "@/lib/utils";
@@ -93,6 +96,63 @@ const DOC_STATUS_OPTIONS: { value: DocumentStatus; label: string }[] = [
   { value: "uploaded", label: "Uploaded" },
   { value: "complete", label: "Complete" },
 ];
+
+function docStatusForScan(s: DocumentStatus): {
+  label: string;
+  variant: ComponentProps<typeof StatusBadge>["variant"];
+} {
+  switch (s) {
+    case "not_started":
+      return { label: "Not started", variant: "inactive" };
+    case "sent":
+      return { label: "Sent", variant: "pending" };
+    case "signed":
+      return { label: "Signed", variant: "upcoming" };
+    case "uploaded":
+      return { label: "Uploaded", variant: "live" };
+    case "complete":
+      return { label: "Complete", variant: "closed" };
+  }
+}
+
+/** Scan-line due copy from saved row or local YYYY-MM-DD while editing. */
+function dueScanLine(
+  dueYmd: string,
+  docStatus: DocumentStatus
+): { text: string; warn: boolean } {
+  if (docStatus === "complete") {
+    return { text: "Complete — no action", warn: false };
+  }
+  const t = dueYmd.trim();
+  if (!t) {
+    return { text: "Due date not set", warn: false };
+  }
+  const d = new Date(`${t}T12:00:00`);
+  if (Number.isNaN(d.getTime())) {
+    return { text: "Due date not set", warn: false };
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(d);
+  due.setHours(0, 0, 0, 0);
+  const diff = Math.ceil((due.getTime() - today.getTime()) / 86400000);
+  if (diff < 0) {
+    return { text: `Overdue ${Math.abs(diff)} day${Math.abs(diff) === 1 ? "" : "s"}`, warn: true };
+  }
+  if (diff === 0) {
+    return { text: "Due today", warn: true };
+  }
+  if (diff === 1) {
+    return { text: "Due tomorrow", warn: false };
+  }
+  if (diff <= 7) {
+    return {
+      text: `Due in ${diff} days (${d.toLocaleDateString("en-US", { month: "short", day: "numeric" })})`,
+      warn: false,
+    };
+  }
+  return { text: `Due ${d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`, warn: false };
+}
 
 function isAbsoluteHttpUrl(s: string): boolean {
   const t = s.trim();
@@ -273,15 +333,15 @@ export function TransactionProgressWorkspace({
           <Layers className="mt-0.5 h-5 w-5 shrink-0 text-kp-teal" aria-hidden />
           <div>
             <h2 id="txn-pipeline-heading" className="text-base font-semibold text-kp-on-surface">
-              Transaction documents &amp; stages
+              Documents by stage
             </h2>
             <p className="mt-1 max-w-prose text-xs text-kp-on-surface-variant">
-              Stage-based California workflow — concrete forms and packages per row. Choose representation
-              below, load the pipeline, then track status, due dates, and executed file links here.
+              Work the deal in order: set representation, load the California checklist, then update each
+              row as documents move. Economics stay on Financial &amp; records.
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-                Record status
+                Deal record status
               </span>
               <StatusBadge variant={statusBadgeVariant(stageStatus)}>
                 {STATUS_LABELS[stageStatus]}
@@ -290,7 +350,7 @@ export function TransactionProgressWorkspace({
             <p className="mt-2 text-[11px] text-kp-on-surface-variant">{pipelinePositionHint(stageStatus, resolvedSide ?? "SELL")}</p>
           </div>
         </div>
-        <FileText className="h-4 w-4 text-kp-on-surface-muted opacity-50" aria-hidden />
+        <ListChecks className="h-4 w-4 shrink-0 text-kp-on-surface-muted opacity-60" aria-hidden />
       </div>
 
       {error ? (
@@ -302,142 +362,201 @@ export function TransactionProgressWorkspace({
         <>
           <div
             id="txn-pipeline-setup"
-            className="mt-5 rounded-lg border border-kp-teal/35 bg-kp-teal/[0.06] px-4 py-4"
+            className="mt-5 overflow-hidden rounded-xl border border-kp-teal/30 bg-gradient-to-b from-kp-teal/[0.08] via-kp-surface/95 to-kp-surface shadow-sm"
           >
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-              Pipeline setup
-            </p>
-            <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
-              <div className="min-w-0 flex-1 space-y-2">
-                <p className="text-xs font-medium text-kp-on-surface">Representation</p>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={archived || savingSide || !canChangeSide}
-                    className={cn(
-                      "h-9 border-kp-outline/80 text-xs",
-                      resolvedSide === "SELL"
-                        ? cn(kpBtnPrimary, "border-kp-teal/50 bg-kp-teal/20 text-kp-teal hover:bg-kp-teal/25")
-                        : kpBtnSecondary
-                    )}
-                    onClick={() => void saveSide("SELL")}
-                  >
-                    {savingSide ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Listing"}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    disabled={archived || savingSide || !canChangeSide}
-                    className={cn(
-                      "h-9 border-kp-outline/80 text-xs",
-                      resolvedSide === "BUY"
-                        ? cn(kpBtnPrimary, "border-kp-teal/50 bg-kp-teal/20 text-kp-teal hover:bg-kp-teal/25")
-                        : kpBtnSecondary
-                    )}
-                    onClick={() => void saveSide("BUY")}
-                  >
-                    {savingSide ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Buyer"}
-                  </Button>
+            <div className="border-b border-kp-outline/25 bg-kp-teal/[0.04] px-4 py-3 sm:px-5">
+              <p className="text-xs font-semibold text-kp-on-surface">Pipeline workflow</p>
+              <p className="mt-0.5 text-[11px] text-kp-on-surface-variant">
+                Standard first steps for this transaction — same surface before and after rows load.
+              </p>
+            </div>
+
+            <div className="space-y-0 px-4 py-4 sm:px-5">
+              <div className="flex gap-3 sm:gap-4">
+                <div
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-kp-teal/20 text-xs font-bold text-kp-teal"
+                  aria-hidden
+                >
+                  1
                 </div>
-                {!resolvedSide ? (
-                  <p className="text-[11px] leading-snug text-kp-on-surface-variant">
-                    Pick listing or buyer to unlock the California document list. You can change this until
-                    the pipeline is loaded.
-                  </p>
-                ) : !canChangeSide ? (
-                  <p className="text-[11px] leading-snug text-kp-on-surface-variant">
-                    Side matches the loaded pipeline. To switch listing vs buyer, remove pipeline checklist
-                    rows first (or start from a new transaction).
-                  </p>
-                ) : null}
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div>
+                    <h3 className="text-sm font-semibold text-kp-on-surface">Who are you representing?</h3>
+                    <p className="mt-1 text-[11px] leading-relaxed text-kp-on-surface-variant">
+                      Saved on the transaction. You can change this until the California checklist is loaded
+                      for this deal.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={archived || savingSide || !canChangeSide}
+                      className={cn(
+                        "h-10 min-w-[7.5rem] border-kp-outline/80 text-xs font-medium",
+                        resolvedSide === "SELL"
+                          ? cn(kpBtnPrimary, "border-kp-teal/50 bg-kp-teal/20 text-kp-teal hover:bg-kp-teal/25")
+                          : kpBtnSecondary
+                      )}
+                      onClick={() => void saveSide("SELL")}
+                    >
+                      {savingSide ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Listing (seller)"}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={archived || savingSide || !canChangeSide}
+                      className={cn(
+                        "h-10 min-w-[7.5rem] border-kp-outline/80 text-xs font-medium",
+                        resolvedSide === "BUY"
+                          ? cn(kpBtnPrimary, "border-kp-teal/50 bg-kp-teal/20 text-kp-teal hover:bg-kp-teal/25")
+                          : kpBtnSecondary
+                      )}
+                      onClick={() => void saveSide("BUY")}
+                    >
+                      {savingSide ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Buyer"}
+                    </Button>
+                  </div>
+                  {!resolvedSide ? (
+                    <p className="text-[11px] text-kp-on-surface-variant">
+                      Choose a side to unlock step 2.
+                    </p>
+                  ) : !canChangeSide ? (
+                    <p className="text-[11px] text-kp-on-surface-variant">
+                      Side is fixed while pipeline rows exist. Remove pipeline rows to switch, or use a new
+                      transaction.
+                    </p>
+                  ) : (
+                    <p className="text-[11px] font-medium text-kp-teal/90">
+                      {resolvedSide === "SELL" ? "Listing" : "Buyer"} selected — continue to step 2.
+                    </p>
+                  )}
+                </div>
               </div>
 
-              {resolvedSide && pipelineRows.length > 0 ? (
-                <div className="w-full min-w-[12rem] max-w-xs space-y-1 lg:w-auto">
-                  <label
-                    htmlFor="txn-pipeline-stage-jump"
-                    className="text-[10px] font-semibold uppercase text-kp-on-surface-variant"
+              {resolvedSide ? (
+                <div className="mt-5 flex gap-3 border-t border-kp-outline/25 pt-5 sm:gap-4">
+                  <div
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-kp-teal/20 text-xs font-bold text-kp-teal"
+                    aria-hidden
                   >
-                    Focus stage
-                  </label>
-                  <Select
-                    value={
-                      stageJump &&
-                      PIPELINE_STAGE_ORDER[resolvedSide].includes(stageJump as PipelineStageKey)
-                        ? stageJump
-                        : "__none__"
-                    }
-                    onValueChange={(v) => {
-                      if (v === "__none__") {
-                        setStageJump("");
-                        return;
-                      }
-                      setStageJump(v);
-                      requestAnimationFrame(() => {
-                        document.getElementById(`txn-stage-${v}`)?.scrollIntoView({
-                          behavior: "smooth",
-                          block: "start",
-                        });
-                      });
-                    }}
-                  >
-                    <SelectTrigger
-                      id="txn-pipeline-stage-jump"
-                      className="h-9 border-kp-outline/70 bg-kp-surface text-xs"
-                    >
-                      <SelectValue placeholder="Jump to a stage…" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__" className="text-kp-on-surface-variant">
-                        Jump to a stage…
-                      </SelectItem>
-                      {PIPELINE_STAGE_ORDER[resolvedSide].map((key) => (
-                        <SelectItem key={key} value={key}>
-                          {PIPELINE_STAGE_LABELS[key]}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ) : null}
+                    2
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-kp-on-surface">Load the California checklist</h3>
+                      <p className="mt-1 text-[11px] leading-relaxed text-kp-on-surface-variant">
+                        Adds CAR-style rows (RLA, TDS, RPA, etc.) as trackable items. You can still add custom
+                        rows later; they appear below under &quot;Other checklist items.&quot;
+                      </p>
+                    </div>
 
-              {resolvedSide && pipelineRows.length === 0 ? (
-                <div className="flex w-full flex-col gap-2 sm:max-w-md lg:ml-auto lg:w-auto lg:min-w-[14rem]">
-                  <p className="text-xs text-kp-on-surface">
-                    Load RLA, TDS, RPA, and the rest as individual rows for this{" "}
-                    {resolvedSide === "SELL" ? "listing" : "buyer"} pipeline.
-                  </p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={archived || seeding || busy}
-                    className={cn(
-                      kpBtnPrimary,
-                      "h-9 bg-kp-teal/25 text-xs font-semibold text-kp-teal hover:bg-kp-teal/35"
-                    )}
-                    onClick={() => void seedPipeline()}
-                  >
-                    {seeding ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                    {pipelineRows.length === 0 ? (
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                        <p className="text-xs text-kp-on-surface">
+                          Ready to create{" "}
+                          <span className="font-medium">
+                            {resolvedSide === "SELL" ? "listing-side" : "buyer-side"}
+                          </span>{" "}
+                          document rows.
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={archived || seeding || busy}
+                          className={cn(
+                            kpBtnPrimary,
+                            "h-10 shrink-0 bg-kp-teal/25 text-xs font-semibold text-kp-teal hover:bg-kp-teal/35"
+                          )}
+                          onClick={() => void seedPipeline()}
+                        >
+                          {seeding ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              <FileText className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+                              Load checklist rows
+                            </>
+                          )}
+                        </Button>
+                      </div>
                     ) : (
-                      "Load California document pipeline"
+                      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+                        <div className="rounded-lg border border-kp-teal/25 bg-kp-teal/[0.06] px-3 py-2">
+                          <p className="text-[11px] font-semibold text-kp-on-surface">
+                            Checklist active
+                          </p>
+                          <p className="text-[11px] text-kp-on-surface-variant">
+                            {pipelineRows.length} pipeline row{pipelineRows.length === 1 ? "" : "s"} · jump to a
+                            stage or scroll the list.
+                          </p>
+                        </div>
+                        <div className="w-full min-w-[12rem] max-w-xs space-y-1 sm:w-auto">
+                          <label
+                            htmlFor="txn-pipeline-stage-jump"
+                            className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant"
+                          >
+                            Focus stage
+                          </label>
+                          <Select
+                            value={
+                              stageJump &&
+                              PIPELINE_STAGE_ORDER[resolvedSide].includes(stageJump as PipelineStageKey)
+                                ? stageJump
+                                : "__none__"
+                            }
+                            onValueChange={(v) => {
+                              if (v === "__none__") {
+                                setStageJump("");
+                                return;
+                              }
+                              setStageJump(v);
+                              requestAnimationFrame(() => {
+                                document.getElementById(`txn-stage-${v}`)?.scrollIntoView({
+                                  behavior: "smooth",
+                                  block: "start",
+                                });
+                              });
+                            }}
+                          >
+                            <SelectTrigger
+                              id="txn-pipeline-stage-jump"
+                              className="h-9 border-kp-outline/70 bg-kp-surface text-xs"
+                            >
+                              <SelectValue placeholder="Jump to a stage…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__" className="text-kp-on-surface-variant">
+                                Jump to a stage…
+                              </SelectItem>
+                              {PIPELINE_STAGE_ORDER[resolvedSide].map((key) => (
+                                <SelectItem key={key} value={key}>
+                                  {PIPELINE_STAGE_LABELS[key]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
                     )}
-                  </Button>
+                  </div>
                 </div>
               ) : null}
             </div>
-            <p className="mt-3 border-t border-kp-outline/30 pt-3 text-[10px] text-kp-on-surface-variant">
-              Pricing, net commission, CRM deal link, and splits:{" "}
-              <Link
-                href={`/transactions/${transactionId}/financial`}
-                className="font-medium text-kp-teal underline-offset-2 hover:underline"
-              >
-                Financial &amp; records
-              </Link>
-            </p>
+
+            <div className="border-t border-kp-outline/25 bg-kp-surface-high/20 px-4 py-2.5 sm:px-5">
+              <p className="text-[10px] text-kp-on-surface-variant">
+                Sale price, commissions, CRM deal, splits:{" "}
+                <Link
+                  href={`/transactions/${transactionId}/financial`}
+                  className="font-medium text-kp-teal underline-offset-2 hover:underline"
+                >
+                  Financial &amp; records
+                </Link>
+              </p>
+            </div>
           </div>
 
           <div className="mt-6 space-y-6">
@@ -462,15 +581,22 @@ export function TransactionProgressWorkspace({
                         const m = tryParsePipelineMeta(r.notes);
                         return m && m.docStatus !== "complete";
                       }).length;
+                      const stageIndex = PIPELINE_STAGE_ORDER[resolvedSide].indexOf(stageKey) + 1;
+                      const stageTotal = PIPELINE_STAGE_ORDER[resolvedSide].length;
                       return (
                         <div key={stageKey} id={`txn-stage-${stageKey}`} className="scroll-mt-28">
-                          <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-kp-outline/50 pb-2">
-                            <h3 className="text-sm font-semibold text-kp-on-surface">{label}</h3>
-                            <span className="text-[11px] text-kp-on-surface-variant">
+                          <div className="flex flex-wrap items-start justify-between gap-2 rounded-t-lg border border-b-0 border-kp-outline/50 bg-kp-surface-high/30 px-3 py-2.5 sm:px-4">
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                                Stage {stageIndex} of {stageTotal}
+                              </p>
+                              <h3 className="mt-0.5 text-sm font-semibold text-kp-on-surface">{label}</h3>
+                            </div>
+                            <span className="shrink-0 rounded-md bg-kp-surface/80 px-2 py-1 text-[11px] tabular-nums text-kp-on-surface-variant">
                               {openCount} open · {stageItems.length} total
                             </span>
                           </div>
-                          <ul className="mt-3 space-y-3">
+                          <ul className="space-y-2 rounded-b-lg border border-t-0 border-kp-outline/50 bg-kp-surface/40 px-3 py-3 sm:px-4">
                             {stageItems
                               .slice()
                               .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -492,18 +618,19 @@ export function TransactionProgressWorkspace({
                   : null}
 
                 {legacyRows.length > 0 ? (
-                  <div className="rounded-lg border border-dashed border-kp-outline/40 bg-kp-surface-high/10 px-3 py-3">
-                    <h3 className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-                      Other items
+                  <div className="rounded-lg border border-dashed border-kp-outline/25 bg-kp-bg/40 px-3 py-3 opacity-90">
+                    <h3 className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant/90">
+                      Other checklist items
                     </h3>
-                    <p className="mt-1 text-[11px] text-kp-on-surface-variant">
-                      Legacy or custom checklist rows — not part of the seeded pipeline.
+                    <p className="mt-1 text-[10px] leading-snug text-kp-on-surface-variant">
+                      Custom or pre-pipeline rows — secondary to the California pipeline above. Manage in
+                      your checklist tools or remove when obsolete.
                     </p>
-                    <ul className="mt-2 space-y-1.5">
+                    <ul className="mt-2 space-y-1">
                       {legacyRows.map((row) => (
                         <li
                           key={row.id}
-                          className="rounded-md border border-kp-outline/35 bg-kp-surface/50 px-2.5 py-1.5 text-xs text-kp-on-surface-muted"
+                          className="rounded border border-kp-outline/20 bg-kp-surface/30 px-2 py-1.5 text-[11px] leading-snug text-kp-on-surface-muted"
                         >
                           {row.title}
                         </li>
@@ -553,116 +680,153 @@ function PipelineDocumentRow({
 
   if (!meta) return null;
 
+  const scan = docStatusForScan(docStatus);
+  const dueLine = dueScanLine(dueLocal, docStatus);
+  const hasFilePointer = Boolean(docUrl.trim());
+  const showOpenLink = isAbsoluteHttpUrl(docUrl);
+
   return (
-    <li className="rounded-lg border border-kp-outline/60 bg-kp-surface/90 p-3 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-kp-on-surface">{row.title}</p>
-          <div className="mt-1 flex flex-wrap gap-2">
-            <span
-              className={cn(
-                "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase",
-                meta.requirement === "required"
-                  ? "bg-amber-500/15 text-amber-900 dark:text-amber-200"
-                  : "bg-kp-teal/15 text-kp-teal"
-              )}
-            >
-              {meta.requirement === "required" ? "Required" : "Conditional"}
-            </span>
-            <span className="rounded bg-kp-surface-high px-1.5 py-0.5 text-[10px] font-medium uppercase text-kp-on-surface-variant">
-              {meta.code}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1">
-          <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">Status</label>
-          <Select
-            value={docStatus}
-            disabled={archived || disabled}
-            onValueChange={(v) => setDocStatus(v as DocumentStatus)}
-          >
-            <SelectTrigger className="h-9 border-kp-outline/70 bg-kp-surface text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {DOC_STATUS_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">Due date</label>
-          <input
-            type="date"
-            value={dueLocal}
-            disabled={archived || disabled}
-            onChange={(e) => setDueLocal(e.target.value)}
-            className="h-9 w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
-          />
-        </div>
-        <div className="space-y-1 sm:col-span-2">
-          <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">
-            Executed document (link or upload destination)
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={docUrl}
-              disabled={archived || disabled}
-              onChange={(e) => setDocUrl(e.target.value)}
-              placeholder="https://… or internal path"
-              className="h-9 min-w-0 flex-1 rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
-            />
-            {isAbsoluteHttpUrl(docUrl) ? (
-              <a
-                href={docUrl.trim()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex h-9 shrink-0 items-center gap-1 rounded-md border border-kp-teal/40 bg-kp-teal/10 px-2.5 text-xs font-medium text-kp-teal hover:bg-kp-teal/20"
+    <li className="overflow-hidden rounded-lg border border-kp-outline/55 bg-kp-surface shadow-sm">
+      <div className="border-b border-kp-outline/35 bg-kp-surface-high/35 px-3 py-2.5 sm:px-3.5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold leading-snug text-kp-on-surface">{row.title}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span
+                className={cn(
+                  "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                  meta.requirement === "required"
+                    ? "bg-amber-500/15 text-amber-900 dark:text-amber-200"
+                    : "bg-kp-teal/12 text-kp-teal"
+                )}
               >
-                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-                Open
-              </a>
-            ) : null}
+                {meta.requirement === "required" ? "Required" : "Conditional"}
+              </span>
+              <span className="rounded bg-kp-surface-high/80 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-kp-on-surface-variant">
+                {meta.code}
+              </span>
+            </div>
           </div>
-        </div>
-        <div className="space-y-1 sm:col-span-2">
-          <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">Notes</label>
-          <textarea
-            value={comments}
-            disabled={archived || disabled}
-            onChange={(e) => setComments(e.target.value)}
-            rows={2}
-            placeholder="Counterparty, delivery method, exceptions…"
-            className="w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1.5 text-xs text-kp-on-surface"
-          />
+          <div className="flex min-w-0 flex-col gap-1.5 sm:max-w-[min(100%,20rem)] sm:items-end">
+            <StatusBadge variant={scan.variant} dot>
+              {scan.label}
+            </StatusBadge>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] sm:justify-end">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 tabular-nums text-kp-on-surface-variant",
+                  dueLine.warn && "font-medium text-amber-600 dark:text-amber-300/90"
+                )}
+              >
+                <CalendarClock className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+                {dueLine.text}
+              </span>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1",
+                  hasFilePointer ? "text-kp-teal" : "text-kp-on-surface-muted"
+                )}
+              >
+                <Link2 className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                {hasFilePointer ? "File linked" : "No file linked"}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="mt-3 flex justify-end">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={archived || disabled}
-          className="h-8 text-xs"
-          onClick={() => {
-            const next = mergePipelineMeta(meta, {
-              docStatus,
-              docUrl: docUrl.trim() || undefined,
-              comments: comments.trim() || undefined,
-            });
-            onSave(next, dueLocal.trim() || null);
-          }}
-        >
-          {disabled ? "Saving…" : "Save row"}
-        </Button>
+      <div className="px-3 py-3 sm:px-3.5">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+          Update row
+        </p>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">Status</label>
+            <Select
+              value={docStatus}
+              disabled={archived || disabled}
+              onValueChange={(v) => setDocStatus(v as DocumentStatus)}
+            >
+              <SelectTrigger className="h-9 border-kp-outline/70 bg-kp-surface text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DOC_STATUS_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">Due date</label>
+            <input
+              type="date"
+              value={dueLocal}
+              disabled={archived || disabled}
+              onChange={(e) => setDueLocal(e.target.value)}
+              className="h-9 w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
+            />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">
+              Executed document (URL or path)
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={docUrl}
+                disabled={archived || disabled}
+                onChange={(e) => setDocUrl(e.target.value)}
+                placeholder="https://… or drive path"
+                className="h-9 min-w-0 flex-1 rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
+              />
+              {showOpenLink ? (
+                <a
+                  href={docUrl.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-9 shrink-0 items-center gap-1 rounded-md border border-kp-teal/40 bg-kp-teal/10 px-2.5 text-xs font-medium text-kp-teal hover:bg-kp-teal/20"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                  Open
+                </a>
+              ) : null}
+            </div>
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">Notes</label>
+            <textarea
+              value={comments}
+              disabled={archived || disabled}
+              onChange={(e) => setComments(e.target.value)}
+              rows={2}
+              placeholder="Counterparty, delivery method, version, exceptions…"
+              className="w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1.5 text-xs text-kp-on-surface"
+            />
+          </div>
+        </div>
+
+        <div className="mt-3 flex justify-end border-t border-kp-outline/25 pt-3">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={archived || disabled}
+            className="h-8 text-xs"
+            onClick={() => {
+              const next = mergePipelineMeta(meta, {
+                docStatus,
+                docUrl: docUrl.trim() || undefined,
+                comments: comments.trim() || undefined,
+              });
+              onSave(next, dueLocal.trim() || null);
+            }}
+          >
+            {disabled ? "Saving…" : "Save row"}
+          </Button>
+        </div>
       </div>
     </li>
   );
