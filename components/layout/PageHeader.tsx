@@ -12,6 +12,8 @@ export type PageHeaderProps = {
   /** When `title` is omitted, optional quiet label (e.g. ShowingHQ view name). */
   leading?: React.ReactNode;
   actionsMenu?: React.ReactNode;
+  /** Optional slot between workspace nav and primary CTA (e.g. entity detail Actions). */
+  secondaryActions?: React.ReactNode;
   primaryAction?: React.ReactNode;
   className?: string;
 };
@@ -21,10 +23,11 @@ export function PageHeader({
   subtitle,
   leading,
   actionsMenu,
+  secondaryActions,
   primaryAction,
   className,
 }: PageHeaderProps) {
-  const hasRight = Boolean(actionsMenu || primaryAction);
+  const hasRight = Boolean(actionsMenu || secondaryActions || primaryAction);
   const hasLeftContent = Boolean(title || subtitle || leading);
   const titleTone = title ? getModulePageTitleTwoTone(title) : undefined;
   const titleHeadingClass =
@@ -71,6 +74,7 @@ export function PageHeader({
         {hasRight ? (
           <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
             {actionsMenu}
+            {secondaryActions}
             {primaryAction}
           </div>
         ) : null}

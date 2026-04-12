@@ -10,6 +10,7 @@ import {
 } from "@/components/layout/PageHeader";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import { useState } from "react";
+import { useTransactionHqChromeOptional } from "@/components/modules/transactions/transaction-hq-chrome-context";
 
 const DEFAULT_SUBTITLE =
   "Your closings and referrals — net commission and deal status at a glance.";
@@ -32,6 +33,7 @@ export type TransactionHqPageHeaderProps = {
 export function TransactionHqPageHeader({ className }: TransactionHqPageHeaderProps) {
   const pathname = usePathname() ?? "";
   const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const hqChrome = useTransactionHqChromeOptional();
 
   return (
     <>
@@ -40,12 +42,13 @@ export function TransactionHqPageHeader({ className }: TransactionHqPageHeaderPr
         title="TransactionHQ"
         subtitle={subtitleForPath(pathname)}
         actionsMenu={
-          <PageHeaderActionsMenu>
+          <PageHeaderActionsMenu summaryLabel="Workspace">
             <PageHeaderActionItem href="/transactions">Overview</PageHeaderActionItem>
             <PageHeaderActionItem href="/transactions/pipeline">Pipeline</PageHeaderActionItem>
             <PageHeaderActionItem href="/transactions/commissions">Commissions</PageHeaderActionItem>
           </PageHeaderActionsMenu>
         }
+        secondaryActions={hqChrome?.detailActions ?? null}
         primaryAction={
           <PageHeaderPrimaryAddMenu>
             <PageHeaderActionItem href="/transactions?new=1">New deal</PageHeaderActionItem>

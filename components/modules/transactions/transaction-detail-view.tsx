@@ -3,7 +3,8 @@
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSWRConfig } from "swr";
+import useSWR, { useSWRConfig } from "swr";
+import { apiFetcher } from "@/lib/fetcher";
 import {
   ArrowLeft,
   MapPin,
@@ -25,7 +26,9 @@ import { parseOptionalFiniteNumberInput } from "@/lib/transactions/parse-optiona
 import { entityDetailWorkspaceGridClassName } from "@/components/layout/entity-detail-workspace-grid";
 import { TransactionDetailActivityPanel } from "@/components/modules/transactions/transaction-detail-activity-panel";
 import { TransactionDetailActionsMenu } from "@/components/modules/transactions/transaction-detail-actions-menu";
+import { TransactionDetailOperationsCue } from "@/components/modules/transactions/transaction-detail-operations-cue";
 import { TransactionChecklistPanel } from "@/components/modules/transactions/transaction-checklist-panel";
+import { useTransactionHqChromeOptional } from "@/components/modules/transactions/transaction-hq-chrome-context";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -372,7 +375,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     return () => {
       cancelled = true;
     };
-  }, [transactionId, txn?.dealId, txn?.property.id]);
+  }, [transactionId, txn]);
 
   useEffect(() => {
     if (!txn) return;
@@ -451,6 +454,71 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       }),
     [transactionKind, previewSalePrice, brokerageInput, draftCommissionInputs]
   );
+
+  const hqChrome = useTransactionHqChromeOptional();
+
+  const { data: checklistRows } = useSWR<{ isComplete: boolean }[]>(
+    transactionId ? `/api/v1/transactions/${transactionId}/checklist` : null,
+    apiFetcher
+  );
+
+  const checklistOpenCount = useMemo(() => {
+    if (!checklistRows || !Array.isArray(checklistRows)) return null;
+    return checklistRows.filter((i) => !i.isComplete).length;
+  }, [checklistRows]);
+
+  const operationsCue = useMemo(() => {
+    if (!txn) return null;
+    const previewIncomplete =
+      livePreview.status === "incomplete" || livePreview.status === "invalid";
+    const previewHint =
+      livePreview.status === "incomplete"
+        ? detailPreviewHint(livePreview.message)
+        : livePreview.status === "invalid"
+          ? livePreview.message
+          : null;
+    const commissionSetupIncomplete =
+      txn.transactionKind === "SALE" &&
+      livePreview.status === "ok" &&
+      txn.commissions.length === 0;
+
+    return (
+      <TransactionDetailOperationsCue
+        closingDate={txn.closingDate}
+        status={txn.status}
+        hasPrimaryContact={!!txn.primaryContactId}
+        previewIncomplete={previewIncomplete}
+        previewHint={previewHint}
+        checklistOpenCount={checklistOpenCount}
+        commissionSetupIncomplete={commissionSetupIncomplete}
+      />
+    );
+  }, [txn, livePreview, checklistOpenCount]);
+
+  useEffect(() => {
+    if (!hqChrome || !txn) return;
+    hqChrome.setDetailActions(
+      <TransactionDetailActionsMenu
+        transactionId={transactionId}
+        propertyId={txn.property.id}
+        primaryContactId={txn.primaryContactId}
+        currentStatus={status}
+        menuAlign="end"
+        onScrollToNote={scrollToActivityNote}
+        onRefreshActivity={() => void refreshTransactionActivity()}
+        onReloadTransaction={() => void load()}
+      />
+    );
+    return () => hqChrome.setDetailActions(null);
+  }, [
+    hqChrome,
+    txn,
+    transactionId,
+    status,
+    scrollToActivityNote,
+    refreshTransactionActivity,
+    load,
+  ]);
 
   const patchDealLink = async (dealId: string | null) => {
     setDealLinkBusy(true);
@@ -691,7 +759,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
       <div className={cn("px-6 pb-8 pt-4 sm:px-8", entityDetailWorkspaceGridClassName)}>
         <div className="order-2 flex min-w-0 flex-col gap-4 lg:order-none">
           <section className="rounded-xl border border-kp-outline/50 bg-kp-surface/50 p-5">
-            <div className="flex items-start justify-between gap-3">
+            <div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
                   Transaction
@@ -711,15 +779,6 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
                   {txn.property.city}, {txn.property.state} {txn.property.zip}
                 </p>
               </div>
-              <TransactionDetailActionsMenu
-                transactionId={transactionId}
-                propertyId={txn.property.id}
-                primaryContactId={txn.primaryContactId}
-                currentStatus={status}
-                onScrollToNote={scrollToActivityNote}
-                onRefreshActivity={() => void refreshTransactionActivity()}
-                onReloadTransaction={() => void load()}
-              />
             </div>
             <div className="mt-4 space-y-2 border-t border-kp-outline/40 pt-4 text-sm">
               {txn.closingDate ? (
@@ -759,40 +818,42 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
         </div>
 
         <div className="order-1 min-w-0 lg:order-none">
-          <TransactionDetailActivityPanel transactionId={transactionId} />
+          <TransactionDetailActivityPanel transactionId={transactionId} operationsCue={operationsCue} />
         </div>
 
         <aside className="order-3 min-w-0 lg:order-none">
           <div className="flex flex-col gap-4 lg:border-l lg:border-kp-outline/25 lg:pl-3">
+            <div className="flex flex-col gap-3">
         <section
           id="txn-financial-context"
-          className="rounded-xl border border-kp-outline bg-kp-surface p-5 shadow-sm"
+          className="rounded-xl border border-kp-outline/70 bg-kp-surface/80 p-4 shadow-none"
         >
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="flex items-start gap-2">
-              <Calculator className="mt-0.5 h-5 w-5 shrink-0 text-kp-teal" />
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div className="flex items-start gap-1.5">
+              <Calculator className="mt-0.5 h-4 w-4 shrink-0 text-kp-on-surface-variant" />
               <div>
-                <h2 className="text-sm font-semibold text-kp-on-surface">Financial context</h2>
-                <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-                  Core deal economics and live preview — use Actions for quick jumps; save when you change
-                  inputs.
+                <h2 className="text-xs font-semibold text-kp-on-surface">Financial context</h2>
+                <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-variant">
+                  Core economics and preview — use Actions for jumps; save when you change inputs.
                 </p>
               </div>
             </div>
             {dirty ? (
-              <span className="shrink-0 rounded-full border border-amber-500/35 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-900 dark:text-amber-200">
+              <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/[0.06] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-900/90 dark:text-amber-200/90">
                 Unsaved
               </span>
             ) : (
-              <span className="shrink-0 rounded-full border border-kp-outline bg-kp-surface-high px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+              <span className="shrink-0 rounded-full border border-kp-outline/50 bg-kp-surface-high/50 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
                 In sync
               </span>
             )}
           </div>
 
-          <div className="mt-5 rounded-lg border border-kp-teal/25 bg-kp-teal/[0.04] p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-teal">Primary inputs</p>
-            <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-3 rounded-md border border-kp-outline/40 bg-kp-surface-high/15 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+              Primary inputs
+            </p>
+            <div className="mt-2.5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div className="space-y-1.5 lg:col-span-1">
                 <label
                   htmlFor="ws-tx-kind"
@@ -898,82 +959,85 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
 
           <div
             className={cn(
-              "mt-5 rounded-xl border p-4",
+              "mt-3 rounded-lg border p-3",
               dirty && livePreview.status === "ok"
-                ? "border-kp-teal/40 bg-kp-teal/[0.07]"
-                : "border-kp-outline bg-kp-surface-high/40"
+                ? "border-kp-teal/25 bg-kp-teal/[0.04]"
+                : "border-kp-outline/40 bg-kp-surface-high/20"
             )}
           >
-            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
                 Live preview
               </span>
               {dirty ? (
-                <span className="text-[11px] text-kp-on-surface-variant">
+                <span className="text-[10px] text-kp-on-surface-variant/90">
                   Estimates — save to update stored outputs
                 </span>
               ) : (
-                <span className="text-[11px] text-kp-on-surface-variant">Matches saved calculation</span>
+                <span className="text-[10px] text-kp-on-surface-variant/90">Matches saved calculation</span>
               )}
             </div>
 
             {livePreview.status === "incomplete" || livePreview.status === "invalid" ? (
-              <div className="mt-3 rounded-lg border border-amber-500/35 bg-amber-500/[0.08] px-3 py-3 text-sm text-kp-on-surface">
+              <div className="mt-2.5 rounded-md border border-amber-500/30 bg-amber-500/[0.06] px-2.5 py-2 text-xs text-kp-on-surface">
                 {livePreview.status === "incomplete"
                   ? detailPreviewHint(livePreview.message)
                   : livePreview.message}
               </div>
             ) : (
               <>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-lg border border-kp-outline bg-kp-surface p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-md border border-kp-outline/40 bg-kp-surface/60 p-2">
+                    <p className="text-[9px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
                       Gross (GCI)
                     </p>
-                    <p className="mt-1 text-lg font-semibold tabular-nums text-kp-on-surface">
+                    <p className="mt-0.5 text-base font-semibold tabular-nums text-kp-on-surface">
                       {formatMoneyHero(livePreview.values.gci)}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-kp-outline bg-kp-surface p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                  <div className="rounded-md border border-kp-outline/40 bg-kp-surface/60 p-2">
+                    <p className="text-[9px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
                       After referrals
                     </p>
-                    <p className="mt-1 text-lg font-semibold tabular-nums text-kp-on-surface">
+                    <p className="mt-0.5 text-base font-semibold tabular-nums text-kp-on-surface">
                       {formatMoneyHero(livePreview.values.adjustedGci)}
                     </p>
                     {livePreview.values.referralDollar > 0 ? (
-                      <p className="mt-1 text-[10px] text-kp-on-surface-variant">
+                      <p className="mt-0.5 text-[9px] text-kp-on-surface-variant">
                         Referral paid −{formatMoneyDisplay(livePreview.values.referralDollar)}
                       </p>
                     ) : null}
                   </div>
-                  <div className="rounded-lg border border-kp-outline bg-kp-surface p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                  <div className="rounded-md border border-kp-outline/40 bg-kp-surface/60 p-2">
+                    <p className="text-[9px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
                       Total fees
                     </p>
-                    <p className="mt-1 text-lg font-semibold tabular-nums text-kp-on-surface">
+                    <p className="mt-0.5 text-base font-semibold tabular-nums text-kp-on-surface">
                       {formatMoneyHero(livePreview.values.totalBrokerageFees)}
                     </p>
                   </div>
-                  <div className="rounded-lg border-2 border-kp-teal/45 bg-kp-surface p-3 shadow-sm">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-teal">NCI</p>
-                    <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-kp-on-surface">
+                  <div className="rounded-md border border-kp-teal/30 bg-kp-surface/70 p-2">
+                    <p className="text-[9px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                      NCI
+                    </p>
+                    <p className="mt-0.5 text-xl font-bold tabular-nums tracking-tight text-kp-on-surface">
                       {formatMoneyHero(livePreview.values.nci)}
                     </p>
-                    <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">Net commission income</p>
+                    <p className="mt-0.5 text-[9px] text-kp-on-surface-variant">Net commission income</p>
                   </div>
                 </div>
-                <p className="mt-3 text-[11px] text-kp-on-surface-variant">
-                  Net volume: <span className="font-medium text-kp-on-surface">{formatMoneyHero(livePreview.values.netVolume)}</span>
+                <p className="mt-2 text-[10px] text-kp-on-surface-variant">
+                  Net volume:{" "}
+                  <span className="font-medium text-kp-on-surface/90">{formatMoneyHero(livePreview.values.netVolume)}</span>
                 </p>
               </>
             )}
 
-            <div className="mt-4 border-t border-kp-outline pt-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+            <div className="mt-3 border-t border-kp-outline/35 pt-2">
+              <p className="text-[9px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
                 Saved on server
               </p>
-              <p className="mt-1 text-xs text-kp-on-surface-variant">
+              <p className="mt-0.5 text-[10px] leading-relaxed text-kp-on-surface-variant">
                 {txn.nci != null || txn.gci != null ? (
                   <>
                     NCI {formatMoneyDisplay(txn.nci)} · After referrals {formatMoneyDisplay(txn.adjustedGci)} · Fees{" "}
@@ -986,14 +1050,14 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             </div>
           </div>
 
-          <div className="mt-5 border-t border-kp-outline pt-4">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+          <div className="mt-3 border-t border-kp-outline/35 pt-2.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
               Advanced adjustments
             </p>
-            <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+            <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-variant">
               Referral economics and import overrides. These feed the same preview above.
             </p>
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <div className="mt-2.5 grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <label
                   htmlFor="adv-ref-pct"
@@ -1133,18 +1197,18 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           side={txn.side === "BUY" || txn.side === "SELL" ? txn.side : null}
           archived={false}
           onListsChanged={() => void refreshTransactionActivity()}
-          className="!p-4"
+          className="!p-3 !shadow-none border-kp-outline/70 bg-kp-surface/80"
         />
 
         <section
           id="txn-deal-context"
-          className="rounded-xl border border-kp-outline bg-kp-surface p-5"
+          className="rounded-xl border border-kp-outline/80 bg-kp-surface p-4 shadow-sm"
         >
           <div className="flex flex-wrap items-center gap-2">
             <Briefcase className="h-4 w-4 text-kp-on-surface-variant" />
             <h2 className="text-sm font-semibold text-kp-on-surface">CRM deal</h2>
           </div>
-          <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+          <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-variant">
             Link an existing deal for this property. Only deals you own on this address appear here.
           </p>
 
@@ -1256,15 +1320,25 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           )}
         </section>
 
+            </div>
+
+            <details
+              open
+              className="rounded-lg border border-dashed border-kp-outline/35 bg-kp-bg/25 p-2.5"
+            >
+              <summary className="cursor-pointer list-none text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-variant/75 [&::-webkit-details-marker]:hidden">
+                Reference &amp; admin
+              </summary>
+              <div className="mt-2.5 space-y-2.5">
         <section
           id="txn-record-context"
-          className="rounded-xl border border-kp-outline bg-kp-surface p-5"
+          className="rounded-lg border border-kp-outline/45 bg-kp-surface/50 p-3 shadow-none"
         >
-          <h2 className="text-sm font-semibold text-kp-on-surface">Record &amp; context</h2>
-          <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+          <h2 className="text-xs font-semibold text-kp-on-surface">Record &amp; context</h2>
+          <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-variant">
             Pipeline status, client link, and notes.{" "}
-            <span className="font-medium text-kp-on-surface">Save changes</span> persists everything on this
-            page, including fields in the financial workspace above.
+            <span className="font-medium text-kp-on-surface/90">Save changes</span> persists fields on this
+            page, including financial inputs above.
           </p>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -1393,9 +1467,9 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           </div>
         </section>
 
-        <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-          <h2 className="text-sm font-semibold text-kp-on-surface">Commission splits</h2>
-          <p className="mt-0.5 text-xs text-kp-on-surface-variant">
+        <section className="rounded-lg border border-kp-outline/45 bg-kp-surface/50 p-3 shadow-none">
+          <h2 className="text-xs font-semibold text-kp-on-surface">Commission splits</h2>
+          <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-variant">
             Allocation lines for this transaction. Totals here are separate from the workspace NCI estimate
             until you align splits with net.
           </p>
@@ -1545,6 +1619,8 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             </button>
           </form>
         </section>
+              </div>
+            </details>
           </div>
         </aside>
       </div>

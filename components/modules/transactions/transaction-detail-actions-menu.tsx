@@ -53,6 +53,8 @@ type TransactionDetailActionsMenuProps = {
   onScrollToNote: () => void;
   onRefreshActivity: () => void;
   onReloadTransaction: () => void;
+  /** Dropdown alignment — use `end` in PageHeader (default). */
+  menuAlign?: "start" | "end";
 };
 
 export function TransactionDetailActionsMenu({
@@ -63,6 +65,7 @@ export function TransactionDetailActionsMenu({
   onScrollToNote,
   onRefreshActivity,
   onReloadTransaction,
+  menuAlign = "end",
 }: TransactionDetailActionsMenuProps) {
   const menuRef = useRef<HTMLDetailsElement>(null);
   const closeMenu = useCallback(() => {
@@ -190,7 +193,8 @@ export function TransactionDetailActionsMenu({
         </summary>
         <div
           className={cn(
-            "absolute left-0 z-40 mt-1 hidden min-w-[13.5rem] rounded-lg border border-kp-outline bg-kp-surface py-1 shadow-lg",
+            "absolute z-40 mt-1 hidden min-w-[13.5rem] rounded-lg border border-kp-outline bg-kp-surface py-1 shadow-lg",
+            menuAlign === "end" ? "right-0" : "left-0",
             "group-open:block"
           )}
           role="menu"
