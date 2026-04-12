@@ -10,7 +10,6 @@ import { BrandModal } from "@/components/ui/BrandModal";
 import { BrandSkeleton } from "@/components/ui/BrandSkeleton";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
 import { useProductTier } from "@/components/ProductTierProvider";
-import { PropertyVaultPropertySubnav } from "./property-vault-property-subnav";
 import type { PropertyFlyerFields } from "./property-flyer-panel";
 import { PropertyDetailWorkSurface } from "./property-detail-work-surface";
 import { PropertyDetailContextRail } from "./property-detail-context-rail";
@@ -375,7 +374,7 @@ export function PropertyDetailView({ id }: { id: string }) {
   ) : null;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <input
         ref={photoInputRef}
         type="file"
@@ -398,8 +397,6 @@ export function PropertyDetailView({ id }: { id: string }) {
           </Link>
         </Button>
       </div>
-
-      <PropertyVaultPropertySubnav propertyId={id} current="overview" />
 
       {/* ── Hero + property header (anchor for readiness: key photo) ───────── */}
       <div

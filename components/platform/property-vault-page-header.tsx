@@ -1,14 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   PageHeader,
   PageHeaderActionButton,
   PageHeaderActionItem,
   PageHeaderActionsMenu,
+  PageHeaderActionsMenuSeparator,
   PageHeaderPrimaryAddMenu,
 } from "@/components/layout/PageHeader";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
+import { getPropertyIdFromPropertiesPathname } from "@/lib/property-vault/property-route-context";
 
 const DEFAULT_SUBTITLE = "Listing records, media, and open house readiness.";
 
@@ -18,6 +21,8 @@ export type PropertyVaultPageHeaderProps = {
 
 export function PropertyVaultPageHeader({ className }: PropertyVaultPageHeaderProps) {
   const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const pathname = usePathname() ?? "";
+  const propertyId = getPropertyIdFromPropertiesPathname(pathname);
 
   return (
     <>
@@ -27,7 +32,23 @@ export function PropertyVaultPageHeader({ className }: PropertyVaultPageHeaderPr
         subtitle={DEFAULT_SUBTITLE}
         actionsMenu={
           <PageHeaderActionsMenu>
-            <PageHeaderActionItem href="/property-vault/overview">Overview</PageHeaderActionItem>
+            {propertyId ? (
+              <>
+                <PageHeaderActionItem
+                  href={`/properties/${propertyId}#property-workspace-hero`}
+                >
+                  Overview
+                </PageHeaderActionItem>
+                <PageHeaderActionItem href={`/properties/${propertyId}/documents`}>
+                  Documents
+                </PageHeaderActionItem>
+                <PageHeaderActionItem href={`/properties/${propertyId}/media`}>
+                  Photos &amp; media
+                </PageHeaderActionItem>
+                <PageHeaderActionsMenuSeparator />
+              </>
+            ) : null}
+            <PageHeaderActionItem href="/property-vault/overview">Vault overview</PageHeaderActionItem>
             <PageHeaderActionItem href="/properties">Properties</PageHeaderActionItem>
             <PageHeaderActionItem href="/open-houses">Open houses</PageHeaderActionItem>
           </PageHeaderActionsMenu>
