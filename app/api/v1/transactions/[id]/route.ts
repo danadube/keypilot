@@ -94,6 +94,7 @@ export async function PATCH(
       if (!existing) return null;
 
       const {
+        side: sidePatch,
         dealId: dealIdPatch,
         status,
         transactionKind: kindPatch,
@@ -108,6 +109,7 @@ export async function PATCH(
       } = parsed.data;
 
       const data: Prisma.TransactionUncheckedUpdateInput = {};
+      if (sidePatch !== undefined) data.side = sidePatch;
       if (status !== undefined) data.status = status;
       if (closingDate !== undefined) data.closingDate = closingDate;
       if (salePrice !== undefined) data.salePrice = salePrice;

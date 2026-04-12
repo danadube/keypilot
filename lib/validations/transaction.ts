@@ -42,6 +42,8 @@ export const CreateTransactionSchema = z.object({
 });
 
 export const UpdateTransactionSchema = z.object({
+  /** Listing vs buyer — drives document pipeline; set from deal detail or Financial & records. */
+  side: z.enum(["BUY", "SELL"]).nullable().optional(),
   /** Set to unlink; omit to leave unchanged. */
   dealId: z.string().uuid().nullable().optional(),
   status: TransactionStatusEnum.optional(),

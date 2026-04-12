@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import type { ComponentProps } from "react";
 import {
   PIPELINE_STAGE_LABELS,
@@ -115,6 +116,7 @@ export function TransactionProgressWorkspace({
   side,
   archived,
   onListsChanged,
+  onTransactionRecordChanged,
   className,
 }: {
   transactionId: string;
@@ -122,6 +124,8 @@ export function TransactionProgressWorkspace({
   side?: PipelineSide | null;
   archived: boolean;
   onListsChanged: () => void;
+  /** After PATCH (e.g. side), parent should reload transaction JSON. */
+  onTransactionRecordChanged?: () => void;
   className?: string;
 }) {
   const checklistKey = transactionId ? `/api/v1/transactions/${transactionId}/checklist` : null;
@@ -133,6 +137,8 @@ export function TransactionProgressWorkspace({
 
   const [seeding, setSeeding] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [savingSide, setSavingSide] = useState(false);
+  const [stageJump, setStageJump] = useState<string>("");
 
   const busy = isLoading && items === undefined;
   const resolvedSide = side === "BUY" || side === "SELL" ? side : null;
@@ -163,6 +169,31 @@ export function TransactionProgressWorkspace({
     }
     return map;
   }, [pipelineRows, resolvedSide]);
+
+  const canChangeSide = pipelineRows.length === 0;
+
+  const saveSide = useCallback(
+    async (next: PipelineSide) => {
+      if (!canChangeSide || savingSide || archived) return;
+      setSavingSide(true);
+      try {
+        const res = await fetch(`/api/v1/transactions/${transactionId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ side: next }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json?.error?.message ?? "Could not save side");
+        toast.success(next === "SELL" ? "Set to listing side" : "Set to buyer side");
+        onTransactionRecordChanged?.();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Save failed");
+      } finally {
+        setSavingSide(false);
+      }
+    },
+    [canChangeSide, savingSide, archived, transactionId, onTransactionRecordChanged]
+  );
 
   const seedPipeline = useCallback(async () => {
     if (!resolvedSide || seeding) return;
@@ -229,9 +260,8 @@ export function TransactionProgressWorkspace({
               Transaction documents &amp; stages
             </h2>
             <p className="mt-1 max-w-prose text-xs text-kp-on-surface-variant">
-              Stage-based California workflow — each row is a concrete form or package. Track status, due
-              dates, and executed file links. Set buy/sell on the deal (Financial &amp; records) to load the
-              correct pipeline.
+              Stage-based California workflow — concrete forms and packages per row. Choose representation
+              below, load the pipeline, then track status, due dates, and executed file links here.
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
@@ -247,107 +277,221 @@ export function TransactionProgressWorkspace({
         <FileText className="h-4 w-4 text-kp-on-surface-muted opacity-50" aria-hidden />
       </div>
 
-      <div className="mt-5 space-y-6">
-        {busy ? (
-          <ul className="space-y-2" aria-busy="true">
-            {[0, 1, 2].map((i) => (
-              <li key={i} className="h-14 animate-pulse rounded-lg bg-kp-surface-high/40" aria-hidden />
-            ))}
-          </ul>
-        ) : error ? (
-          <div className="flex items-center gap-2 text-sm text-red-400">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            {error instanceof Error ? error.message : "Could not load checklist"}
+      {error ? (
+        <div className="mt-5 flex items-center gap-2 text-sm text-red-400">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {error instanceof Error ? error.message : "Could not load checklist"}
+        </div>
+      ) : (
+        <>
+          <div className="mt-5 rounded-lg border border-kp-teal/35 bg-kp-teal/[0.06] px-4 py-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+              Pipeline setup
+            </p>
+            <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end">
+              <div className="min-w-0 flex-1 space-y-2">
+                <p className="text-xs font-medium text-kp-on-surface">Representation</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={archived || savingSide || !canChangeSide}
+                    className={cn(
+                      "h-9 border-kp-outline/80 text-xs",
+                      resolvedSide === "SELL"
+                        ? cn(kpBtnPrimary, "border-kp-teal/50 bg-kp-teal/20 text-kp-teal hover:bg-kp-teal/25")
+                        : kpBtnSecondary
+                    )}
+                    onClick={() => void saveSide("SELL")}
+                  >
+                    {savingSide ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Listing"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={archived || savingSide || !canChangeSide}
+                    className={cn(
+                      "h-9 border-kp-outline/80 text-xs",
+                      resolvedSide === "BUY"
+                        ? cn(kpBtnPrimary, "border-kp-teal/50 bg-kp-teal/20 text-kp-teal hover:bg-kp-teal/25")
+                        : kpBtnSecondary
+                    )}
+                    onClick={() => void saveSide("BUY")}
+                  >
+                    {savingSide ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Buyer"}
+                  </Button>
+                </div>
+                {!resolvedSide ? (
+                  <p className="text-[11px] leading-snug text-kp-on-surface-variant">
+                    Pick listing or buyer to unlock the California document list. You can change this until
+                    the pipeline is loaded.
+                  </p>
+                ) : !canChangeSide ? (
+                  <p className="text-[11px] leading-snug text-kp-on-surface-variant">
+                    Side matches the loaded pipeline. To switch listing vs buyer, remove pipeline checklist
+                    rows first (or start from a new transaction).
+                  </p>
+                ) : null}
+              </div>
+
+              {resolvedSide && pipelineRows.length > 0 ? (
+                <div className="w-full min-w-[12rem] max-w-xs space-y-1 lg:w-auto">
+                  <label
+                    htmlFor="txn-pipeline-stage-jump"
+                    className="text-[10px] font-semibold uppercase text-kp-on-surface-variant"
+                  >
+                    Focus stage
+                  </label>
+                  <Select
+                    value={stageJump || "__none__"}
+                    onValueChange={(v) => {
+                      if (v === "__none__") {
+                        setStageJump("");
+                        return;
+                      }
+                      setStageJump(v);
+                      requestAnimationFrame(() => {
+                        document.getElementById(`txn-stage-${v}`)?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        });
+                      });
+                    }}
+                  >
+                    <SelectTrigger
+                      id="txn-pipeline-stage-jump"
+                      className="h-9 border-kp-outline/70 bg-kp-surface text-xs"
+                    >
+                      <SelectValue placeholder="Jump to a stage…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__" className="text-kp-on-surface-variant">
+                        Jump to a stage…
+                      </SelectItem>
+                      {PIPELINE_STAGE_ORDER[resolvedSide].map((key) => (
+                        <SelectItem key={key} value={key}>
+                          {PIPELINE_STAGE_LABELS[key]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : null}
+
+              {resolvedSide && pipelineRows.length === 0 ? (
+                <div className="flex w-full flex-col gap-2 sm:max-w-md lg:ml-auto lg:w-auto lg:min-w-[14rem]">
+                  <p className="text-xs text-kp-on-surface">
+                    Load RLA, TDS, RPA, and the rest as individual rows for this{" "}
+                    {resolvedSide === "SELL" ? "listing" : "buyer"} pipeline.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={archived || seeding || busy}
+                    className={cn(
+                      kpBtnPrimary,
+                      "h-9 bg-kp-teal/25 text-xs font-semibold text-kp-teal hover:bg-kp-teal/35"
+                    )}
+                    onClick={() => void seedPipeline()}
+                  >
+                    {seeding ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Load California document pipeline"
+                    )}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+            <p className="mt-3 border-t border-kp-outline/30 pt-3 text-[10px] text-kp-on-surface-variant">
+              Pricing, net commission, CRM deal link, and splits:{" "}
+              <Link
+                href={`/transactions/${transactionId}/financial`}
+                className="font-medium text-kp-teal underline-offset-2 hover:underline"
+              >
+                Financial &amp; records
+              </Link>
+            </p>
           </div>
-        ) : (
-          <>
-            {!resolvedSide ? (
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/[0.06] px-3 py-3 text-sm text-kp-on-surface">
-                Set <strong>buy</strong> or <strong>sell</strong> on this transaction in{" "}
-                <Link
-                  href={`/transactions/${transactionId}/financial`}
-                  className="font-medium text-kp-teal underline-offset-2 hover:underline"
-                >
-                  Financial &amp; records
-                </Link>
-                , then load the document pipeline here.
-              </div>
-            ) : pipelineRows.length === 0 ? (
-              <div className="rounded-lg border border-kp-outline-variant bg-kp-surface-high/20 px-3 py-4">
-                <p className="text-sm text-kp-on-surface">
-                  Load individual document rows (RLA, TDS, RPA, etc.) for this {resolvedSide === "SELL" ? "listing" : "buyer"}{" "}
-                  side. You can still add custom rows after seeding.
-                </p>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={archived || seeding}
-                  className="mt-3 bg-kp-teal/20 text-xs font-semibold text-kp-teal hover:bg-kp-teal/30"
-                  onClick={() => void seedPipeline()}
-                >
-                  {seeding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Load California document pipeline"}
-                </Button>
-              </div>
+
+          <div className="mt-6 space-y-6">
+            {busy ? (
+              <ul className="space-y-2" aria-busy="true">
+                {[0, 1, 2, 3].map((i) => (
+                  <li
+                    key={i}
+                    className="h-14 animate-pulse rounded-lg bg-kp-surface-high/40"
+                    aria-hidden
+                  />
+                ))}
+              </ul>
             ) : (
-              resolvedSide &&
-              PIPELINE_STAGE_ORDER[resolvedSide].map((stageKey) => {
-                const label = PIPELINE_STAGE_LABELS[stageKey];
-                const stageItems = byStage.get(stageKey) ?? [];
-                if (stageItems.length === 0) return null;
-                const openCount = stageItems.filter((r) => {
-                  const m = tryParsePipelineMeta(r.notes);
-                  return m && m.docStatus !== "complete";
-                }).length;
-                return (
-                  <div key={stageKey} className="scroll-mt-24">
-                    <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-kp-outline/50 pb-2">
-                      <h3 className="text-sm font-semibold text-kp-on-surface">{label}</h3>
-                      <span className="text-[11px] text-kp-on-surface-variant">
-                        {openCount} open · {stageItems.length} total
-                      </span>
-                    </div>
-                    <ul className="mt-3 space-y-3">
-                      {stageItems
-                        .slice()
-                        .sort((a, b) => a.sortOrder - b.sortOrder)
-                        .map((row) => (
-                          <PipelineDocumentRow
-                            key={row.id}
-                            row={row}
-                            archived={archived}
-                            disabled={savingId === row.id}
-                            onSave={(meta, due) => {
-                              void saveRow(row, meta, { dueDate: due });
-                            }}
-                          />
-                        ))}
+              <>
+                {resolvedSide && pipelineRows.length > 0
+                  ? PIPELINE_STAGE_ORDER[resolvedSide].map((stageKey) => {
+                      const label = PIPELINE_STAGE_LABELS[stageKey];
+                      const stageItems = byStage.get(stageKey) ?? [];
+                      if (stageItems.length === 0) return null;
+                      const openCount = stageItems.filter((r) => {
+                        const m = tryParsePipelineMeta(r.notes);
+                        return m && m.docStatus !== "complete";
+                      }).length;
+                      return (
+                        <div key={stageKey} id={`txn-stage-${stageKey}`} className="scroll-mt-28">
+                          <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-kp-outline/50 pb-2">
+                            <h3 className="text-sm font-semibold text-kp-on-surface">{label}</h3>
+                            <span className="text-[11px] text-kp-on-surface-variant">
+                              {openCount} open · {stageItems.length} total
+                            </span>
+                          </div>
+                          <ul className="mt-3 space-y-3">
+                            {stageItems
+                              .slice()
+                              .sort((a, b) => a.sortOrder - b.sortOrder)
+                              .map((row) => (
+                                <PipelineDocumentRow
+                                  key={row.id}
+                                  row={row}
+                                  archived={archived}
+                                  disabled={savingId === row.id}
+                                  onSave={(meta, due) => {
+                                    void saveRow(row, meta, { dueDate: due });
+                                  }}
+                                />
+                              ))}
+                          </ul>
+                        </div>
+                      );
+                    })
+                  : null}
+
+                {legacyRows.length > 0 ? (
+                  <div className="rounded-lg border border-dashed border-kp-outline/40 bg-kp-surface-high/10 px-3 py-3">
+                    <h3 className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                      Other items
+                    </h3>
+                    <p className="mt-1 text-[11px] text-kp-on-surface-variant">
+                      Legacy or custom checklist rows — not part of the seeded pipeline.
+                    </p>
+                    <ul className="mt-2 space-y-1.5">
+                      {legacyRows.map((row) => (
+                        <li
+                          key={row.id}
+                          className="rounded-md border border-kp-outline/35 bg-kp-surface/50 px-2.5 py-1.5 text-xs text-kp-on-surface-muted"
+                        >
+                          {row.title}
+                        </li>
+                      ))}
                     </ul>
                   </div>
-                );
-              })
+                ) : null}
+              </>
             )}
-
-            {legacyRows.length > 0 ? (
-              <div>
-                <h3 className="text-sm font-semibold text-kp-on-surface">Other checklist items</h3>
-                <p className="mt-1 text-xs text-kp-on-surface-variant">
-                  Legacy or custom rows (not part of the seeded pipeline).
-                </p>
-                <ul className="mt-2 space-y-2">
-                  {legacyRows.map((row) => (
-                    <li
-                      key={row.id}
-                      className="rounded-lg border border-kp-outline/50 bg-kp-surface-high/20 px-3 py-2 text-sm text-kp-on-surface"
-                    >
-                      {row.title}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
     </section>
   );
 }

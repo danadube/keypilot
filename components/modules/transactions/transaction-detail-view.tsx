@@ -330,6 +330,10 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
               void refreshTransactionActivity();
               void mutateChecklist();
             }}
+            onTransactionRecordChanged={() => {
+              void load();
+              void mutateChecklist();
+            }}
             className="border-kp-outline shadow-md"
           />
         </div>
