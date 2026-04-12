@@ -433,7 +433,7 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
         transactionId={transactionId}
         propertyId={txn.property.id}
         primaryContactId={txn.primaryContactId}
-        currentStatus={status}
+        currentStatus={txn.status}
         menuAlign="end"
         onScrollToNote={scrollToActivityNote}
         onRefreshActivity={() => void refreshTransactionActivity()}
@@ -445,7 +445,6 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
     setHeaderDetailActions,
     txn,
     transactionId,
-    status,
     scrollToActivityNote,
     refreshTransactionActivity,
     load,
