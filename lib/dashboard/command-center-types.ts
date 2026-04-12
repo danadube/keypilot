@@ -38,6 +38,8 @@ export type CommandCenterPriorityTask = {
   id: string;
   title: string;
   dueAt: string | null;
+  /** ISO — context when no due date */
+  createdAt: string;
   href: string;
   overdue: boolean;
   sourceTag: DashboardTaskSourceTag;

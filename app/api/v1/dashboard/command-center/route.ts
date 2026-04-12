@@ -242,6 +242,7 @@ export async function GET() {
           id: t.id,
           title: t.title,
           dueAt: t.dueAt,
+          createdAt: t.createdAt,
           href: "/task-pilot",
           overdue,
           sourceTag: inferTaskSourceTag(t),

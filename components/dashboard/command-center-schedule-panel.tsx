@@ -213,12 +213,17 @@ export function CommandCenterSchedulePanel({
   openTasks,
   loading,
   onNewTask,
+  fillHeight,
+  className,
 }: {
   showings: CommandCenterScheduleShowing[];
   followUpsAll: SerializedAgentFollowUp[];
   openTasks: SerializedTask[];
   loading: boolean;
   onNewTask: () => void;
+  /** Stretch to parent height (dashboard Today’s work column). */
+  fillHeight?: boolean;
+  className?: string;
 }) {
   const today = useMemo(() => new Date(), []);
 
@@ -328,8 +333,19 @@ export function CommandCenterSchedulePanel({
   };
 
   return (
-    <div className="rounded-xl border border-kp-outline bg-kp-surface p-3 shadow-sm sm:p-4">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
+    <div
+      className={cn(
+        "rounded-xl border border-kp-outline bg-kp-surface p-3 shadow-sm sm:p-4",
+        fillHeight && "flex h-full min-h-0 flex-col",
+        className
+      )}
+    >
+      <div
+        className={cn(
+          "grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5",
+          fillHeight && "min-h-0 flex-1"
+        )}
+      >
         {/* Date picker first (left on lg) — quieter chrome */}
         <div
           className="order-1 flex flex-col rounded-lg border border-kp-outline/50 bg-kp-surface-high/[0.04] p-3 lg:p-3.5"
@@ -418,7 +434,12 @@ export function CommandCenterSchedulePanel({
         </div>
 
         {/* Schedule (right on lg) — primary detail */}
-        <div className="order-2 flex min-h-[220px] flex-col lg:min-h-[280px]">
+        <div
+          className={cn(
+            "order-2 flex flex-col",
+            fillHeight ? "min-h-0 flex-1" : "min-h-[220px] lg:min-h-[280px]"
+          )}
+        >
           <div className="mb-2 flex shrink-0 items-start justify-between gap-2 border-b border-kp-outline/40 pb-2">
             <div className="min-w-0">
               <h3 className="font-headline text-base font-semibold tracking-tight text-kp-on-surface">
@@ -433,7 +454,8 @@ export function CommandCenterSchedulePanel({
 
           <div
             className={cn(
-              "min-h-[140px] flex-1 overflow-y-auto overscroll-y-contain pr-0.5 lg:max-h-[min(420px,52vh)]",
+              "flex-1 overflow-y-auto overscroll-y-contain pr-0.5",
+              fillHeight ? "min-h-[5rem]" : "min-h-[140px] lg:max-h-[min(420px,52vh)]",
               selectedIsToday && "rounded-lg bg-kp-surface-high/[0.12]"
             )}
             tabIndex={0}
@@ -450,15 +472,15 @@ export function CommandCenterSchedulePanel({
                 ))}
               </ul>
             ) : merged.length === 0 ? (
-              <div className="flex flex-col gap-2 py-2">
-                <p className="text-sm text-kp-on-surface-muted">No calendar events</p>
-                <p className="text-[11px] text-kp-on-surface-muted/90">
-                  Nothing scheduled for this day — use Add above to create one.
+              <div className="flex flex-col gap-1 py-1">
+                <p className="text-sm font-medium text-kp-on-surface-muted">No calendar events</p>
+                <p className="text-[11px] leading-snug text-kp-on-surface-muted/85">
+                  Nothing this day — use <span className="font-medium text-kp-on-surface-variant">Add</span> above.
                 </p>
-                <p className="text-[11px]">
+                <p className="pt-0.5 text-[11px]">
                   <Link
                     href="/settings/connections"
-                    className="font-medium text-kp-on-surface-muted underline-offset-2 hover:text-kp-teal hover:underline"
+                    className="text-kp-on-surface-muted underline-offset-2 hover:text-kp-teal hover:underline"
                   >
                     Connect calendar
                   </Link>

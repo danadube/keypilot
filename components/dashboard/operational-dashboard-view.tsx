@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo, useState, type ComponentType } from "react";
+import { useCallback, useMemo, useState, type ComponentType } from "react";
 import useSWR from "swr";
 import Link from "next/link";
+import { toast } from "sonner";
 import {
   ArrowRight,
   Building2,
   CalendarClock,
   CheckSquare,
-  ClipboardList,
   HandCoins,
   Sparkles,
   TrendingUp,
@@ -22,12 +22,9 @@ import {
   PageHeaderPrimaryAddMenu,
 } from "@/components/layout/PageHeader";
 import { CommandCenterLiveTitle } from "@/components/dashboard/command-center-live-title";
+import { CommandCenterPriorityTaskRow } from "@/components/dashboard/command-center-priority-task-row";
 import { CommandCenterSchedulePanel } from "@/components/dashboard/command-center-schedule-panel";
-import {
-  commandCenterSourceChipClass,
-  listingStageChipClass,
-} from "@/lib/dashboard/command-center-visual";
-import type { CommandCenterSourceTag } from "@/lib/dashboard/command-center-visual";
+import { commandCenterSourceChipClass, listingStageChipClass } from "@/lib/dashboard/command-center-visual";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import type { TaskPilotPayload } from "@/lib/tasks/task-pilot-payload-mutate";
 import { apiFetcher } from "@/lib/fetcher";
@@ -109,6 +106,33 @@ export function OperationalDashboardView() {
   >("/api/v1/showing-hq/showings", apiFetcher);
 
   const [newTaskModalOpen, setNewTaskModalOpen] = useState(false);
+
+  const completePriorityTask = useCallback(
+    async (taskId: string) => {
+      const res = await fetch(`/api/v1/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "COMPLETED" }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+        throw new Error(j?.error?.message ?? "Could not complete task");
+      }
+      await Promise.all([mutateTasks(), mutateCc()]);
+    },
+    [mutateTasks, mutateCc]
+  );
+
+  const handleCompletePriorityTask = useCallback(
+    async (taskId: string) => {
+      try {
+        await completePriorityTask(taskId);
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Could not complete task");
+      }
+    },
+    [completePriorityTask]
+  );
 
   const loading = ccLoading || followLoading || tasksLoading || showingsLoading;
 
@@ -214,12 +238,6 @@ export function OperationalDashboardView() {
                 <Button asChild size="sm" className="font-semibold">
                   <Link href={cc.attention.hrefTransaction}>Open transaction</Link>
                 </Button>
-                <Button asChild variant="outline" size="sm" className={kpBtnSecondary}>
-                  <Link href={cc.attention.hrefChecklist}>
-                    <ClipboardList className="mr-1.5 h-3.5 w-3.5" />
-                    Open checklist
-                  </Link>
-                </Button>
               </div>
             </div>
           ) : (
@@ -305,7 +323,7 @@ export function OperationalDashboardView() {
         >
           Today&apos;s work
         </h2>
-        <div className="grid gap-4 lg:grid-cols-12 lg:items-stretch lg:gap-5 lg:min-h-[min(28rem,calc(100vh-13rem))]">
+        <div className="grid min-h-0 gap-4 lg:grid-cols-12 lg:items-stretch lg:gap-5 lg:min-h-[min(32rem,calc(100vh-12rem))]">
           <div className="min-h-0 min-w-0 lg:col-span-8">
             <CommandCenterSchedulePanel
               showings={showings}
@@ -313,19 +331,23 @@ export function OperationalDashboardView() {
               openTasks={openTasks}
               loading={loading}
               onNewTask={() => setNewTaskModalOpen(true)}
+              fillHeight
+              className="h-full min-h-0"
             />
           </div>
-          <div className="flex min-h-0 min-w-0 flex-col lg:col-span-4 lg:h-full">
-            <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
-              <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
-                <h3 className="font-headline text-sm font-semibold text-kp-on-surface">Priority tasks</h3>
-                <Link
-                  href="/task-pilot"
-                  className="text-[11px] font-semibold text-kp-teal hover:underline"
-                >
-                  All
-                </Link>
-              </div>
+          <div className="flex min-h-0 min-w-0 flex-col gap-2 lg:col-span-4">
+            <div className="flex items-center justify-between gap-2 px-0.5" id="dash-priority-heading">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+                Priority tasks
+              </h3>
+              <Link
+                href="/task-pilot"
+                className="text-[11px] font-semibold text-kp-teal hover:underline"
+              >
+                All
+              </Link>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-kp-outline bg-kp-surface p-3 shadow-sm sm:p-4">
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pr-0.5 [-webkit-overflow-scrolling:touch]">
                 {loading ? (
                   <ul className="space-y-2" aria-busy="true">
@@ -336,34 +358,13 @@ export function OperationalDashboardView() {
                 ) : (cc?.priorityTasks.length ?? 0) === 0 ? (
                   <p className="text-sm text-kp-on-surface-muted">No tasks in the queue</p>
                 ) : (
-                  <ul className="space-y-2 pb-1">
+                  <ul className="space-y-2 pb-1" aria-labelledby="dash-priority-heading">
                     {cc!.priorityTasks.map((t) => (
-                      <li key={t.id}>
-                        <Link
-                          href={t.href}
-                          className={cn(
-                            "block rounded-lg border px-2.5 py-2 transition-colors",
-                            t.overdue
-                              ? "border-amber-500/35 bg-amber-500/[0.06]"
-                              : "border-kp-outline/80 bg-kp-surface-high/15 hover:border-kp-teal/25"
-                          )}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span
-                              className={commandCenterSourceChipClass(t.sourceTag as CommandCenterSourceTag)}
-                            >
-                              {t.sourceTag}
-                            </span>
-                            {t.overdue ? (
-                              <span className="text-[10px] font-semibold uppercase text-amber-600">Overdue</span>
-                            ) : null}
-                          </div>
-                          <p className="mt-0.5 line-clamp-2 text-sm font-medium text-kp-on-surface">{t.title}</p>
-                          {t.subline ? (
-                            <p className="mt-0.5 line-clamp-1 text-[11px] text-kp-on-surface-muted">{t.subline}</p>
-                          ) : null}
-                        </Link>
-                      </li>
+                      <CommandCenterPriorityTaskRow
+                        key={t.id}
+                        task={t}
+                        onComplete={handleCompletePriorityTask}
+                      />
                     ))}
                   </ul>
                 )}
@@ -374,18 +375,21 @@ export function OperationalDashboardView() {
       </section>
 
       {/* 4 — Listings + activity */}
-      <section aria-labelledby="dash-bottom-panels" className="space-y-2">
-        <h2 id="dash-bottom-panels" className="sr-only">
-          Listings and activity
-        </h2>
+      <section aria-labelledby="dash-listings-heading" className="space-y-2">
         <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
-          <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="font-headline text-sm font-semibold text-kp-on-surface">Current listings</h3>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 px-0.5">
+              <h2
+                id="dash-listings-heading"
+                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
+              >
+                Current listings
+              </h2>
               <Link href="/properties" className="text-[11px] font-semibold text-kp-teal hover:underline">
                 PropertyVault
               </Link>
             </div>
+            <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
             {loading ? (
               <ul className="space-y-2">
                 {[0, 1, 2].map((k) => (
@@ -422,13 +426,20 @@ export function OperationalDashboardView() {
                 ))}
               </ul>
             )}
+            </div>
           </div>
 
-          <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="font-headline text-sm font-semibold text-kp-on-surface">Recent activity</h3>
-              <Sparkles className="h-4 w-4 text-kp-gold/80" aria-hidden />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 px-0.5">
+              <h2
+                id="dash-activity-heading"
+                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
+              >
+                Recent activity
+              </h2>
+              <Sparkles className="h-4 w-4 shrink-0 text-kp-gold/80" aria-hidden />
             </div>
+            <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
             {loading ? (
               <ul className="space-y-2">
                 {[0, 1, 2].map((k) => (
@@ -445,9 +456,12 @@ export function OperationalDashboardView() {
                   <li key={a.id} className="border-b border-kp-outline/40 pb-2 last:border-0 last:pb-0">
                     {a.href ? (
                       <Link href={a.href} className="group block">
-                        <div className="flex items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                           <span className={commandCenterSourceChipClass(a.visualTag)}>{a.visualTag}</span>
-                          <span className="text-[10px] tabular-nums text-kp-on-surface-muted">
+                          <span className="min-w-0 flex-1 text-sm font-medium leading-snug text-kp-on-surface group-hover:text-kp-teal group-hover:underline">
+                            {a.title}
+                          </span>
+                          <span className="shrink-0 text-[10px] tabular-nums text-kp-on-surface-muted">
                             {new Date(a.occurredAt).toLocaleString(undefined, {
                               month: "short",
                               day: "numeric",
@@ -456,34 +470,34 @@ export function OperationalDashboardView() {
                             })}
                           </span>
                         </div>
-                        <p className="mt-1 text-sm font-medium text-kp-on-surface group-hover:text-kp-teal group-hover:underline">
-                          {a.title}
-                        </p>
                         {a.subline ? (
-                          <p className="text-[11px] text-kp-on-surface-muted">{a.subline}</p>
+                          <p className="mt-1 text-[11px] text-kp-on-surface-muted">{a.subline}</p>
                         ) : null}
                       </Link>
                     ) : (
                       <div>
-                        <span className={commandCenterSourceChipClass(a.visualTag)}>{a.visualTag}</span>
-                        <p className="mt-1 text-sm font-medium text-kp-on-surface">{a.title}</p>
+                        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                          <span className={commandCenterSourceChipClass(a.visualTag)}>{a.visualTag}</span>
+                          <span className="min-w-0 flex-1 text-sm font-medium text-kp-on-surface">{a.title}</span>
+                          <span className="shrink-0 text-[10px] tabular-nums text-kp-on-surface-muted">
+                            {new Date(a.occurredAt).toLocaleString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
                         {a.subline ? (
-                          <p className="text-[11px] text-kp-on-surface-muted">{a.subline}</p>
+                          <p className="mt-1 text-[11px] text-kp-on-surface-muted">{a.subline}</p>
                         ) : null}
-                        <p className="mt-0.5 text-[10px] text-kp-on-surface-muted/90">
-                          {new Date(a.occurredAt).toLocaleString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}
-                        </p>
                       </div>
                     )}
                   </li>
                 ))}
               </ul>
             )}
+            </div>
           </div>
         </div>
       </section>

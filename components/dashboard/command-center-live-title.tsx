@@ -2,15 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-function formatLiveHeading(d: Date) {
-  const weekday = d.toLocaleDateString("en-US", { weekday: "long" });
-  const monthDay = d.toLocaleDateString("en-US", { month: "long", day: "numeric" });
-  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  return `Today — ${weekday}, ${monthDay} · ${time}`;
-}
-
 /**
- * Live-updating dashboard heading (clock refreshes on an interval).
+ * Live-updating dashboard heading: full date on one line, clock on the next.
  */
 export function CommandCenterLiveTitle() {
   const [now, setNow] = useState(() => new Date());
@@ -20,11 +13,28 @@ export function CommandCenterLiveTitle() {
     return () => clearInterval(id);
   }, []);
 
-  const line = useMemo(() => formatLiveHeading(now), [now]);
+  const { dateLine, timeLine } = useMemo(() => {
+    const dateLine = now.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+    const timeLine = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    return { dateLine, timeLine };
+  }, [now]);
 
   return (
-    <h1 className="font-headline text-lg font-semibold leading-snug tracking-tight text-kp-on-surface md:text-xl">
-      {line}
-    </h1>
+    <div className="space-y-0.5">
+      <h1 className="font-headline text-lg font-semibold leading-snug tracking-tight text-kp-on-surface md:text-xl">
+        {dateLine}
+      </h1>
+      <p
+        className="text-base font-medium tabular-nums tracking-tight text-kp-on-surface-variant md:text-lg"
+        aria-label={`Current time ${timeLine}`}
+      >
+        {timeLine}
+      </p>
+    </div>
   );
 }
