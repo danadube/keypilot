@@ -6,10 +6,7 @@ import Link from "next/link";
 import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  kpBtnSecondary,
-  kpBtnTertiary,
-} from "@/components/ui/kp-dashboard-button-tiers";
+import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { apiFetcher } from "@/lib/fetcher";
 import type { SerializedAgentFollowUp } from "@/lib/follow-ups/agent-follow-up-buckets";
 import type { SerializedTask } from "@/lib/tasks/task-serialize";
@@ -456,14 +453,16 @@ export function CommandCenterSchedulePanel({
               <div className="flex flex-col gap-2 py-2">
                 <p className="text-sm text-kp-on-surface-muted">No calendar events</p>
                 <p className="text-[11px] text-kp-on-surface-muted/90">
-                  Nothing scheduled for this day — or add something new.
+                  Nothing scheduled for this day — use Add above to create one.
                 </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <ScheduleAddMenu onNewTask={onNewTask} />
-                  <Button variant="ghost" size="sm" className={cn(kpBtnTertiary, "h-8 text-xs")} asChild>
-                    <Link href="/settings/connections">Connect calendar</Link>
-                  </Button>
-                </div>
+                <p className="text-[11px]">
+                  <Link
+                    href="/settings/connections"
+                    className="font-medium text-kp-on-surface-muted underline-offset-2 hover:text-kp-teal hover:underline"
+                  >
+                    Connect calendar
+                  </Link>
+                </p>
               </div>
             ) : (
               <ul className="space-y-1.5 pb-1">

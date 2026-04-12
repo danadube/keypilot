@@ -867,8 +867,9 @@ export function TransactionProgressWorkspace({
   return (
     <section
       id="txn-pipeline-workspace"
+      tabIndex={-1}
       className={cn(
-        "rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm",
+        "scroll-mt-24 rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-kp-teal/45 focus-visible:ring-offset-2 focus-visible:ring-offset-kp-bg",
         className
       )}
       aria-labelledby="txn-pipeline-heading"

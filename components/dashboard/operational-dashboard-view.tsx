@@ -305,8 +305,8 @@ export function OperationalDashboardView() {
         >
           Today&apos;s work
         </h2>
-        <div className="grid gap-4 lg:grid-cols-12 lg:items-start lg:gap-5">
-          <div className="min-w-0 lg:col-span-8">
+        <div className="grid gap-4 lg:grid-cols-12 lg:items-stretch lg:gap-5 lg:min-h-[min(28rem,calc(100vh-13rem))]">
+          <div className="min-h-0 min-w-0 lg:col-span-8">
             <CommandCenterSchedulePanel
               showings={showings}
               followUpsAll={followUpsAll}
@@ -315,9 +315,9 @@ export function OperationalDashboardView() {
               onNewTask={() => setNewTaskModalOpen(true)}
             />
           </div>
-          <div className="min-w-0 lg:col-span-4">
-            <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="flex min-h-0 min-w-0 flex-col lg:col-span-4 lg:h-full">
+            <div className="flex min-h-0 flex-1 flex-col rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
+              <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
                 <h3 className="font-headline text-sm font-semibold text-kp-on-surface">Priority tasks</h3>
                 <Link
                   href="/task-pilot"
@@ -326,46 +326,48 @@ export function OperationalDashboardView() {
                   All
                 </Link>
               </div>
-              {loading ? (
-                <ul className="space-y-2" aria-busy="true">
-                  {[0, 1, 2, 3].map((k) => (
-                    <li key={k} className="h-10 animate-pulse rounded-lg bg-kp-surface-high/40" aria-hidden />
-                  ))}
-                </ul>
-              ) : (cc?.priorityTasks.length ?? 0) === 0 ? (
-                <p className="text-sm text-kp-on-surface-muted">No tasks in the queue</p>
-              ) : (
-                <ul className="space-y-2">
-                  {cc!.priorityTasks.map((t) => (
-                    <li key={t.id}>
-                      <Link
-                        href={t.href}
-                        className={cn(
-                          "block rounded-lg border px-2.5 py-2 transition-colors",
-                          t.overdue
-                            ? "border-amber-500/35 bg-amber-500/[0.06]"
-                            : "border-kp-outline/80 bg-kp-surface-high/15 hover:border-kp-teal/25"
-                        )}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span
-                            className={commandCenterSourceChipClass(t.sourceTag as CommandCenterSourceTag)}
-                          >
-                            {t.sourceTag}
-                          </span>
-                          {t.overdue ? (
-                            <span className="text-[10px] font-semibold uppercase text-amber-600">Overdue</span>
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pr-0.5 [-webkit-overflow-scrolling:touch]">
+                {loading ? (
+                  <ul className="space-y-2" aria-busy="true">
+                    {[0, 1, 2, 3].map((k) => (
+                      <li key={k} className="h-10 animate-pulse rounded-lg bg-kp-surface-high/40" aria-hidden />
+                    ))}
+                  </ul>
+                ) : (cc?.priorityTasks.length ?? 0) === 0 ? (
+                  <p className="text-sm text-kp-on-surface-muted">No tasks in the queue</p>
+                ) : (
+                  <ul className="space-y-2 pb-1">
+                    {cc!.priorityTasks.map((t) => (
+                      <li key={t.id}>
+                        <Link
+                          href={t.href}
+                          className={cn(
+                            "block rounded-lg border px-2.5 py-2 transition-colors",
+                            t.overdue
+                              ? "border-amber-500/35 bg-amber-500/[0.06]"
+                              : "border-kp-outline/80 bg-kp-surface-high/15 hover:border-kp-teal/25"
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span
+                              className={commandCenterSourceChipClass(t.sourceTag as CommandCenterSourceTag)}
+                            >
+                              {t.sourceTag}
+                            </span>
+                            {t.overdue ? (
+                              <span className="text-[10px] font-semibold uppercase text-amber-600">Overdue</span>
+                            ) : null}
+                          </div>
+                          <p className="mt-0.5 line-clamp-2 text-sm font-medium text-kp-on-surface">{t.title}</p>
+                          {t.subline ? (
+                            <p className="mt-0.5 line-clamp-1 text-[11px] text-kp-on-surface-muted">{t.subline}</p>
                           ) : null}
-                        </div>
-                        <p className="mt-0.5 line-clamp-2 text-sm font-medium text-kp-on-surface">{t.title}</p>
-                        {t.subline ? (
-                          <p className="mt-0.5 line-clamp-1 text-[11px] text-kp-on-surface-muted">{t.subline}</p>
-                        ) : null}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </div>
         </div>

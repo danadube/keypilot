@@ -137,6 +137,20 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     load();
   }, [load]);
 
+  /** Deep-link from dashboard / command center: scroll to document workflow (checklist) section. */
+  useEffect(() => {
+    if (loading || !txn) return;
+    if (typeof window === "undefined") return;
+    if (window.location.hash !== "#txn-pipeline-workspace") return;
+    const timer = window.setTimeout(() => {
+      const el = document.getElementById("txn-pipeline-workspace");
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.focus({ preventScroll: true });
+    }, 150);
+    return () => window.clearTimeout(timer);
+  }, [loading, txn, transactionId]);
+
   const { data: checklistRows, mutate: mutateChecklist } = useSWR<{ isComplete: boolean }[]>(
     transactionId ? `/api/v1/transactions/${transactionId}/checklist` : null,
     apiFetcher
