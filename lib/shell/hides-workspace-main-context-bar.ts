@@ -15,6 +15,7 @@ export function hidesWorkspaceMainContextBar(pathname: string): boolean {
   if (base.startsWith("/property-vault") || base.startsWith("/properties")) return true;
   if (base.startsWith("/farm-trackr")) return true;
   if (base.startsWith("/task-pilot")) return true;
+  if (base === "/calendar") return true;
 
   return false;
 }

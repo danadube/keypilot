@@ -18,6 +18,7 @@ export function isWorkspaceContext(pathname: string): boolean {
   const base = normalizePathnameBase(pathname);
   return (
     base === "/dashboard" ||
+    base === "/calendar" ||
     base.startsWith("/showing-hq") ||
     base.startsWith("/open-houses") ||
     base.startsWith("/farm-trackr") ||
