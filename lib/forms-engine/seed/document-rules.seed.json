@@ -8,8 +8,38 @@
       "revisionPin": "2024-01",
       "bucket": "required",
       "when": { "type": "always" },
-      "stageHint": "listing_docs",
+      "stageHint": "pre_listing",
       "sortOrder": 10
+    },
+    {
+      "id": "ca-sa",
+      "label": "Seller Advisory",
+      "formId": "CA-SA",
+      "revisionPin": "2024-01",
+      "bucket": "required",
+      "when": { "type": "always" },
+      "stageHint": "pre_listing",
+      "sortOrder": 15
+    },
+    {
+      "id": "ca-ad-sell",
+      "label": "Agency Disclosure (Listing)",
+      "formId": "CA-AD-LS",
+      "revisionPin": "2024-01",
+      "bucket": "required",
+      "when": { "type": "always" },
+      "stageHint": "pre_listing",
+      "sortOrder": 18
+    },
+    {
+      "id": "ca-wfa-sell",
+      "label": "Wire Fraud Advisory",
+      "formId": "CA-WFA",
+      "revisionPin": "2024-01",
+      "bucket": "required",
+      "when": { "type": "always" },
+      "stageHint": "pre_listing",
+      "sortOrder": 22
     },
     {
       "id": "ca-tds-conditional",
@@ -21,8 +51,90 @@
         "type": "or",
         "children": [{ "type": "property_type", "value": "residential" }, { "type": "always" }]
       },
-      "stageHint": "disclosures",
-      "sortOrder": 20
+      "stageHint": "active_listing",
+      "sortOrder": 30
+    },
+    {
+      "id": "ca-spq",
+      "label": "Seller Property Questionnaire",
+      "formId": "CA-SPQ",
+      "revisionPin": "2024-01",
+      "bucket": "required",
+      "when": { "type": "always" },
+      "stageHint": "active_listing",
+      "sortOrder": 35
+    },
+    {
+      "id": "ca-nhd",
+      "label": "Natural Hazard Disclosure",
+      "formId": "CA-NHD",
+      "revisionPin": "2024-01",
+      "bucket": "conditional",
+      "when": {
+        "type": "or",
+        "children": [{ "type": "property_type", "value": "residential" }, { "type": "always" }]
+      },
+      "stageHint": "active_listing",
+      "sortOrder": 40
+    },
+    {
+      "id": "ca-fhds",
+      "label": "Federal Lead / Hazards (as applicable)",
+      "formId": "CA-FHDS",
+      "revisionPin": "2024-01",
+      "bucket": "conditional",
+      "when": {
+        "type": "or",
+        "children": [{ "type": "property_type", "value": "residential" }, { "type": "always" }]
+      },
+      "stageHint": "active_listing",
+      "sortOrder": 45
+    },
+    {
+      "id": "ca-avid",
+      "label": "Agent Visual Inspection Disclosure",
+      "formId": "CA-AVID",
+      "revisionPin": "2024-01",
+      "bucket": "required",
+      "when": { "type": "always" },
+      "stageHint": "active_listing",
+      "sortOrder": 50
+    },
+    {
+      "id": "ca-wcmd",
+      "label": "Water Conserving Plumbing Fixtures",
+      "formId": "CA-WCMD",
+      "revisionPin": "2024-01",
+      "bucket": "conditional",
+      "when": {
+        "type": "or",
+        "children": [{ "type": "property_type", "value": "residential" }, { "type": "always" }]
+      },
+      "stageHint": "active_listing",
+      "sortOrder": 55
+    },
+    {
+      "id": "ca-esd",
+      "label": "Environmental / Hazards Booklet (as applicable)",
+      "formId": "CA-ESD",
+      "revisionPin": "2024-01",
+      "bucket": "conditional",
+      "when": {
+        "type": "or",
+        "children": [{ "type": "property_type", "value": "residential" }, { "type": "always" }]
+      },
+      "stageHint": "escrow",
+      "sortOrder": 60
+    },
+    {
+      "id": "ca-fld",
+      "label": "Final Walkthrough / Delivery Documents",
+      "formId": "CA-FLD",
+      "revisionPin": "2024-01",
+      "bucket": "required",
+      "when": { "type": "always" },
+      "stageHint": "escrow",
+      "sortOrder": 70
     },
     {
       "id": "ca-rpa",

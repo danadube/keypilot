@@ -7,7 +7,20 @@
       "label": "California — residential listing",
       "propertyTypes": ["residential", "*"],
       "side": "SELL",
-      "documentRequirementRuleIds": ["ca-rla", "ca-tds-conditional"]
+      "documentRequirementRuleIds": [
+        "ca-rla",
+        "ca-sa",
+        "ca-ad-sell",
+        "ca-wfa-sell",
+        "ca-tds-conditional",
+        "ca-spq",
+        "ca-nhd",
+        "ca-fhds",
+        "ca-avid",
+        "ca-wcmd",
+        "ca-esd",
+        "ca-fld"
+      ]
     },
     {
       "id": "tpl-ca-res-buy",

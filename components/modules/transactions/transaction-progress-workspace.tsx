@@ -115,6 +115,10 @@ const SHOW_LEGACY_CHECKLIST =
   typeof process !== "undefined" &&
   process.env.NEXT_PUBLIC_KEYPILOT_TXN_LEGACY_CHECKLIST === "1";
 
+/** Focus stage control — must read as clearly interactive (not disabled). */
+const FOCUS_STAGE_SELECT_TRIGGER_CLASS =
+  "h-8 border-2 border-kp-teal/50 bg-kp-surface-high text-sm font-semibold text-kp-on-surface shadow-sm hover:border-kp-teal hover:bg-kp-surface-high [&>span]:text-kp-on-surface data-[placeholder]:text-kp-on-surface-variant focus-visible:ring-2 focus-visible:ring-kp-teal/60 focus-visible:ring-offset-2 focus-visible:ring-offset-kp-surface";
+
 function docStatusForScan(s: DocumentStatus): {
   label: string;
   variant: ComponentProps<typeof StatusBadge>["variant"];
@@ -170,6 +174,16 @@ function dueScanLine(
     };
   }
   return { text: `Due ${d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`, warn: false };
+}
+
+function isDueDateOverdue(iso: string | null | undefined, docStatus: DocumentStatus): boolean {
+  if (docStatus === "complete" || !iso) return false;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
+  return d < today;
 }
 
 function isAbsoluteHttpUrl(s: string): boolean {
@@ -235,24 +249,6 @@ function paperworkRowHydration(
   };
 }
 
-function bucketBadgeClass(bucket: RequirementBucket): string {
-  switch (bucket) {
-    case "required":
-      return "bg-amber-500/15 text-amber-900 dark:text-amber-200";
-    case "brokerage_required":
-      return "bg-violet-500/15 text-violet-900 dark:text-violet-200";
-    case "compliance_only":
-      return "bg-sky-500/12 text-sky-900 dark:text-sky-100";
-    case "operational_task":
-      return "border border-kp-outline/50 bg-kp-surface-high/80 text-kp-on-surface-variant";
-    case "conditional":
-      return "bg-kp-teal/12 text-kp-teal";
-    case "optional":
-    default:
-      return "bg-kp-surface-high/80 text-kp-on-surface-muted";
-  }
-}
-
 function bucketLabel(bucket: RequirementBucket): string {
   switch (bucket) {
     case "required":
@@ -300,21 +296,58 @@ function DealProgressStrip({
 }) {
   const safePct = Math.min(100, Math.max(0, pct));
   return (
-    <div className="mt-4 rounded-lg border border-kp-outline/40 bg-kp-bg/45 px-3 py-2.5" role="status">
-      <div className="mb-2 flex items-baseline justify-between gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface">
+    <div className="mt-3 rounded-lg border border-kp-outline/40 bg-kp-bg/45 px-2.5 py-2" role="status">
+      <div className="mb-1.5 flex items-baseline justify-between gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface">
           Deal progress
         </span>
         <span className="text-xs tabular-nums text-kp-on-surface">
           {complete} of {total} complete · {safePct}%
         </span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-kp-surface-high/90">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-kp-surface-high/90">
         <div
           className="h-full rounded-full bg-kp-teal/90 transition-[width] duration-300"
           style={{ width: `${safePct}%` }}
         />
       </div>
+    </div>
+  );
+}
+
+function WorkflowAttentionStrip({
+  nextRequiredTitle,
+  requiredNotStarted,
+  overdueCount,
+}: {
+  nextRequiredTitle: string | null;
+  requiredNotStarted: number;
+  overdueCount: number;
+}) {
+  if (!nextRequiredTitle && requiredNotStarted === 0 && overdueCount === 0) return null;
+  return (
+    <div
+      className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-md border border-kp-teal/25 bg-kp-teal/[0.07] px-2.5 py-1.5 text-xs leading-snug text-kp-on-surface"
+      role="status"
+    >
+      <span className="font-semibold text-kp-on-surface">Now</span>
+      {nextRequiredTitle ? (
+        <span>
+          Next required: <span className="font-medium">{nextRequiredTitle}</span>
+        </span>
+      ) : null}
+      {requiredNotStarted > 0 ? (
+        <span className="text-kp-on-surface-variant">
+          {nextRequiredTitle ? " · " : ""}
+          {requiredNotStarted} required not started
+        </span>
+      ) : null}
+      {overdueCount > 0 ? (
+        <span className="font-semibold text-amber-700 dark:text-amber-300/95">
+          {(nextRequiredTitle || requiredNotStarted > 0) ? " · " : ""}
+          {overdueCount} overdue
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -539,6 +572,49 @@ export function TransactionProgressWorkspace({
     return null;
   }, [useEnginePipeline, engineTry, paperworkBySourceRuleId, resolvedSide, pipelineRows]);
 
+  const workflowAttention = useMemo(() => {
+    if (useEnginePipeline && engineTry?.ok) {
+      const sorted = [...engineTry.instances].sort((a, b) => a.sortOrder - b.sortOrder);
+      let nextRequiredTitle: string | null = null;
+      let requiredNotStarted = 0;
+      let overdueCount = 0;
+      for (const inst of sorted) {
+        const row = paperworkBySourceRuleId.get(inst.sourceRuleId);
+        const st = row?.docStatus ?? instanceStatusToDocumentStatus(inst.status);
+        const isReq = inst.bucket === "required" || inst.bucket === "brokerage_required";
+        if (isReq && st === "not_started") requiredNotStarted++;
+        if (row?.dueDate && st !== "complete" && isDueDateOverdue(row.dueDate, st)) {
+          overdueCount++;
+        }
+        if (nextRequiredTitle === null && isReq && st !== "complete") {
+          nextRequiredTitle = inst.title;
+        }
+      }
+      return { nextRequiredTitle, requiredNotStarted, overdueCount };
+    }
+    if (resolvedSide && pipelineRows.length > 0) {
+      const sorted = [...pipelineRows].sort((a, b) => a.sortOrder - b.sortOrder);
+      let nextRequiredTitle: string | null = null;
+      let requiredNotStarted = 0;
+      let overdueCount = 0;
+      for (const row of sorted) {
+        const m = tryParsePipelineMeta(row.notes);
+        if (!m) continue;
+        const st = m.docStatus;
+        const isReq = m.requirement === "required";
+        if (isReq && st === "not_started") requiredNotStarted++;
+        if (row.dueDate && st !== "complete" && isDueDateOverdue(row.dueDate, st)) {
+          overdueCount++;
+        }
+        if (nextRequiredTitle === null && isReq && st !== "complete") {
+          nextRequiredTitle = row.title;
+        }
+      }
+      return { nextRequiredTitle, requiredNotStarted, overdueCount };
+    }
+    return null;
+  }, [useEnginePipeline, engineTry, paperworkBySourceRuleId, resolvedSide, pipelineRows]);
+
   const canChangeSide =
     pipelineRows.length === 0 &&
     formEnginePersistedRows.length === 0 &&
@@ -665,20 +741,20 @@ export function TransactionProgressWorkspace({
   return (
     <section
       className={cn(
-        "rounded-xl border border-kp-outline bg-kp-surface p-5 shadow-sm",
+        "rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm",
         className
       )}
       aria-labelledby="txn-pipeline-heading"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-kp-outline/35 pb-4">
+      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-kp-outline/35 pb-3">
         <div className="flex min-w-0 items-start gap-2">
           <Layers className="mt-0.5 h-5 w-5 shrink-0 text-kp-teal" aria-hidden />
           <div>
             <h2 id="txn-pipeline-heading" className="text-base font-semibold text-kp-on-surface">
               Document workflow
             </h2>
-            <p className="mt-0.5 max-w-prose text-xs text-kp-on-surface-variant">
-              Requirements by stage — move the deal forward with uploads and status. Economics stay on{" "}
+            <p className="mt-0.5 max-w-prose text-[11px] leading-snug text-kp-on-surface-variant">
+              Track documents by stage. Economics:{" "}
               <Link
                 href={`/transactions/${transactionId}/financial`}
                 className="font-medium text-kp-teal underline-offset-2 hover:underline"
@@ -839,26 +915,21 @@ export function TransactionProgressWorkspace({
           ) : useEnginePipeline && engineTry?.ok ? (
             <div
               id="txn-pipeline-setup"
-              className="mt-4 flex flex-col gap-3 rounded-lg border border-kp-outline/45 bg-kp-surface-high/40 px-3 py-2.5 sm:flex-row sm:items-end sm:justify-between"
+              className="mt-3 flex flex-col gap-2 rounded-md border border-kp-outline/45 bg-kp-surface-high/45 px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
             >
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold leading-snug text-kp-on-surface">
-                  <span className="font-normal text-kp-on-surface-variant">Pipeline · </span>
-                  {jurisdictionLabel ?? "Forms"} · {engineStageEntries.length} stages ·{" "}
-                  {engineTry.instances.length} documents
-                </p>
-                <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">
-                  {resolvedSide === "SELL" ? "Listing" : "Buyer"} ·{" "}
-                  {!canChangeSide
-                    ? "Side locked while rows exist."
-                    : "You can change side until new rows are added."}
-                </p>
-              </div>
+              <p className="min-w-0 text-sm font-semibold leading-tight text-kp-on-surface">
+                Pipeline: {jurisdictionLabel ?? "California"}{" "}
+                {resolvedSide === "SELL" ? "Listing" : "Buyer"} · {engineStageEntries.length} stages ·{" "}
+                {engineTry.instances.length} docs
+                {!canChangeSide ? (
+                  <span className="font-normal text-kp-on-surface-variant"> · side locked</span>
+                ) : null}
+              </p>
               {engineStageEntries.length > 0 ? (
-                <div className="w-full min-w-[11rem] max-w-xs space-y-1 sm:w-52">
+                <div className="w-full min-w-[12rem] max-w-[min(100%,280px)] space-y-0.5 sm:w-auto">
                   <label
                     htmlFor="txn-pipeline-stage-jump-engine"
-                    className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface"
+                    className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface"
                   >
                     Focus stage
                   </label>
@@ -885,7 +956,7 @@ export function TransactionProgressWorkspace({
                   >
                     <SelectTrigger
                       id="txn-pipeline-stage-jump-engine"
-                      className="h-9 border-kp-outline/70 bg-kp-surface text-xs text-kp-on-surface [&>span]:text-kp-on-surface data-[placeholder]:text-kp-on-surface-variant"
+                      className={FOCUS_STAGE_SELECT_TRIGGER_CLASS}
                     >
                       <SelectValue placeholder="Jump to a stage…" />
                     </SelectTrigger>
@@ -913,22 +984,19 @@ export function TransactionProgressWorkspace({
           ) : pipelineRows.length > 0 && resolvedSide ? (
             <div
               id="txn-pipeline-setup"
-              className="mt-4 flex flex-col gap-3 rounded-lg border border-kp-outline/45 bg-kp-surface-high/40 px-3 py-2.5 sm:flex-row sm:items-end sm:justify-between"
+              className="mt-3 flex flex-col gap-2 rounded-md border border-kp-outline/45 bg-kp-surface-high/45 px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
             >
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-semibold leading-snug text-kp-on-surface">
-                  <span className="font-normal text-kp-on-surface-variant">Pipeline · </span>
-                  California {resolvedSide === "SELL" ? "listing" : "buyer"} · {pipelineRows.length} rows ·{" "}
-                  {PIPELINE_STAGE_ORDER[resolvedSide].length} stages
-                </p>
-                <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">
-                  {!canChangeSide ? "Side locked while rows exist." : null}
-                </p>
-              </div>
-              <div className="w-full min-w-[11rem] max-w-xs space-y-1 sm:w-52">
+              <p className="min-w-0 text-sm font-semibold leading-tight text-kp-on-surface">
+                Pipeline: California {resolvedSide === "SELL" ? "Listing" : "Buyer"} ·{" "}
+                {PIPELINE_STAGE_ORDER[resolvedSide].length} stages · {pipelineRows.length} docs
+                {!canChangeSide ? (
+                  <span className="font-normal text-kp-on-surface-variant"> · side locked</span>
+                ) : null}
+              </p>
+              <div className="w-full min-w-[12rem] max-w-[min(100%,280px)] space-y-0.5 sm:w-auto">
                 <label
                   htmlFor="txn-pipeline-stage-jump-ca"
-                  className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface"
+                  className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface"
                 >
                   Focus stage
                 </label>
@@ -955,7 +1023,7 @@ export function TransactionProgressWorkspace({
                 >
                   <SelectTrigger
                     id="txn-pipeline-stage-jump-ca"
-                    className="h-9 border-kp-outline/70 bg-kp-surface text-xs text-kp-on-surface [&>span]:text-kp-on-surface data-[placeholder]:text-kp-on-surface-variant"
+                    className={FOCUS_STAGE_SELECT_TRIGGER_CLASS}
                   >
                     <SelectValue placeholder="Jump to a stage…" />
                   </SelectTrigger>
@@ -989,13 +1057,21 @@ export function TransactionProgressWorkspace({
             />
           ) : null}
 
-          <div className="mt-4 space-y-4">
+          {pipelineActive && workflowAttention && !busy ? (
+            <WorkflowAttentionStrip
+              nextRequiredTitle={workflowAttention.nextRequiredTitle}
+              requiredNotStarted={workflowAttention.requiredNotStarted}
+              overdueCount={workflowAttention.overdueCount}
+            />
+          ) : null}
+
+          <div className="mt-3 space-y-3">
             {busy ? (
               <ul className="space-y-2" aria-busy="true">
                 {[0, 1, 2, 3].map((i) => (
                   <li
                     key={i}
-                    className="h-14 animate-pulse rounded-lg bg-kp-surface-high/40"
+                    className="h-11 animate-pulse rounded-lg bg-kp-surface-high/40"
                     aria-hidden
                   />
                 ))}
@@ -1025,7 +1101,7 @@ export function TransactionProgressWorkspace({
                               {items.length - openCount} of {items.length} complete in stage · {openCount} open
                             </span>
                           </div>
-                          <ul className="space-y-1.5 rounded-b-lg border border-t-0 border-kp-outline/50 bg-kp-surface/40 px-2 py-2 sm:px-2.5">
+                          <ul className="space-y-1 rounded-b-lg border border-t-0 border-kp-outline/50 bg-kp-surface/40 px-2 py-1.5 sm:px-2.5">
                             {items.map((inst) => (
                               <FormEngineDocumentRow
                                 key={inst.sourceRuleId}
@@ -1071,7 +1147,7 @@ export function TransactionProgressWorkspace({
                                 {openCount} open
                               </span>
                             </div>
-                            <ul className="space-y-1.5 rounded-b-lg border border-t-0 border-kp-outline/50 bg-kp-surface/40 px-2 py-2 sm:px-2.5">
+                            <ul className="space-y-1 rounded-b-lg border border-t-0 border-kp-outline/50 bg-kp-surface/40 px-2 py-1.5 sm:px-2.5">
                               {stageItems
                                 .slice()
                                 .sort((a, b) => a.sortOrder - b.sortOrder)
@@ -1147,14 +1223,14 @@ function DocumentAttachField({
   };
 
   return (
-    <div className="space-y-2 sm:col-span-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface">Document</p>
+    <div className="space-y-1.5 sm:col-span-2">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface">Attachment</p>
       {!hasPointer ? (
         <div
           className={cn(
-            "flex min-h-[5rem] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-kp-outline/55 bg-kp-bg/35 px-3 py-3 text-center transition-colors",
-            !disabled && "hover:border-kp-teal/45 hover:bg-kp-teal/[0.04]",
-            disabled && "cursor-not-allowed opacity-60"
+            "flex min-h-[3.25rem] cursor-pointer items-center gap-3 rounded-md border-2 border-dashed border-kp-teal/35 bg-kp-teal/[0.04] px-2.5 py-2 transition-colors",
+            !disabled && "hover:border-kp-teal/60 hover:bg-kp-teal/[0.07]",
+            disabled && "cursor-not-allowed opacity-55"
           )}
           role="button"
           tabIndex={disabled ? -1 : 0}
@@ -1176,9 +1252,11 @@ function DocumentAttachField({
             onPick(e.dataTransfer.files?.[0]);
           }}
         >
-          <Upload className="h-5 w-5 text-kp-teal" aria-hidden />
-          <span className="text-xs font-medium text-kp-on-surface">Drop a file or browse</span>
-          <span className="text-[10px] text-kp-on-surface-variant">Saved as a reference when you click Save</span>
+          <Upload className="h-4 w-4 shrink-0 text-kp-teal" aria-hidden />
+          <div className="min-w-0 flex-1 text-left">
+            <p className="text-xs font-semibold text-kp-on-surface">Upload document</p>
+            <p className="text-[10px] text-kp-on-surface-variant">or drop a file here</p>
+          </div>
           <input
             ref={inputRef}
             type="file"
@@ -1189,20 +1267,20 @@ function DocumentAttachField({
           />
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-kp-outline/50 bg-kp-surface-high/45 px-3 py-2">
-          <FileText className="h-4 w-4 shrink-0 text-kp-teal" aria-hidden />
-          <span className="min-w-0 flex-1 truncate text-xs font-medium text-kp-on-surface" title={label}>
+        <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-kp-outline/55 bg-kp-surface-high/50 px-2 py-1.5">
+          <FileText className="h-3.5 w-3.5 shrink-0 text-kp-teal" aria-hidden />
+          <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-kp-on-surface" title={label}>
             {label}
           </span>
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1">
             {showOpen ? (
               <a
                 href={value.trim()}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex h-8 items-center rounded-md border border-kp-teal/40 bg-kp-teal/10 px-2.5 text-xs font-medium text-kp-teal hover:bg-kp-teal/18"
+                className="inline-flex h-7 items-center rounded border border-kp-teal/45 bg-kp-teal/12 px-2 text-[11px] font-semibold text-kp-teal hover:bg-kp-teal/20"
               >
-                <ExternalLink className="mr-1 h-3.5 w-3.5" aria-hidden />
+                <ExternalLink className="mr-1 h-3 w-3" aria-hidden />
                 View
               </a>
             ) : null}
@@ -1210,22 +1288,22 @@ function DocumentAttachField({
               type="button"
               variant="outline"
               size="sm"
-              className="h-8 px-2 text-xs text-kp-on-surface"
+              className="h-7 px-2 text-[11px] font-semibold text-kp-on-surface"
               disabled={disabled}
               onClick={() => inputRef.current?.click()}
             >
-              <RefreshCw className="mr-1 h-3.5 w-3.5" aria-hidden />
+              <RefreshCw className="mr-1 h-3 w-3" aria-hidden />
               Replace
             </Button>
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className="h-8 px-2 text-xs text-kp-on-surface-variant hover:text-kp-on-surface"
+              className="h-7 px-1.5 text-[11px] font-medium text-kp-on-surface-variant hover:text-kp-on-surface"
               disabled={disabled}
               onClick={() => onChange("")}
             >
-              Remove
+              Clear
             </Button>
             <input
               ref={inputRef}
@@ -1238,9 +1316,9 @@ function DocumentAttachField({
           </div>
         </div>
       )}
-      <details className="rounded-md border border-kp-outline/40 bg-kp-bg/30 px-2 py-1.5">
-        <summary className="cursor-pointer select-none text-[11px] font-medium text-kp-on-surface">
-          Paste link or path (advanced)
+      <details className="text-[10px] text-kp-on-surface-variant">
+        <summary className="cursor-pointer select-none font-medium text-kp-on-surface-variant hover:text-kp-on-surface">
+          Advanced: paste link or path
         </summary>
         <input
           id={`${idPrefix}-adv`}
@@ -1248,8 +1326,8 @@ function DocumentAttachField({
           value={value}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="https://… or folder path"
-          className="mt-2 h-9 w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
+          placeholder="https://…"
+          className="mt-1.5 h-8 w-full rounded border border-kp-outline/60 bg-kp-surface px-2 text-[11px] text-kp-on-surface"
         />
       </details>
     </div>
@@ -1317,82 +1395,104 @@ function FormEngineDocumentRow({
   return (
     <li
       className={cn(
-        "overflow-hidden rounded-lg border border-kp-outline/55 bg-kp-surface shadow-sm",
+        "overflow-hidden rounded-md border border-kp-outline/55 bg-kp-surface shadow-sm",
         leftAccent
       )}
     >
       <button
         type="button"
-        className="flex w-full items-start gap-2 border-b border-kp-outline/35 bg-kp-surface-high/35 px-2.5 py-2 text-left sm:gap-2.5 sm:px-3"
+        className="flex w-full items-start gap-1.5 border-b border-kp-outline/35 bg-kp-surface-high/35 px-2 py-1.5 text-left sm:gap-2 sm:px-2.5"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
       >
         <ChevronDown
           className={cn(
-            "mt-0.5 h-4 w-4 shrink-0 text-kp-on-surface transition-transform",
+            "mt-0.5 h-3.5 w-3.5 shrink-0 text-kp-on-surface transition-transform",
             expanded && "rotate-180"
           )}
           aria-hidden
         />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold leading-snug text-kp-on-surface">{instance.title}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <p className="text-[13px] font-semibold leading-tight text-kp-on-surface">{instance.title}</p>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0 text-[10px] text-kp-on-surface-variant">
             <span
               className={cn(
-                "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                bucketBadgeClass(bucket)
+                "font-semibold uppercase tracking-wide",
+                bucket === "required" || bucket === "brokerage_required"
+                  ? "text-amber-800 dark:text-amber-200/95"
+                  : "text-kp-teal"
               )}
             >
               {bucketLabel(bucket)}
             </span>
-            <span className="rounded bg-kp-surface-high/80 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-kp-on-surface">
-              {instance.shortCode}
+            <span className="text-kp-on-surface-variant/80" aria-hidden>
+              ·
             </span>
+            <span className="font-mono font-semibold text-kp-on-surface">{instance.shortCode}</span>
             {instance.providerId ? (
-              <span className="text-[10px] font-medium uppercase text-kp-on-surface-variant">
-                {instance.providerId}
-              </span>
+              <>
+                <span className="text-kp-on-surface-variant/80">·</span>
+                <span className="font-medium uppercase">{instance.providerId}</span>
+              </>
             ) : null}
-          </div>
+          </p>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-0.5 pl-1 text-right">
+        <div className="flex shrink-0 flex-col items-end gap-0.5 pl-0.5 text-right">
           <StatusBadge variant={scan.variant} dot>
             {scan.label}
           </StatusBadge>
           <span
             className={cn(
-              "inline-flex max-w-[11rem] items-center gap-1 text-[10px] tabular-nums text-kp-on-surface-variant sm:max-w-[14rem]",
+              "inline-flex max-w-[10rem] items-center gap-0.5 text-[10px] tabular-nums text-kp-on-surface-variant sm:max-w-[12rem]",
               dueLine.warn && "font-medium text-amber-600 dark:text-amber-300/90"
             )}
           >
-            <CalendarClock className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
+            <CalendarClock className="h-3 w-3 shrink-0 opacity-85" aria-hidden />
             <span className="leading-tight">{dueLine.text}</span>
           </span>
           <span
             className={cn(
-              "inline-flex max-w-[11rem] items-center gap-1 text-[10px] font-medium leading-tight sm:max-w-[14rem]",
+              "inline-flex max-w-[10rem] items-center gap-0.5 text-[10px] font-semibold leading-tight sm:max-w-[12rem]",
               hasFilePointer ? "text-kp-teal" : "text-kp-on-surface-variant"
             )}
           >
             <Link2 className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
-            <span className="truncate">
-              {hasFilePointer ? displayAttachmentLabel(docUrl) || "Linked" : "No attachment"}
-            </span>
+            <span className="truncate">{hasFilePointer ? "Attached" : "No file"}</span>
           </span>
         </div>
       </button>
 
       {expanded ? (
-        <div className="space-y-3 px-3 py-3 sm:px-3.5">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <label className="text-[10px] font-semibold uppercase text-kp-on-surface">Status</label>
+        <div className="space-y-2 border-t border-kp-outline/30 bg-kp-bg/20 px-2.5 py-2 sm:px-3">
+          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-kp-outline/25 pb-2">
+            <div>
+              <p className="text-[13px] font-semibold text-kp-on-surface">{instance.title}</p>
+              <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">
+                {bucketLabel(instance.bucket)} · {instance.shortCode}
+                {instance.providerId ? ` · ${instance.providerId}` : ""}
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-0.5 text-right text-[10px]">
+              <StatusBadge variant={scan.variant} dot>
+                {scan.label}
+              </StatusBadge>
+              <span className={cn("text-kp-on-surface-variant", dueLine.warn && "font-medium text-amber-600")}>
+                {dueLine.text}
+              </span>
+              <span className={cn("font-medium", hasFilePointer ? "text-kp-teal" : "text-kp-on-surface-variant")}>
+                {hasFilePointer ? displayAttachmentLabel(docUrl) || "Attached" : "No attachment"}
+              </span>
+            </div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="space-y-0.5">
+              <label className="text-[10px] font-bold uppercase text-kp-on-surface">Status</label>
               <Select
                 value={docStatus}
                 disabled={archived || disabled}
                 onValueChange={(v) => setDocStatus(v as DocumentStatus)}
               >
-                <SelectTrigger className="h-9 border-kp-outline/70 bg-kp-surface text-xs text-kp-on-surface [&>span]:text-kp-on-surface">
+                <SelectTrigger className="h-8 border-kp-outline/70 bg-kp-surface text-xs font-medium text-kp-on-surface [&>span]:text-kp-on-surface">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1408,14 +1508,14 @@ function FormEngineDocumentRow({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-semibold uppercase text-kp-on-surface">Due date</label>
+            <div className="space-y-0.5">
+              <label className="text-[10px] font-bold uppercase text-kp-on-surface">Due date</label>
               <input
                 type="date"
                 value={dueLocal}
                 disabled={archived || disabled}
                 onChange={(e) => setDueLocal(e.target.value)}
-                className="h-9 w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
+                className="h-8 w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
               />
             </div>
             <DocumentAttachField
@@ -1424,26 +1524,25 @@ function FormEngineDocumentRow({
               disabled={archived || disabled}
               idPrefix={`fe-${instance.sourceRuleId}`}
             />
-            <div className="space-y-1 sm:col-span-2">
-              <label className="text-[10px] font-semibold uppercase text-kp-on-surface">Notes</label>
+            <div className="space-y-0.5 sm:col-span-2">
+              <label className="text-[10px] font-bold uppercase text-kp-on-surface">Notes</label>
               <textarea
                 value={comments}
                 disabled={archived || disabled}
                 onChange={(e) => setComments(e.target.value)}
                 rows={2}
-                placeholder="Counterparty, delivery method, version, exceptions…"
-                className="w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1.5 text-xs text-kp-on-surface"
+                placeholder="Short note…"
+                className="min-h-[2.5rem] w-full resize-y rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1 text-xs leading-snug text-kp-on-surface"
               />
             </div>
           </div>
 
-          <div className="flex justify-end border-t border-kp-outline/25 pt-3">
+          <div className="flex justify-end pt-1">
             <Button
               type="button"
               size="sm"
-              variant="outline"
               disabled={archived || disabled}
-              className="h-8 text-xs text-kp-on-surface"
+              className={cn(kpBtnPrimary, "h-8 min-w-[5.5rem] px-4 text-xs font-semibold shadow-md")}
               onClick={() => {
                 onSave({
                   docStatus,
@@ -1501,76 +1600,92 @@ function PipelineDocumentRow({
   const hasFilePointer = Boolean(docUrl.trim());
 
   return (
-    <li className="overflow-hidden rounded-lg border border-kp-outline/55 bg-kp-surface shadow-sm">
+    <li className="overflow-hidden rounded-md border border-kp-outline/55 bg-kp-surface shadow-sm">
       <button
         type="button"
-        className="flex w-full items-start gap-2 border-b border-kp-outline/35 bg-kp-surface-high/35 px-2.5 py-2 text-left sm:gap-2.5 sm:px-3"
+        className="flex w-full items-start gap-1.5 border-b border-kp-outline/35 bg-kp-surface-high/35 px-2 py-1.5 text-left sm:gap-2 sm:px-2.5"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
       >
         <ChevronDown
           className={cn(
-            "mt-0.5 h-4 w-4 shrink-0 text-kp-on-surface transition-transform",
+            "mt-0.5 h-3.5 w-3.5 shrink-0 text-kp-on-surface transition-transform",
             expanded && "rotate-180"
           )}
           aria-hidden
         />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold leading-snug text-kp-on-surface">{row.title}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <p className="text-[13px] font-semibold leading-tight text-kp-on-surface">{row.title}</p>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[10px] text-kp-on-surface-variant">
             <span
               className={cn(
-                "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                "font-semibold uppercase tracking-wide",
                 meta.requirement === "required"
-                  ? "bg-amber-500/15 text-amber-900 dark:text-amber-200"
-                  : "bg-kp-teal/12 text-kp-teal"
+                  ? "text-amber-800 dark:text-amber-200/95"
+                  : "text-kp-teal"
               )}
             >
               {meta.requirement === "required" ? "Required" : "Conditional"}
             </span>
-            <span className="rounded bg-kp-surface-high/80 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-kp-on-surface">
-              {meta.code}
-            </span>
-          </div>
+            <span className="text-kp-on-surface-variant/80">·</span>
+            <span className="font-mono font-semibold text-kp-on-surface">{meta.code}</span>
+          </p>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-0.5 pl-1 text-right">
+        <div className="flex shrink-0 flex-col items-end gap-0.5 pl-0.5 text-right">
           <StatusBadge variant={scan.variant} dot>
             {scan.label}
           </StatusBadge>
           <span
             className={cn(
-              "inline-flex max-w-[11rem] items-center gap-1 text-[10px] tabular-nums text-kp-on-surface-variant sm:max-w-[14rem]",
+              "inline-flex max-w-[10rem] items-center gap-0.5 text-[10px] tabular-nums text-kp-on-surface-variant sm:max-w-[12rem]",
               dueLine.warn && "font-medium text-amber-600 dark:text-amber-300/90"
             )}
           >
-            <CalendarClock className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
+            <CalendarClock className="h-3 w-3 shrink-0 opacity-85" aria-hidden />
             <span className="leading-tight">{dueLine.text}</span>
           </span>
           <span
             className={cn(
-              "inline-flex max-w-[11rem] items-center gap-1 text-[10px] font-medium leading-tight sm:max-w-[14rem]",
+              "inline-flex max-w-[10rem] items-center gap-0.5 text-[10px] font-semibold leading-tight sm:max-w-[12rem]",
               hasFilePointer ? "text-kp-teal" : "text-kp-on-surface-variant"
             )}
           >
             <Link2 className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
-            <span className="truncate">
-              {hasFilePointer ? displayAttachmentLabel(docUrl) || "Linked" : "No attachment"}
-            </span>
+            <span className="truncate">{hasFilePointer ? "Attached" : "No file"}</span>
           </span>
         </div>
       </button>
 
       {expanded ? (
-        <div className="space-y-3 px-3 py-3 sm:px-3.5">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <label className="text-[10px] font-semibold uppercase text-kp-on-surface">Status</label>
+        <div className="space-y-2 border-t border-kp-outline/30 bg-kp-bg/20 px-2.5 py-2 sm:px-3">
+          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-kp-outline/25 pb-2">
+            <div>
+              <p className="text-[13px] font-semibold text-kp-on-surface">{row.title}</p>
+              <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">
+                {meta.requirement === "required" ? "Required" : "Conditional"} · {meta.code}
+              </p>
+            </div>
+            <div className="flex flex-col items-end gap-0.5 text-right text-[10px]">
+              <StatusBadge variant={scan.variant} dot>
+                {scan.label}
+              </StatusBadge>
+              <span className={cn("text-kp-on-surface-variant", dueLine.warn && "font-medium text-amber-600")}>
+                {dueLine.text}
+              </span>
+              <span className={cn("font-medium", hasFilePointer ? "text-kp-teal" : "text-kp-on-surface-variant")}>
+                {hasFilePointer ? displayAttachmentLabel(docUrl) || "Attached" : "No attachment"}
+              </span>
+            </div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="space-y-0.5">
+              <label className="text-[10px] font-bold uppercase text-kp-on-surface">Status</label>
               <Select
                 value={docStatus}
                 disabled={archived || disabled}
                 onValueChange={(v) => setDocStatus(v as DocumentStatus)}
               >
-                <SelectTrigger className="h-9 border-kp-outline/70 bg-kp-surface text-xs text-kp-on-surface [&>span]:text-kp-on-surface">
+                <SelectTrigger className="h-8 border-kp-outline/70 bg-kp-surface text-xs font-medium text-kp-on-surface [&>span]:text-kp-on-surface">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1586,14 +1701,14 @@ function PipelineDocumentRow({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-semibold uppercase text-kp-on-surface">Due date</label>
+            <div className="space-y-0.5">
+              <label className="text-[10px] font-bold uppercase text-kp-on-surface">Due date</label>
               <input
                 type="date"
                 value={dueLocal}
                 disabled={archived || disabled}
                 onChange={(e) => setDueLocal(e.target.value)}
-                className="h-9 w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
+                className="h-8 w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
               />
             </div>
             <DocumentAttachField
@@ -1602,26 +1717,25 @@ function PipelineDocumentRow({
               disabled={archived || disabled}
               idPrefix={`pl-${row.id}`}
             />
-            <div className="space-y-1 sm:col-span-2">
-              <label className="text-[10px] font-semibold uppercase text-kp-on-surface">Notes</label>
+            <div className="space-y-0.5 sm:col-span-2">
+              <label className="text-[10px] font-bold uppercase text-kp-on-surface">Notes</label>
               <textarea
                 value={comments}
                 disabled={archived || disabled}
                 onChange={(e) => setComments(e.target.value)}
                 rows={2}
-                placeholder="Counterparty, delivery method, version, exceptions…"
-                className="w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1.5 text-xs text-kp-on-surface"
+                placeholder="Short note…"
+                className="min-h-[2.5rem] w-full resize-y rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1 text-xs leading-snug text-kp-on-surface"
               />
             </div>
           </div>
 
-          <div className="flex justify-end border-t border-kp-outline/25 pt-3">
+          <div className="flex justify-end pt-1">
             <Button
               type="button"
               size="sm"
-              variant="outline"
               disabled={archived || disabled}
-              className="h-8 text-xs text-kp-on-surface"
+              className={cn(kpBtnPrimary, "h-8 min-w-[5.5rem] px-4 text-xs font-semibold shadow-md")}
               onClick={() => {
                 const next = mergePipelineMeta(meta, {
                   docStatus,

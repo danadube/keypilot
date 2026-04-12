@@ -255,9 +255,8 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
 
       <div className={cn("px-6 pb-8 pt-4 sm:px-8", transactionDetailWorkspaceGridClassName)}>
         {/* Identity — what deal, for whom, which property */}
-        <div className="order-2 flex min-w-0 flex-col gap-4 lg:order-none lg:sticky lg:top-4 lg:self-start">
-          {operationsCue}
-          <section className="rounded-xl border border-kp-outline/50 bg-kp-surface/50 p-5">
+        <div className="order-2 flex min-w-0 flex-col gap-3 lg:order-none lg:sticky lg:top-4 lg:self-start">
+          <section className="rounded-xl border border-kp-outline/50 bg-kp-surface/50 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
               Deal
             </p>
@@ -349,37 +348,39 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
                 )}
               </p>
             </div>
+          </section>
 
-            <div className="mt-4 border-t border-kp-outline/40 pt-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-                Economics (saved)
-              </p>
-              <dl className="mt-2 space-y-1.5 text-sm">
-                <div className="flex justify-between gap-3">
-                  <dt className="text-kp-on-surface-variant">Sale price</dt>
-                  <dd className="tabular-nums text-kp-on-surface">{formatMoneyDisplay(txn.salePrice)}</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-kp-on-surface-variant">GCI</dt>
-                  <dd className="tabular-nums text-kp-on-surface">{formatMoneyDisplay(txn.gci)}</dd>
-                </div>
-                <div className="flex justify-between gap-3">
-                  <dt className="text-kp-on-surface-variant">Net commission (NCI)</dt>
-                  <dd className="tabular-nums font-medium text-kp-on-surface">{formatMoneyDisplay(txn.nci)}</dd>
-                </div>
-              </dl>
-              <Link
-                href={financialHref}
-                className="mt-3 inline-flex text-xs font-medium text-kp-teal hover:underline"
-              >
-                Financial &amp; records — edit pricing, commissions, CRM link, and splits
-              </Link>
-            </div>
+          {operationsCue}
+
+          <section className="rounded-xl border border-kp-outline/45 bg-kp-surface/40 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+              Economics (saved)
+            </p>
+            <dl className="mt-2 space-y-1.5 text-sm">
+              <div className="flex justify-between gap-3">
+                <dt className="text-kp-on-surface-variant">Sale price</dt>
+                <dd className="tabular-nums text-kp-on-surface">{formatMoneyDisplay(txn.salePrice)}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-kp-on-surface-variant">GCI</dt>
+                <dd className="tabular-nums text-kp-on-surface">{formatMoneyDisplay(txn.gci)}</dd>
+              </div>
+              <div className="flex justify-between gap-3">
+                <dt className="text-kp-on-surface-variant">Net commission (NCI)</dt>
+                <dd className="tabular-nums font-medium text-kp-on-surface">{formatMoneyDisplay(txn.nci)}</dd>
+              </div>
+            </dl>
+            <Link
+              href={financialHref}
+              className="mt-3 inline-flex text-xs font-medium text-kp-teal hover:underline"
+            >
+              Financial &amp; records — edit pricing, commissions, CRM link, and splits
+            </Link>
           </section>
         </div>
 
         {/* Primary work surface — documents first; activity is secondary below */}
-        <div className="order-1 min-w-0 space-y-6 lg:order-none">
+        <div className="order-1 min-w-0 space-y-5 lg:order-none">
           <TransactionProgressWorkspace
             transactionId={transactionId}
             stageStatus={txn.status}
@@ -399,7 +400,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           />
           <TransactionDetailActivityPanel
             transactionId={transactionId}
-            className="rounded-xl border border-kp-outline/35 bg-kp-surface/25"
+            className="rounded-lg border border-kp-outline/25 bg-kp-surface/15 opacity-95"
           />
         </div>
       </div>

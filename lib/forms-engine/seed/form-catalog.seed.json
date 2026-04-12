@@ -40,6 +40,126 @@
     },
     {
       "metadata": {
+        "formId": "CA-SA",
+        "revisionId": "2024-01",
+        "title": "Seller Advisory",
+        "shortCode": "SA",
+        "jurisdictionState": "CA",
+        "providerId": "CAR",
+        "formFamily": "seller_advisory",
+        "propertyTypeTags": ["residential"]
+      }
+    },
+    {
+      "metadata": {
+        "formId": "CA-AD-LS",
+        "revisionId": "2024-01",
+        "title": "Agency Disclosure (Listing)",
+        "shortCode": "AD",
+        "jurisdictionState": "CA",
+        "providerId": "CAR",
+        "formFamily": "agency_disclosure",
+        "propertyTypeTags": ["residential"]
+      }
+    },
+    {
+      "metadata": {
+        "formId": "CA-WFA",
+        "revisionId": "2024-01",
+        "title": "Wire Fraud Advisory",
+        "shortCode": "WFA",
+        "jurisdictionState": "CA",
+        "providerId": "CAR",
+        "formFamily": "wire_fraud_advisory",
+        "propertyTypeTags": ["residential"]
+      }
+    },
+    {
+      "metadata": {
+        "formId": "CA-SPQ",
+        "revisionId": "2024-01",
+        "title": "Seller Property Questionnaire",
+        "shortCode": "SPQ",
+        "jurisdictionState": "CA",
+        "providerId": "CAR",
+        "formFamily": "seller_questionnaire",
+        "propertyTypeTags": ["residential"]
+      }
+    },
+    {
+      "metadata": {
+        "formId": "CA-NHD",
+        "revisionId": "2024-01",
+        "title": "Natural Hazard Disclosure",
+        "shortCode": "NHD",
+        "jurisdictionState": "CA",
+        "providerId": "CAR",
+        "formFamily": "natural_hazard",
+        "propertyTypeTags": ["residential"]
+      }
+    },
+    {
+      "metadata": {
+        "formId": "CA-FHDS",
+        "revisionId": "2024-01",
+        "title": "Federal Lead-Based Paint / Hazards (as applicable)",
+        "shortCode": "FHDS",
+        "jurisdictionState": "CA",
+        "providerId": "CAR",
+        "formFamily": "federal_hazards",
+        "propertyTypeTags": ["residential"]
+      }
+    },
+    {
+      "metadata": {
+        "formId": "CA-AVID",
+        "revisionId": "2024-01",
+        "title": "Agent Visual Inspection Disclosure",
+        "shortCode": "AVID",
+        "jurisdictionState": "CA",
+        "providerId": "CAR",
+        "formFamily": "agent_visual_inspection",
+        "propertyTypeTags": ["residential"]
+      }
+    },
+    {
+      "metadata": {
+        "formId": "CA-WCMD",
+        "revisionId": "2024-01",
+        "title": "Water Conserving Plumbing Fixtures",
+        "shortCode": "WCMD",
+        "jurisdictionState": "CA",
+        "providerId": "CAR",
+        "formFamily": "water_conserving",
+        "propertyTypeTags": ["residential"]
+      }
+    },
+    {
+      "metadata": {
+        "formId": "CA-ESD",
+        "revisionId": "2024-01",
+        "title": "Environmental / Hazards Booklet (as applicable)",
+        "shortCode": "ESD",
+        "jurisdictionState": "CA",
+        "providerId": "CAR",
+        "formFamily": "environmental_hazards",
+        "propertyTypeTags": ["residential"]
+      }
+    },
+    {
+      "metadata": {
+        "formId": "CA-FLD",
+        "revisionId": "2024-01",
+        "title": "Final Walkthrough / Delivery Documents",
+        "shortCode": "FLD",
+        "jurisdictionState": "CA",
+        "providerId": "CAR",
+        "formFamily": "closing_delivery",
+        "propertyTypeTags": ["residential"]
+      }
+    },
+    {
+      "metadata": {
         "formId": "TX-TREC-20-14",
         "revisionId": "2024-01",
         "title": "One to Four Family Residential Contract",

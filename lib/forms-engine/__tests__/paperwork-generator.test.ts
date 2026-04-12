@@ -21,7 +21,10 @@ describe("forms-engine paperwork generator (MVP seed)", () => {
       },
     });
     expect(template.id).toBe("tpl-ca-res-sell");
-    expect(instances.map((i) => i.formId).sort()).toEqual(["CA-RLA", "CA-TDS"].sort());
+    expect(instances).toHaveLength(12);
+    expect(instances.map((i) => i.shortCode).sort()).toEqual(
+      ["AD", "AVID", "ESD", "FHDS", "FLD", "NHD", "RLA", "SA", "SPQ", "TDS", "WCMD", "WFA"].sort()
+    );
     expect(instances.every((i) => i.transactionId === "txn-test-1")).toBe(true);
   });
 
