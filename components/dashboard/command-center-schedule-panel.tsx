@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
 import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
@@ -225,7 +225,24 @@ export function CommandCenterSchedulePanel({
   fillHeight?: boolean;
   className?: string;
 }) {
-  const today = useMemo(() => new Date(), []);
+  /** Advances over time so "today", overdue-on-today, and calendar markers stay correct past midnight. */
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+  useEffect(() => {
+    const tick = () => setCurrentTime(new Date());
+    const id = setInterval(tick, 60_000);
+    const onVisible = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") tick();
+    };
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", onVisible);
+    }
+    return () => {
+      clearInterval(id);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", onVisible);
+      }
+    };
+  }, []);
 
   const [visibleMonth, setVisibleMonth] = useState(() => {
     const t = new Date();
@@ -265,16 +282,16 @@ export function CommandCenterSchedulePanel({
     () =>
       mergeScheduleItems({
         selectedDay,
-        now: today,
+        now: currentTime,
         showings,
         followUps: followUpsAll,
         tasks: openTasks,
         checklistItems: scheduleExtra?.checklistItems ?? [],
       }),
-    [selectedDay, today, showings, followUpsAll, openTasks, scheduleExtra]
+    [selectedDay, currentTime, showings, followUpsAll, openTasks, scheduleExtra]
   );
 
-  const selectedIsToday = isSameLocalDay(selectedDay, today);
+  const selectedIsToday = isSameLocalDay(selectedDay, currentTime);
   const nowMs = Date.now();
   let scheduleNowIndex = -1;
   let scheduleNextIndex = -1;
@@ -403,7 +420,7 @@ export function CommandCenterSchedulePanel({
               const key = dayKey(vy, vm, day);
               const hasShowing = showingKeys.has(key);
               const cellDate = new Date(vy, vm, day);
-              const isTodayCell = isSameLocalDay(cellDate, today);
+              const isTodayCell = isSameLocalDay(cellDate, currentTime);
               const isSelected = isSameLocalDay(cellDate, selectedDay);
 
               return (
