@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import useSWR, { useSWRConfig } from "swr";
 import { apiFetcher } from "@/lib/fetcher";
-import { ArrowLeft, MapPin, Loader2, AlertCircle } from "lucide-react";
+import { ArrowLeft, MapPin, Loader2, AlertCircle, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { entityDetailWorkspaceGridClassName } from "@/components/layout/entity-detail-workspace-grid";
@@ -47,6 +47,12 @@ type TransactionDetail = {
     zip: string;
   };
   commissions: { id: string }[];
+  dealId: string | null;
+  deal: {
+    id: string;
+    status: string;
+    contact: { id: string; firstName: string; lastName: string };
+  } | null;
 };
 
 const STATUS_LABELS: Record<TxStatus, string> = {
@@ -261,7 +267,12 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
                   })}
                 </p>
               ) : (
-                <p className="text-kp-on-surface-variant">Closing date not set — edit in Financial &amp; records</p>
+                <p className="text-kp-on-surface-variant">
+                  Closing date not set —{" "}
+                  <Link href={financialHref} className="font-medium text-kp-teal hover:underline">
+                    Financial &amp; records
+                  </Link>
+                </p>
               )}
 
               <p className="text-kp-on-surface">
@@ -274,7 +285,12 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
                     {[txn.primaryContact.firstName, txn.primaryContact.lastName].filter(Boolean).join(" ")}
                   </Link>
                 ) : (
-                  <span className="text-kp-on-surface-variant">Not linked — add in Financial &amp; records</span>
+                  <span className="text-kp-on-surface-variant">
+                    Not linked —{" "}
+                    <Link href={financialHref} className="font-medium text-kp-teal hover:underline">
+                      Financial &amp; records
+                    </Link>
+                  </span>
                 )}
               </p>
 
@@ -284,11 +300,27 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
                   className="inline-flex items-center gap-1.5 text-xs font-medium text-kp-teal hover:underline"
                 >
                   <MapPin className="h-3.5 w-3.5" />
-                  Linked property — open in PropertyVault
+                  View property
                 </Link>
               ) : (
                 <p className="text-xs text-kp-on-surface-variant">No property linked for this transaction.</p>
               )}
+
+              <p className="text-kp-on-surface">
+                <span className="text-kp-on-surface-variant">CRM deal: </span>
+                {txn.deal ? (
+                  <Link
+                    href={`/deals/${txn.deal.id}`}
+                    className="inline-flex items-center gap-1 font-medium text-kp-teal hover:underline"
+                  >
+                    <Briefcase className="h-3.5 w-3.5" aria-hidden />
+                    {[txn.deal.contact.firstName, txn.deal.contact.lastName].filter(Boolean).join(" ") ||
+                      "Deal"}
+                  </Link>
+                ) : (
+                  <span className="text-kp-on-surface-variant">Not linked</span>
+                )}
+              </p>
             </div>
 
             <div className="mt-4 border-t border-kp-outline/40 pt-4">

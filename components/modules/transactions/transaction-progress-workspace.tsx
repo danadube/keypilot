@@ -6,6 +6,7 @@ import useSWR from "swr";
 import {
   Loader2,
   AlertCircle,
+  ExternalLink,
   FileText,
   Layers,
 } from "lucide-react";
@@ -92,6 +93,17 @@ const DOC_STATUS_OPTIONS: { value: DocumentStatus; label: string }[] = [
   { value: "uploaded", label: "Uploaded" },
   { value: "complete", label: "Complete" },
 ];
+
+function isAbsoluteHttpUrl(s: string): boolean {
+  const t = s.trim();
+  if (!t.startsWith("http://") && !t.startsWith("https://")) return false;
+  try {
+    const u = new URL(t);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
 function pipelinePositionHint(status: TxStatus, side: PipelineSide): string {
   if (status === "CLOSED" || status === "FALLEN_APART") {
@@ -284,7 +296,10 @@ export function TransactionProgressWorkspace({
         </div>
       ) : (
         <>
-          <div className="mt-5 rounded-lg border border-kp-teal/35 bg-kp-teal/[0.06] px-4 py-4">
+          <div
+            id="txn-pipeline-setup"
+            className="mt-5 rounded-lg border border-kp-teal/35 bg-kp-teal/[0.06] px-4 py-4"
+          >
             <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
               Pipeline setup
             </p>
@@ -583,14 +598,27 @@ function PipelineDocumentRow({
           <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">
             Executed document (link or upload destination)
           </label>
-          <input
-            type="url"
-            value={docUrl}
-            disabled={archived || disabled}
-            onChange={(e) => setDocUrl(e.target.value)}
-            placeholder="https://… or folder path"
-            className="h-9 w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
-          />
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={docUrl}
+              disabled={archived || disabled}
+              onChange={(e) => setDocUrl(e.target.value)}
+              placeholder="https://… or internal path"
+              className="h-9 min-w-0 flex-1 rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
+            />
+            {isAbsoluteHttpUrl(docUrl) ? (
+              <a
+                href={docUrl.trim()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 shrink-0 items-center gap-1 rounded-md border border-kp-teal/40 bg-kp-teal/10 px-2.5 text-xs font-medium text-kp-teal hover:bg-kp-teal/20"
+              >
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                Open
+              </a>
+            ) : null}
+          </div>
         </div>
         <div className="space-y-1 sm:col-span-2">
           <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">Notes</label>

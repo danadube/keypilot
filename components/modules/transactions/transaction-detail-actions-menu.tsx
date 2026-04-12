@@ -48,7 +48,8 @@ const STATUS_OPTIONS: { value: TxStatus; label: string }[] = [
 
 type TransactionDetailActionsMenuProps = {
   transactionId: string;
-  propertyId: string;
+  /** Omitted or empty hides “View property” (no dead link). */
+  propertyId?: string | null;
   primaryContactId: string | null;
   currentStatus: TxStatus;
   onScrollToNote: () => void;
@@ -270,17 +271,25 @@ export function TransactionDetailActionsMenu({
             Change status
           </PageHeaderActionButton>
           <PageHeaderActionsMenuSeparator />
-          <PageHeaderActionItem href={`/properties/${propertyId}`} onClick={closeMenu}>
-            View property
-          </PageHeaderActionItem>
+          {propertyId ? (
+            <PageHeaderActionItem
+              href={`/properties/${propertyId}`}
+              onClick={closeMenu}
+            >
+              View property
+            </PageHeaderActionItem>
+          ) : null}
           <PageHeaderActionItem href="/contacts" onClick={closeMenu}>
-            Link contact (ClientKeep)
+            Browse contacts
           </PageHeaderActionItem>
-          <PageHeaderActionItem href="/deals" onClick={closeMenu}>
-            Link deal (Deals)
+          <PageHeaderActionItem
+            href={`/transactions/${transactionId}/financial#txn-deal-context`}
+            onClick={closeMenu}
+          >
+            Link CRM deal (this transaction)
           </PageHeaderActionItem>
           <PageHeaderActionItem href="/transactions/pipeline" onClick={closeMenu}>
-            Pipeline
+            Closing pipeline
           </PageHeaderActionItem>
         </div>
       </details>
