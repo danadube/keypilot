@@ -45,6 +45,11 @@ function formatUsd(n: number | null | undefined) {
   return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
 
+/** Command center section labels — shared spacing and alignment above cards */
+const dashSectionLabelClass =
+  "text-[11px] font-semibold uppercase tracking-wider leading-none text-kp-on-surface-muted";
+const dashSectionHeadRowClass = "mb-2 flex min-h-[1.125rem] items-center justify-between gap-2 px-0.5";
+
 function SnapshotTile({
   href,
   label,
@@ -192,8 +197,9 @@ export function OperationalDashboardView() {
           : "Due today / soon";
 
   return (
-    <div className="space-y-5 pb-6 sm:space-y-6">
+    <div className="space-y-4 pb-6 sm:space-y-5">
       <PageHeader
+        className="pb-2 pt-0.5 md:pb-2.5 md:pt-1"
         titleNode={<CommandCenterLiveTitle />}
         subtitle="What needs attention right now to move deals forward — execution beats vanity metrics."
         primaryAction={
@@ -214,14 +220,14 @@ export function OperationalDashboardView() {
 
       {/* 1 — Attention strip */}
       <section aria-label="Most urgent transaction">
-        <div className="rounded-xl border border-kp-gold/30 bg-gradient-to-r from-kp-gold/[0.07] to-kp-surface px-4 py-3 sm:px-5 sm:py-4">
+        <div className="rounded-xl border border-kp-gold/30 bg-gradient-to-r from-kp-gold/[0.07] to-kp-surface px-4 py-2.5 sm:px-5 sm:py-3">
           {loading ? (
-            <div className="h-16 animate-pulse rounded-lg bg-kp-surface-high/40" aria-hidden />
+            <div className="h-14 animate-pulse rounded-lg bg-kp-surface-high/40" aria-hidden />
           ) : cc?.attention ? (
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between">
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
-                  Next deal to push
+                  Most urgent deal
                 </p>
                 <p className="mt-1 truncate font-headline text-base font-semibold text-kp-on-surface">
                   {cc.attention.addressLine}
@@ -244,7 +250,7 @@ export function OperationalDashboardView() {
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
-                  Next deal to push
+                  Most urgent deal
                 </p>
                 <p className="mt-1 text-sm text-kp-on-surface">
                   {cc?.crmAvailable === false
@@ -265,10 +271,7 @@ export function OperationalDashboardView() {
 
       {/* 2 — Business snapshot */}
       <section aria-labelledby="dash-snapshot-heading" className="space-y-2">
-        <h2
-          id="dash-snapshot-heading"
-          className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
-        >
+        <h2 id="dash-snapshot-heading" className={dashSectionLabelClass}>
           Business snapshot
         </h2>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5 lg:gap-3">
@@ -317,13 +320,12 @@ export function OperationalDashboardView() {
 
       {/* 3 — Today + priority */}
       <section aria-labelledby="dash-today-work" className="space-y-2">
-        <h2
-          id="dash-today-work"
-          className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
-        >
-          Today&apos;s work
-        </h2>
-        <div className="grid min-h-0 gap-4 lg:grid-cols-12 lg:items-stretch lg:gap-5 lg:min-h-[min(32rem,calc(100vh-12rem))]">
+        <div className={dashSectionHeadRowClass}>
+          <h2 id="dash-today-work" className={dashSectionLabelClass}>
+            Today&apos;s work
+          </h2>
+        </div>
+        <div className="grid min-h-0 gap-3 lg:grid-cols-12 lg:items-stretch lg:gap-4 lg:max-h-[min(26rem,min(52vh,560px))]">
           <div className="min-h-0 min-w-0 lg:col-span-8">
             <CommandCenterSchedulePanel
               showings={showings}
@@ -335,11 +337,11 @@ export function OperationalDashboardView() {
               className="h-full min-h-0"
             />
           </div>
-          <div className="flex min-h-0 min-w-0 flex-col gap-2 lg:col-span-4">
-            <div className="flex items-center justify-between gap-2 px-0.5" id="dash-priority-heading">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
+          <div className="flex min-h-0 min-w-0 flex-col lg:col-span-4">
+            <div className={dashSectionHeadRowClass}>
+              <h2 id="dash-priority-heading" className={dashSectionLabelClass}>
                 Priority tasks
-              </h3>
+              </h2>
               <Link
                 href="/task-pilot"
                 className="text-[11px] font-semibold text-kp-teal hover:underline"
@@ -347,7 +349,7 @@ export function OperationalDashboardView() {
                 All
               </Link>
             </div>
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-kp-outline bg-kp-surface p-3 shadow-sm sm:p-4">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-kp-outline bg-kp-surface p-3 shadow-sm sm:p-3.5">
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain pr-0.5 [-webkit-overflow-scrolling:touch]">
                 {loading ? (
                   <ul className="space-y-2" aria-busy="true">
@@ -376,20 +378,18 @@ export function OperationalDashboardView() {
 
       {/* 4 — Listings + activity */}
       <section aria-labelledby="dash-listings-heading" className="space-y-2">
-        <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2 px-0.5">
-              <h2
-                id="dash-listings-heading"
-                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
-              >
+        <div className="grid min-h-[min(260px,42vh)] gap-4 lg:grid-cols-2 lg:items-stretch lg:gap-5 lg:min-h-[min(280px,36vh)]">
+          <div className="flex min-h-0 flex-col">
+            <div className={dashSectionHeadRowClass}>
+              <h2 id="dash-listings-heading" className={dashSectionLabelClass}>
                 Current listings
               </h2>
               <Link href="/properties" className="text-[11px] font-semibold text-kp-teal hover:underline">
                 PropertyVault
               </Link>
             </div>
-            <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-kp-outline bg-kp-surface shadow-sm">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-3 sm:p-4 [-webkit-overflow-scrolling:touch]">
             {loading ? (
               <ul className="space-y-2">
                 {[0, 1, 2].map((k) => (
@@ -426,20 +426,19 @@ export function OperationalDashboardView() {
                 ))}
               </ul>
             )}
+              </div>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2 px-0.5">
-              <h2
-                id="dash-activity-heading"
-                className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
-              >
+          <div className="flex min-h-0 flex-col">
+            <div className={dashSectionHeadRowClass}>
+              <h2 id="dash-activity-heading" className={dashSectionLabelClass}>
                 Recent activity
               </h2>
               <Sparkles className="h-4 w-4 shrink-0 text-kp-gold/80" aria-hidden />
             </div>
-            <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-kp-outline bg-kp-surface shadow-sm">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-3 sm:p-4 [-webkit-overflow-scrolling:touch]">
             {loading ? (
               <ul className="space-y-2">
                 {[0, 1, 2].map((k) => (
@@ -497,6 +496,7 @@ export function OperationalDashboardView() {
                 ))}
               </ul>
             )}
+              </div>
             </div>
           </div>
         </div>
