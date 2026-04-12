@@ -16,7 +16,7 @@ import { PropertyDetailContextRail } from "./property-detail-context-rail";
 import { propertyDetailWorkspaceGridClassName } from "@/components/layout/entity-detail-workspace-grid";
 import type { TransactionRow } from "@/components/modules/transactions/transactions-shared";
 import { usePropertyVaultDetailCommandApi } from "@/components/modules/properties/property-vault-detail-command-context";
-import { ArrowLeft, Upload, Trash2, DollarSign, ImagePlus } from "lucide-react";
+import { ArrowLeft, Upload, Trash2, ImagePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   kpBtnDangerSecondary,
@@ -368,7 +368,6 @@ export function PropertyDetailView({ id }: { id: string }) {
           : "flex items-center gap-1 rounded-lg border border-kp-gold/40 bg-kp-gold/10 px-3 py-1 text-sm font-semibold text-kp-gold"
       }
     >
-      <DollarSign className="h-3.5 w-3.5" />
       {formatPrice(property.listingPrice)}
     </span>
   ) : null;
