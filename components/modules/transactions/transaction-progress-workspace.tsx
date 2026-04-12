@@ -116,9 +116,25 @@ const SHOW_LEGACY_CHECKLIST =
   typeof process !== "undefined" &&
   process.env.NEXT_PUBLIC_KEYPILOT_TXN_LEGACY_CHECKLIST === "1";
 
-/** Focus stage control — must read as clearly interactive (not disabled). */
-const FOCUS_STAGE_SELECT_TRIGGER_CLASS =
-  "h-8 border-2 border-kp-teal/50 bg-kp-surface-high text-sm font-semibold text-kp-on-surface shadow-sm hover:border-kp-teal hover:bg-kp-surface-high [&>span]:text-kp-on-surface data-[placeholder]:text-kp-on-surface-variant focus-visible:ring-2 focus-visible:ring-kp-teal/60 focus-visible:ring-offset-2 focus-visible:ring-offset-kp-surface";
+/** Focus stage control — strong hover/open feedback; pairs with {@link FOCUS_STAGE_SELECT_CONTENT_CLASS}. */
+const FOCUS_STAGE_SELECT_TRIGGER_CLASS = cn(
+  "h-8 w-full min-w-0 border-2 border-kp-teal/50 bg-kp-surface-high text-sm font-semibold text-kp-on-surface shadow-sm transition-[border-color,box-shadow,background-color]",
+  "[&>span]:line-clamp-1 [&>span]:text-left [&>span]:text-kp-on-surface data-[placeholder]:text-kp-on-surface-variant",
+  "hover:border-kp-teal hover:bg-kp-surface-higher hover:shadow-md",
+  "data-[state=open]:border-kp-teal data-[state=open]:bg-kp-surface-higher data-[state=open]:shadow-md data-[state=open]:ring-2 data-[state=open]:ring-kp-teal/45",
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal/65 focus-visible:ring-offset-2 focus-visible:ring-offset-kp-surface"
+);
+
+const FOCUS_STAGE_SELECT_CONTENT_CLASS = cn(
+  "max-h-[min(70vh,22rem)] border border-kp-outline/70 bg-kp-surface-higher text-kp-on-surface shadow-2xl"
+);
+
+/** Selected value reads intentional in dark UI without a full teal block. */
+const FOCUS_STAGE_SELECT_ITEM_CLASS = cn(
+  "text-xs",
+  "data-[highlighted]:bg-kp-surface-high data-[highlighted]:text-kp-on-surface",
+  "data-[state=checked]:bg-kp-teal/16 data-[state=checked]:font-semibold data-[state=checked]:text-kp-on-surface"
+);
 
 function docStatusForScan(s: DocumentStatus): {
   label: string;
@@ -340,38 +356,52 @@ function WorkflowAttentionStrip({
   if (!nextRequiredTitle && requiredNotStarted === 0 && overdueCount === 0) return null;
   return (
     <div
-      className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-md border border-kp-teal/25 bg-kp-teal/[0.07] px-2.5 py-1.5 text-xs leading-snug text-kp-on-surface"
+      className="mt-3 rounded-lg border border-kp-teal/30 bg-gradient-to-br from-kp-teal/[0.14] via-kp-bg/30 to-kp-surface/40 px-3 py-2.5 text-xs leading-snug text-kp-on-surface shadow-sm"
       role="status"
     >
-      <span className="font-semibold text-kp-on-surface">Now</span>
-      {nextRequiredTitle ? (
-        <span>
-          Next required:{" "}
-          {nextRequiredDomId ? (
-            <button
-              type="button"
-              className="font-semibold text-kp-teal underline decoration-kp-teal/50 underline-offset-2 hover:decoration-kp-teal"
-              onClick={onJumpToNextRequired}
-            >
-              {nextRequiredTitle}
-            </button>
-          ) : (
-            <span className="font-medium">{nextRequiredTitle}</span>
-          )}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-3">
+        <span className="shrink-0 pt-0.5 text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-variant">
+          Now
         </span>
-      ) : null}
-      {requiredNotStarted > 0 ? (
-        <span className="text-kp-on-surface-variant">
-          {nextRequiredTitle ? " · " : ""}
-          {requiredNotStarted} required not started
-        </span>
-      ) : null}
-      {overdueCount > 0 ? (
-        <span className="font-semibold text-amber-700 dark:text-amber-300/95">
-          {(nextRequiredTitle || requiredNotStarted > 0) ? " · " : ""}
-          {overdueCount} overdue
-        </span>
-      ) : null}
+        <div className="min-w-0 flex-1 space-y-1.5">
+          {nextRequiredTitle ? (
+            nextRequiredDomId ? (
+              <button
+                type="button"
+                onClick={onJumpToNextRequired}
+                className={cn(
+                  "w-full max-w-full rounded-md border border-kp-teal/45 bg-kp-teal/22 px-3 py-2 text-left shadow-md ring-1 ring-kp-teal/30 transition",
+                  "hover:border-kp-teal/70 hover:bg-kp-teal/30 hover:ring-kp-teal/45",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal/55 focus-visible:ring-offset-2 focus-visible:ring-offset-kp-surface",
+                  "active:scale-[0.995]"
+                )}
+              >
+                <span className="block text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                  Next document
+                </span>
+                <span className="mt-0.5 block text-sm font-bold leading-snug text-kp-on-surface">
+                  {nextRequiredTitle}
+                </span>
+              </button>
+            ) : (
+              <p className="text-sm font-semibold text-kp-on-surface">{nextRequiredTitle}</p>
+            )
+          ) : null}
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-[11px] text-kp-on-surface-variant">
+            {requiredNotStarted > 0 ? (
+              <span>
+                {requiredNotStarted} required not started
+              </span>
+            ) : null}
+            {overdueCount > 0 ? (
+              <span className="font-semibold text-amber-700 dark:text-amber-300/95">
+                {requiredNotStarted > 0 ? "· " : ""}
+                {overdueCount} overdue
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -418,28 +448,28 @@ function attachmentCollapsedLabel(
 
 function formEngineRowSurfaceClass(bucket: RequirementBucket, docStatus: DocumentStatus): string {
   if (docStatus === "complete") {
-    return cn("border-kp-outline/35 bg-kp-surface/45 opacity-[0.88]");
+    return cn("border-kp-outline/28 bg-kp-surface/38 opacity-[0.78]");
   }
   if (bucket === "conditional" || bucket === "optional") {
-    return cn("border-kp-outline/40 bg-kp-surface/30 opacity-[0.93]");
+    return cn("border-kp-outline/32 bg-kp-surface/22 opacity-[0.84]");
   }
   const requiredNotStarted =
     (bucket === "required" || bucket === "brokerage_required") && docStatus === "not_started";
   if (requiredNotStarted) {
-    return cn("border-kp-outline/70 bg-kp-surface ring-1 ring-amber-500/15");
+    return cn("border-kp-outline/80 bg-kp-surface shadow-sm ring-2 ring-amber-500/22");
   }
   return "border-kp-outline/55 bg-kp-surface shadow-sm";
 }
 
 function pipelineRowSurfaceClass(requirement: RequirementKind, docStatus: DocumentStatus): string {
   if (docStatus === "complete") {
-    return cn("border-kp-outline/35 bg-kp-surface/45 opacity-[0.88]");
+    return cn("border-kp-outline/28 bg-kp-surface/38 opacity-[0.78]");
   }
   if (requirement !== "required") {
-    return cn("border-kp-outline/40 bg-kp-surface/30 opacity-[0.93]");
+    return cn("border-kp-outline/32 bg-kp-surface/22 opacity-[0.84]");
   }
   if (docStatus === "not_started") {
-    return cn("border-kp-outline/70 bg-kp-surface ring-1 ring-amber-500/15");
+    return cn("border-kp-outline/80 bg-kp-surface shadow-sm ring-2 ring-amber-500/22");
   }
   return "border-kp-outline/55 bg-kp-surface shadow-sm";
 }
@@ -1058,19 +1088,15 @@ export function TransactionProgressWorkspace({
                     >
                       <SelectValue placeholder="Jump to a stage…" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className={FOCUS_STAGE_SELECT_CONTENT_CLASS}>
                       <SelectItem
                         value="__none__"
-                        className="text-xs text-kp-on-surface-variant focus:text-kp-on-surface"
+                        className={cn(FOCUS_STAGE_SELECT_ITEM_CLASS, "text-kp-on-surface-variant")}
                       >
                         Jump to a stage…
                       </SelectItem>
                       {engineStageEntries.map((e) => (
-                        <SelectItem
-                          key={e.stageKey}
-                          value={e.stageKey}
-                          className="text-xs text-kp-on-surface focus:text-kp-on-surface"
-                        >
+                        <SelectItem key={e.stageKey} value={e.stageKey} className={FOCUS_STAGE_SELECT_ITEM_CLASS}>
                           {e.label}
                         </SelectItem>
                       ))}
@@ -1125,19 +1151,15 @@ export function TransactionProgressWorkspace({
                   >
                     <SelectValue placeholder="Jump to a stage…" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className={FOCUS_STAGE_SELECT_CONTENT_CLASS}>
                     <SelectItem
                       value="__none__"
-                      className="text-xs text-kp-on-surface-variant focus:text-kp-on-surface"
+                      className={cn(FOCUS_STAGE_SELECT_ITEM_CLASS, "text-kp-on-surface-variant")}
                     >
                       Jump to a stage…
                     </SelectItem>
                     {PIPELINE_STAGE_ORDER[resolvedSide].map((key) => (
-                      <SelectItem
-                        key={key}
-                        value={key}
-                        className="text-xs text-kp-on-surface focus:text-kp-on-surface"
-                      >
+                      <SelectItem key={key} value={key} className={FOCUS_STAGE_SELECT_ITEM_CLASS}>
                         {PIPELINE_STAGE_LABELS[key]}
                       </SelectItem>
                     ))}
@@ -1332,27 +1354,27 @@ function DocumentAttachField({
   };
 
   return (
-    <div className="space-y-1 sm:col-span-2">
+    <div className="space-y-0.5 sm:col-span-2">
       <p className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface">Attachment</p>
       {!hasPointer ? (
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               size="sm"
               disabled={disabled}
-              className={cn(kpBtnPrimary, "h-8 px-3 text-xs font-semibold")}
+              className={cn(kpBtnPrimary, "h-7 px-2.5 text-[11px] font-semibold")}
               onClick={() => inputRef.current?.click()}
             >
               <Upload className="mr-1.5 h-3.5 w-3.5" aria-hidden />
               Upload document
             </Button>
-            <span className="text-[10px] text-kp-on-surface-variant">Drop a file on the row below</span>
+            <span className="text-[10px] text-kp-on-surface-variant">Drop below</span>
           </div>
           <div
             className={cn(
-              "flex min-h-[2.25rem] items-center rounded border border-dashed border-kp-outline/50 bg-kp-bg/30 px-2 py-1 text-[10px] text-kp-on-surface-variant",
-              !disabled && "hover:border-kp-outline/70",
+              "flex min-h-[2rem] items-center rounded border border-dashed border-kp-outline/45 bg-kp-bg/25 px-2 py-0.5 text-[10px] text-kp-on-surface-variant/95",
+              !disabled && "hover:border-kp-outline/65",
               disabled && "opacity-55"
             )}
             onDragOver={(e) => {
@@ -1597,8 +1619,8 @@ function FormEngineDocumentRow({
       </button>
 
       {expanded ? (
-        <div className="space-y-1.5 border-t border-kp-outline/25 bg-kp-bg/15 px-2 py-1.5 sm:px-2.5 sm:py-2">
-          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-kp-outline/20 pb-1.5">
+        <div className="space-y-1 border-t border-kp-outline/20 bg-kp-bg/10 px-2 py-1 sm:px-2 sm:py-1.5">
+          <div className="flex flex-wrap items-start justify-between gap-1.5 border-b border-kp-outline/15 pb-1">
             <div>
               <p className="text-[13px] font-semibold text-kp-on-surface">{instance.title}</p>
               <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">
@@ -1620,7 +1642,7 @@ function FormEngineDocumentRow({
               </span>
             </div>
           </div>
-          <div className="grid gap-1.5 sm:grid-cols-2">
+          <div className="grid gap-1 sm:grid-cols-2">
             <div className="space-y-0.5">
               <label className="text-[10px] font-bold uppercase text-kp-on-surface">Status</label>
               <Select
@@ -1657,19 +1679,21 @@ function FormEngineDocumentRow({
               idPrefix={`fe-${instance.sourceRuleId}`}
             />
             <div className="space-y-0.5 sm:col-span-2">
-              <label className="text-[10px] font-bold uppercase text-kp-on-surface">Notes</label>
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                Notes
+              </label>
               <textarea
                 value={comments}
                 disabled={archived || disabled}
                 onChange={(e) => setComments(e.target.value)}
                 rows={2}
-                placeholder="Short note…"
-                className="min-h-[2.25rem] w-full resize-y rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1 text-xs leading-snug text-kp-on-surface"
+                placeholder="Optional…"
+                className="min-h-[1.75rem] w-full resize-y rounded-md border border-kp-outline/50 bg-kp-bg/25 px-2 py-1 text-[11px] leading-snug text-kp-on-surface/90 placeholder:text-kp-on-surface-placeholder"
               />
             </div>
           </div>
 
-          <div className="flex justify-end pt-0.5">
+          <div className="flex justify-end pt-0">
             <Button
               type="button"
               size="sm"
@@ -1814,8 +1838,8 @@ function PipelineDocumentRow({
       </button>
 
       {expanded ? (
-        <div className="space-y-1.5 border-t border-kp-outline/25 bg-kp-bg/15 px-2 py-1.5 sm:px-2.5 sm:py-2">
-          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-kp-outline/20 pb-1.5">
+        <div className="space-y-1 border-t border-kp-outline/20 bg-kp-bg/10 px-2 py-1 sm:px-2 sm:py-1.5">
+          <div className="flex flex-wrap items-start justify-between gap-1.5 border-b border-kp-outline/15 pb-1">
             <div>
               <p className="text-[13px] font-semibold text-kp-on-surface">{row.title}</p>
               <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">
@@ -1836,7 +1860,7 @@ function PipelineDocumentRow({
               </span>
             </div>
           </div>
-          <div className="grid gap-1.5 sm:grid-cols-2">
+          <div className="grid gap-1 sm:grid-cols-2">
             <div className="space-y-0.5">
               <label className="text-[10px] font-bold uppercase text-kp-on-surface">Status</label>
               <Select
@@ -1873,19 +1897,21 @@ function PipelineDocumentRow({
               idPrefix={`pl-${row.id}`}
             />
             <div className="space-y-0.5 sm:col-span-2">
-              <label className="text-[10px] font-bold uppercase text-kp-on-surface">Notes</label>
+              <label className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                Notes
+              </label>
               <textarea
                 value={comments}
                 disabled={archived || disabled}
                 onChange={(e) => setComments(e.target.value)}
                 rows={2}
-                placeholder="Short note…"
-                className="min-h-[2.25rem] w-full resize-y rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1 text-xs leading-snug text-kp-on-surface"
+                placeholder="Optional…"
+                className="min-h-[1.75rem] w-full resize-y rounded-md border border-kp-outline/50 bg-kp-bg/25 px-2 py-1 text-[11px] leading-snug text-kp-on-surface/90 placeholder:text-kp-on-surface-placeholder"
               />
             </div>
           </div>
 
-          <div className="flex justify-end pt-0.5">
+          <div className="flex justify-end pt-0">
             <Button
               type="button"
               size="sm"

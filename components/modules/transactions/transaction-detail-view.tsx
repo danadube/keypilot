@@ -400,7 +400,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           />
           <TransactionDetailActivityPanel
             transactionId={transactionId}
-            className="rounded-lg border border-kp-outline/20 bg-kp-bg/25 p-3 opacity-90"
+            className="rounded-lg border border-kp-outline/12 bg-kp-bg/10 p-2.5 opacity-[0.78]"
           />
         </div>
       </div>
