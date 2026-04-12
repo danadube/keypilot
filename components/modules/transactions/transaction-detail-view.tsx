@@ -358,6 +358,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             transactionId={transactionId}
             stageStatus={txn.status}
             side={txn.side === "BUY" || txn.side === "SELL" ? txn.side : null}
+            propertyState={txn.property.state}
             archived={false}
             onListsChanged={() => {
               void refreshTransactionActivity();

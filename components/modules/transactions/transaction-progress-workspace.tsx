@@ -40,6 +40,13 @@ import {
   serializePipelineMeta,
   tryParsePipelineMeta,
 } from "@/lib/transactions/pipeline-checklist-metadata";
+import { buildTransactionPaperworkContext } from "@/lib/transactions/build-transaction-paperwork-context";
+import { tryMvpTransactionPaperwork } from "@/lib/transactions/try-mvp-transaction-paperwork";
+import type {
+  RequirementBucket,
+  TransactionDocumentInstance,
+  TransactionDocumentInstanceStatus,
+} from "@/lib/forms-engine/types";
 
 type ChecklistItem = {
   id: string;
@@ -165,6 +172,68 @@ function isAbsoluteHttpUrl(s: string): boolean {
   }
 }
 
+function humanizeStageHint(hint: string): string {
+  if (hint === "general") return "Documents";
+  return hint
+    .split(/[_\s]+/)
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+function instanceStatusToDocumentStatus(s: TransactionDocumentInstanceStatus): DocumentStatus {
+  switch (s) {
+    case "not_started":
+      return "not_started";
+    case "in_progress":
+      return "sent";
+    case "complete":
+      return "complete";
+    case "waived":
+    case "not_applicable":
+      return "complete";
+    default:
+      return "not_started";
+  }
+}
+
+function bucketBadgeClass(bucket: RequirementBucket): string {
+  switch (bucket) {
+    case "required":
+      return "bg-amber-500/15 text-amber-900 dark:text-amber-200";
+    case "brokerage_required":
+      return "bg-violet-500/15 text-violet-900 dark:text-violet-200";
+    case "compliance_only":
+      return "bg-sky-500/12 text-sky-900 dark:text-sky-100";
+    case "operational_task":
+      return "border border-kp-outline/50 bg-kp-surface-high/80 text-kp-on-surface-variant";
+    case "conditional":
+      return "bg-kp-teal/12 text-kp-teal";
+    case "optional":
+    default:
+      return "bg-kp-surface-high/80 text-kp-on-surface-muted";
+  }
+}
+
+function bucketLabel(bucket: RequirementBucket): string {
+  switch (bucket) {
+    case "required":
+      return "Required";
+    case "conditional":
+      return "Conditional";
+    case "optional":
+      return "Optional";
+    case "brokerage_required":
+      return "Brokerage";
+    case "compliance_only":
+      return "Compliance";
+    case "operational_task":
+      return "Task";
+    default:
+      return bucket;
+  }
+}
+
 function pipelinePositionHint(status: TxStatus, side: PipelineSide): string {
   if (status === "CLOSED" || status === "FALLEN_APART") {
     return "Transaction closed — documents below are historical.";
@@ -186,6 +255,7 @@ export function TransactionProgressWorkspace({
   transactionId,
   stageStatus,
   side,
+  propertyState,
   archived,
   onListsChanged,
   onTransactionRecordChanged,
@@ -194,6 +264,8 @@ export function TransactionProgressWorkspace({
   transactionId: string;
   stageStatus: TxStatus;
   side?: PipelineSide | null;
+  /** Linked property state — drives jurisdiction-aware document requirements. */
+  propertyState: string | null;
   archived: boolean;
   onListsChanged: () => void;
   /** After PATCH (e.g. side), parent should reload transaction JSON. */
@@ -211,6 +283,9 @@ export function TransactionProgressWorkspace({
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savingSide, setSavingSide] = useState(false);
   const [stageJump, setStageJump] = useState<string>("");
+  const [engineRowDrafts, setEngineRowDrafts] = useState<
+    Record<string, { docStatus: DocumentStatus; dueYmd: string; docUrl: string; comments: string }>
+  >({});
 
   const busy = isLoading && items === undefined;
   const resolvedSide = side === "BUY" || side === "SELL" ? side : null;
@@ -218,6 +293,65 @@ export function TransactionProgressWorkspace({
   useEffect(() => {
     setStageJump("");
   }, [resolvedSide]);
+
+  const paperworkCtx = useMemo(
+    () =>
+      resolvedSide
+        ? buildTransactionPaperworkContext({
+            transactionId,
+            propertyState,
+            side: resolvedSide,
+          })
+        : null,
+    [transactionId, resolvedSide, propertyState]
+  );
+
+  const engineTry = useMemo(() => {
+    if (!paperworkCtx) return null;
+    return tryMvpTransactionPaperwork(paperworkCtx);
+  }, [paperworkCtx]);
+
+  const useEnginePipeline = Boolean(engineTry?.ok);
+
+  const engineFallbackMessage = useMemo(() => {
+    if (!paperworkCtx || !engineTry || useEnginePipeline) return null;
+    if (engineTry.ok === false) {
+      if (engineTry.reason === "no_jurisdiction" || engineTry.reason === "empty") {
+        return "No forms template configured for this transaction — showing saved checklist rows only.";
+      }
+      return "Forms engine could not generate requirements — showing saved checklist rows only.";
+    }
+    return null;
+  }, [paperworkCtx, engineTry, useEnginePipeline]);
+
+  const jurisdictionLabel = useMemo(() => {
+    if (engineTry?.ok) return engineTry.profile.displayName;
+    if (paperworkCtx?.propertyState) return paperworkCtx.propertyState;
+    return null;
+  }, [engineTry, paperworkCtx]);
+
+  const engineStageEntries = useMemo(() => {
+    if (!engineTry?.ok) return [] as { stageKey: string; label: string; items: TransactionDocumentInstance[] }[];
+    const map = new Map<string, TransactionDocumentInstance[]>();
+    for (const inst of engineTry.instances) {
+      const key = inst.stageHint ?? "general";
+      const list = map.get(key) ?? [];
+      list.push(inst);
+      map.set(key, list);
+    }
+    const entries = Array.from(map.entries())
+      .map(([stageKey, items]) => ({
+        stageKey,
+        label: humanizeStageHint(stageKey),
+        items: items.slice().sort((a, b) => a.sortOrder - b.sortOrder),
+      }))
+      .sort((a, b) => {
+        const minA = Math.min(...a.items.map((x) => x.sortOrder));
+        const minB = Math.min(...b.items.map((x) => x.sortOrder));
+        return minA - minB;
+      });
+    return entries;
+  }, [engineTry]);
 
   const { pipelineRows, legacyRows } = useMemo(() => {
     const rows = Array.isArray(items) ? items : [];
@@ -246,7 +380,7 @@ export function TransactionProgressWorkspace({
     return map;
   }, [pipelineRows, resolvedSide]);
 
-  const canChangeSide = pipelineRows.length === 0;
+  const canChangeSide = pipelineRows.length === 0 && !useEnginePipeline;
 
   const saveSide = useCallback(
     async (next: PipelineSide) => {
@@ -320,6 +454,21 @@ export function TransactionProgressWorkspace({
     [transactionId, mutate, onListsChanged]
   );
 
+  useEffect(() => {
+    setEngineRowDrafts({});
+  }, [transactionId]);
+
+  const saveEngineRow = useCallback(
+    (
+      instanceId: string,
+      patch: { docStatus: DocumentStatus; dueYmd: string; docUrl: string; comments: string }
+    ) => {
+      setEngineRowDrafts((prev) => ({ ...prev, [instanceId]: patch }));
+      toast.success("Saved");
+    },
+    []
+  );
+
   return (
     <section
       className={cn(
@@ -336,8 +485,9 @@ export function TransactionProgressWorkspace({
               Documents by stage
             </h2>
             <p className="mt-1 max-w-prose text-xs text-kp-on-surface-variant">
-              Work the deal in order: set representation, load the California checklist, then update each
-              row as documents move. Economics stay on Financial &amp; records.
+              Work the deal in order: set representation, then work document requirements for your state (or
+              load a saved checklist), and update each row as documents move. Economics stay on Financial
+              &amp; records.
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
@@ -352,6 +502,15 @@ export function TransactionProgressWorkspace({
         </div>
         <ListChecks className="h-4 w-4 shrink-0 text-kp-on-surface-muted opacity-60" aria-hidden />
       </div>
+
+      {engineFallbackMessage ? (
+        <div
+          className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/[0.08] px-3 py-2 text-[11px] text-amber-950/90 dark:text-amber-100/90"
+          role="status"
+        >
+          {engineFallbackMessage}
+        </div>
+      ) : null}
 
       {error ? (
         <div className="mt-5 flex items-center gap-2 text-sm text-red-400">
@@ -383,8 +542,8 @@ export function TransactionProgressWorkspace({
                   <div>
                     <h3 className="text-sm font-semibold text-kp-on-surface">Who are you representing?</h3>
                     <p className="mt-1 text-[11px] leading-relaxed text-kp-on-surface-variant">
-                      Saved on the transaction. You can change this until the California checklist is loaded
-                      for this deal.
+                      Saved on the transaction. You can change this until checklist rows are loaded for this
+                      deal.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -425,8 +584,8 @@ export function TransactionProgressWorkspace({
                     </p>
                   ) : !canChangeSide ? (
                     <p className="text-[11px] text-kp-on-surface-variant">
-                      Side is fixed while pipeline rows exist. Remove pipeline rows to switch, or use a new
-                      transaction.
+                      Side is fixed while document requirements or saved pipeline rows exist. Remove pipeline
+                      rows to switch, or use a new transaction.
                     </p>
                   ) : (
                     <p className="text-[11px] font-medium text-kp-teal/90">
@@ -446,21 +605,111 @@ export function TransactionProgressWorkspace({
                   </div>
                   <div className="min-w-0 flex-1 space-y-3">
                     <div>
-                      <h3 className="text-sm font-semibold text-kp-on-surface">Load the California checklist</h3>
+                      <h3 className="text-sm font-semibold text-kp-on-surface">
+                        {useEnginePipeline
+                          ? "Document requirements"
+                          : !paperworkCtx
+                            ? "State-based requirements"
+                            : "Load the California checklist"}
+                      </h3>
                       <p className="mt-1 text-[11px] leading-relaxed text-kp-on-surface-variant">
-                        Adds CAR-style rows (RLA, TDS, RPA, etc.) as trackable items. You can still add custom
-                        rows later; they appear below under &quot;Other checklist items.&quot;
+                        {useEnginePipeline ? (
+                          <>
+                            Rows below are generated from the forms catalog for{" "}
+                            <span className="font-medium text-kp-on-surface">{jurisdictionLabel ?? "this state"}</span>
+                            . Custom rows still appear under &quot;Other checklist items.&quot;
+                          </>
+                        ) : !paperworkCtx ? (
+                          <>
+                            Add a US state on the linked property to unlock jurisdiction-aware rows. You can
+                            still load the California checklist manually or add custom items.
+                          </>
+                        ) : (
+                          <>
+                            Adds CAR-style rows (RLA, TDS, RPA, etc.) as trackable items. You can still add
+                            custom rows later; they appear below under &quot;Other checklist items.&quot;
+                          </>
+                        )}
                       </p>
                     </div>
 
-                    {pipelineRows.length === 0 ? (
+                    {useEnginePipeline ? (
+                      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+                        <div className="rounded-lg border border-kp-teal/25 bg-kp-teal/[0.06] px-3 py-2">
+                          <p className="text-[11px] font-semibold text-kp-on-surface">
+                            {jurisdictionLabel ? `${jurisdictionLabel} · forms catalog` : "Forms catalog"}
+                          </p>
+                          <p className="text-[11px] text-kp-on-surface-variant">
+                            {engineTry?.ok
+                              ? `${engineTry.instances.length} document row${engineTry.instances.length === 1 ? "" : "s"} · jump to a stage or scroll the list.`
+                              : ""}
+                          </p>
+                        </div>
+                        {engineStageEntries.length > 0 ? (
+                          <div className="w-full min-w-[12rem] max-w-xs space-y-1 sm:w-auto">
+                            <label
+                              htmlFor="txn-pipeline-stage-jump"
+                              className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant"
+                            >
+                              Focus stage
+                            </label>
+                            <Select
+                              value={
+                                stageJump &&
+                                engineStageEntries.some((e) => e.stageKey === stageJump)
+                                  ? stageJump
+                                  : "__none__"
+                              }
+                              onValueChange={(v) => {
+                                if (v === "__none__") {
+                                  setStageJump("");
+                                  return;
+                                }
+                                setStageJump(v);
+                                requestAnimationFrame(() => {
+                                  const id = `txn-stage-${v.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+                                  document.getElementById(id)?.scrollIntoView({
+                                    behavior: "smooth",
+                                    block: "start",
+                                  });
+                                });
+                              }}
+                            >
+                              <SelectTrigger
+                                id="txn-pipeline-stage-jump"
+                                className="h-9 border-kp-outline/70 bg-kp-surface text-xs"
+                              >
+                                <SelectValue placeholder="Jump to a stage…" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none__" className="text-kp-on-surface-variant">
+                                  Jump to a stage…
+                                </SelectItem>
+                                {engineStageEntries.map((e) => (
+                                  <SelectItem key={e.stageKey} value={e.stageKey}>
+                                    {e.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : !paperworkCtx ? (
+                      <div className="rounded-lg border border-kp-outline/35 bg-kp-bg/35 px-3 py-2">
+                        <p className="text-[11px] leading-relaxed text-kp-on-surface-variant">
+                          The linked property needs a state for automated requirements. You can still use
+                          &quot;Load checklist rows&quot; for California deals or add custom checklist items.
+                        </p>
+                      </div>
+                    ) : pipelineRows.length === 0 ? (
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                         <p className="text-xs text-kp-on-surface">
                           Ready to create{" "}
                           <span className="font-medium">
                             {resolvedSide === "SELL" ? "listing-side" : "buyer-side"}
                           </span>{" "}
-                          document rows.
+                          document rows (California CAR pipeline).
                         </p>
                         <Button
                           type="button"
@@ -572,19 +821,18 @@ export function TransactionProgressWorkspace({
               </ul>
             ) : (
               <>
-                {resolvedSide && pipelineRows.length > 0
-                  ? PIPELINE_STAGE_ORDER[resolvedSide].map((stageKey) => {
-                      const label = PIPELINE_STAGE_LABELS[stageKey];
-                      const stageItems = byStage.get(stageKey) ?? [];
-                      if (stageItems.length === 0) return null;
-                      const openCount = stageItems.filter((r) => {
-                        const m = tryParsePipelineMeta(r.notes);
-                        return m && m.docStatus !== "complete";
+                {resolvedSide && useEnginePipeline && engineTry?.ok
+                  ? engineStageEntries.map(({ stageKey, label, items }) => {
+                      const safeId = stageKey.replace(/[^a-zA-Z0-9_-]/g, "_");
+                      const openCount = items.filter((inst) => {
+                        const d = engineRowDrafts[inst.id];
+                        const st = d?.docStatus ?? instanceStatusToDocumentStatus(inst.status);
+                        return st !== "complete";
                       }).length;
-                      const stageIndex = PIPELINE_STAGE_ORDER[resolvedSide].indexOf(stageKey) + 1;
-                      const stageTotal = PIPELINE_STAGE_ORDER[resolvedSide].length;
+                      const stageIndex = engineStageEntries.findIndex((e) => e.stageKey === stageKey) + 1;
+                      const stageTotal = engineStageEntries.length;
                       return (
-                        <div key={stageKey} id={`txn-stage-${stageKey}`} className="scroll-mt-28">
+                        <div key={stageKey} id={`txn-stage-${safeId}`} className="scroll-mt-28">
                           <div className="flex flex-wrap items-start justify-between gap-2 rounded-t-lg border border-b-0 border-kp-outline/50 bg-kp-surface-high/30 px-3 py-2.5 sm:px-4">
                             <div>
                               <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
@@ -593,29 +841,68 @@ export function TransactionProgressWorkspace({
                               <h3 className="mt-0.5 text-sm font-semibold text-kp-on-surface">{label}</h3>
                             </div>
                             <span className="shrink-0 rounded-md bg-kp-surface/80 px-2 py-1 text-[11px] tabular-nums text-kp-on-surface-variant">
-                              {openCount} open · {stageItems.length} total
+                              {openCount} open · {items.length} total
                             </span>
                           </div>
                           <ul className="space-y-2 rounded-b-lg border border-t-0 border-kp-outline/50 bg-kp-surface/40 px-3 py-3 sm:px-4">
-                            {stageItems
-                              .slice()
-                              .sort((a, b) => a.sortOrder - b.sortOrder)
-                              .map((row) => (
-                                <PipelineDocumentRow
-                                  key={row.id}
-                                  row={row}
-                                  archived={archived}
-                                  disabled={savingId === row.id}
-                                  onSave={(meta, due) => {
-                                    void saveRow(row, meta, { dueDate: due });
-                                  }}
-                                />
-                              ))}
+                            {items.map((inst) => (
+                              <FormEngineDocumentRow
+                                key={inst.id}
+                                instance={inst}
+                                draft={engineRowDrafts[inst.id]}
+                                archived={archived}
+                                disabled={false}
+                                onSave={(patch) => saveEngineRow(inst.id, patch)}
+                              />
+                            ))}
                           </ul>
                         </div>
                       );
                     })
-                  : null}
+                  : resolvedSide && pipelineRows.length > 0
+                    ? PIPELINE_STAGE_ORDER[resolvedSide].map((stageKey) => {
+                        const label = PIPELINE_STAGE_LABELS[stageKey];
+                        const stageItems = byStage.get(stageKey) ?? [];
+                        if (stageItems.length === 0) return null;
+                        const openCount = stageItems.filter((r) => {
+                          const m = tryParsePipelineMeta(r.notes);
+                          return m && m.docStatus !== "complete";
+                        }).length;
+                        const stageIndex = PIPELINE_STAGE_ORDER[resolvedSide].indexOf(stageKey) + 1;
+                        const stageTotal = PIPELINE_STAGE_ORDER[resolvedSide].length;
+                        return (
+                          <div key={stageKey} id={`txn-stage-${stageKey}`} className="scroll-mt-28">
+                            <div className="flex flex-wrap items-start justify-between gap-2 rounded-t-lg border border-b-0 border-kp-outline/50 bg-kp-surface-high/30 px-3 py-2.5 sm:px-4">
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                                  Stage {stageIndex} of {stageTotal}
+                                </p>
+                                <h3 className="mt-0.5 text-sm font-semibold text-kp-on-surface">{label}</h3>
+                              </div>
+                              <span className="shrink-0 rounded-md bg-kp-surface/80 px-2 py-1 text-[11px] tabular-nums text-kp-on-surface-variant">
+                                {openCount} open · {stageItems.length} total
+                              </span>
+                            </div>
+                            <ul className="space-y-2 rounded-b-lg border border-t-0 border-kp-outline/50 bg-kp-surface/40 px-3 py-3 sm:px-4">
+                              {stageItems
+                                .slice()
+                                .sort((a, b) => a.sortOrder - b.sortOrder)
+                                .map((row) => (
+                                  <PipelineDocumentRow
+                                    key={row.id}
+                                    row={row}
+                                    archived={archived}
+                                    disabled={savingId === row.id}
+                                    onSave={(meta, due) => {
+                                      void saveRow(row, meta, { dueDate: due });
+                                    }}
+                                  />
+                                ))}
+                            </ul>
+                          </div>
+                        );
+                      })
+                    : null}
 
                 {legacyRows.length > 0 ? (
                   <div className="rounded-lg border border-dashed border-kp-outline/25 bg-kp-bg/40 px-3 py-3 opacity-90">
@@ -644,6 +931,208 @@ export function TransactionProgressWorkspace({
         </>
       )}
     </section>
+  );
+}
+
+function FormEngineDocumentRow({
+  instance,
+  draft,
+  archived,
+  disabled,
+  onSave,
+}: {
+  instance: TransactionDocumentInstance;
+  draft?: { docStatus: DocumentStatus; dueYmd: string; docUrl: string; comments: string };
+  archived: boolean;
+  disabled: boolean;
+  onSave: (patch: {
+    docStatus: DocumentStatus;
+    dueYmd: string;
+    docUrl: string;
+    comments: string;
+  }) => void;
+}) {
+  const [docStatus, setDocStatus] = useState<DocumentStatus>(
+    draft?.docStatus ?? instanceStatusToDocumentStatus(instance.status)
+  );
+  const [docUrl, setDocUrl] = useState(draft?.docUrl ?? "");
+  const [comments, setComments] = useState(draft?.comments ?? "");
+  const [dueLocal, setDueLocal] = useState(draft?.dueYmd ?? "");
+
+  useEffect(() => {
+    setDocStatus(draft?.docStatus ?? instanceStatusToDocumentStatus(instance.status));
+    setDocUrl(draft?.docUrl ?? "");
+    setComments(draft?.comments ?? "");
+    setDueLocal(draft?.dueYmd ?? "");
+  }, [instance.id, instance.status, draft]);
+
+  const scan = docStatusForScan(docStatus);
+  const dueLine = dueScanLine(dueLocal, docStatus);
+  const hasFilePointer = Boolean(docUrl.trim());
+  const showOpenLink = isAbsoluteHttpUrl(docUrl);
+
+  const bucket = instance.bucket;
+  const leftAccent =
+    bucket === "brokerage_required"
+      ? "border-l-[3px] border-l-violet-500/80"
+      : bucket === "compliance_only"
+        ? "border-l-[3px] border-l-sky-500/80"
+        : bucket === "operational_task"
+          ? "border-l-[3px] border-l-kp-outline/80"
+          : "border-l-[3px] border-l-transparent";
+
+  return (
+    <li
+      className={cn(
+        "overflow-hidden rounded-lg border border-kp-outline/55 bg-kp-surface shadow-sm",
+        leftAccent
+      )}
+    >
+      <div className="border-b border-kp-outline/35 bg-kp-surface-high/35 px-3 py-2.5 sm:px-3.5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold leading-snug text-kp-on-surface">{instance.title}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span
+                className={cn(
+                  "rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                  bucketBadgeClass(bucket)
+                )}
+              >
+                {bucketLabel(bucket)}
+              </span>
+              <span className="rounded bg-kp-surface-high/80 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase text-kp-on-surface-variant">
+                {instance.shortCode}
+              </span>
+              {instance.providerId ? (
+                <span className="text-[10px] font-medium uppercase text-kp-on-surface-muted">
+                  {instance.providerId}
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex min-w-0 flex-col gap-1.5 sm:max-w-[min(100%,20rem)] sm:items-end">
+            <StatusBadge variant={scan.variant} dot>
+              {scan.label}
+            </StatusBadge>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] sm:justify-end">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 tabular-nums text-kp-on-surface-variant",
+                  dueLine.warn && "font-medium text-amber-600 dark:text-amber-300/90"
+                )}
+              >
+                <CalendarClock className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+                {dueLine.text}
+              </span>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1",
+                  hasFilePointer ? "text-kp-teal" : "text-kp-on-surface-muted"
+                )}
+              >
+                <Link2 className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                {hasFilePointer ? "File linked" : "No file linked"}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-3 py-3 sm:px-3.5">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+          Update row
+        </p>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">Status</label>
+            <Select
+              value={docStatus}
+              disabled={archived || disabled}
+              onValueChange={(v) => setDocStatus(v as DocumentStatus)}
+            >
+              <SelectTrigger className="h-9 border-kp-outline/70 bg-kp-surface text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DOC_STATUS_OPTIONS.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">Due date</label>
+            <input
+              type="date"
+              value={dueLocal}
+              disabled={archived || disabled}
+              onChange={(e) => setDueLocal(e.target.value)}
+              className="h-9 w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
+            />
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">
+              Executed document (URL or path)
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={docUrl}
+                disabled={archived || disabled}
+                onChange={(e) => setDocUrl(e.target.value)}
+                placeholder="https://… or drive path"
+                className="h-9 min-w-0 flex-1 rounded-md border border-kp-outline/70 bg-kp-surface px-2 text-xs text-kp-on-surface"
+              />
+              {showOpenLink ? (
+                <a
+                  href={docUrl.trim()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex h-9 shrink-0 items-center gap-1 rounded-md border border-kp-teal/40 bg-kp-teal/10 px-2.5 text-xs font-medium text-kp-teal hover:bg-kp-teal/20"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                  Open
+                </a>
+              ) : null}
+            </div>
+          </div>
+          <div className="space-y-1 sm:col-span-2">
+            <label className="text-[10px] font-semibold uppercase text-kp-on-surface-variant">Notes</label>
+            <textarea
+              value={comments}
+              disabled={archived || disabled}
+              onChange={(e) => setComments(e.target.value)}
+              rows={2}
+              placeholder="Counterparty, delivery method, version, exceptions…"
+              className="w-full rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1.5 text-xs text-kp-on-surface"
+            />
+          </div>
+        </div>
+
+        <div className="mt-3 flex justify-end border-t border-kp-outline/25 pt-3">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={archived || disabled}
+            className="h-8 text-xs"
+            onClick={() => {
+              onSave({
+                docStatus,
+                dueYmd: dueLocal.trim(),
+                docUrl: docUrl.trim(),
+                comments: comments.trim(),
+              });
+            }}
+          >
+            {disabled ? "Saving…" : "Save row"}
+          </Button>
+        </div>
+      </div>
+    </li>
   );
 }
 

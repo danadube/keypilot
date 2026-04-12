@@ -134,6 +134,13 @@ export interface TransactionPaperworkContext {
   propertyType: string;
   side: "SELL" | "BUY";
   flags?: Record<string, boolean>;
+  /** Optional — passed through for future rules; MVP seed may ignore */
+  yearBuilt?: number | null;
+  hasHoa?: boolean | null;
+  occupancyType?: string | null;
+  brokerageId?: string | null;
+  agentUserId?: string | null;
+  agentDisplayName?: string | null;
 }
 
 export interface PaperworkGenerationOptions {
