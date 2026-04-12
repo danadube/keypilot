@@ -213,7 +213,8 @@ export async function GET() {
       let attention: CommandCenterAttentionStrip | null = null;
       let ytdGci: number | null = null;
       let pipelineEstimatedGci: number | null = null;
-      let pipelineDealCount = dealRows.length;
+      const pipelineActiveDealsCount = dealRows.length;
+      let pipelineActiveTransactionsCount = 0;
       let nextClosing: CommandCenterSnapshot["nextClosing"] = null;
 
       if (crm) {
@@ -244,7 +245,7 @@ export async function GET() {
             adjustedGci: true,
           },
         });
-        pipelineDealCount = pipelineTx.length;
+        pipelineActiveTransactionsCount = pipelineTx.length;
         pipelineEstimatedGci = pipelineTx.reduce((sum, r) => {
           const m = pickMoneyGci(r.gci, r.adjustedGci);
           return sum + (m ?? 0);
@@ -364,7 +365,8 @@ export async function GET() {
         ytdGci,
         annualGciGoal: annualGoal,
         ytdPercentToGoal,
-        pipelineDealCount,
+        pipelineActiveTransactionsCount,
+        pipelineActiveDealsCount,
         pipelineEstimatedGci,
         nextClosing,
         tasksDueTotal,

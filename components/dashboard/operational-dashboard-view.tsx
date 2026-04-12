@@ -119,19 +119,27 @@ export function OperationalDashboardView() {
       ? "Track closed deals"
       : `${snap.ytdPercentToGoal != null ? `${Math.round(snap.ytdPercentToGoal)}% of ` : ""}${formatUsd(snap.annualGciGoal)} goal`;
 
+  const pipelineHref = cc?.crmAvailable !== false ? "/transactions/pipeline" : "/deals";
+
   const pipelinePrimary =
     snap == null
       ? "—"
-      : snap.pipelineEstimatedGci != null
-        ? formatUsd(snap.pipelineEstimatedGci)
-        : String(snap.pipelineDealCount);
+      : cc?.crmAvailable === false
+        ? String(snap.pipelineActiveDealsCount)
+        : snap.pipelineEstimatedGci != null
+          ? formatUsd(snap.pipelineEstimatedGci)
+          : snap.pipelineActiveTransactionsCount > 0
+            ? String(snap.pipelineActiveTransactionsCount)
+            : "—";
 
   const pipelineSecondary =
     snap == null
       ? "Open pipeline"
-      : snap.pipelineEstimatedGci != null
-        ? `${snap.pipelineDealCount} active deal${snap.pipelineDealCount === 1 ? "" : "s"}`
-        : `${snap.pipelineDealCount} in play`;
+      : cc?.crmAvailable === false
+        ? `${snap.pipelineActiveDealsCount} active deal${snap.pipelineActiveDealsCount === 1 ? "" : "s"}`
+        : snap.pipelineActiveTransactionsCount > 0
+          ? `${snap.pipelineActiveTransactionsCount} active transaction${snap.pipelineActiveTransactionsCount === 1 ? "" : "s"}`
+          : "Open pipeline";
 
   const nextClosePrimary =
     snap?.nextClosing == null ? "—" : snap.nextClosing.daysUntil == null ? "—" : String(snap.nextClosing.daysUntil);
@@ -248,7 +256,7 @@ export function OperationalDashboardView() {
             loading={loading}
           />
           <SnapshotTile
-            href="/transactions/pipeline"
+            href={pipelineHref}
             label="Pipeline value"
             primary={pipelinePrimary}
             secondary={pipelineSecondary}

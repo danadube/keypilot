@@ -17,7 +17,10 @@ export type CommandCenterSnapshot = {
   ytdGci: number | null;
   annualGciGoal: number;
   ytdPercentToGoal: number | null;
-  pipelineDealCount: number;
+  /** Non-terminal transactions (Transaction module); meaningful when user has Full CRM. */
+  pipelineActiveTransactionsCount: number;
+  /** Non-terminal CRM deals (Deal model); tier-agnostic pipeline count for Open House tier. */
+  pipelineActiveDealsCount: number;
   pipelineEstimatedGci: number | null;
   nextClosing: {
     daysUntil: number | null;
