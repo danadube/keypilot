@@ -44,9 +44,15 @@ type ReportState =
 type PropertySellerReportViewProps = {
   propertyId: string;
   propertyAddress?: string | null;
+  /** Lighter card when embedded in property detail right rail and data is empty. */
+  compactRail?: boolean;
 };
 
-export function PropertySellerReportView({ propertyId, propertyAddress }: PropertySellerReportViewProps) {
+export function PropertySellerReportView({
+  propertyId,
+  propertyAddress,
+  compactRail = false,
+}: PropertySellerReportViewProps) {
   const [state, setState] = useState<ReportState>({ status: "loading" });
 
   useEffect(() => {
@@ -74,24 +80,70 @@ export function PropertySellerReportView({ propertyId, propertyAddress }: Proper
 
   if (state.status === "loading") {
     return (
-      <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-        {header}
-        <p className="text-sm text-kp-on-surface-variant">Loading…</p>
+      <div
+        className={
+          compactRail
+            ? "rounded-lg border border-kp-outline/35 bg-kp-surface/30 p-2.5"
+            : "rounded-xl border border-kp-outline bg-kp-surface p-5"
+        }
+      >
+        {compactRail ? (
+          <p className="text-[10px] text-kp-on-surface-variant">Loading seller report…</p>
+        ) : (
+          <>
+            {header}
+            <p className="text-sm text-kp-on-surface-variant">Loading…</p>
+          </>
+        )}
       </div>
     );
   }
 
   if (state.status === "error") {
     return (
-      <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-        {header}
-        <p className="text-sm text-red-400">{state.message}</p>
+      <div
+        className={
+          compactRail
+            ? "rounded-lg border border-kp-outline/35 bg-kp-surface/30 p-2.5"
+            : "rounded-xl border border-kp-outline bg-kp-surface p-5"
+        }
+      >
+        {compactRail ? (
+          <p className="text-[10px] text-red-400/90">{state.message}</p>
+        ) : (
+          <>
+            {header}
+            <p className="text-sm text-red-400">{state.message}</p>
+          </>
+        )}
       </div>
     );
   }
 
   const { traffic, engagement, feedback } = state.data;
   const hasFeedback = feedback.totalRequests > 0;
+
+  const emptySnapshot =
+    traffic.visitorCount === 0 &&
+    traffic.flyerSentCount === 0 &&
+    engagement.followUpsSentCount === 0 &&
+    feedback.totalRequests === 0;
+
+  if (compactRail && emptySnapshot) {
+    return (
+      <div className="rounded-lg border border-dashed border-kp-outline/35 bg-kp-bg/10 px-2.5 py-2">
+        <div className="flex items-center gap-1.5">
+          <FileText className="h-3 w-3 shrink-0 text-kp-on-surface-muted" aria-hidden />
+          <h2 className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+            Seller report
+          </h2>
+        </div>
+        <p className="mt-1 text-[10px] leading-snug text-kp-on-surface-variant">
+          No traffic or feedback data yet.
+        </p>
+      </div>
+    );
+  }
   const reasonsWithCount = FEEDBACK_REASONS.filter((r) => feedback.byReason[r] > 0);
   const objections = reasonsWithCount
     .map((r) => ({ reason: r, count: feedback.byReason[r] }))

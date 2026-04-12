@@ -2,7 +2,7 @@
 
 import useSWR from "swr";
 import { apiFetcher } from "@/lib/fetcher";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -15,15 +15,8 @@ import { PropertyDetailWorkSurface } from "./property-detail-work-surface";
 import { PropertyDetailContextRail } from "./property-detail-context-rail";
 import { propertyDetailWorkspaceGridClassName } from "@/components/layout/entity-detail-workspace-grid";
 import type { TransactionRow } from "@/components/modules/transactions/transactions-shared";
-import {
-  ArrowLeft,
-  Upload,
-  Trash2,
-  DollarSign,
-  Pencil,
-  ImagePlus,
-  CheckSquare,
-} from "lucide-react";
+import { usePropertyVaultDetailCommandApi } from "@/components/modules/properties/property-vault-detail-command-context";
+import { ArrowLeft, Upload, Trash2, DollarSign, ImagePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   kpBtnDangerSecondary,
@@ -134,14 +127,11 @@ export function PropertyDetailView({ id }: { id: string }) {
     }
     return Array.from(map.entries()).map(([contactId, name]) => ({ id: contactId, name }));
   }, [transactionsForProperty]);
-  const loading = isLoading && !property;
-  const error = loadError instanceof Error ? loadError.message : loadError ? String(loadError) : null;
-  const transactionsError =
-    transactionsListError instanceof Error
-      ? transactionsListError.message
-      : transactionsListError
-        ? String(transactionsListError)
-        : null;
+  const hasPrimaryClient = linkedContacts.length > 0;
+  const linkClientHref = hasCrmAccess
+    ? `/transactions?new=1&propertyId=${encodeURIComponent(id)}`
+    : "/contacts";
+
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -154,6 +144,7 @@ export function PropertyDetailView({ id }: { id: string }) {
   const [lifecycleModalOpen, setLifecycleModalOpen] = useState(false);
   const [lifecycleBusy, setLifecycleBusy] = useState<"archive" | "delete" | null>(null);
   const [taskModalOpen, setTaskModalOpen] = useState(false);
+  const { setDetail } = usePropertyVaultDetailCommandApi();
 
   function startEditing(p: Property) {
     setEditForm({
@@ -308,6 +299,38 @@ export function PropertyDetailView({ id }: { id: string }) {
       .finally(() => setPhotoUploading(false));
   }, [id, reloadProperty]);
 
+  useEffect(() => {
+    if (!property) {
+      setDetail(null);
+      return;
+    }
+    setDetail({
+      propertyId: id,
+      onEdit: () => startEditing(property),
+      onAddTask: () => setTaskModalOpen(true),
+      onArchive: () => void handleArchiveProperty(),
+      onDelete: () => requestDeleteProperty(),
+      lifecycleBusy,
+    });
+    return () => setDetail(null);
+  }, [
+    id,
+    property,
+    lifecycleBusy,
+    setDetail,
+    handleArchiveProperty,
+    requestDeleteProperty,
+  ]);
+
+  const loading = isLoading && !property;
+  const error = loadError instanceof Error ? loadError.message : loadError ? String(loadError) : null;
+  const transactionsError =
+    transactionsListError instanceof Error
+      ? transactionsListError.message
+      : transactionsListError
+        ? String(transactionsListError)
+        : null;
+
   if (loading) return <LoadingState />;
   if (error || !property)
     return <ErrorMessage message={error || "Not found"} onRetry={() => void reloadProperty()} />;
@@ -332,46 +355,10 @@ export function PropertyDetailView({ id }: { id: string }) {
     </span>
   ) : null;
 
-  const editButton =
-    !isEditing ? (
-      <Button
-        variant="outline"
-        size="sm"
-        className={cn(
-          kpBtnSecondary,
-          "h-8 text-xs",
-          hasHeroImage &&
-            "border-white/35 bg-black/35 text-white backdrop-blur-sm hover:border-white/50 hover:bg-black/50 hover:text-white"
-        )}
-        onClick={() => startEditing(property)}
-      >
-        <Pencil className="mr-1.5 h-3.5 w-3.5" />
-        Edit
-      </Button>
-    ) : null;
-
   const listingTaskTitle = `Listing follow-up: ${property.address1}`;
   const listingTaskDescription = [fullAddressForReport, property.mlsNumber ? `MLS ${property.mlsNumber}` : null]
     .filter(Boolean)
     .join("\n");
-
-  const addTaskButton = !isEditing ? (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      className={cn(
-        kpBtnSecondary,
-        "h-8 gap-1.5 text-xs",
-        hasHeroImage &&
-          "border-white/35 bg-black/35 text-white backdrop-blur-sm hover:border-white/50 hover:bg-black/50 hover:text-white"
-      )}
-      onClick={() => setTaskModalOpen(true)}
-    >
-      <CheckSquare className="h-3.5 w-3.5" />
-      Add task
-    </Button>
-  ) : null;
 
   return (
     <div className="flex flex-col gap-5">
@@ -432,18 +419,14 @@ export function PropertyDetailView({ id }: { id: string }) {
           {hasHeroImage && (
             <>
               <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pt-20 sm:pt-28" />
-              <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 p-4 sm:flex-row sm:items-end sm:justify-between">
+              <div className="absolute inset-x-0 bottom-0 flex flex-col gap-2 p-4 sm:flex-row sm:items-end sm:justify-between">
                 <div className="min-w-0">
                   <h1 className="text-lg font-bold text-white drop-shadow-md sm:text-xl">
                     {fullAddress}
                   </h1>
                   <p className="mt-0.5 text-sm text-white/90 drop-shadow">{locationLine}</p>
                 </div>
-                <div className="pointer-events-auto flex flex-wrap items-center gap-2">
-                  {priceBadge}
-                  {addTaskButton}
-                  {editButton}
-                </div>
+                <div className="pointer-events-auto flex flex-wrap items-center gap-2">{priceBadge}</div>
               </div>
               <div className="absolute right-2 top-2 flex flex-wrap justify-end gap-1.5">
                 <Button
@@ -484,8 +467,6 @@ export function PropertyDetailView({ id }: { id: string }) {
               <p className="mt-0.5 text-sm text-kp-on-surface-variant">{locationLine}</p>
             </div>
             {priceBadge}
-            {addTaskButton}
-            {editButton}
           </div>
         )}
       </div>
@@ -506,6 +487,16 @@ export function PropertyDetailView({ id }: { id: string }) {
             id="property-identity"
             className="scroll-mt-24 space-y-4 rounded-xl border border-kp-outline bg-kp-surface p-5 shadow-sm"
           >
+            {!hasPrimaryClient ? (
+              <div
+                className="rounded-lg border border-amber-500/35 bg-amber-500/[0.08] px-3 py-2 text-[11px] leading-snug text-amber-100"
+                role="status"
+              >
+                <span className="font-semibold text-amber-50">Draft</span> — Link a client to complete this
+                listing. Operations stay blocked until a ClientKeep contact is tied via a deal.
+              </div>
+            ) : null}
+
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
                 Property
@@ -523,6 +514,37 @@ export function PropertyDetailView({ id }: { id: string }) {
                   </>
                 ) : null}
               </p>
+            </div>
+
+            <div className="border-t border-kp-outline/40 pt-4">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                Primary client / owner
+              </h2>
+              {hasPrimaryClient ? (
+                <div className="mt-2 space-y-1">
+                  <Link
+                    href={`/contacts/${linkedContacts[0].id}`}
+                    className="text-sm font-medium text-kp-teal hover:underline"
+                  >
+                    {linkedContacts[0].name}
+                  </Link>
+                  {linkedContacts.length > 1 ? (
+                    <p className="text-[10px] text-kp-on-surface-variant">
+                      +{linkedContacts.length - 1} more on linked deals
+                    </p>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="mt-2">
+                  <p className="text-sm text-kp-on-surface-variant">No client linked</p>
+                  <Link
+                    href={linkClientHref}
+                    className="mt-1 inline-block text-xs font-semibold text-kp-teal underline-offset-2 hover:underline"
+                  >
+                    Link client
+                  </Link>
+                </div>
+              )}
             </div>
 
             <div className="border-t border-kp-outline/40 pt-4">
@@ -636,41 +658,16 @@ export function PropertyDetailView({ id }: { id: string }) {
               )}
             </div>
           </div>
-
-          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5 shadow-sm">
-            <h2 className="mb-3 text-sm font-semibold text-kp-on-surface">Property lifecycle</h2>
-            <p className="mb-4 text-[12px] leading-relaxed text-kp-on-surface-variant">
-              Archive hides the property from your vault. Delete removes it from your active list even when
-              there are linked events (use only when you accept broken links).
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn(kpBtnPrimary, "h-9 border-transparent px-4 text-[12px] font-semibold")}
-                disabled={lifecycleBusy !== null}
-                onClick={() => void handleArchiveProperty()}
-              >
-                {lifecycleBusy === "archive" ? "Archiving…" : "Archive property"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn(kpBtnDangerSecondary, "h-9 px-4 text-[12px] font-semibold")}
-                disabled={lifecycleBusy !== null}
-                onClick={requestDeleteProperty}
-              >
-                {lifecycleBusy === "delete" && !lifecycleModalOpen ? "Deleting…" : "Delete property"}
-              </Button>
-            </div>
-          </div>
         </div>
 
         {/* Center: listing readiness & workflows */}
         <div className="order-1 min-w-0 lg:order-none">
-          <PropertyDetailWorkSurface property={property} onFlyerPatch={patchFlyer} />
+          <PropertyDetailWorkSurface
+            property={property}
+            onFlyerPatch={patchFlyer}
+            hasPrimaryClient={hasPrimaryClient}
+            linkClientHref={linkClientHref}
+          />
         </div>
 
         {/* Right: deals, people, visitor/seller signals */}
@@ -681,7 +678,7 @@ export function PropertyDetailView({ id }: { id: string }) {
           transactionsLoading={hasCrmAccess && transactionsListLoading}
           transactionsError={transactionsError}
           hasCrmAccess={hasCrmAccess}
-          linkedContacts={linkedContacts}
+          transactionCount={transactionsForProperty?.length ?? 0}
         />
       </div>
 

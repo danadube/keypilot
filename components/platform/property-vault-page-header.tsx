@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   PageHeader,
@@ -8,10 +9,11 @@ import {
   PageHeaderActionItem,
   PageHeaderActionsMenu,
   PageHeaderActionsMenuSeparator,
-  PageHeaderPrimaryAddMenu,
+  pageHeaderPrimaryCtaLinkClass,
 } from "@/components/layout/PageHeader";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import { getPropertyIdFromPropertiesPathname } from "@/lib/property-vault/property-route-context";
+import { usePropertyVaultDetailCommandApi } from "@/components/modules/properties/property-vault-detail-command-context";
 
 const DEFAULT_SUBTITLE = "Listing records, media, and open house readiness.";
 
@@ -23,6 +25,9 @@ export function PropertyVaultPageHeader({ className }: PropertyVaultPageHeaderPr
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const pathname = usePathname() ?? "";
   const propertyId = getPropertyIdFromPropertiesPathname(pathname);
+  const { detail } = usePropertyVaultDetailCommandApi();
+  const detailForPage =
+    detail && propertyId && detail.propertyId === propertyId ? detail : null;
 
   return (
     <>
@@ -34,17 +39,52 @@ export function PropertyVaultPageHeader({ className }: PropertyVaultPageHeaderPr
           <PageHeaderActionsMenu>
             {propertyId ? (
               <>
-                <PageHeaderActionItem
-                  href={`/properties/${propertyId}#property-workspace-hero`}
-                >
+                <PageHeaderActionItem href={`/properties/${propertyId}#property-workspace-hero`}>
                   Overview
                 </PageHeaderActionItem>
+                {detailForPage ? (
+                  <PageHeaderActionButton
+                    type="button"
+                    onClick={() => detailForPage.onEdit()}
+                  >
+                    Edit property
+                  </PageHeaderActionButton>
+                ) : null}
                 <PageHeaderActionItem href={`/properties/${propertyId}/documents`}>
                   Documents
                 </PageHeaderActionItem>
                 <PageHeaderActionItem href={`/properties/${propertyId}/media`}>
                   Photos &amp; media
                 </PageHeaderActionItem>
+                {detailForPage ? (
+                  <PageHeaderActionButton type="button" onClick={() => detailForPage.onAddTask()}>
+                    Add task
+                  </PageHeaderActionButton>
+                ) : (
+                  <PageHeaderActionButton type="button" onClick={() => setNewTaskOpen(true)}>
+                    Add task
+                  </PageHeaderActionButton>
+                )}
+                <PageHeaderActionItem href="/open-houses/new">New open house</PageHeaderActionItem>
+                {detailForPage ? (
+                  <>
+                    <PageHeaderActionsMenuSeparator />
+                    <PageHeaderActionButton
+                      type="button"
+                      disabled={detailForPage.lifecycleBusy !== null}
+                      onClick={() => detailForPage.onArchive()}
+                    >
+                      {detailForPage.lifecycleBusy === "archive" ? "Archiving…" : "Archive property"}
+                    </PageHeaderActionButton>
+                    <PageHeaderActionButton
+                      type="button"
+                      disabled={detailForPage.lifecycleBusy !== null}
+                      onClick={() => detailForPage.onDelete()}
+                    >
+                      {detailForPage.lifecycleBusy === "delete" ? "Deleting…" : "Delete property"}
+                    </PageHeaderActionButton>
+                  </>
+                ) : null}
                 <PageHeaderActionsMenuSeparator />
               </>
             ) : null}
@@ -54,13 +94,9 @@ export function PropertyVaultPageHeader({ className }: PropertyVaultPageHeaderPr
           </PageHeaderActionsMenu>
         }
         primaryAction={
-          <PageHeaderPrimaryAddMenu>
-            <PageHeaderActionItem href="/properties/new">Add property</PageHeaderActionItem>
-            <PageHeaderActionItem href="/open-houses/new">New open house</PageHeaderActionItem>
-            <PageHeaderActionButton type="button" onClick={() => setNewTaskOpen(true)}>
-              New task
-            </PageHeaderActionButton>
-          </PageHeaderPrimaryAddMenu>
+          <Link href="/properties/new" className={pageHeaderPrimaryCtaLinkClass}>
+            Add property
+          </Link>
         }
       />
       <NewTaskModal open={newTaskOpen} onOpenChange={setNewTaskOpen} />

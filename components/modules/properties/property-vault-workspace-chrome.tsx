@@ -1,6 +1,7 @@
 "use client";
 
 import { PropertyVaultPageHeader } from "@/components/platform/property-vault-page-header";
+import { PropertyVaultDetailCommandProvider } from "@/components/modules/properties/property-vault-detail-command-context";
 import {
   KP_WORKSPACE_CHROME_BODY_GUTTER_CLASS,
   KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS,
@@ -30,11 +31,13 @@ export function PropertyVaultWorkspaceChrome({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-0 flex-col gap-1.5">
-      <div className={KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS}>
-        <PropertyVaultPageHeader className="pb-2 pt-0 md:pb-3" />
+    <PropertyVaultDetailCommandProvider>
+      <div className="flex min-h-0 flex-col gap-1.5">
+        <div className={KP_WORKSPACE_CHROME_HEADER_GUTTER_CLASS}>
+          <PropertyVaultPageHeader className="pb-2 pt-0 md:pb-3" />
+        </div>
+        <div className={KP_WORKSPACE_CHROME_BODY_GUTTER_CLASS}>{children}</div>
       </div>
-      <div className={KP_WORKSPACE_CHROME_BODY_GUTTER_CLASS}>{children}</div>
-    </div>
+    </PropertyVaultDetailCommandProvider>
   );
 }
