@@ -40,12 +40,10 @@ import {
   serializePipelineMeta,
   tryParsePipelineMeta,
 } from "@/lib/transactions/pipeline-checklist-metadata";
-import {
-  serializeFormEngineChecklistNotes,
-  tryParseFormEngineChecklistNotes,
-} from "@/lib/transactions/form-engine-checklist-notes";
+import { tryParseFormEngineChecklistNotes } from "@/lib/transactions/form-engine-checklist-notes";
 import { buildTransactionPaperworkContext } from "@/lib/transactions/build-transaction-paperwork-context";
 import { tryMvpTransactionPaperwork } from "@/lib/transactions/try-mvp-transaction-paperwork";
+import type { SerializedTransactionPaperworkDocument } from "@/lib/transactions/serialize-transaction-paperwork-document";
 import type {
   RequirementBucket,
   TransactionDocumentInstance,
@@ -201,16 +199,16 @@ function instanceStatusToDocumentStatus(s: TransactionDocumentInstanceStatus): D
   }
 }
 
-function formEnginePersistedHydration(
+function paperworkRowHydration(
   instance: TransactionDocumentInstance,
-  persistedRow: ChecklistItem | undefined | null
+  persisted: SerializedTransactionPaperworkDocument | undefined | null
 ): {
   docStatus: DocumentStatus;
   docUrl: string;
   comments: string;
   dueYmd: string;
 } {
-  if (!persistedRow) {
+  if (!persisted) {
     return {
       docStatus: instanceStatusToDocumentStatus(instance.status),
       docUrl: "",
@@ -218,12 +216,13 @@ function formEnginePersistedHydration(
       dueYmd: "",
     };
   }
-  const meta = tryParseFormEngineChecklistNotes(persistedRow.notes);
+  const urlOrPath =
+    persisted.executedDocumentUrl?.trim() || persisted.executedDocumentFilePath?.trim() || "";
   return {
-    docStatus: meta?.docStatus ?? instanceStatusToDocumentStatus(instance.status),
-    docUrl: meta?.docUrl ?? "",
-    comments: meta?.comments ?? "",
-    dueYmd: persistedRow.dueDate ? persistedRow.dueDate.slice(0, 10) : "",
+    docStatus: persisted.docStatus,
+    docUrl: urlOrPath,
+    comments: persisted.notes ?? "",
+    dueYmd: persisted.dueDate ? persisted.dueDate.slice(0, 10) : "",
   };
 }
 
@@ -315,7 +314,6 @@ export function TransactionProgressWorkspace({
   const [stageJump, setStageJump] = useState<string>("");
   const [savingEngineSourceRuleId, setSavingEngineSourceRuleId] = useState<string | null>(null);
 
-  const busy = isLoading && items === undefined;
   const resolvedSide = side === "BUY" || side === "SELL" ? side : null;
 
   useEffect(() => {
@@ -340,6 +338,24 @@ export function TransactionProgressWorkspace({
   }, [paperworkCtx]);
 
   const useEnginePipeline = Boolean(engineTry?.ok);
+
+  const paperworkKey =
+    transactionId && resolvedSide && useEnginePipeline
+      ? `/api/v1/transactions/${transactionId}/paperwork-documents`
+      : null;
+  const {
+    data: paperworkRows,
+    error: paperworkError,
+    isLoading: paperworkLoading,
+    mutate: mutatePaperwork,
+  } = useSWR<SerializedTransactionPaperworkDocument[]>(paperworkKey, apiFetcher, {
+    errorRetryCount: 2,
+    errorRetryInterval: 500,
+  });
+
+  const busy =
+    (isLoading && items === undefined) ||
+    (Boolean(useEnginePipeline) && paperworkLoading && paperworkRows === undefined);
 
   const engineFallbackMessage = useMemo(() => {
     if (!paperworkCtx || !engineTry || useEnginePipeline) return null;
@@ -394,14 +410,13 @@ export function TransactionProgressWorkspace({
     return { pipelineRows: pipeline, formEnginePersistedRows: fe, legacyRows: legacy };
   }, [items]);
 
-  const formEngineRowBySourceRuleId = useMemo(() => {
-    const m = new Map<string, ChecklistItem>();
-    for (const row of formEnginePersistedRows) {
-      const meta = tryParseFormEngineChecklistNotes(row.notes);
-      if (meta?.sourceRuleId) m.set(meta.sourceRuleId, row);
+  const paperworkBySourceRuleId = useMemo(() => {
+    const m = new Map<string, SerializedTransactionPaperworkDocument>();
+    for (const row of paperworkRows ?? []) {
+      m.set(row.sourceRuleId, row);
     }
     return m;
-  }, [formEnginePersistedRows]);
+  }, [paperworkRows]);
 
   const byStage = useMemo(() => {
     const map = new Map<PipelineStageKey, ChecklistItem[]>();
@@ -422,6 +437,7 @@ export function TransactionProgressWorkspace({
   const canChangeSide =
     pipelineRows.length === 0 &&
     formEnginePersistedRows.length === 0 &&
+    (paperworkRows?.length ?? 0) === 0 &&
     !useEnginePipeline;
 
   const saveSide = useCallback(
@@ -499,54 +515,38 @@ export function TransactionProgressWorkspace({
   const saveEngineRow = useCallback(
     async (
       instance: TransactionDocumentInstance,
+      persisted: SerializedTransactionPaperworkDocument | undefined,
       patch: { docStatus: DocumentStatus; dueYmd: string; docUrl: string; comments: string }
     ) => {
       if (archived) return;
+      if (!persisted?.id) {
+        toast.error("Document rows are still loading — try again in a moment.");
+        return;
+      }
       setSavingEngineSourceRuleId(instance.sourceRuleId);
       try {
-        const notes = serializeFormEngineChecklistNotes({
-          v: 2,
-          sourceRuleId: instance.sourceRuleId,
-          formId: instance.formId,
-          revisionId: instance.revisionId,
-          docStatus: patch.docStatus,
-          docUrl: patch.docUrl || undefined,
-          comments: patch.comments || undefined,
-        });
-        const isComplete = patch.docStatus === "complete";
-        const dueDateIso = patch.dueYmd.trim()
-          ? new Date(`${patch.dueYmd.trim()}T12:00:00`).toISOString()
-          : null;
-
-        const existing = formEngineRowBySourceRuleId.get(instance.sourceRuleId);
-        if (existing) {
-          const res = await fetch(`/api/v1/transactions/${transactionId}/checklist/${existing.id}`, {
+        const trimmed = patch.docUrl.trim();
+        const isHttp = trimmed.startsWith("http://") || trimmed.startsWith("https://");
+        const res = await fetch(
+          `/api/v1/transactions/${transactionId}/paperwork-documents/${persisted.id}`,
+          {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              notes,
-              isComplete,
-              dueDate: dueDateIso,
+              docStatus: patch.docStatus,
+              dueDate: patch.dueYmd.trim()
+                ? new Date(`${patch.dueYmd.trim()}T12:00:00`).toISOString()
+                : null,
+              notes: patch.comments.trim() ? patch.comments.trim() : null,
+              executedDocumentUrl: isHttp ? trimmed : null,
+              executedDocumentFilePath: !isHttp && trimmed ? trimmed : null,
             }),
-          });
-          const json = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(json?.error?.message ?? "Save failed");
-        } else {
-          const res = await fetch(`/api/v1/transactions/${transactionId}/checklist`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: instance.title,
-              notes,
-              isComplete,
-              dueDate: dueDateIso,
-            }),
-          });
-          const json = await res.json().catch(() => ({}));
-          if (!res.ok) throw new Error(json?.error?.message ?? "Save failed");
-        }
+          }
+        );
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json?.error?.message ?? "Save failed");
         toast.success("Saved");
-        await mutate();
+        await mutatePaperwork();
         onListsChanged();
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Save failed");
@@ -554,7 +554,7 @@ export function TransactionProgressWorkspace({
         setSavingEngineSourceRuleId(null);
       }
     },
-    [archived, transactionId, formEngineRowBySourceRuleId, mutate, onListsChanged]
+    [archived, transactionId, mutatePaperwork, onListsChanged]
   );
 
   return (
@@ -600,10 +600,14 @@ export function TransactionProgressWorkspace({
         </div>
       ) : null}
 
-      {error ? (
+      {error || (useEnginePipeline && paperworkError) ? (
         <div className="mt-5 flex items-center gap-2 text-sm text-red-400">
           <AlertCircle className="h-4 w-4 shrink-0" />
-          {error instanceof Error ? error.message : "Could not load checklist"}
+          {error instanceof Error
+            ? error.message
+            : paperworkError instanceof Error
+              ? paperworkError.message
+              : "Could not load documents"}
         </div>
       ) : (
         <>
@@ -913,9 +917,8 @@ export function TransactionProgressWorkspace({
                   ? engineStageEntries.map(({ stageKey, label, items }) => {
                       const safeId = stageKey.replace(/[^a-zA-Z0-9_-]/g, "_");
                       const openCount = items.filter((inst) => {
-                        const row = formEngineRowBySourceRuleId.get(inst.sourceRuleId);
-                        const meta = row ? tryParseFormEngineChecklistNotes(row.notes) : null;
-                        const st = meta?.docStatus ?? instanceStatusToDocumentStatus(inst.status);
+                        const row = paperworkBySourceRuleId.get(inst.sourceRuleId);
+                        const st = row?.docStatus ?? instanceStatusToDocumentStatus(inst.status);
                         return st !== "complete";
                       }).length;
                       const stageIndex = engineStageEntries.findIndex((e) => e.stageKey === stageKey) + 1;
@@ -938,10 +941,16 @@ export function TransactionProgressWorkspace({
                               <FormEngineDocumentRow
                                 key={inst.sourceRuleId}
                                 instance={inst}
-                                persistedRow={formEngineRowBySourceRuleId.get(inst.sourceRuleId)}
+                                persistedPaperwork={paperworkBySourceRuleId.get(inst.sourceRuleId)}
                                 archived={archived}
                                 disabled={savingEngineSourceRuleId === inst.sourceRuleId}
-                                onSave={(patch) => void saveEngineRow(inst, patch)}
+                                onSave={(patch) =>
+                                  void saveEngineRow(
+                                    inst,
+                                    paperworkBySourceRuleId.get(inst.sourceRuleId),
+                                    patch
+                                  )
+                                }
                               />
                             ))}
                           </ul>
@@ -1025,13 +1034,13 @@ export function TransactionProgressWorkspace({
 
 function FormEngineDocumentRow({
   instance,
-  persistedRow,
+  persistedPaperwork,
   archived,
   disabled,
   onSave,
 }: {
   instance: TransactionDocumentInstance;
-  persistedRow: ChecklistItem | undefined;
+  persistedPaperwork: SerializedTransactionPaperworkDocument | undefined;
   archived: boolean;
   disabled: boolean;
   onSave: (patch: {
@@ -1041,20 +1050,30 @@ function FormEngineDocumentRow({
     comments: string;
   }) => void | Promise<void>;
 }) {
-  const h0 = formEnginePersistedHydration(instance, persistedRow);
+  const h0 = paperworkRowHydration(instance, persistedPaperwork);
   const [docStatus, setDocStatus] = useState<DocumentStatus>(h0.docStatus);
   const [docUrl, setDocUrl] = useState(h0.docUrl);
   const [comments, setComments] = useState(h0.comments);
   const [dueLocal, setDueLocal] = useState(h0.dueYmd);
 
   useEffect(() => {
-    const h = formEnginePersistedHydration(instance, persistedRow);
+    const h = paperworkRowHydration(instance, persistedPaperwork);
     setDocStatus(h.docStatus);
     setDocUrl(h.docUrl);
     setComments(h.comments);
     setDueLocal(h.dueYmd);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- generator `instance` refs may change every render
-  }, [instance.id, instance.status, instance.sourceRuleId, persistedRow?.id, persistedRow?.notes, persistedRow?.dueDate]);
+  }, [
+    instance.id,
+    instance.status,
+    instance.sourceRuleId,
+    persistedPaperwork?.id,
+    persistedPaperwork?.notes,
+    persistedPaperwork?.dueDate,
+    persistedPaperwork?.docStatus,
+    persistedPaperwork?.executedDocumentUrl,
+    persistedPaperwork?.executedDocumentFilePath,
+  ]);
 
   const scan = docStatusForScan(docStatus);
   const dueLine = dueScanLine(dueLocal, docStatus);

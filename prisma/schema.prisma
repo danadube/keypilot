@@ -1175,6 +1175,8 @@ model Transaction {
   primaryContact          Contact?                   @relation("TransactionPrimaryContact", fields: [primaryContactId], references: [id], onDelete: SetNull)
   commissions             Commission[]
   checklistItems          TransactionChecklistItem[]
+  /** Jurisdiction-aware forms-engine document rows (source of truth for checklist UI). */
+  paperworkDocuments      TransactionPaperworkDocument[]
   committedImportSessions TransactionImportSession[]
   activities              TransactionActivity[]
 
@@ -1256,6 +1258,63 @@ model TransactionChecklistItem {
   @@index([transactionId])
   @@index([transactionId, isComplete])
   @@map("transaction_checklist_items")
+}
+
+/**
+ * Per-transaction document requirement instance (forms engine working copy).
+ * Template rows come from the generator; user edits persist here.
+ */
+enum TransactionPaperworkDocStatus {
+  NOT_STARTED
+  SENT
+  SIGNED
+  UPLOADED
+  COMPLETE
+}
+
+model TransactionPaperworkDocument {
+  id            String @id @default(uuid())
+  transactionId String
+
+  /** Stable id from DocumentRequirementRule — sync key with generator output. */
+  sourceRuleId String
+  formId       String
+  revisionId   String
+
+  shortCode String
+  title     String
+  /** Presentation grouping (e.g. general, disclosures) — mirrors engine stageHint. */
+  stageHint String?
+  sortOrder Int
+
+  /** Mirrors RequirementBucket string from the forms engine. */
+  requirementBucket String
+  formFamily          String
+  providerId          String?
+
+  /** Snapshot of catalog metadata for display and future revision logic. */
+  metadataSnapshot Json?
+
+  docStatus TransactionPaperworkDocStatus @default(NOT_STARTED)
+
+  dueDate DateTime?
+  /** Free-text notes (not structured checklist meta). */
+  notes   String? @db.Text
+
+  /** External URL for executed document (https). */
+  executedDocumentUrl String? @db.Text
+  /** Storage path / non-URL pointer for uploads (future-friendly). */
+  executedDocumentFilePath String? @db.Text
+  executedDocumentLabel    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@unique([transactionId, sourceRuleId])
+  @@index([transactionId, sortOrder])
+  @@map("transaction_paperwork_documents")
 }
 
 enum TransactionStatus {
