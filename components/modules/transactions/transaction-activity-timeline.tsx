@@ -7,7 +7,7 @@ import { apiFetcher } from "@/lib/fetcher";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
-import { transactionActivityTypeLabel } from "@/lib/transactions/transaction-activity-labels";
+import { ActivityTimeline } from "@/components/activity/activity-timeline";
 
 export type TransactionActivityRow = {
   id: string;
@@ -17,18 +17,6 @@ export type TransactionActivityRow = {
   createdAt: string;
   actor: { id: string; name: string; email: string };
 };
-
-function formatWhen(iso: string) {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
 
 export function TransactionActivityTimeline({
   transactionId,
@@ -46,6 +34,13 @@ export function TransactionActivityTimeline({
 
   const rows = data ?? [];
   const busy = isLoading && !data;
+  const items = rows.map((row) => ({
+    id: row.id,
+    activityType: row.type,
+    body: row.summary,
+    occurredAt: row.createdAt,
+    meta: row.actor.name,
+  }));
 
   return (
     <section
@@ -94,35 +89,17 @@ export function TransactionActivityTimeline({
               Retry
             </Button>
           </div>
-        ) : rows.length === 0 ? (
-          <p className="py-1 text-sm text-kp-on-surface-muted">
-            No activity recorded yet — saves and checklist updates will appear here.
-          </p>
         ) : (
-          <ul className="space-y-3">
-            {rows.map((row) => (
-              <li
-                key={row.id}
-                className="border-l-2 border-kp-outline-variant pl-3 text-sm leading-snug"
-              >
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                  <span className="inline-flex rounded border border-kp-outline-variant bg-kp-surface-high/40 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
-                    {transactionActivityTypeLabel(row.type)}
-                  </span>
-                  <time
-                    dateTime={row.createdAt}
-                    className="text-[11px] text-kp-on-surface-muted"
-                  >
-                    {formatWhen(row.createdAt)}
-                  </time>
-                </div>
-                <p className="mt-1 text-kp-on-surface">{row.summary}</p>
-                <p className="mt-0.5 text-[11px] text-kp-on-surface-variant">
-                  {row.actor.name}
-                </p>
-              </li>
-            ))}
-          </ul>
+          <ActivityTimeline
+            items={items}
+            showTypeLabel
+            allowInlineNote={false}
+            emptyState={
+              <p className="py-1 text-sm text-kp-on-surface-muted">
+                No activity recorded yet — saves and checklist updates will appear here.
+              </p>
+            }
+          />
         )}
       </div>
     </section>

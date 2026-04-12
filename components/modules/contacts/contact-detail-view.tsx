@@ -17,6 +17,7 @@ import { ContactMailingAddressCard } from "./contact-mailing-address-card";
 import { ContactSiteAddressCard } from "./contact-site-address-card";
 import { ContactFarmMembershipsPanel } from "./contact-farm-memberships-panel";
 import { ContactTasksPanel } from "./contact-tasks-panel";
+import { entityDetailWorkspaceGridClassName } from "@/components/layout/entity-detail-workspace-grid";
 import { useClientKeepChrome } from "@/components/modules/client-keep/client-keep-chrome-context";
 import type {
   ContactDetailActivity,
@@ -27,7 +28,7 @@ import type {
 
 function LoadingState() {
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(220px,280px)_minmax(0,1fr)_minmax(220px,300px)] lg:items-start">
+    <div className={entityDetailWorkspaceGridClassName}>
       <BrandSkeleton className="h-[420px] w-full rounded-xl lg:sticky lg:top-4" />
       <div className="flex min-h-[320px] flex-col gap-4">
         <BrandSkeleton className="h-10 w-full rounded-lg" />
@@ -434,7 +435,7 @@ export function ContactDetailView({ id }: { id: string }) {
   const isAssignedToMe = contact.assignedToUserId === currentUserId;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)_minmax(0,300px)] lg:items-start lg:gap-5">
+    <div className={entityDetailWorkspaceGridClassName}>
       <ContactDetailIdentityColumn
         className="order-2 lg:order-none"
         fullName={fullName}
