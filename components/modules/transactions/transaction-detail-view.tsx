@@ -3,6 +3,7 @@
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSWRConfig } from "swr";
 import {
   ArrowLeft,
   MapPin,
@@ -21,6 +22,10 @@ import { cn } from "@/lib/utils";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { computeDetailLivePreview } from "@/lib/transactions/detail-financial-preview";
 import { parseOptionalFiniteNumberInput } from "@/lib/transactions/parse-optional-finite-number-input";
+import { entityDetailWorkspaceGridClassName } from "@/components/layout/entity-detail-workspace-grid";
+import { TransactionDetailActivityPanel } from "@/components/modules/transactions/transaction-detail-activity-panel";
+import { TransactionDetailActionsMenu } from "@/components/modules/transactions/transaction-detail-actions-menu";
+import { TransactionChecklistPanel } from "@/components/modules/transactions/transaction-checklist-panel";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -108,6 +113,7 @@ function dealStatusBadgeVariant(
 type TransactionDetail = {
   id: string;
   status: TxStatus;
+  side?: "BUY" | "SELL" | null;
   transactionKind: TxKind;
   primaryContactId: string | null;
   primaryContact: { id: string; firstName: string; lastName: string } | null;
@@ -232,6 +238,18 @@ function parsePercent(s: string): number | null | undefined {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function TransactionDetailView({ transactionId }: { transactionId: string }) {
+  const { mutate } = useSWRConfig();
+  const refreshTransactionActivity = useCallback(
+    () => mutate(`/api/v1/transactions/${transactionId}/activity`),
+    [mutate, transactionId]
+  );
+  const scrollToActivityNote = useCallback(() => {
+    const el =
+      typeof document !== "undefined" ? document.getElementById("txn-activity-note") : null;
+    el?.focus();
+    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, []);
+
   const [txn, setTxn] = useState<TransactionDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -668,41 +686,96 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           <ArrowLeft className="h-3.5 w-3.5" />
           Your deals
         </Link>
-
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-headline text-[1.5rem] font-semibold text-kp-on-surface">
-                {txn.property.address1}
-              </h1>
-              <StatusBadge variant={statusBadgeVariant(txn.status)}>
-                {STATUS_LABELS[txn.status]}
-              </StatusBadge>
-            </div>
-            <p className="mt-1 text-sm text-kp-on-surface-variant">
-              {txn.property.city}, {txn.property.state} {txn.property.zip}
-            </p>
-          </div>
-          <Link
-            href={`/properties/${txn.property.id}`}
-            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-kp-outline bg-kp-surface px-4 py-2 text-xs font-medium text-kp-teal transition-colors hover:bg-kp-surface-high"
-          >
-            <MapPin className="h-3.5 w-3.5" />
-            Property detail
-          </Link>
-        </div>
       </div>
 
-      <div className="mx-6 mt-6 space-y-6 sm:mx-8">
-        <section className="rounded-xl border border-kp-outline bg-kp-surface p-5 shadow-sm">
+      <div className={cn("px-6 pb-8 pt-4 sm:px-8", entityDetailWorkspaceGridClassName)}>
+        <div className="order-2 flex min-w-0 flex-col gap-4 lg:order-none">
+          <section className="rounded-xl border border-kp-outline/50 bg-kp-surface/50 p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
+                  Transaction
+                </p>
+                <h1 className="font-headline mt-1 text-xl font-semibold leading-snug text-kp-on-surface">
+                  {txn.property.address1}
+                </h1>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <StatusBadge variant={statusBadgeVariant(txn.status)}>
+                    {STATUS_LABELS[txn.status]}
+                  </StatusBadge>
+                  <span className="text-xs text-kp-on-surface-variant">
+                    {txn.transactionKind === "SALE" ? "Sale" : "Referral received"}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-kp-on-surface-variant">
+                  {txn.property.city}, {txn.property.state} {txn.property.zip}
+                </p>
+              </div>
+              <TransactionDetailActionsMenu
+                transactionId={transactionId}
+                propertyId={txn.property.id}
+                primaryContactId={txn.primaryContactId}
+                currentStatus={status}
+                onScrollToNote={scrollToActivityNote}
+                onRefreshActivity={() => void refreshTransactionActivity()}
+                onReloadTransaction={() => void load()}
+              />
+            </div>
+            <div className="mt-4 space-y-2 border-t border-kp-outline/40 pt-4 text-sm">
+              {txn.closingDate ? (
+                <p className="text-kp-on-surface">
+                  <span className="text-kp-on-surface-variant">Closing: </span>
+                  {new Date(txn.closingDate).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </p>
+              ) : (
+                <p className="text-kp-on-surface-variant">Closing date not set</p>
+              )}
+              {txn.primaryContact ? (
+                <p className="text-kp-on-surface">
+                  <span className="text-kp-on-surface-variant">Primary: </span>
+                  <Link
+                    href={`/contacts/${txn.primaryContact.id}`}
+                    className="font-medium text-kp-teal hover:underline"
+                  >
+                    {[txn.primaryContact.firstName, txn.primaryContact.lastName].filter(Boolean).join(" ")}
+                  </Link>
+                </p>
+              ) : (
+                <p className="text-kp-on-surface-variant">No primary contact linked</p>
+              )}
+              <Link
+                href={`/properties/${txn.property.id}`}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-kp-teal hover:underline"
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                Open in PropertyVault
+              </Link>
+            </div>
+          </section>
+        </div>
+
+        <div className="order-1 min-w-0 lg:order-none">
+          <TransactionDetailActivityPanel transactionId={transactionId} />
+        </div>
+
+        <aside className="order-3 min-w-0 lg:order-none">
+          <div className="flex flex-col gap-4 lg:border-l lg:border-kp-outline/25 lg:pl-3">
+        <section
+          id="txn-financial-context"
+          className="rounded-xl border border-kp-outline bg-kp-surface p-5 shadow-sm"
+        >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="flex items-start gap-2">
               <Calculator className="mt-0.5 h-5 w-5 shrink-0 text-kp-teal" />
               <div>
-                <h2 className="text-sm font-semibold text-kp-on-surface">Financial workspace</h2>
+                <h2 className="text-sm font-semibold text-kp-on-surface">Financial context</h2>
                 <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-                  Enter the core deal economics — preview updates live. Save so your deal list and reports stay
-                  accurate.
+                  Core deal economics and live preview — use Actions for quick jumps; save when you change
+                  inputs.
                 </p>
               </div>
             </div>
@@ -1055,7 +1128,18 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           </div>
         </section>
 
-        <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+        <TransactionChecklistPanel
+          transactionId={transactionId}
+          side={txn.side === "BUY" || txn.side === "SELL" ? txn.side : null}
+          archived={false}
+          onListsChanged={() => void refreshTransactionActivity()}
+          className="!p-4"
+        />
+
+        <section
+          id="txn-deal-context"
+          className="rounded-xl border border-kp-outline bg-kp-surface p-5"
+        >
           <div className="flex flex-wrap items-center gap-2">
             <Briefcase className="h-4 w-4 text-kp-on-surface-variant" />
             <h2 className="text-sm font-semibold text-kp-on-surface">CRM deal</h2>
@@ -1172,7 +1256,10 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           )}
         </section>
 
-        <section className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+        <section
+          id="txn-record-context"
+          className="rounded-xl border border-kp-outline bg-kp-surface p-5"
+        >
           <h2 className="text-sm font-semibold text-kp-on-surface">Record &amp; context</h2>
           <p className="mt-0.5 text-xs text-kp-on-surface-variant">
             Pipeline status, client link, and notes.{" "}
@@ -1458,6 +1545,8 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             </button>
           </form>
         </section>
+          </div>
+        </aside>
       </div>
     </div>
   );
