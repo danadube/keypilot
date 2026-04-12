@@ -1047,13 +1047,13 @@ function FormEngineDocumentRow({
   const [comments, setComments] = useState(h0.comments);
   const [dueLocal, setDueLocal] = useState(h0.dueYmd);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- instance is unstable across renders; sync when ids/notes/due change
   useEffect(() => {
     const h = formEnginePersistedHydration(instance, persistedRow);
     setDocStatus(h.docStatus);
     setDocUrl(h.docUrl);
     setComments(h.comments);
     setDueLocal(h.dueYmd);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- generator `instance` refs may change every render
   }, [instance.id, instance.status, instance.sourceRuleId, persistedRow?.id, persistedRow?.notes, persistedRow?.dueDate]);
 
   const scan = docStatusForScan(docStatus);
