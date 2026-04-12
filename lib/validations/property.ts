@@ -28,5 +28,10 @@ export const ArchivePropertyBodySchema = z.object({
   archive: z.literal(true),
 });
 
+/** POST /api/v1/properties/[id]/primary-contact — link ClientKeep contact as listing primary client. */
+export const LinkPrimaryContactBodySchema = z.object({
+  contactId: z.string().uuid(),
+});
+
 export type CreatePropertyInput = z.infer<typeof CreatePropertySchema>;
 export type UpdatePropertyInput = z.infer<typeof UpdatePropertySchema>;

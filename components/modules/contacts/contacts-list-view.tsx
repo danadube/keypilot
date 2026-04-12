@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import useSWR from "swr";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
+import { apiFetcher } from "@/lib/fetcher";
 import {
   Users,
   Search,
@@ -197,7 +200,17 @@ function ErrorState({
   );
 }
 
-function EmptyState({ isFiltered, onReset }: { isFiltered: boolean; onReset: () => void }) {
+function EmptyState({
+  isFiltered,
+  onReset,
+  linkMode,
+  onCreateContact,
+}: {
+  isFiltered: boolean;
+  onReset: () => void;
+  linkMode?: boolean;
+  onCreateContact?: () => void;
+}) {
   return (
     <div className="flex min-h-[240px] flex-col items-center justify-center gap-4 px-4 text-center">
       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-kp-surface-high">
@@ -220,14 +233,26 @@ function EmptyState({ isFiltered, onReset }: { isFiltered: boolean; onReset: () 
           </>
         )}
       </div>
-      {isFiltered && (
-        <button
-          onClick={onReset}
-          className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
-        >
-          Clear filters
-        </button>
-      )}
+      <div className="flex flex-wrap items-center justify-center gap-3">
+        {isFiltered && (
+          <button
+            type="button"
+            onClick={onReset}
+            className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
+          >
+            Clear filters
+          </button>
+        )}
+        {linkMode && onCreateContact ? (
+          <button
+            type="button"
+            onClick={onCreateContact}
+            className="rounded-lg bg-kp-teal px-4 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
+          >
+            Create contact
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -349,10 +374,17 @@ const TD = "px-4 py-3.5 text-sm";
 function ContactsTable({
   contacts,
   hasCrm,
+  linkPropertyId,
+  linkingContactId,
+  onLinkToProperty,
 }: {
   contacts: Contact[];
   hasCrm: boolean;
+  linkPropertyId?: string | null;
+  linkingContactId?: string | null;
+  onLinkToProperty?: (contactId: string) => void;
 }) {
+  const linkMode = Boolean(linkPropertyId && onLinkToProperty);
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse">
@@ -365,7 +397,9 @@ function ContactsTable({
             <th className={cn(TH, "hidden md:table-cell")}>Email</th>
             <th className={cn(TH, "hidden lg:table-cell")}>Phone</th>
             <th className={cn(TH, "hidden sm:table-cell")}>Source</th>
-            <th className={cn(TH, "w-16")} />
+            <th className={cn(TH, linkMode ? "w-32 text-right" : "w-16")}>
+              {linkMode ? "Link" : ""}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -456,16 +490,34 @@ function ContactsTable({
                 <span className="text-xs text-kp-on-surface-variant">{c.source}</span>
               </td>
 
-              {/* View */}
+              {/* Link (picker mode) or View */}
               <td className={cn(TD, "text-right")}>
-                <Link
-                  href={`/contacts/${c.id}`}
-                  className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-kp-teal transition-colors hover:bg-kp-teal/10"
-                  aria-label={`View ${fullName(c)}`}
-                >
-                  View
-                  <ExternalLink className="h-3 w-3 opacity-70" />
-                </Link>
+                {linkMode ? (
+                  <button
+                    type="button"
+                    disabled={linkingContactId === c.id}
+                    onClick={() => onLinkToProperty!(c.id)}
+                    className="inline-flex items-center justify-center gap-1 rounded-md border border-kp-teal/40 bg-kp-teal/10 px-2.5 py-1 text-xs font-semibold text-kp-teal transition-colors hover:bg-kp-teal/20 disabled:opacity-60"
+                  >
+                    {linkingContactId === c.id ? (
+                      <>
+                        <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                        Linking…
+                      </>
+                    ) : (
+                      "Link to property"
+                    )}
+                  </button>
+                ) : (
+                  <Link
+                    href={`/contacts/${c.id}`}
+                    className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-kp-teal transition-colors hover:bg-kp-teal/10"
+                    aria-label={`View ${fullName(c)}`}
+                  >
+                    View
+                    <ExternalLink className="h-3 w-3 opacity-70" />
+                  </Link>
+                )}
               </td>
             </tr>
           ))}
@@ -506,8 +558,38 @@ export function ContactsListView() {
   const [saveSegmentName, setSaveSegmentName] = useState("");
   const [saveSegmentError, setSaveSegmentError] = useState<string | null>(null);
   const [createContactOpen, setCreateContactOpen] = useState(false);
+  const [linkingContactId, setLinkingContactId] = useState<string | null>(null);
   const { hasCrm } = useProductTier();
   const { contacts, loading, error, reload } = useContacts(statusFilter, tagIdFilter);
+
+  const linkPropertyIdParam = searchParams.get("linkPropertyId");
+  const { data: linkTargetProperty, error: linkTargetError, isLoading: linkTargetLoading } = useSWR<{
+    address1: string;
+    city: string;
+    state: string;
+  }>(linkPropertyIdParam ? `/api/v1/properties/${linkPropertyIdParam}` : null, apiFetcher);
+
+  async function handleLinkToProperty(contactId: string) {
+    if (!linkPropertyIdParam) return;
+    setLinkingContactId(contactId);
+    try {
+      const res = await fetch(`/api/v1/properties/${linkPropertyIdParam}/primary-contact`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactId }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error((json as { error?: { message?: string } }).error?.message ?? "Could not link contact");
+      }
+      toast.success("Client linked to property");
+      router.push(`/properties/${linkPropertyIdParam}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Link failed");
+    } finally {
+      setLinkingContactId(null);
+    }
+  }
 
   useEffect(() => {
     const { status, tagId } = parseSegmentFromSearchParams(searchParams);
@@ -587,17 +669,34 @@ export function ContactsListView() {
   }
 
   const showContent = !loading && !error;
-  const linkPropertyIdParam = searchParams.get("linkPropertyId");
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg pt-2 sm:pt-3">
       {linkPropertyIdParam ? (
         <div
-          className="mx-6 mb-3 rounded-lg border border-kp-teal/35 bg-kp-teal/[0.06] px-3 py-2 text-[11px] leading-snug text-kp-on-surface sm:mx-8"
+          className="mx-6 mb-3 rounded-lg border border-kp-teal/35 bg-kp-teal/[0.06] px-3 py-2.5 text-[11px] leading-snug text-kp-on-surface sm:mx-8"
           role="status"
         >
-          <span className="font-semibold text-kp-on-surface">ClientKeep</span> — Link this property to a
-          contact from their profile. Choose a contact below or add one, then set the relationship there.
+          {linkTargetLoading ? (
+            <span className="inline-flex items-center gap-2">
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-kp-teal" aria-hidden />
+              Loading property…
+            </span>
+          ) : linkTargetError ? (
+            <span className="text-red-400/90">
+              {(linkTargetError as Error).message || "Could not load that property. Check the link or try again."}
+            </span>
+          ) : linkTargetProperty ? (
+            <>
+              <span className="font-semibold text-kp-on-surface">Link to property</span>
+              {" — "}
+              {[linkTargetProperty.address1, linkTargetProperty.city, linkTargetProperty.state]
+                .filter(Boolean)
+                .join(", ")}
+              . Search below, then use <span className="font-medium">Link to property</span> on a row. You can
+              also create a contact if needed.
+            </>
+          ) : null}
         </div>
       ) : null}
       {/* ── Metric cards (CRM tier only) ─────────────────────────────────── */}
@@ -691,9 +790,17 @@ export function ContactsListView() {
           />
         )}
 
-        {/* Search bar (shown when data is loaded and there's something to search) */}
+        {/* Search — in link mode, emphasize find-first once contacts are loaded */}
         {showContent && contacts.length > 0 && (
-          <div className="border-b border-kp-outline-variant px-5 py-3">
+          <div
+            className={cn(
+              "border-b border-kp-outline-variant px-5 py-3",
+              linkPropertyIdParam && "border-kp-teal/25 bg-kp-teal/[0.04]"
+            )}
+          >
+            {linkPropertyIdParam ? (
+              <p className="mb-2 text-[11px] font-medium text-kp-on-surface">Find a contact</p>
+            ) : null}
             <SearchInput value={search} onChange={setSearch} />
           </div>
         )}
@@ -712,9 +819,20 @@ export function ContactsListView() {
             }
           />
         ) : visibleContacts.length === 0 ? (
-          <EmptyState isFiltered={isFiltered} onReset={handleClearFilters} />
+          <EmptyState
+            isFiltered={isFiltered}
+            onReset={handleClearFilters}
+            linkMode={!!linkPropertyIdParam}
+            onCreateContact={linkPropertyIdParam ? () => setCreateContactOpen(true) : undefined}
+          />
         ) : (
-          <ContactsTable contacts={visibleContacts} hasCrm={hasCrm} />
+          <ContactsTable
+            contacts={visibleContacts}
+            hasCrm={hasCrm}
+            linkPropertyId={linkPropertyIdParam}
+            linkingContactId={linkingContactId}
+            onLinkToProperty={linkPropertyIdParam ? handleLinkToProperty : undefined}
+          />
         )}
 
         {/* Footer: CRM legend for non-CRM users */}
@@ -735,6 +853,7 @@ export function ContactsListView() {
         open={createContactOpen}
         onOpenChange={setCreateContactOpen}
         onCreated={() => reload()}
+        linkPropertyIdAfterCreate={linkPropertyIdParam}
       />
 
       <BrandModal

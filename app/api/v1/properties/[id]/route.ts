@@ -22,6 +22,9 @@ export async function GET(
           where: { deletedAt: null },
           orderBy: { startAt: "desc" },
         },
+        primaryLinkedContact: {
+          select: { id: true, firstName: true, lastName: true },
+        },
       },
     });
     if (!property) {

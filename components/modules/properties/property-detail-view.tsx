@@ -47,6 +47,8 @@ type Property = {
   imageUrl?: string | null;
   openHouses?: { id: string; title: string; startAt: string }[];
   usage?: { showings: number; openHouses: number };
+  /** Set from ClientKeep property–client linking (not only via a deal). */
+  primaryLinkedContact?: { id: string; firstName: string; lastName: string } | null;
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -127,7 +129,24 @@ export function PropertyDetailView({ id }: { id: string }) {
     }
     return Array.from(map.entries()).map(([contactId, name]) => ({ id: contactId, name }));
   }, [transactionsForProperty]);
-  const hasPrimaryClient = linkedContacts.length > 0;
+
+  const primaryClientDisplay = useMemo(() => {
+    const pl = property?.primaryLinkedContact;
+    if (pl?.id) {
+      const name = [pl.firstName, pl.lastName].filter(Boolean).join(" ").trim() || "Contact";
+      return { id: pl.id, name };
+    }
+    if (linkedContacts[0]) return linkedContacts[0];
+    return null;
+  }, [property?.primaryLinkedContact, linkedContacts]);
+
+  const extraDealContactCount = useMemo(() => {
+    const primaryId = property?.primaryLinkedContact?.id ?? linkedContacts[0]?.id;
+    if (!primaryId) return linkedContacts.length > 1 ? linkedContacts.length - 1 : 0;
+    return linkedContacts.filter((c) => c.id !== primaryId).length;
+  }, [property?.primaryLinkedContact?.id, linkedContacts]);
+
+  const hasPrimaryClient = primaryClientDisplay != null;
   /** ClientKeep — property context for future linking UX; not TransactionHQ. */
   const linkClientHref = `/contacts?linkPropertyId=${encodeURIComponent(id)}`;
 
@@ -519,17 +538,17 @@ export function PropertyDetailView({ id }: { id: string }) {
               <h2 className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
                 Primary client / owner
               </h2>
-              {hasPrimaryClient ? (
+              {hasPrimaryClient && primaryClientDisplay ? (
                 <div className="mt-2 space-y-1">
                   <Link
-                    href={`/contacts/${linkedContacts[0].id}`}
+                    href={`/contacts/${primaryClientDisplay.id}`}
                     className="text-sm font-medium text-kp-teal hover:underline"
                   >
-                    {linkedContacts[0].name}
+                    {primaryClientDisplay.name}
                   </Link>
-                  {linkedContacts.length > 1 ? (
+                  {extraDealContactCount > 0 ? (
                     <p className="text-[10px] text-kp-on-surface-variant">
-                      +{linkedContacts.length - 1} more on linked deals
+                      +{extraDealContactCount} more on linked deals
                     </p>
                   ) : null}
                 </div>

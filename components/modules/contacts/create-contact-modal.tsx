@@ -11,9 +11,16 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   /** Called after a successful save (before navigation to detail). */
   onCreated?: () => void;
+  /** When set, after create we link this contact to the property and go to `/properties/[id]`. */
+  linkPropertyIdAfterCreate?: string | null;
 };
 
-export function CreateContactModal({ open, onOpenChange, onCreated }: Props) {
+export function CreateContactModal({
+  open,
+  onOpenChange,
+  onCreated,
+  linkPropertyIdAfterCreate,
+}: Props) {
   const router = useRouter();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -63,6 +70,25 @@ export function CreateContactModal({ open, onOpenChange, onCreated }: Props) {
       }
       const id = json.data?.id as string | undefined;
       if (!id) throw new Error("Invalid response");
+
+      if (linkPropertyIdAfterCreate) {
+        const linkRes = await fetch(`/api/v1/properties/${linkPropertyIdAfterCreate}/primary-contact`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ contactId: id }),
+        });
+        const linkJson = await linkRes.json().catch(() => ({}));
+        if (!linkRes.ok) {
+          throw new Error(
+            (linkJson as { error?: { message?: string } }).error?.message ?? "Could not link to property"
+          );
+        }
+        onOpenChange(false);
+        onCreated?.();
+        router.push(`/properties/${linkPropertyIdAfterCreate}`);
+        return;
+      }
+
       onOpenChange(false);
       onCreated?.();
       router.push(`/contacts/${id}`);

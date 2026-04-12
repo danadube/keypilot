@@ -98,6 +98,7 @@ const BYPASSRLS_ALLOWLIST = {
     // ── Properties ─────────────────────────────────────────────────────────
     "app/api/v1/properties/[id]/flyer/route.ts",
     "app/api/v1/properties/[id]/photo/route.ts",
+    "app/api/v1/properties/[id]/primary-contact/route.ts",
     "app/api/v1/properties/[id]/route.ts",
     "app/api/v1/properties/route.ts",
     // ── ShowingHQ ──────────────────────────────────────────────────────────

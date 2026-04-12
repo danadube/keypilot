@@ -102,11 +102,14 @@ model Property {
   flyerUploadedAt DateTime?
   flyerEnabled    Boolean   @default(true)
   createdByUserId String
+  /** Optional ClientKeep contact linked as primary client/owner for this listing (set from contacts picker). */
+  primaryLinkedContactId String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   deletedAt       DateTime?
 
-  createdByUser     User              @relation(fields: [createdByUserId], references: [id])
+  createdByUser          User     @relation(fields: [createdByUserId], references: [id])
+  primaryLinkedContact   Contact? @relation("PropertyPrimaryLinkedContact", fields: [primaryLinkedContactId], references: [id], onDelete: SetNull)
   openHouses        OpenHouse[]
   showings          Showing[]
   feedbackRequests  FeedbackRequest[]
@@ -118,6 +121,7 @@ model Property {
   tasks             Task[]
 
   @@index([createdByUserId, deletedAt])
+  @@index([primaryLinkedContactId])
   @@index([city, state])
   @@index([zip])
   @@map("properties")
@@ -172,6 +176,8 @@ model Contact {
   deals             Deal[]
   /** CRM / transaction primary client on a deal-style transaction (optional). */
   transactionsPrimary Transaction[] @relation("TransactionPrimaryContact")
+  /** PropertyVault: listing’s primary client when set from ClientKeep (not via deal alone). */
+  propertiesPrimaryLinked Property[] @relation("PropertyPrimaryLinkedContact")
   userActivities    UserActivity[]
   farmMemberships   ContactFarmMembership[]
   tasks             Task[]
