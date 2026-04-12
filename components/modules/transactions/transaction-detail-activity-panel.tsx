@@ -83,7 +83,7 @@ export function TransactionDetailActivityPanel({
   return (
     <ContactDetailSection
       title="Activity"
-      description="Chronological deal history — newest first. Use Actions for calls, tasks, status, and financial updates."
+      description="Chronological history — newest first. Quick notes here; use Actions for calls, status, and financial workspace."
       icon={<GitBranch className="h-3.5 w-3.5" />}
       className={cn("min-h-[240px] border-kp-outline/50 bg-kp-surface/40", className)}
     >

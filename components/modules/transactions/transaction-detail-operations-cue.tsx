@@ -15,11 +15,11 @@ type TransactionDetailOperationsCueProps = {
   closingDate: string | null;
   status: TxStatus;
   hasPrimaryContact: boolean;
-  previewIncomplete: boolean;
-  previewHint: string | null;
+  /** Saved outputs missing — point user to Financial & records (no live calculator on this page). */
+  needsFinancialWorkspaceAttention: boolean;
   /** `null` while checklist is loading */
   checklistOpenCount: number | null;
-  /** Sale deal with a healthy preview but no split lines yet */
+  /** Sale with saved net but no split lines yet */
   commissionSetupIncomplete: boolean;
 };
 
@@ -29,8 +29,7 @@ export function TransactionDetailOperationsCue({
   closingDate,
   status,
   hasPrimaryContact,
-  previewIncomplete,
-  previewHint,
+  needsFinancialWorkspaceAttention,
   checklistOpenCount,
   commissionSetupIncomplete,
 }: TransactionDetailOperationsCueProps) {
@@ -44,11 +43,11 @@ export function TransactionDetailOperationsCue({
     });
   }
 
-  if (previewIncomplete && previewHint) {
+  if (needsFinancialWorkspaceAttention) {
     lines.push({
-      key: "preview",
+      key: "financial",
       tone: "warn",
-      text: previewHint,
+      text: "Complete sale price and commission inputs under Financial & records so economics stay accurate.",
     });
   }
 
@@ -74,7 +73,7 @@ export function TransactionDetailOperationsCue({
     lines.push({
       key: "splits",
       tone: "info",
-      text: "Add commission split lines in Reference when you are ready to allocate net.",
+      text: "Add commission split lines under Financial & records when you are ready to allocate net.",
     });
   }
 
@@ -82,7 +81,7 @@ export function TransactionDetailOperationsCue({
     lines.push({
       key: "checklist",
       tone: "info",
-      text: `${checklistOpenCount} checklist item${checklistOpenCount === 1 ? "" : "s"} still open — see the deal checklist.`,
+      text: `${checklistOpenCount} open step${checklistOpenCount === 1 ? "" : "s"} in Deal progress — complete or attach docs below.`,
     });
   }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -67,6 +68,9 @@ export function TransactionDetailActionsMenu({
   onReloadTransaction,
   menuAlign = "end",
 }: TransactionDetailActionsMenuProps) {
+  const pathname = usePathname() ?? "";
+  const router = useRouter();
+  const onFinancialEditor = pathname.includes("/transactions/") && pathname.endsWith("/financial");
   const menuRef = useRef<HTMLDetailsElement>(null);
   const closeMenu = useCallback(() => {
     const el = menuRef.current;
@@ -176,11 +180,6 @@ export function TransactionDetailActionsMenu({
     }
   }, [transactionId, statusValue, savingStatus, refresh]);
 
-  const scrollTo = (id: string) => {
-    if (typeof document === "undefined") return;
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
-
   return (
     <>
       <details ref={menuRef} className="group relative z-30">
@@ -203,7 +202,11 @@ export function TransactionDetailActionsMenu({
             type="button"
             onClick={() => {
               closeMenu();
-              onScrollToNote();
+              if (onFinancialEditor) {
+                router.push(`/transactions/${transactionId}#txn-activity-note`);
+              } else {
+                onScrollToNote();
+              }
             }}
           >
             Add note
@@ -245,24 +248,18 @@ export function TransactionDetailActionsMenu({
             Add task
           </PageHeaderActionButton>
           <PageHeaderActionsMenuSeparator />
-          <PageHeaderActionButton
-            type="button"
-            onClick={() => {
-              closeMenu();
-              scrollTo("txn-financial-context");
-            }}
+          <PageHeaderActionItem
+            href={`/transactions/${transactionId}/financial`}
+            onClick={closeMenu}
           >
-            Update commission / financials
-          </PageHeaderActionButton>
-          <PageHeaderActionButton
-            type="button"
-            onClick={() => {
-              closeMenu();
-              scrollTo("txn-record-context");
-            }}
+            Financial &amp; records
+          </PageHeaderActionItem>
+          <PageHeaderActionItem
+            href={`/transactions/${transactionId}/financial#txn-record-context`}
+            onClick={closeMenu}
           >
-            Edit record &amp; notes
-          </PageHeaderActionButton>
+            Jump to record &amp; notes
+          </PageHeaderActionItem>
           <PageHeaderActionButton
             type="button"
             onClick={() => {
