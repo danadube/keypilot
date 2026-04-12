@@ -424,11 +424,11 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
     [transactionKind, previewSalePrice, brokerageInput, draftCommissionInputs]
   );
 
-  const hqChrome = useTransactionHqChromeOptional();
+  const setHeaderDetailActions = useTransactionHqChromeOptional()?.setDetailActions;
 
   useEffect(() => {
-    if (!hqChrome || !txn) return;
-    hqChrome.setDetailActions(
+    if (!setHeaderDetailActions || !txn) return;
+    setHeaderDetailActions(
       <TransactionDetailActionsMenu
         transactionId={transactionId}
         propertyId={txn.property.id}
@@ -440,9 +440,9 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
         onReloadTransaction={() => void load()}
       />
     );
-    return () => hqChrome.setDetailActions(null);
+    return () => setHeaderDetailActions(null);
   }, [
-    hqChrome,
+    setHeaderDetailActions,
     txn,
     transactionId,
     status,

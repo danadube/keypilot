@@ -155,8 +155,12 @@ export function TransactionProgressWorkspace({
   const busy = isLoading && items === undefined;
   const resolvedSide = side === "BUY" || side === "SELL" ? side : null;
 
+  useEffect(() => {
+    setStageJump("");
+  }, [resolvedSide]);
+
   const { pipelineRows, legacyRows } = useMemo(() => {
-    const rows = items ?? [];
+    const rows = Array.isArray(items) ? items : [];
     const pipeline: ChecklistItem[] = [];
     const legacy: ChecklistItem[] = [];
     for (const r of rows) {
@@ -360,7 +364,12 @@ export function TransactionProgressWorkspace({
                     Focus stage
                   </label>
                   <Select
-                    value={stageJump || "__none__"}
+                    value={
+                      stageJump &&
+                      PIPELINE_STAGE_ORDER[resolvedSide].includes(stageJump as PipelineStageKey)
+                        ? stageJump
+                        : "__none__"
+                    }
                     onValueChange={(v) => {
                       if (v === "__none__") {
                         setStageJump("");
@@ -533,10 +542,13 @@ function PipelineDocumentRow({
   useEffect(() => {
     const m = tryParsePipelineMeta(row.notes);
     if (!m) return;
-    setDocStatus(m.docStatus);
-    setDocUrl(m.docUrl ?? "");
-    setComments(m.comments ?? "");
-    setDueLocal(row.dueDate ? row.dueDate.slice(0, 10) : "");
+    const due = row.dueDate ? row.dueDate.slice(0, 10) : "";
+    const url = m.docUrl ?? "";
+    const c = m.comments ?? "";
+    setDocStatus((prev) => (prev === m.docStatus ? prev : m.docStatus));
+    setDocUrl((prev) => (prev === url ? prev : url));
+    setComments((prev) => (prev === c ? prev : c));
+    setDueLocal((prev) => (prev === due ? prev : due));
   }, [row.id, row.notes, row.dueDate]);
 
   if (!meta) return null;

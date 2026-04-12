@@ -165,10 +165,10 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     );
   }, [txn, checklistOpenCount]);
 
-  const hqChrome = useTransactionHqChromeOptional();
+  const setHeaderDetailActions = useTransactionHqChromeOptional()?.setDetailActions;
   useEffect(() => {
-    if (!hqChrome || !txn) return;
-    hqChrome.setDetailActions(
+    if (!setHeaderDetailActions || !txn) return;
+    setHeaderDetailActions(
       <TransactionDetailActionsMenu
         transactionId={transactionId}
         propertyId={txn.property.id}
@@ -180,9 +180,9 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
         onReloadTransaction={() => void load()}
       />
     );
-    return () => hqChrome.setDetailActions(null);
+    return () => setHeaderDetailActions(null);
   }, [
-    hqChrome,
+    setHeaderDetailActions,
     txn,
     transactionId,
     scrollToActivityNote,
