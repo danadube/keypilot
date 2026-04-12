@@ -866,6 +866,7 @@ export function TransactionProgressWorkspace({
 
   return (
     <section
+      id="txn-pipeline-workspace"
       className={cn(
         "rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm",
         className

@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { OperationalDashboardView } from "@/components/dashboard/operational-dashboard-view";
 
 export const metadata: Metadata = {
-  title: "Dashboard | KeyPilot",
+  title: "Command center | KeyPilot",
   description:
-    "Operational home: today's work, pipeline snapshot, quick actions, and module shortcuts.",
+    "Execution-focused home: urgent deals, pipeline snapshot, today's schedule, priority tasks, and listings.",
 };
 
 export default function DashboardPage() {

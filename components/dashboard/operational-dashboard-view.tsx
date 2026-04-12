@@ -1,9 +1,18 @@
 "use client";
 
-import { useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { useMemo, useState, type ComponentType } from "react";
 import useSWR from "swr";
 import Link from "next/link";
-import { Building2, Calendar, CheckSquare, Handshake, MessageSquare, Users } from "lucide-react";
+import {
+  ArrowRight,
+  Building2,
+  CalendarClock,
+  CheckSquare,
+  ClipboardList,
+  HandCoins,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   PageHeader,
@@ -12,331 +21,139 @@ import {
   PageHeaderActionsMenu,
   PageHeaderPrimaryAddMenu,
 } from "@/components/layout/PageHeader";
-import {
-  DashboardTodayCalendarScheduleGrid,
-  type DashboardScheduleShowing,
-} from "@/components/dashboard/dashboard-calendar-rail";
+import { CommandCenterSchedulePanel } from "@/components/dashboard/command-center-schedule-panel";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import type { TaskPilotPayload } from "@/lib/tasks/task-pilot-payload-mutate";
-import { TransactionAttentionSection } from "@/components/dashboard/transaction-attention-section";
 import { apiFetcher } from "@/lib/fetcher";
+import type { SerializedAgentFollowUp } from "@/lib/follow-ups/agent-follow-up-buckets";
+import type { CommandCenterPayload } from "@/lib/dashboard/command-center-types";
+import { Button } from "@/components/ui/button";
+import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 
-type DashboardStats = {
-  propertiesCount: number;
-  openHousesCount: number;
-  contactsCount: number;
+type FollowUpsResponse = {
+  overdue: SerializedAgentFollowUp[];
+  dueToday: SerializedAgentFollowUp[];
+  upcoming: SerializedAgentFollowUp[];
+  all: SerializedAgentFollowUp[];
 };
 
-type ShowingRow = DashboardScheduleShowing;
-
-type DealRow = { status: string };
-
-type FollowRow = { contactId: string };
-
-type FarmAreaRow = { id: string; membershipCount: number };
-
-const INACTIVE_DEAL_STATUSES = new Set(["CLOSED", "LOST"]);
-
-function isSameLocalCalendarDay(d: Date, ref: Date): boolean {
-  return (
-    d.getFullYear() === ref.getFullYear() &&
-    d.getMonth() === ref.getMonth() &&
-    d.getDate() === ref.getDate()
-  );
+function formatUsd(n: number | null | undefined) {
+  if (n == null || !Number.isFinite(n)) return "—";
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 }
 
-function deriveShowingsToday(showings: ShowingRow[], now: Date) {
-  let today = 0;
-  for (const s of showings) {
-    const d = new Date(s.scheduledAt);
-    if (Number.isNaN(d.getTime())) continue;
-    if (!isSameLocalCalendarDay(d, now)) continue;
-    today += 1;
-  }
-  return { today };
-}
-
-function countActiveDeals(deals: DealRow[]) {
-  return deals.filter((d) => !INACTIVE_DEAL_STATUSES.has(d.status)).length;
-}
-
-function uniqueContactIds(rows: FollowRow[]): number {
-  return new Set(rows.map((r) => r.contactId)).size;
-}
-
-function nextShowingTodayActionLine(showings: ShowingRow[], now: Date): string {
-  const todayList = showings
-    .filter((s) => {
-      const d = new Date(s.scheduledAt);
-      return !Number.isNaN(d.getTime()) && isSameLocalCalendarDay(d, now);
-    })
-    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
-  if (todayList.length === 0) return "None scheduled";
-  const nowMs = now.getTime();
-  const upcoming = todayList.find((s) => new Date(s.scheduledAt).getTime() > nowMs);
-  if (upcoming) {
-    const t = new Date(upcoming.scheduledAt);
-    const timeStr = t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-    return `Next at ${timeStr}`;
-  }
-  const last = todayList[todayList.length - 1]!;
-  const t = new Date(last.scheduledAt);
-  const timeStr = t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  return `Last at ${timeStr}`;
-}
-
-function PrimaryValue({ loading, children }: { loading: boolean; children: ReactNode }) {
-  if (loading) {
-    return (
-      <span
-        className="inline-block h-7 w-12 animate-pulse rounded bg-kp-surface-high/90"
-        aria-hidden
-      />
-    );
-  }
-  return (
-    <span className="font-headline text-xl font-semibold tabular-nums text-kp-on-surface">
-      {children}
-    </span>
-  );
-}
-
-type StripEmphasis = "elevated" | "accent" | "none";
-
-function stripEmphasisClass(emphasis: StripEmphasis) {
-  if (emphasis === "elevated") {
-    return "border-kp-teal/35 bg-kp-teal/[0.05]";
-  }
-  if (emphasis === "accent") {
-    return "border-kp-gold/30 bg-kp-gold/[0.04]";
-  }
-  return "border-kp-outline/90 bg-kp-surface-high/[0.12]";
-}
-
-function TodayStripCard({
-  label,
+function SnapshotTile({
   href,
-  icon: Icon,
-  count,
-  zeroPrimaryText,
-  nextActionLine,
-  loading,
-  emphasis = "none",
-}: {
-  label: string;
-  href: string;
-  icon: ComponentType<{ className?: string }>;
-  count: number;
-  zeroPrimaryText: string;
-  nextActionLine: string;
-  loading: boolean;
-  emphasis?: StripEmphasis;
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "group flex flex-col rounded-lg border px-3 py-2.5 transition-colors",
-        stripEmphasisClass(emphasis)
-      )}
-    >
-      <div className="mb-1.5 flex items-center justify-between gap-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
-          {label}
-        </span>
-        <Icon className="h-3.5 w-3.5 shrink-0 text-kp-on-surface-muted opacity-75 group-hover:text-kp-teal" />
-      </div>
-      {loading ? (
-        <span
-          className="inline-block h-7 w-14 max-w-full animate-pulse rounded bg-kp-surface-high/90"
-          aria-hidden
-        />
-      ) : count === 0 ? (
-        <p className="text-sm font-medium leading-tight text-kp-on-surface">{zeroPrimaryText}</p>
-      ) : (
-        <span className="font-headline text-xl font-semibold tabular-nums text-kp-on-surface">
-          {count}
-        </span>
-      )}
-      <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-kp-on-surface-variant">
-        {loading ? "…" : nextActionLine}
-      </p>
-    </Link>
-  );
-}
-
-function SnapshotCard({
   label,
-  href,
-  icon: Icon,
   primary,
   secondary,
+  icon: Icon,
   loading,
 }: {
-  label: string;
   href: string;
-  icon: ComponentType<{ className?: string }>;
-  primary: ReactNode;
+  label: string;
+  primary: string;
   secondary: string;
+  icon: ComponentType<{ className?: string }>;
   loading: boolean;
 }) {
   return (
     <Link
       href={href}
-      className="group flex flex-col rounded-lg border border-kp-outline/80 bg-kp-surface-high/[0.06] px-3 py-2.5 transition-colors hover:border-kp-teal/20 hover:bg-kp-surface-high/20"
+      className="group flex min-h-[92px] flex-col rounded-lg border border-kp-outline/80 bg-kp-surface-high/[0.06] px-3 py-2.5 transition-colors hover:border-kp-teal/25 hover:bg-kp-surface-high/20"
     >
       <div className="mb-1 flex items-center gap-1.5">
         <Icon className="h-3.5 w-3.5 shrink-0 text-kp-on-surface-muted opacity-90 group-hover:text-kp-teal" />
         <span className="font-headline text-xs font-semibold text-kp-on-surface">{label}</span>
       </div>
-      <PrimaryValue loading={loading}>{primary}</PrimaryValue>
+      {loading ? (
+        <span className="inline-block h-7 w-24 animate-pulse rounded bg-kp-surface-high/40" aria-hidden />
+      ) : (
+        <span className="font-headline text-xl font-semibold tabular-nums text-kp-on-surface">{primary}</span>
+      )}
       <span className="mt-1 line-clamp-2 text-[11px] text-kp-on-surface-variant group-hover:text-kp-on-surface-muted">
-        {secondary}
+        {loading ? "…" : secondary}
       </span>
     </Link>
   );
 }
 
-type FarmAreasResponse = { items: FarmAreaRow[]; unavailable: boolean };
-
-async function farmAreasFetcher(url: string): Promise<FarmAreasResponse> {
-  const res = await fetch(url);
-  if (res.status === 403) return { items: [], unavailable: true };
-  const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((json?.error?.message as string) ?? "Failed to load farm areas");
-  return { items: (json.data as FarmAreaRow[]) ?? [], unavailable: false };
-}
-
-type FollowUpsData = { overdue: FollowRow[]; dueToday: FollowRow[] };
-
 export function OperationalDashboardView() {
-  const { data: stats, isLoading: statsLoading } = useSWR<DashboardStats>(
-    "/api/v1/dashboard/stats",
+  const { data: cc, isLoading: ccLoading, mutate: mutateCc } = useSWR<CommandCenterPayload>(
+    "/api/v1/dashboard/command-center",
     apiFetcher,
     { errorRetryCount: 2, errorRetryInterval: 500 }
   );
-  const { data: showings = [], isLoading: showingsLoading } = useSWR<ShowingRow[]>(
-    "/api/v1/showing-hq/showings",
-    apiFetcher
-  );
-  const { data: followData, isLoading: followLoading } = useSWR<FollowUpsData>(
+  const { data: followData, isLoading: followLoading } = useSWR<FollowUpsResponse>(
     "/api/v1/follow-ups",
     apiFetcher
-  );
-  const { data: deals = [], isLoading: dealsLoading } = useSWR<DealRow[]>(
-    "/api/v1/deals",
-    apiFetcher
-  );
-  const { data: farmData } = useSWR<FarmAreasResponse>(
-    "/api/v1/farm-areas?visibility=active",
-    farmAreasFetcher
   );
   const { data: tasksApi, isLoading: tasksLoading, mutate: mutateTasks } = useSWR<TaskPilotPayload>(
     "/api/v1/tasks",
     apiFetcher,
     { errorRetryCount: 2, errorRetryInterval: 500 }
   );
+  const { data: showings = [], isLoading: showingsLoading } = useSWR<
+    {
+      id: string;
+      scheduledAt: string;
+      buyerName?: string | null;
+      property?: { address1: string; city: string; state: string } | null;
+    }[]
+  >("/api/v1/showing-hq/showings", apiFetcher);
+
   const [newTaskModalOpen, setNewTaskModalOpen] = useState(false);
 
-  const loading = statsLoading || showingsLoading || followLoading || dealsLoading || tasksLoading;
-  const overdue = useMemo(() => followData?.overdue ?? [], [followData]);
-  const dueToday = useMemo(() => followData?.dueToday ?? [], [followData]);
-  const farmAreas = useMemo(() => farmData?.items ?? [], [farmData]);
-  const farmUnavailable = farmData?.unavailable ?? false;
+  const loading = ccLoading || followLoading || tasksLoading || showingsLoading;
 
-  const now = new Date();
-  const { today: showingsToday } = deriveShowingsToday(showings, now);
+  const followUpsAll = followData?.all ?? [];
+  const openTasks = useMemo(() => {
+    if (!tasksApi) return [];
+    return [...tasksApi.overdue, ...tasksApi.dueToday, ...tasksApi.upcoming];
+  }, [tasksApi]);
 
-  const followUpsDueCount = overdue.length + dueToday.length;
-  const overdueFollowUpCount = overdue.length;
-  const dueTodayFollowUpCount = dueToday.length;
+  const snap = cc?.snapshot;
 
-  const contactsAttention = useMemo(() => {
-    const combined = [...overdue, ...dueToday];
-    return uniqueContactIds(combined);
-  }, [overdue, dueToday]);
+  const ytdSecondary =
+    snap == null || snap.ytdGci == null
+      ? "Track closed deals"
+      : `${snap.ytdPercentToGoal != null ? `${Math.round(snap.ytdPercentToGoal)}% of ` : ""}${formatUsd(snap.annualGciGoal)} goal`;
 
-  const activeDeals = useMemo(() => countActiveDeals(deals), [deals]);
-  const propertiesCount = stats?.propertiesCount ?? 0;
+  const pipelinePrimary =
+    snap == null
+      ? "—"
+      : snap.pipelineEstimatedGci != null
+        ? formatUsd(snap.pipelineEstimatedGci)
+        : String(snap.pipelineDealCount);
 
-  const farmsNeedingUpdates = useMemo(
-    () => farmAreas.filter((a) => a.membershipCount === 0).length,
-    [farmAreas]
-  );
+  const pipelineSecondary =
+    snap == null
+      ? "Open pipeline"
+      : snap.pipelineEstimatedGci != null
+        ? `${snap.pipelineDealCount} active deal${snap.pipelineDealCount === 1 ? "" : "s"}`
+        : `${snap.pipelineDealCount} in play`;
 
-  const showingsNextAction = loading
-    ? "…"
-    : nextShowingTodayActionLine(showings, now);
+  const nextClosePrimary =
+    snap?.nextClosing == null ? "—" : snap.nextClosing.daysUntil == null ? "—" : String(snap.nextClosing.daysUntil);
+  const nextCloseSecondary =
+    snap?.nextClosing == null ? "Schedule a closing date" : snap.nextClosing.addressLine;
 
-  const followUpsNextAction = loading
-    ? "…"
-    : overdueFollowUpCount > 0
-      ? `${overdueFollowUpCount} overdue`
-      : dueTodayFollowUpCount > 0
-        ? `${dueTodayFollowUpCount} due today`
-        : "Clear";
-
-  const tasksOverdueCount = tasksApi?.counts.openOverdue ?? 0;
-  const tasksDueTodayCount = tasksApi?.counts.openDueToday ?? 0;
-  const tasksDueCount = tasksOverdueCount + tasksDueTodayCount;
-  const tasksNextAction = loading
-    ? "…"
-    : tasksOverdueCount > 0 && tasksDueTodayCount > 0
-      ? `${tasksOverdueCount} overdue · ${tasksDueTodayCount} today`
-      : tasksOverdueCount > 0
-        ? `${tasksOverdueCount} overdue`
-        : tasksDueTodayCount > 0
-          ? `${tasksDueTodayCount} due today`
+  const tasksPrimary =
+    snap == null ? "—" : String(snap.tasksDueTotal);
+  const tasksSecondary =
+    snap == null
+      ? "Task Pilot"
+      : snap.tasksOverdue > 0
+        ? `${snap.tasksOverdue} overdue`
+        : snap.tasksDueTotal > 0
+          ? "Due today / soon"
           : "Clear";
-
-  const pipelineDealsSecondary =
-    activeDeals === 0 ? "None active" : "Pipeline detail";
-
-  const pipelineListingsSecondary =
-    propertiesCount === 0 ? "Add a listing" : "In PropertyVault";
-
-  const pipelineContactsSecondary = loading
-    ? "…"
-    : contactsAttention === 0
-      ? "None flagged"
-      : overdueFollowUpCount > 0
-        ? `${overdueFollowUpCount} overdue`
-        : `${dueTodayFollowUpCount} due today`;
-
-  const moduleShowingHref = showingsToday > 0 ? "/showing-hq/showings" : "/showing-hq";
-  const moduleClientHref = contactsAttention > 0 ? "/showing-hq/follow-ups" : "/contacts";
-
-  const moduleShowing = loading
-    ? "…"
-    : showingsToday === 0
-      ? "No showings today"
-      : `${showingsToday} today`;
-
-  const moduleClient = loading
-    ? "…"
-    : contactsAttention === 0
-      ? "No follow-ups due"
-      : `${contactsAttention} need attention`;
-
-  const moduleFarm = farmUnavailable
-    ? "CRM tier"
-    : loading
-      ? "…"
-      : farmsNeedingUpdates === 0
-        ? "Up to date"
-        : `${farmsNeedingUpdates} need updates`;
-
-  const moduleVault = loading
-    ? "…"
-    : propertiesCount === 0
-      ? "No listings"
-      : `${propertiesCount} listing${propertiesCount === 1 ? "" : "s"}`;
 
   return (
     <div className="space-y-5 pb-6 sm:space-y-6">
       <PageHeader
-        title="Today"
-        subtitle="What needs attention right now across showings, follow-ups, tasks, and transactions."
+        title="Command center"
+        subtitle="What to do right now to move deals forward — execution, not vanity metrics."
         actionsMenu={
           <PageHeaderActionsMenu>
             <PageHeaderActionItem href="/properties/new">Add property</PageHeaderActionItem>
@@ -356,131 +173,300 @@ export function OperationalDashboardView() {
         }
       />
 
-      {/* Zone 1 — today strip */}
-      <section aria-labelledby="dash-today-strip">
-        <h2 id="dash-today-strip" className="sr-only">
-          Today at a glance
-        </h2>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
-          <TodayStripCard
-            label="Showings today"
-            href="/showing-hq/showings"
-            icon={Calendar}
-            loading={loading}
-            count={showingsToday}
-            zeroPrimaryText="None"
-            nextActionLine={showingsNextAction}
-            emphasis={showingsToday > 0 ? "accent" : "none"}
-          />
-          <TodayStripCard
-            label="Tasks due"
-            href="/task-pilot"
-            icon={CheckSquare}
-            loading={loading}
-            count={tasksDueCount}
-            zeroPrimaryText="None due"
-            nextActionLine={tasksNextAction}
-            emphasis={
-              tasksOverdueCount > 0 ? "elevated" : tasksDueTodayCount > 0 ? "accent" : "none"
-            }
-          />
-          <TodayStripCard
-            label="Follow-ups due"
-            href="/showing-hq/follow-ups"
-            icon={MessageSquare}
-            loading={loading}
-            count={followUpsDueCount}
-            zeroPrimaryText="None"
-            nextActionLine={followUpsNextAction}
-            emphasis={followUpsDueCount > 0 ? "accent" : "none"}
-          />
+      {/* 1 — Attention strip */}
+      <section aria-label="Most urgent transaction">
+        <div className="rounded-xl border border-kp-gold/30 bg-gradient-to-r from-kp-gold/[0.07] to-kp-surface px-4 py-3 sm:px-5 sm:py-4">
+          {loading ? (
+            <div className="h-16 animate-pulse rounded-lg bg-kp-surface-high/40" aria-hidden />
+          ) : cc?.attention ? (
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+                  Next deal to push
+                </p>
+                <p className="mt-1 truncate font-headline text-base font-semibold text-kp-on-surface">
+                  {cc.attention.addressLine}
+                </p>
+                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-kp-on-surface-muted">
+                  <span className="font-medium text-kp-on-surface">{cc.attention.closingLabel}</span>
+                  <span>·</span>
+                  <span>{cc.attention.checklistOpenCount} checklist open</span>
+                  <span>·</span>
+                  <span>Est. GCI {formatUsd(cc.attention.estimatedGci)}</span>
+                </div>
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                <Button asChild size="sm" className="font-semibold">
+                  <Link href={cc.attention.hrefTransaction}>Open transaction</Link>
+                </Button>
+                <Button asChild variant="outline" size="sm" className={kpBtnSecondary}>
+                  <Link href={cc.attention.hrefChecklist}>
+                    <ClipboardList className="mr-1.5 h-3.5 w-3.5" />
+                    Open checklist
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+                  Next deal to push
+                </p>
+                <p className="mt-1 text-sm text-kp-on-surface">
+                  {cc?.crmAvailable === false
+                    ? "Full CRM unlocks closing urgency, checklist depth, and GCI on this strip."
+                    : "No closing fires right now — open the pipeline when you are ready for the next push."}
+                </p>
+              </div>
+              <Button asChild variant="outline" size="sm" className={cn(kpBtnSecondary, "shrink-0")}>
+                <Link href={cc?.crmAvailable === false ? "/settings/modules" : "/transactions/pipeline"}>
+                  {cc?.crmAvailable === false ? "View modules" : "Open pipeline"}
+                  <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Zone 2 — primary work surface */}
-      <section aria-labelledby="dash-work-today" className="space-y-2">
+      {/* 2 — Business snapshot */}
+      <section aria-labelledby="dash-snapshot-heading" className="space-y-2">
         <h2
-          id="dash-work-today"
-          className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
-        >
-          Your work today
-        </h2>
-        <div className="grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-5">
-          <div className="min-w-0">
-            <DashboardTodayCalendarScheduleGrid
-              showings={showings}
-              loading={loading}
-              todayStats={null}
-              hideAddButton
-            />
-          </div>
-          <TransactionAttentionSection embedded loading={loading} className="min-w-0" />
-        </div>
-      </section>
-
-      {/* Zone 3 — business snapshot */}
-      <section aria-labelledby="dash-snapshot" className="space-y-2">
-        <h2
-          id="dash-snapshot"
+          id="dash-snapshot-heading"
           className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
         >
           Business snapshot
         </h2>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3">
-          <SnapshotCard
-            label="Active deals"
-            href="/transactions/pipeline"
-            icon={Handshake}
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-5 lg:gap-3">
+          <SnapshotTile
+            href="/transactions/commissions"
+            label="YTD GCI"
+            primary={snap?.ytdGci == null ? "—" : formatUsd(snap.ytdGci)}
+            secondary={ytdSecondary}
+            icon={HandCoins}
             loading={loading}
-            primary={activeDeals}
-            secondary={pipelineDealsSecondary}
           />
-          <SnapshotCard
-            label="Active listings"
+          <SnapshotTile
+            href="/transactions/pipeline"
+            label="Pipeline value"
+            primary={pipelinePrimary}
+            secondary={pipelineSecondary}
+            icon={TrendingUp}
+            loading={loading}
+          />
+          <SnapshotTile
+            href={snap?.nextClosing?.href ?? "/transactions/pipeline"}
+            label="Next closing"
+            primary={nextClosePrimary}
+            secondary={nextCloseSecondary}
+            icon={CalendarClock}
+            loading={loading}
+          />
+          <SnapshotTile
+            href="/task-pilot"
+            label="Tasks due"
+            primary={tasksPrimary}
+            secondary={tasksSecondary}
+            icon={CheckSquare}
+            loading={loading}
+          />
+          <SnapshotTile
             href="/properties"
+            label="Active listings"
+            primary={snap == null ? "—" : String(snap.activeListingsCount)}
+            secondary="PropertyVault"
             icon={Building2}
             loading={loading}
-            primary={propertiesCount}
-            secondary={pipelineListingsSecondary}
-          />
-          <SnapshotCard
-            label="Contacts needing attention"
-            href="/contacts"
-            icon={Users}
-            loading={loading}
-            primary={contactsAttention}
-            secondary={pipelineContactsSecondary}
           />
         </div>
       </section>
 
-      {/* Quiet module links */}
-      <footer className="border-t border-kp-outline/40 pt-4">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-kp-on-surface-muted/90">
-          Quick links
-        </p>
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-kp-on-surface-variant">
-          <Link href={moduleShowingHref} className="hover:text-kp-teal hover:underline">
-            ShowingHQ
-            <span className="ml-1 text-kp-on-surface-muted">({moduleShowing})</span>
-          </Link>
-          <Link href={moduleClientHref} className="hover:text-kp-teal hover:underline">
-            ClientKeep
-            <span className="ml-1 text-kp-on-surface-muted">({moduleClient})</span>
-          </Link>
-          <Link href="/farm-trackr" className="hover:text-kp-teal hover:underline">
-            FarmTrackr
-            <span className="ml-1 text-kp-on-surface-muted">({moduleFarm})</span>
-          </Link>
-          <Link href="/properties" className="hover:text-kp-teal hover:underline">
-            PropertyVault
-            <span className="ml-1 text-kp-on-surface-muted">({moduleVault})</span>
-          </Link>
-          <Link href="/transactions" className="hover:text-kp-teal hover:underline">
-            Transactions
-          </Link>
+      {/* 3 — Today + priority */}
+      <section aria-labelledby="dash-today-work" className="space-y-2">
+        <h2
+          id="dash-today-work"
+          className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted"
+        >
+          Today&apos;s work
+        </h2>
+        <div className="grid gap-4 lg:grid-cols-12 lg:items-start lg:gap-5">
+          <div className="min-w-0 lg:col-span-8">
+            <CommandCenterSchedulePanel
+              showings={showings}
+              followUpsAll={followUpsAll}
+              openTasks={openTasks}
+              loading={loading}
+            />
+          </div>
+          <div className="min-w-0 lg:col-span-4">
+            <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h3 className="font-headline text-sm font-semibold text-kp-on-surface">Priority tasks</h3>
+                <Link
+                  href="/task-pilot"
+                  className="text-[11px] font-semibold text-kp-teal hover:underline"
+                >
+                  All
+                </Link>
+              </div>
+              {loading ? (
+                <ul className="space-y-2" aria-busy="true">
+                  {[0, 1, 2, 3].map((k) => (
+                    <li key={k} className="h-10 animate-pulse rounded-lg bg-kp-surface-high/40" aria-hidden />
+                  ))}
+                </ul>
+              ) : (cc?.priorityTasks.length ?? 0) === 0 ? (
+                <p className="text-sm text-kp-on-surface-muted">Clear schedule</p>
+              ) : (
+                <ul className="space-y-2">
+                  {cc!.priorityTasks.map((t) => (
+                    <li key={t.id}>
+                      <Link
+                        href={t.href}
+                        className={cn(
+                          "block rounded-lg border px-2.5 py-2 transition-colors",
+                          t.overdue
+                            ? "border-amber-500/35 bg-amber-500/[0.06]"
+                            : "border-kp-outline/80 bg-kp-surface-high/15 hover:border-kp-teal/25"
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">
+                            {t.sourceTag}
+                          </span>
+                          {t.overdue ? (
+                            <span className="text-[10px] font-semibold uppercase text-amber-600">Overdue</span>
+                          ) : null}
+                        </div>
+                        <p className="mt-0.5 line-clamp-2 text-sm font-medium text-kp-on-surface">{t.title}</p>
+                        {t.subline ? (
+                          <p className="mt-0.5 line-clamp-1 text-[11px] text-kp-on-surface-muted">{t.subline}</p>
+                        ) : null}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
-      </footer>
+      </section>
+
+      {/* 4 — Listings + activity */}
+      <section aria-labelledby="dash-bottom-panels" className="space-y-2">
+        <h2 id="dash-bottom-panels" className="sr-only">
+          Listings and activity
+        </h2>
+        <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
+          <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="font-headline text-sm font-semibold text-kp-on-surface">Active listings</h3>
+              <Link href="/properties" className="text-[11px] font-semibold text-kp-teal hover:underline">
+                PropertyVault
+              </Link>
+            </div>
+            {loading ? (
+              <ul className="space-y-2">
+                {[0, 1, 2].map((k) => (
+                  <li key={k} className="h-14 animate-pulse rounded-lg bg-kp-surface-high/40" aria-hidden />
+                ))}
+              </ul>
+            ) : (cc?.activeListings.length ?? 0) === 0 ? (
+              <p className="text-sm text-kp-on-surface-muted">
+                Add a property to see live listing context here.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {cc!.activeListings.map((p) => (
+                  <li key={p.propertyId}>
+                    <Link
+                      href={p.href}
+                      className="block rounded-lg border border-kp-outline/80 bg-kp-surface-high/10 px-3 py-2.5 transition-colors hover:border-kp-teal/30"
+                    >
+                      <p className="text-sm font-semibold text-kp-on-surface">{p.addressLine}</p>
+                      <p className="text-[11px] text-kp-on-surface-muted">
+                        {p.city}, {p.state}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]">
+                        <span className="font-medium text-kp-on-surface">
+                          {p.listingPrice != null ? formatUsd(p.listingPrice) : "Price TBD"}
+                        </span>
+                        <span className="text-kp-on-surface-muted">· {p.statusLabel}</span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-kp-on-surface-variant">{p.urgencyLine}</p>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h3 className="font-headline text-sm font-semibold text-kp-on-surface">Recent activity</h3>
+              <Sparkles className="h-4 w-4 text-kp-gold/80" aria-hidden />
+            </div>
+            {loading ? (
+              <ul className="space-y-2">
+                {[0, 1, 2].map((k) => (
+                  <li key={k} className="h-12 animate-pulse rounded-lg bg-kp-surface-high/40" aria-hidden />
+                ))}
+              </ul>
+            ) : (cc?.recentActivity.length ?? 0) === 0 ? (
+              <p className="text-sm text-kp-on-surface-muted">
+                Major milestones will log here as you work deals and contacts.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {cc!.recentActivity.map((a) => (
+                  <li key={a.id} className="border-b border-kp-outline/40 pb-2 last:border-0 last:pb-0">
+                    {a.href ? (
+                      <Link href={a.href} className="group block">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+                          {a.kind === "TRANSACTION" ? "Transaction" : "CRM"}
+                        </p>
+                        <p className="text-sm font-medium text-kp-on-surface group-hover:text-kp-teal group-hover:underline">
+                          {a.title}
+                        </p>
+                        {a.subline ? (
+                          <p className="text-[11px] text-kp-on-surface-muted">{a.subline}</p>
+                        ) : null}
+                        <p className="mt-0.5 text-[10px] text-kp-on-surface-muted/90">
+                          {new Date(a.occurredAt).toLocaleString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </Link>
+                    ) : (
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
+                          CRM
+                        </p>
+                        <p className="text-sm font-medium text-kp-on-surface">{a.title}</p>
+                        {a.subline ? (
+                          <p className="text-[11px] text-kp-on-surface-muted">{a.subline}</p>
+                        ) : null}
+                        <p className="mt-0.5 text-[10px] text-kp-on-surface-muted/90">
+                          {new Date(a.occurredAt).toLocaleString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </section>
 
       <NewTaskModal
         open={newTaskModalOpen}
@@ -489,7 +475,10 @@ export function OperationalDashboardView() {
         defaultPropertyId={null}
         initialTitle=""
         initialDescription=""
-        onCreated={() => void mutateTasks()}
+        onCreated={() => {
+          void mutateTasks();
+          void mutateCc();
+        }}
       />
     </div>
   );
