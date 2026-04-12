@@ -14,7 +14,7 @@ import { TransactionDetailActionsMenu } from "@/components/modules/transactions/
 import { TransactionDetailOperationsCue } from "@/components/modules/transactions/transaction-detail-operations-cue";
 import { TransactionProgressWorkspace } from "@/components/modules/transactions/transaction-progress-workspace";
 import { TransactionDetailTasksRail } from "@/components/modules/transactions/transaction-detail-tasks-rail";
-import { useTransactionHqChromeOptional } from "@/components/modules/transactions/transaction-hq-chrome-context";
+import { useTransactionHqChromeSetDetailActionsOptional } from "@/components/modules/transactions/transaction-hq-chrome-context";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -165,10 +165,11 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     );
   }, [txn, checklistOpenCount]);
 
-  const setHeaderDetailActions = useTransactionHqChromeOptional()?.setDetailActions;
+  const setDetailActions = useTransactionHqChromeSetDetailActionsOptional();
   useEffect(() => {
-    if (!setHeaderDetailActions || !txn) return;
-    setHeaderDetailActions(
+    if (!txn) return;
+    if (!setDetailActions) return;
+    setDetailActions(
       <TransactionDetailActionsMenu
         transactionId={transactionId}
         propertyId={txn.property.id}
@@ -180,9 +181,9 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
         onReloadTransaction={() => void load()}
       />
     );
-    return () => setHeaderDetailActions(null);
+    return () => setDetailActions(null);
   }, [
-    setHeaderDetailActions,
+    setDetailActions,
     txn,
     transactionId,
     scrollToActivityNote,

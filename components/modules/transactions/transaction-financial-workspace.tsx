@@ -22,7 +22,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { computeDetailLivePreview } from "@/lib/transactions/detail-financial-preview";
 import { parseOptionalFiniteNumberInput } from "@/lib/transactions/parse-optional-finite-number-input";
 import { TransactionDetailActionsMenu } from "@/components/modules/transactions/transaction-detail-actions-menu";
-import { useTransactionHqChromeOptional } from "@/components/modules/transactions/transaction-hq-chrome-context";
+import { useTransactionHqChromeSetDetailActionsOptional } from "@/components/modules/transactions/transaction-hq-chrome-context";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -424,14 +424,15 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
     [transactionKind, previewSalePrice, brokerageInput, draftCommissionInputs]
   );
 
-  const setHeaderDetailActions = useTransactionHqChromeOptional()?.setDetailActions;
+  const setDetailActions = useTransactionHqChromeSetDetailActionsOptional();
 
   useEffect(() => {
-    if (!setHeaderDetailActions || !txn) return;
+    if (!txn) return;
+    if (!setDetailActions) return;
     // Header actions must reflect persisted transaction status (`txn.status`), not the
     // financial form draft `status` state (user may edit without saving).
     const savedStatus = txn.status;
-    setHeaderDetailActions(
+    setDetailActions(
       <TransactionDetailActionsMenu
         transactionId={transactionId}
         propertyId={txn.property.id}
@@ -443,9 +444,9 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
         onReloadTransaction={() => void load()}
       />
     );
-    return () => setHeaderDetailActions(null);
+    return () => setDetailActions(null);
   }, [
-    setHeaderDetailActions,
+    setDetailActions,
     txn,
     transactionId,
     scrollToActivityNote,
