@@ -105,6 +105,7 @@ export async function POST(
           sortOrder,
           dueDate: parsed.data.dueDate ?? null,
           notes: parsed.data.notes?.trim() ? parsed.data.notes.trim() : null,
+          isComplete: parsed.data.isComplete ?? false,
         },
         select: {
           id: true,

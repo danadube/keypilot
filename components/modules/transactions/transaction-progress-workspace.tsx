@@ -40,6 +40,10 @@ import {
   serializePipelineMeta,
   tryParsePipelineMeta,
 } from "@/lib/transactions/pipeline-checklist-metadata";
+import {
+  serializeFormEngineChecklistNotes,
+  tryParseFormEngineChecklistNotes,
+} from "@/lib/transactions/form-engine-checklist-notes";
 import { buildTransactionPaperworkContext } from "@/lib/transactions/build-transaction-paperwork-context";
 import { tryMvpTransactionPaperwork } from "@/lib/transactions/try-mvp-transaction-paperwork";
 import type {
@@ -197,6 +201,32 @@ function instanceStatusToDocumentStatus(s: TransactionDocumentInstanceStatus): D
   }
 }
 
+function formEnginePersistedHydration(
+  instance: TransactionDocumentInstance,
+  persistedRow: ChecklistItem | undefined | null
+): {
+  docStatus: DocumentStatus;
+  docUrl: string;
+  comments: string;
+  dueYmd: string;
+} {
+  if (!persistedRow) {
+    return {
+      docStatus: instanceStatusToDocumentStatus(instance.status),
+      docUrl: "",
+      comments: "",
+      dueYmd: "",
+    };
+  }
+  const meta = tryParseFormEngineChecklistNotes(persistedRow.notes);
+  return {
+    docStatus: meta?.docStatus ?? instanceStatusToDocumentStatus(instance.status),
+    docUrl: meta?.docUrl ?? "",
+    comments: meta?.comments ?? "",
+    dueYmd: persistedRow.dueDate ? persistedRow.dueDate.slice(0, 10) : "",
+  };
+}
+
 function bucketBadgeClass(bucket: RequirementBucket): string {
   switch (bucket) {
     case "required":
@@ -283,9 +313,7 @@ export function TransactionProgressWorkspace({
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savingSide, setSavingSide] = useState(false);
   const [stageJump, setStageJump] = useState<string>("");
-  const [engineRowDrafts, setEngineRowDrafts] = useState<
-    Record<string, { docStatus: DocumentStatus; dueYmd: string; docUrl: string; comments: string }>
-  >({});
+  const [savingEngineSourceRuleId, setSavingEngineSourceRuleId] = useState<string | null>(null);
 
   const busy = isLoading && items === undefined;
   const resolvedSide = side === "BUY" || side === "SELL" ? side : null;
@@ -353,16 +381,27 @@ export function TransactionProgressWorkspace({
     return entries;
   }, [engineTry]);
 
-  const { pipelineRows, legacyRows } = useMemo(() => {
+  const { pipelineRows, formEnginePersistedRows, legacyRows } = useMemo(() => {
     const rows = Array.isArray(items) ? items : [];
     const pipeline: ChecklistItem[] = [];
+    const fe: ChecklistItem[] = [];
     const legacy: ChecklistItem[] = [];
     for (const r of rows) {
-      if (tryParsePipelineMeta(r.notes)) pipeline.push(r);
+      if (tryParseFormEngineChecklistNotes(r.notes)) fe.push(r);
+      else if (tryParsePipelineMeta(r.notes)) pipeline.push(r);
       else legacy.push(r);
     }
-    return { pipelineRows: pipeline, legacyRows: legacy };
+    return { pipelineRows: pipeline, formEnginePersistedRows: fe, legacyRows: legacy };
   }, [items]);
+
+  const formEngineRowBySourceRuleId = useMemo(() => {
+    const m = new Map<string, ChecklistItem>();
+    for (const row of formEnginePersistedRows) {
+      const meta = tryParseFormEngineChecklistNotes(row.notes);
+      if (meta?.sourceRuleId) m.set(meta.sourceRuleId, row);
+    }
+    return m;
+  }, [formEnginePersistedRows]);
 
   const byStage = useMemo(() => {
     const map = new Map<PipelineStageKey, ChecklistItem[]>();
@@ -380,7 +419,10 @@ export function TransactionProgressWorkspace({
     return map;
   }, [pipelineRows, resolvedSide]);
 
-  const canChangeSide = pipelineRows.length === 0 && !useEnginePipeline;
+  const canChangeSide =
+    pipelineRows.length === 0 &&
+    formEnginePersistedRows.length === 0 &&
+    !useEnginePipeline;
 
   const saveSide = useCallback(
     async (next: PipelineSide) => {
@@ -454,19 +496,65 @@ export function TransactionProgressWorkspace({
     [transactionId, mutate, onListsChanged]
   );
 
-  useEffect(() => {
-    setEngineRowDrafts({});
-  }, [transactionId]);
-
   const saveEngineRow = useCallback(
-    (
-      instanceId: string,
+    async (
+      instance: TransactionDocumentInstance,
       patch: { docStatus: DocumentStatus; dueYmd: string; docUrl: string; comments: string }
     ) => {
-      setEngineRowDrafts((prev) => ({ ...prev, [instanceId]: patch }));
-      toast.success("Saved");
+      if (archived) return;
+      setSavingEngineSourceRuleId(instance.sourceRuleId);
+      try {
+        const notes = serializeFormEngineChecklistNotes({
+          v: 2,
+          sourceRuleId: instance.sourceRuleId,
+          formId: instance.formId,
+          revisionId: instance.revisionId,
+          docStatus: patch.docStatus,
+          docUrl: patch.docUrl || undefined,
+          comments: patch.comments || undefined,
+        });
+        const isComplete = patch.docStatus === "complete";
+        const dueDateIso = patch.dueYmd.trim()
+          ? new Date(`${patch.dueYmd.trim()}T12:00:00`).toISOString()
+          : null;
+
+        const existing = formEngineRowBySourceRuleId.get(instance.sourceRuleId);
+        if (existing) {
+          const res = await fetch(`/api/v1/transactions/${transactionId}/checklist/${existing.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              notes,
+              isComplete,
+              dueDate: dueDateIso,
+            }),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(json?.error?.message ?? "Save failed");
+        } else {
+          const res = await fetch(`/api/v1/transactions/${transactionId}/checklist`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: instance.title,
+              notes,
+              isComplete,
+              dueDate: dueDateIso,
+            }),
+          });
+          const json = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(json?.error?.message ?? "Save failed");
+        }
+        toast.success("Saved");
+        await mutate();
+        onListsChanged();
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Save failed");
+      } finally {
+        setSavingEngineSourceRuleId(null);
+      }
     },
-    []
+    [archived, transactionId, formEngineRowBySourceRuleId, mutate, onListsChanged]
   );
 
   return (
@@ -825,8 +913,9 @@ export function TransactionProgressWorkspace({
                   ? engineStageEntries.map(({ stageKey, label, items }) => {
                       const safeId = stageKey.replace(/[^a-zA-Z0-9_-]/g, "_");
                       const openCount = items.filter((inst) => {
-                        const d = engineRowDrafts[inst.id];
-                        const st = d?.docStatus ?? instanceStatusToDocumentStatus(inst.status);
+                        const row = formEngineRowBySourceRuleId.get(inst.sourceRuleId);
+                        const meta = row ? tryParseFormEngineChecklistNotes(row.notes) : null;
+                        const st = meta?.docStatus ?? instanceStatusToDocumentStatus(inst.status);
                         return st !== "complete";
                       }).length;
                       const stageIndex = engineStageEntries.findIndex((e) => e.stageKey === stageKey) + 1;
@@ -847,12 +936,12 @@ export function TransactionProgressWorkspace({
                           <ul className="space-y-2 rounded-b-lg border border-t-0 border-kp-outline/50 bg-kp-surface/40 px-3 py-3 sm:px-4">
                             {items.map((inst) => (
                               <FormEngineDocumentRow
-                                key={inst.id}
+                                key={inst.sourceRuleId}
                                 instance={inst}
-                                draft={engineRowDrafts[inst.id]}
+                                persistedRow={formEngineRowBySourceRuleId.get(inst.sourceRuleId)}
                                 archived={archived}
-                                disabled={false}
-                                onSave={(patch) => saveEngineRow(inst.id, patch)}
+                                disabled={savingEngineSourceRuleId === inst.sourceRuleId}
+                                onSave={(patch) => void saveEngineRow(inst, patch)}
                               />
                             ))}
                           </ul>
@@ -936,13 +1025,13 @@ export function TransactionProgressWorkspace({
 
 function FormEngineDocumentRow({
   instance,
-  draft,
+  persistedRow,
   archived,
   disabled,
   onSave,
 }: {
   instance: TransactionDocumentInstance;
-  draft?: { docStatus: DocumentStatus; dueYmd: string; docUrl: string; comments: string };
+  persistedRow: ChecklistItem | undefined;
   archived: boolean;
   disabled: boolean;
   onSave: (patch: {
@@ -950,21 +1039,22 @@ function FormEngineDocumentRow({
     dueYmd: string;
     docUrl: string;
     comments: string;
-  }) => void;
+  }) => void | Promise<void>;
 }) {
-  const [docStatus, setDocStatus] = useState<DocumentStatus>(
-    draft?.docStatus ?? instanceStatusToDocumentStatus(instance.status)
-  );
-  const [docUrl, setDocUrl] = useState(draft?.docUrl ?? "");
-  const [comments, setComments] = useState(draft?.comments ?? "");
-  const [dueLocal, setDueLocal] = useState(draft?.dueYmd ?? "");
+  const h0 = formEnginePersistedHydration(instance, persistedRow);
+  const [docStatus, setDocStatus] = useState<DocumentStatus>(h0.docStatus);
+  const [docUrl, setDocUrl] = useState(h0.docUrl);
+  const [comments, setComments] = useState(h0.comments);
+  const [dueLocal, setDueLocal] = useState(h0.dueYmd);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- instance is unstable across renders; sync when ids/notes/due change
   useEffect(() => {
-    setDocStatus(draft?.docStatus ?? instanceStatusToDocumentStatus(instance.status));
-    setDocUrl(draft?.docUrl ?? "");
-    setComments(draft?.comments ?? "");
-    setDueLocal(draft?.dueYmd ?? "");
-  }, [instance.id, instance.status, draft]);
+    const h = formEnginePersistedHydration(instance, persistedRow);
+    setDocStatus(h.docStatus);
+    setDocUrl(h.docUrl);
+    setComments(h.comments);
+    setDueLocal(h.dueYmd);
+  }, [instance.id, instance.status, instance.sourceRuleId, persistedRow?.id, persistedRow?.notes, persistedRow?.dueDate]);
 
   const scan = docStatusForScan(docStatus);
   const dueLine = dueScanLine(dueLocal, docStatus);

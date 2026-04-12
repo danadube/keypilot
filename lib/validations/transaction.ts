@@ -84,6 +84,7 @@ export const CreateTransactionChecklistItemSchema = z.object({
   title: z.string().trim().min(1, "Title is required").max(500),
   dueDate: z.coerce.date().optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
+  isComplete: z.boolean().optional(),
 });
 
 export const UpdateTransactionChecklistItemSchema = z.object({
