@@ -4,6 +4,7 @@ import type { ComponentProps } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import useSWR, { useSWRConfig } from "swr";
+import { useUser } from "@clerk/nextjs";
 import { apiFetcher } from "@/lib/fetcher";
 import { ArrowLeft, MapPin, Loader2, AlertCircle, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,10 @@ type TransactionDetail = {
   nci: number | null;
   salePrice: string | number | null;
   closingDate: string | null;
+  /** Drives forms-engine brokerage overlay when present. */
+  brokerageName: string | null;
+  /** Optional commission / paperwork flags (JSON); passthrough keys may feed rule flags. */
+  commissionInputs: unknown;
   property: {
     id: string;
     address1: string;
@@ -95,6 +100,7 @@ const TERMINAL: TxStatus[] = ["CLOSED", "FALLEN_APART"];
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function TransactionDetailView({ transactionId }: { transactionId: string }) {
+  const { user } = useUser();
   const { mutate } = useSWRConfig();
   const refreshTransactionActivity = useCallback(
     () => mutate(`/api/v1/transactions/${transactionId}/activity`),
@@ -141,6 +147,26 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
     if (!checklistRows || !Array.isArray(checklistRows)) return null;
     return checklistRows.filter((i) => !i.isComplete).length;
   }, [checklistRows]);
+
+  const paperworkEnrichment = useMemo(
+    () => ({
+      brokerageName: txn?.brokerageName ?? null,
+      commissionInputs: txn?.commissionInputs ?? null,
+      agentUserId: user?.id ?? undefined,
+      agentDisplayName:
+        user?.fullName?.trim() ||
+        [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim() ||
+        undefined,
+    }),
+    [
+      txn?.brokerageName,
+      txn?.commissionInputs,
+      user?.id,
+      user?.fullName,
+      user?.firstName,
+      user?.lastName,
+    ]
+  );
 
   const operationsCue = useMemo(() => {
     if (!txn) return null;
@@ -359,6 +385,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
             stageStatus={txn.status}
             side={txn.side === "BUY" || txn.side === "SELL" ? txn.side : null}
             propertyState={txn.property.state}
+            paperworkEnrichment={paperworkEnrichment}
             archived={false}
             onListsChanged={() => {
               void refreshTransactionActivity();

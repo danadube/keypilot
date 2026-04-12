@@ -41,7 +41,8 @@ import {
   tryParsePipelineMeta,
 } from "@/lib/transactions/pipeline-checklist-metadata";
 import { tryParseFormEngineChecklistNotes } from "@/lib/transactions/form-engine-checklist-notes";
-import { buildTransactionPaperworkContext } from "@/lib/transactions/build-transaction-paperwork-context";
+import type { TransactionRecordForPaperwork } from "@/lib/transactions/build-transaction-paperwork-context-from-record";
+import { buildTransactionPaperworkContextFromRecord } from "@/lib/transactions/build-transaction-paperwork-context-from-record";
 import { tryMvpTransactionPaperwork } from "@/lib/transactions/try-mvp-transaction-paperwork";
 import type { SerializedTransactionPaperworkDocument } from "@/lib/transactions/serialize-transaction-paperwork-document";
 import type {
@@ -285,6 +286,7 @@ export function TransactionProgressWorkspace({
   stageStatus,
   side,
   propertyState,
+  paperworkEnrichment,
   archived,
   onListsChanged,
   onTransactionRecordChanged,
@@ -295,6 +297,21 @@ export function TransactionProgressWorkspace({
   side?: PipelineSide | null;
   /** Linked property state — drives jurisdiction-aware document requirements. */
   propertyState: string | null;
+  /**
+   * Optional fields from transaction + property + agent for `generateTransactionPaperwork`.
+   * Omitted keys are not passed to the engine (defaults apply inside the builder).
+   */
+  paperworkEnrichment?: Pick<
+    TransactionRecordForPaperwork,
+    | "propertyType"
+    | "yearBuilt"
+    | "hasHoa"
+    | "occupancyType"
+    | "brokerageName"
+    | "commissionInputs"
+    | "agentUserId"
+    | "agentDisplayName"
+  >;
   archived: boolean;
   onListsChanged: () => void;
   /** After PATCH (e.g. side), parent should reload transaction JSON. */
@@ -323,13 +340,14 @@ export function TransactionProgressWorkspace({
   const paperworkCtx = useMemo(
     () =>
       resolvedSide
-        ? buildTransactionPaperworkContext({
+        ? buildTransactionPaperworkContextFromRecord({
             transactionId,
             propertyState,
             side: resolvedSide,
+            ...paperworkEnrichment,
           })
         : null,
-    [transactionId, resolvedSide, propertyState]
+    [transactionId, resolvedSide, propertyState, paperworkEnrichment]
   );
 
   const engineTry = useMemo(() => {

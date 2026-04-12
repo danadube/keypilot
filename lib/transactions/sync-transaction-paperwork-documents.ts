@@ -1,7 +1,7 @@
 import type { Prisma, TransactionPaperworkDocument } from "@prisma/client";
 import type { TransactionDocumentInstance } from "@/lib/forms-engine/types";
 import { tryParseFormEngineChecklistNotes } from "@/lib/transactions/form-engine-checklist-notes";
-import { buildTransactionPaperworkContext } from "@/lib/transactions/build-transaction-paperwork-context";
+import { buildTransactionPaperworkContextFromRecord } from "@/lib/transactions/build-transaction-paperwork-context-from-record";
 import { tryMvpTransactionPaperwork } from "@/lib/transactions/try-mvp-transaction-paperwork";
 import {
   initialPaperworkDocStatusFromEngine,
@@ -12,6 +12,8 @@ import type { DocumentStatus } from "@/lib/transactions/ca-pipeline-definitions"
 const transactionForPaperworkSyncSelect = {
   id: true,
   side: true,
+  brokerageName: true,
+  commissionInputs: true,
   property: { select: { state: true } },
 } satisfies Prisma.TransactionSelect;
 
@@ -43,10 +45,12 @@ export async function syncTransactionPaperworkDocuments(
     });
   }
 
-  const ctx = buildTransactionPaperworkContext({
+  const ctx = buildTransactionPaperworkContextFromRecord({
     transactionId: txn.id,
     propertyState: txn.property.state,
     side: txn.side,
+    brokerageName: txn.brokerageName,
+    commissionInputs: txn.commissionInputs,
   });
 
   const engine = tryMvpTransactionPaperwork(ctx);
