@@ -53,13 +53,15 @@ export async function GET(req: NextRequest) {
         return s && s.trim() ? s.trim() : undefined;
       })(),
       closingYear: searchParams.get("closingYear") || undefined,
+      propertyId: searchParams.get("propertyId") || undefined,
     });
     if (!listParsed.success) {
       return apiError(listParsed.error.issues[0]?.message ?? "Invalid query", 400);
     }
-    const { status, transactionKind, brokerage, q, closingYear } = listParsed.data;
+    const { status, transactionKind, brokerage, q, closingYear, propertyId } = listParsed.data;
 
     const filters: Prisma.TransactionWhereInput[] = [{ userId: user.id }];
+    if (propertyId) filters.push({ propertyId });
     if (status) filters.push({ status: status as TransactionStatus });
     if (transactionKind) filters.push({ transactionKind });
     if (brokerage) {

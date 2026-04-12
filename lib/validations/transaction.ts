@@ -18,6 +18,8 @@ export const TransactionsListQuerySchema = z.object({
   brokerage: z.string().max(200).optional(),
   q: z.string().max(200).optional(),
   closingYear: z.coerce.number().int().min(1990).max(2100).optional(),
+  /** Filter to deals for a single property (e.g. property detail workspace). */
+  propertyId: z.string().uuid().optional(),
 });
 
 /** Loose JSON object for broker-specific commission assumptions (validated again in domain). */

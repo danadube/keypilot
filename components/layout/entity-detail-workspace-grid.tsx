@@ -12,3 +12,6 @@ export const entityDetailWorkspaceGridClassName = cn(
 export const transactionDetailWorkspaceGridClassName = cn(
   "grid gap-6 lg:grid-cols-[minmax(0,280px)_minmax(0,1fr)] lg:items-start lg:gap-6"
 );
+
+/** Property detail: identity | property work surface | supporting context (same rhythm as ClientKeep). */
+export const propertyDetailWorkspaceGridClassName = entityDetailWorkspaceGridClassName;

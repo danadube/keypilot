@@ -2,29 +2,30 @@
 
 import useSWR from "swr";
 import { apiFetcher } from "@/lib/fetcher";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { BrandSkeleton } from "@/components/ui/BrandSkeleton";
 import { ErrorMessage } from "@/components/shared/ErrorMessage";
-import { PropertyFeedbackSummaryView } from "./property-feedback-summary";
-import { PropertySellerReportView } from "./property-seller-report";
+import { useProductTier } from "@/components/ProductTierProvider";
 import { PropertyVaultPropertySubnav } from "./property-vault-property-subnav";
-import { PropertyFlyerPanel, type PropertyFlyerFields } from "./property-flyer-panel";
+import type { PropertyFlyerFields } from "./property-flyer-panel";
+import { PropertyDetailWorkSurface } from "./property-detail-work-surface";
+import { PropertyDetailContextRail } from "./property-detail-context-rail";
+import { propertyDetailWorkspaceGridClassName } from "@/components/layout/entity-detail-workspace-grid";
+import type { TransactionRow } from "@/components/modules/transactions/transactions-shared";
 import {
   ArrowLeft,
   Upload,
   Trash2,
-  Calendar,
   DollarSign,
   Pencil,
   ImagePlus,
   CheckSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { showingHqOpenHouseWorkspaceHref } from "@/lib/showing-hq/showing-workflow-hrefs";
 import {
   kpBtnDangerSecondary,
   kpBtnPrimary,
@@ -32,7 +33,6 @@ import {
   kpBtnSave,
   kpBtnTertiary,
 } from "@/components/ui/kp-dashboard-button-tiers";
-import { UI_COPY } from "@/lib/ui-copy";
 import { toast } from "sonner";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
 
@@ -65,15 +65,6 @@ function formatPrice(p: string | number | null | undefined) {
   return isNaN(n) ? "—" : `$${n.toLocaleString()}`;
 }
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   if (!value) return null;
   return (
@@ -103,12 +94,13 @@ function LoadingState() {
       <BrandSkeleton className="h-8 w-24 rounded-md" />
       <BrandSkeleton className="h-10 w-full rounded-lg" />
       <BrandSkeleton className="aspect-[2/1] max-h-[300px] w-full rounded-xl" />
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="flex flex-col gap-4">
+      <div className={propertyDetailWorkspaceGridClassName}>
+        <BrandSkeleton className="order-2 h-[420px] w-full rounded-xl lg:order-none lg:sticky lg:top-4" />
+        <div className="order-1 flex min-h-[280px] min-w-0 flex-col gap-4 lg:order-none">
+          <BrandSkeleton className="h-40 w-full rounded-xl" />
           <BrandSkeleton className="h-32 w-full rounded-xl" />
-          <BrandSkeleton className="h-24 w-full rounded-xl" />
         </div>
-        <BrandSkeleton className="h-56 w-full rounded-xl" />
+        <BrandSkeleton className="order-3 h-48 w-full rounded-xl lg:order-none" />
       </div>
     </div>
   );
@@ -116,13 +108,41 @@ function LoadingState() {
 
 export function PropertyDetailView({ id }: { id: string }) {
   const router = useRouter();
+  const { hasCrm: hasCrmAccess } = useProductTier();
   const { data: property, error: loadError, isLoading, mutate: reloadProperty } = useSWR<Property>(
     id ? `/api/v1/properties/${id}` : null,
     apiFetcher,
     { errorRetryCount: 2, errorRetryInterval: 500 }
   );
+  const {
+    data: transactionsForProperty,
+    error: transactionsListError,
+    isLoading: transactionsListLoading,
+  } = useSWR<TransactionRow[]>(
+    hasCrmAccess && id ? `/api/v1/transactions?propertyId=${encodeURIComponent(id)}` : null,
+    apiFetcher,
+    { errorRetryCount: 1 }
+  );
+  const linkedContacts = useMemo(() => {
+    if (!transactionsForProperty?.length) return [];
+    const map = new Map<string, string>();
+    for (const t of transactionsForProperty) {
+      const c = t.primaryContact;
+      if (c?.id) {
+        const name = [c.firstName, c.lastName].filter(Boolean).join(" ").trim() || "Contact";
+        map.set(c.id, name);
+      }
+    }
+    return Array.from(map.entries()).map(([contactId, name]) => ({ id: contactId, name }));
+  }, [transactionsForProperty]);
   const loading = isLoading && !property;
   const error = loadError instanceof Error ? loadError.message : loadError ? String(loadError) : null;
+  const transactionsError =
+    transactionsListError instanceof Error
+      ? transactionsListError.message
+      : transactionsListError
+        ? String(transactionsListError)
+        : null;
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -381,8 +401,11 @@ export function PropertyDetailView({ id }: { id: string }) {
 
       <PropertyVaultPropertySubnav propertyId={id} current="overview" />
 
-      {/* ── Hero + property header ─────────────────────────────────────────── */}
-      <div className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
+      {/* ── Hero + property header (anchor for readiness: key photo) ───────── */}
+      <div
+        id="property-workspace-hero"
+        className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface scroll-mt-24"
+      >
         <div className="relative aspect-[2/1] max-h-[300px] min-h-[168px] w-full bg-kp-surface-high sm:max-h-[340px]">
           {hasHeroImage ? (
             /* eslint-disable-next-line @next/next/no-img-element */
@@ -478,136 +501,146 @@ export function PropertyDetailView({ id }: { id: string }) {
         initialDescription={listingTaskDescription}
       />
 
-      <p className="-mt-2 text-xs text-kp-on-surface-variant">
-        <Link href={`/properties/${id}/media`} className="font-medium text-kp-teal hover:underline">
-          Photos &amp; media page
-        </Link>{" "}
-        for a larger preview and the same upload controls.
-      </p>
+      {/* ── Workspace: identity | work surface | context ─────────────────────── */}
+      <div className={propertyDetailWorkspaceGridClassName}>
+        {/* Left: identity & record essentials */}
+        <div className="order-2 flex min-w-0 flex-col gap-5 lg:order-none lg:sticky lg:top-4 lg:self-start">
+          <div
+            id="property-identity"
+            className="scroll-mt-24 space-y-4 rounded-xl border border-kp-outline bg-kp-surface p-5 shadow-sm"
+          >
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
+                Property
+              </p>
+              <p className="mt-1 text-lg font-bold leading-snug text-kp-on-surface">{fullAddress}</p>
+              <p className="mt-0.5 text-sm text-kp-on-surface-variant">{locationLine}</p>
+              <p className="mt-2 text-[11px] leading-snug text-kp-on-surface-variant">
+                {property.usage?.showings ?? 0} showing{(property.usage?.showings ?? 0) === 1 ? "" : "s"} ·{" "}
+                {property.usage?.openHouses ?? 0} open house{(property.usage?.openHouses ?? 0) === 1 ? "" : "s"}
+                {hasCrmAccess ? (
+                  <>
+                    {" "}
+                    · {transactionsForProperty?.length ?? 0} linked deal
+                    {(transactionsForProperty?.length ?? 0) === 1 ? "" : "s"}
+                  </>
+                ) : null}
+              </p>
+            </div>
 
-      {/* ── Two-column layout: details left, reports right ──────────────────── */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+            <div className="border-t border-kp-outline/40 pt-4">
+              <h2 className="mb-3 text-sm font-semibold text-kp-on-surface">Details &amp; notes</h2>
 
-        {/* ── LEFT: Property info + Flyer + Open houses ───────────────────────── */}
-        <div className="space-y-5">
-
-          {/* Property details */}
-          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-            <h2 className="mb-4 text-sm font-semibold text-kp-on-surface">Property details</h2>
-
-            {isEditing ? (
-              <div className="space-y-3">
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Address</label>
-                    <input
-                      className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                      value={editForm.address1}
-                      onChange={(e) => setEditForm((f) => ({ ...f, address1: e.target.value }))}
-                      placeholder="Street address"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Address 2</label>
-                    <input
-                      className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                      value={editForm.address2}
-                      onChange={(e) => setEditForm((f) => ({ ...f, address2: e.target.value }))}
-                      placeholder="Unit, apt, etc."
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">City</label>
-                    <input
-                      className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                      value={editForm.city}
-                      onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
+              {isEditing ? (
+                <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">State</label>
+                      <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Address</label>
                       <input
                         className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                        value={editForm.state}
-                        onChange={(e) => setEditForm((f) => ({ ...f, state: e.target.value }))}
-                        maxLength={2}
-                        placeholder="CA"
+                        value={editForm.address1}
+                        onChange={(e) => setEditForm((f) => ({ ...f, address1: e.target.value }))}
+                        placeholder="Street address"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">ZIP</label>
+                      <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Address 2</label>
                       <input
                         className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                        value={editForm.zip}
-                        onChange={(e) => setEditForm((f) => ({ ...f, zip: e.target.value }))}
+                        value={editForm.address2}
+                        onChange={(e) => setEditForm((f) => ({ ...f, address2: e.target.value }))}
+                        placeholder="Unit, apt, etc."
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">City</label>
+                      <input
+                        className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                        value={editForm.city}
+                        onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">State</label>
+                        <input
+                          className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                          value={editForm.state}
+                          onChange={(e) => setEditForm((f) => ({ ...f, state: e.target.value }))}
+                          maxLength={2}
+                          placeholder="CA"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">ZIP</label>
+                        <input
+                          className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                          value={editForm.zip}
+                          onChange={(e) => setEditForm((f) => ({ ...f, zip: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">MLS #</label>
+                      <input
+                        className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                        value={editForm.mlsNumber}
+                        onChange={(e) => setEditForm((f) => ({ ...f, mlsNumber: e.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Listing price</label>
+                      <input
+                        type="number"
+                        className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                        value={editForm.listingPrice}
+                        onChange={(e) => setEditForm((f) => ({ ...f, listingPrice: e.target.value }))}
+                        placeholder="0"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">MLS #</label>
-                    <input
-                      className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                      value={editForm.mlsNumber}
-                      onChange={(e) => setEditForm((f) => ({ ...f, mlsNumber: e.target.value }))}
+                    <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Notes</label>
+                    <textarea
+                      rows={3}
+                      className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
+                      value={editForm.notes}
+                      onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
                     />
                   </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Listing price</label>
-                    <input
-                      type="number"
-                      className="h-8 w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                      value={editForm.listingPrice}
-                      onChange={(e) => setEditForm((f) => ({ ...f, listingPrice: e.target.value }))}
-                      placeholder="0"
-                    />
+                  <div className="flex gap-2 pt-1">
+                    <Button
+                      type="button"
+                      onClick={handleSaveEdit}
+                      disabled={saving}
+                      className={cn(kpBtnSave, "h-9 px-4")}
+                    >
+                      {saving ? "Saving…" : "Save changes"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={saving}
+                      onClick={() => setIsEditing(false)}
+                      className={cn(kpBtnSecondary, "h-9 px-4")}
+                    >
+                      Cancel
+                    </Button>
                   </div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-kp-on-surface-variant">Notes</label>
-                  <textarea
-                    rows={3}
-                    className="w-full rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-2 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
-                    value={editForm.notes}
-                    onChange={(e) => setEditForm((f) => ({ ...f, notes: e.target.value }))}
-                  />
+              ) : (
+                <div className="space-y-2.5">
+                  {property.mlsNumber && <InfoRow label="MLS #" value={property.mlsNumber} />}
+                  <InfoRow label="Listing price" value={formatPrice(property.listingPrice)} />
+                  <InfoRow label="City" value={property.city} />
+                  <InfoRow label="State" value={`${property.state} ${property.zip}`} />
+                  {property.notes && <InfoRow label="Notes" value={property.notes} />}
                 </div>
-                <div className="flex gap-2 pt-1">
-                  <Button
-                    type="button"
-                    onClick={handleSaveEdit}
-                    disabled={saving}
-                    className={cn(kpBtnSave, "h-9 px-4")}
-                  >
-                    {saving ? "Saving…" : "Save changes"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={saving}
-                    onClick={() => setIsEditing(false)}
-                    className={cn(kpBtnSecondary, "h-9 px-4")}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {property.mlsNumber && (
-                  <InfoRow label="MLS #" value={property.mlsNumber} />
-                )}
-                <InfoRow label="Listing price" value={formatPrice(property.listingPrice)} />
-                <InfoRow label="City" value={property.city} />
-                <InfoRow label="State" value={`${property.state} ${property.zip}`} />
-                {property.notes && (
-                  <InfoRow label="Notes" value={property.notes} />
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
-          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
+          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5 shadow-sm">
             <h2 className="mb-3 text-sm font-semibold text-kp-on-surface">Property lifecycle</h2>
             <p className="mb-4 text-[12px] leading-relaxed text-kp-on-surface-variant">
               Archive hides the property from your vault. Delete removes it from your active list even when
@@ -632,72 +665,27 @@ export function PropertyDetailView({ id }: { id: string }) {
                 disabled={lifecycleBusy !== null}
                 onClick={requestDeleteProperty}
               >
-                {lifecycleBusy === "delete" && !lifecycleModalOpen
-                  ? "Deleting…"
-                  : "Delete property"}
+                {lifecycleBusy === "delete" && !lifecycleModalOpen ? "Deleting…" : "Delete property"}
               </Button>
             </div>
           </div>
-
-          {/* Flyer — same panel as /properties/[id]/documents; subnav switches context */}
-          <PropertyFlyerPanel
-            propertyId={id}
-            flyer={{
-              flyerUrl: property.flyerUrl,
-              flyerFilename: property.flyerFilename,
-              flyerUploadedAt: property.flyerUploadedAt,
-              flyerEnabled: property.flyerEnabled,
-            }}
-            onFlyerPatch={patchFlyer}
-          />
-
-          {/* Open houses */}
-          <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
-            <div className="mb-3 flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-kp-on-surface-variant" />
-              <h2 className="text-sm font-semibold text-kp-on-surface">Open houses</h2>
-            </div>
-            <p className="mb-4 text-xs text-kp-on-surface-variant">Events at this property</p>
-
-            {!property.openHouses?.length ? (
-              <p className="mb-4 text-sm text-kp-on-surface-variant">{UI_COPY.empty.noneYet("open houses")}</p>
-            ) : (
-              <ul className="mb-4 divide-y divide-kp-outline">
-                {property.openHouses.map((oh) => (
-                  <li key={oh.id} className="flex items-center justify-between py-2.5">
-                    <div>
-                      <p className="text-sm font-medium text-kp-on-surface">{oh.title}</p>
-                      <p className="text-xs text-kp-on-surface-variant">{formatDate(oh.startAt)}</p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={cn(kpBtnTertiary, "h-7 text-xs")}
-                      asChild
-                    >
-                      <Link href={showingHqOpenHouseWorkspaceHref(oh.id)}>View</Link>
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(kpBtnPrimary, "h-8 border-transparent px-3 text-xs")}
-              asChild
-            >
-              <Link href="/open-houses/new">New open house</Link>
-            </Button>
-          </div>
         </div>
 
-        {/* ── RIGHT: Feedback summary + Seller report ──────────────────────────── */}
-        <div className="space-y-5">
-          <PropertyFeedbackSummaryView propertyId={id} />
-          <PropertySellerReportView propertyId={id} propertyAddress={fullAddressForReport} />
+        {/* Center: listing readiness & workflows */}
+        <div className="order-1 min-w-0 lg:order-none">
+          <PropertyDetailWorkSurface property={property} onFlyerPatch={patchFlyer} />
         </div>
+
+        {/* Right: deals, people, visitor/seller signals */}
+        <PropertyDetailContextRail
+          propertyId={id}
+          fullAddressForReport={fullAddressForReport}
+          transactions={transactionsForProperty}
+          transactionsLoading={hasCrmAccess && transactionsListLoading}
+          transactionsError={transactionsError}
+          hasCrmAccess={hasCrmAccess}
+          linkedContacts={linkedContacts}
+        />
       </div>
 
       <BrandModal
