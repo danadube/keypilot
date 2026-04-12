@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { DealStatus, TransactionStatus, type Prisma } from "@prisma/client";
+import {
+  DealStatus,
+  TransactionStatus,
+  type UserActivityType,
+  type Prisma,
+} from "@prisma/client";
 import { getCurrentUser } from "@/lib/auth";
 import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
@@ -23,6 +28,7 @@ import type {
   CommandCenterPriorityTask,
   CommandCenterSnapshot,
 } from "@/lib/dashboard/command-center-types";
+import type { CommandCenterSourceTag, ListingStageChip } from "@/lib/dashboard/command-center-visual";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +76,39 @@ function startOfYear(d: Date): Date {
 
 function startOfLocalDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+}
+
+function activityVisualTagForUserActivity(type: UserActivityType): CommandCenterSourceTag {
+  if (type === "SHOWING") return "SHQ";
+  return "CRM";
+}
+
+function listingStageFromTxn(
+  txn: { status: TransactionStatus; closingDate: Date | null } | undefined,
+  todayStart: Date,
+  hasListingPrice: boolean
+): { chip: ListingStageChip; label: string } {
+  if (txn?.closingDate) {
+    const closeDay = startOfLocalDay(txn.closingDate);
+    const days = Math.round((closeDay.getTime() - todayStart.getTime()) / 86400000);
+    if (days >= 0 && days <= 14) {
+      return { chip: "CLOSING", label: "Closing" };
+    }
+  }
+  if (!txn) {
+    if (hasListingPrice) return { chip: "ACTIVE", label: "Active" };
+    return { chip: "COMING_SOON", label: "Coming soon" };
+  }
+  switch (txn.status) {
+    case "LEAD":
+      return { chip: "DRAFT", label: "Draft" };
+    case "UNDER_CONTRACT":
+    case "IN_ESCROW":
+    case "PENDING":
+      return { chip: "PENDING", label: "Pending" };
+    default:
+      return { chip: "ACTIVE", label: "Active" };
+  }
 }
 
 function transactionActivityTitle(summary: string, type: string): string {
@@ -424,6 +463,10 @@ export async function GET() {
         const openCheck = txnForProp ? checklistByTxn.get(txnForProp.id) ?? 0 : 0;
         const showN = showingMap.get(p.id) ?? 0;
         const price = decimalToNumber(p.listingPrice);
+        const hasListPrice = price != null;
+        const { chip: stageChip, label: stageLabel } = listingStageFromTxn(txnForProp, todayStart, hasListPrice);
+
+        const factsLine = `${p.city}, ${p.state}${hasListPrice ? " · Listed" : " · No list price"}`;
 
         const parts: string[] = [];
         if (txnForProp?.closingDate) {
@@ -442,7 +485,9 @@ export async function GET() {
           city: p.city,
           state: p.state,
           listingPrice: price,
-          statusLabel: price != null ? "Active listing" : "Property",
+          factsLine,
+          stageChip,
+          stageLabel,
           urgencyLine: parts.length > 0 ? parts.join(" · ") : "On track",
           href: `/properties/${p.id}`,
         };
@@ -462,6 +507,7 @@ export async function GET() {
         activityMerged.push({
           id: `ua-${a.id}`,
           kind: "CRM",
+          visualTag: activityVisualTagForUserActivity(a.type),
           occurredAt: a.createdAt.toISOString(),
           title,
           subline: sub,
@@ -474,6 +520,7 @@ export async function GET() {
         activityMerged.push({
           id: `ta-${a.id}`,
           kind: "TRANSACTION",
+          visualTag: "TXN",
           occurredAt: a.createdAt.toISOString(),
           title: transactionActivityTitle(a.summary, a.type),
           subline: addr,

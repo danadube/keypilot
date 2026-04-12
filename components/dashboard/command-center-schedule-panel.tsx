@@ -3,14 +3,21 @@
 import { useCallback, useMemo, useState } from "react";
 import useSWR from "swr";
 import Link from "next/link";
-import { CalendarDays, ChevronLeft, ChevronRight, ListTodo, Plus } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
+import {
+  kpBtnSecondary,
+  kpBtnTertiary,
+} from "@/components/ui/kp-dashboard-button-tiers";
 import { apiFetcher } from "@/lib/fetcher";
 import type { SerializedAgentFollowUp } from "@/lib/follow-ups/agent-follow-up-buckets";
 import type { SerializedTask } from "@/lib/tasks/task-serialize";
 import type { ScheduleChecklistItem } from "@/lib/dashboard/command-center-types";
+import {
+  commandCenterSourceChipClass,
+  scheduleKindSourceTag,
+} from "@/lib/dashboard/command-center-visual";
 
 export type CommandCenterScheduleShowing = {
   id: string;
@@ -159,16 +166,62 @@ function mergeScheduleItems(args: {
   return items;
 }
 
+const addMenuItemClass =
+  "block w-full px-3 py-2 text-left text-xs text-kp-on-surface transition-colors hover:bg-kp-surface-high";
+
+function ScheduleAddMenu({ onNewTask }: { onNewTask: () => void }) {
+  return (
+    <details className="group relative">
+      <summary
+        className={cn(
+          kpBtnSecondary,
+          "flex h-8 cursor-pointer list-none items-center gap-1 rounded-lg border px-2.5 text-xs font-semibold",
+          "[&::-webkit-details-marker]:hidden"
+        )}
+      >
+        <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
+        Add
+        <span className="sr-only">Open add menu</span>
+      </summary>
+      <div
+        className="absolute right-0 z-40 mt-1 hidden min-w-[12.5rem] rounded-lg border border-kp-outline bg-kp-surface py-1 shadow-lg group-open:block"
+        role="menu"
+      >
+        <Link className={addMenuItemClass} href="/showing-hq/showings/new" role="menuitem">
+          New showing
+        </Link>
+        <Link className={addMenuItemClass} href="/open-houses/new" role="menuitem">
+          New open house
+        </Link>
+        <button type="button" className={addMenuItemClass} role="menuitem" onClick={() => onNewTask()}>
+          New task
+        </button>
+        <Link className={addMenuItemClass} href="/showing-hq/follow-ups" role="menuitem">
+          Follow-up
+        </Link>
+        <Link className={addMenuItemClass} href="/transactions?new=1" role="menuitem">
+          New transaction
+        </Link>
+        <Link className={addMenuItemClass} href="/settings/connections" role="menuitem">
+          Calendar &amp; email
+        </Link>
+      </div>
+    </details>
+  );
+}
+
 export function CommandCenterSchedulePanel({
   showings,
   followUpsAll,
   openTasks,
   loading,
+  onNewTask,
 }: {
   showings: CommandCenterScheduleShowing[];
   followUpsAll: SerializedAgentFollowUp[];
   openTasks: SerializedTask[];
   loading: boolean;
+  onNewTask: () => void;
 }) {
   const today = useMemo(() => new Date(), []);
 
@@ -253,7 +306,7 @@ export function CommandCenterSchedulePanel({
   });
 
   const scheduleTitle = selectedIsToday
-    ? "Today's schedule"
+    ? "Schedule"
     : selectedDay.toLocaleDateString(undefined, {
         weekday: "long",
         month: "short",
@@ -278,137 +331,17 @@ export function CommandCenterSchedulePanel({
   };
 
   return (
-    <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-4">
-        <div className="flex min-h-[240px] flex-col border-kp-outline lg:min-h-[280px] lg:border-r lg:pr-4">
-          <div className="mb-3 flex shrink-0 items-start justify-between gap-2">
-            <h3 className="min-w-0 font-headline text-lg font-semibold tracking-tight text-kp-on-surface">
-              {scheduleTitle}
-            </h3>
-            <div className="flex shrink-0 gap-1">
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className={cn(kpBtnSecondary, "h-8 gap-1 px-2.5 text-xs font-semibold")}
-              >
-                <Link href="/showing-hq/showings/new" aria-label="Add showing">
-                  <Plus className="h-3.5 w-3.5" />
-                  Showing
-                </Link>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn(kpBtnSecondary, "h-8 gap-1 px-2.5 text-xs font-semibold")}
-                asChild
-              >
-                <Link href="/task-pilot" aria-label="Add task">
-                  <ListTodo className="h-3.5 w-3.5" />
-                  Task
-                </Link>
-              </Button>
-            </div>
-          </div>
-
-          <div
-            className={cn(
-              "min-h-[160px] flex-1 overflow-y-auto overscroll-y-contain pr-0.5 lg:max-h-[min(480px,58vh)]",
-              selectedIsToday && "rounded-lg bg-kp-surface-high/20"
-            )}
-            tabIndex={0}
-            aria-label="Schedule for selected day"
-          >
-            {busy ? (
-              <ul className="space-y-2" aria-busy="true">
-                {[0, 1, 2].map((k) => (
-                  <li
-                    key={k}
-                    className="h-11 animate-pulse rounded-lg bg-kp-surface-high/40"
-                    aria-hidden
-                  />
-                ))}
-              </ul>
-            ) : merged.length === 0 ? (
-              <div className="flex flex-col gap-3 py-2">
-                <p className="text-sm leading-relaxed text-kp-on-surface-muted">
-                  {selectedIsToday ? "Clear schedule" : "No calendar events"}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  <Button asChild variant="outline" size="sm" className={kpBtnSecondary}>
-                    <Link href="/showing-hq/showings/new">Add showing</Link>
-                  </Button>
-                  <Button asChild variant="outline" size="sm" className={kpBtnSecondary}>
-                    <Link href="/task-pilot">Add task</Link>
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <ul className="space-y-2 pb-1">
-                {merged.map((s, index) => {
-                  const t = s.at;
-                  const timeStr = Number.isNaN(t.getTime())
-                    ? ""
-                    : t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-                  const isNow = selectedIsToday && index === scheduleNowIndex;
-                  const isNext = selectedIsToday && index === scheduleNextIndex;
-                  const overdue = s.badge === "overdue";
-                  return (
-                    <li key={s.id}>
-                      <Link
-                        href={s.href}
-                        className={cn(
-                          "block rounded-lg border px-3 py-2.5 transition-colors",
-                          overdue
-                            ? "border-amber-500/40 bg-amber-500/[0.07] ring-1 ring-amber-500/25"
-                            : isNext
-                              ? "border-kp-teal/45 bg-kp-teal/[0.08] ring-1 ring-kp-teal/30 hover:border-kp-teal/55 hover:bg-kp-teal/[0.11]"
-                              : isNow
-                                ? "border-kp-teal/35 bg-kp-surface-high/35 hover:border-kp-teal/40 hover:bg-kp-surface-high/45"
-                                : "border-kp-outline/80 bg-kp-surface-high/15 hover:border-kp-teal/25 hover:bg-kp-surface-high/35"
-                        )}
-                      >
-                        <div className="flex items-baseline justify-between gap-2">
-                          <span className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
-                            {kindLabel(s.kind)}
-                          </span>
-                          <span className="text-xs font-semibold tabular-nums text-kp-teal/85">
-                            {timeStr}
-                          </span>
-                        </div>
-                        <div className="mt-0.5 flex items-start justify-between gap-2">
-                          <p className="truncate text-sm font-medium text-kp-on-surface">{s.title}</p>
-                          {overdue ? (
-                            <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-amber-600">
-                              Overdue
-                            </span>
-                          ) : isNow || isNext ? (
-                            <span className="shrink-0 text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">
-                              {isNow ? "Now" : "Next"}
-                            </span>
-                          ) : null}
-                        </div>
-                        {s.subline ? (
-                          <p className="mt-0.5 truncate text-xs text-kp-on-surface-muted">{s.subline}</p>
-                        ) : null}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </div>
-
+    <div className="rounded-xl border border-kp-outline bg-kp-surface p-3 shadow-sm sm:p-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5">
+        {/* Date picker first (left on lg) — quieter chrome */}
         <div
-          className="flex flex-col border-t border-kp-outline pt-4 lg:border-t-0 lg:pt-0 lg:pl-4"
+          className="order-1 flex flex-col rounded-lg border border-kp-outline/50 bg-kp-surface-high/[0.04] p-3 lg:p-3.5"
           aria-label="Date picker"
         >
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2">
-              <CalendarDays className="h-4 w-4 shrink-0 text-kp-teal/80" aria-hidden />
-              <h3 className="truncate font-headline text-sm font-semibold text-kp-on-surface">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <CalendarDays className="h-3.5 w-3.5 shrink-0 text-kp-on-surface-muted" aria-hidden />
+              <h3 className="truncate text-xs font-semibold uppercase tracking-wide text-kp-on-surface-muted">
                 Pick a date
               </h3>
             </div>
@@ -418,40 +351,40 @@ export function CommandCenterSchedulePanel({
                 variant="ghost"
                 size="icon"
                 onClick={goPrevMonth}
-                className="h-8 w-8 text-kp-on-surface-variant hover:bg-kp-surface-high/60 hover:text-kp-on-surface"
+                className="h-7 w-7 text-kp-on-surface-muted hover:bg-kp-surface-high/50"
                 aria-label="Previous month"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
                 onClick={goNextMonth}
-                className="h-8 w-8 text-kp-on-surface-variant hover:bg-kp-surface-high/60 hover:text-kp-on-surface"
+                className="h-7 w-7 text-kp-on-surface-muted hover:bg-kp-surface-high/50"
                 aria-label="Next month"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
-          <p className="mb-3 text-center text-xs font-semibold tabular-nums text-kp-on-surface">
+          <p className="mb-2 text-center text-[11px] font-medium tabular-nums text-kp-on-surface-muted">
             {monthTitle}
           </p>
-          <p className="mb-2 text-[10px] leading-snug text-kp-on-surface-muted">
-            Tap a day to preview what is on deck. Full planning moves to Calendar when we ship sync.
+          <p className="mb-2 text-[10px] leading-snug text-kp-on-surface-muted/90">
+            Tap a day to load that day in the schedule. Full calendar sync will live on the Calendar page.
           </p>
-          <div className="grid grid-cols-7 gap-y-0.5 text-center text-[10px] font-medium uppercase tracking-wide text-kp-on-surface-muted">
+          <div className="grid grid-cols-7 gap-y-0.5 text-center text-[9px] font-medium uppercase tracking-wide text-kp-on-surface-muted/90">
             {WEEKDAYS.map((w) => (
-              <div key={w} className="py-1 leading-none">
+              <div key={w} className="py-0.5 leading-none">
                 {w}
               </div>
             ))}
           </div>
-          <div className="mt-1 grid grid-cols-7 gap-0.5">
+          <div className="mt-0.5 grid grid-cols-7 gap-0.5">
             {grid.map((cell, i) => {
               if (cell.type === "empty") {
-                return <div key={`e-${i}`} className="h-8" />;
+                return <div key={`e-${i}`} className="h-7" />;
               }
               const { day } = cell;
               const key = dayKey(vy, vm, day);
@@ -466,11 +399,10 @@ export function CommandCenterSchedulePanel({
                   type="button"
                   onClick={() => setSelectedDay(cellDate)}
                   className={cn(
-                    "relative flex h-8 items-center justify-center rounded-md text-[11px] font-medium tabular-nums transition-colors",
-                    "text-kp-on-surface-variant hover:bg-kp-surface-high/50 hover:text-kp-on-surface",
-                    isTodayCell &&
-                      "ring-1 ring-kp-teal/40 bg-kp-surface-high/25 text-kp-on-surface",
-                    isSelected && "bg-kp-teal/12 text-kp-on-surface ring-1 ring-kp-teal/35"
+                    "relative flex h-7 items-center justify-center rounded text-[10px] font-medium tabular-nums transition-colors",
+                    "text-kp-on-surface-muted hover:bg-kp-surface-high/40 hover:text-kp-on-surface",
+                    isTodayCell && "ring-1 ring-kp-teal/30 bg-kp-surface-high/20 text-kp-on-surface",
+                    isSelected && "bg-kp-teal/10 font-semibold text-kp-on-surface ring-1 ring-kp-teal/25"
                   )}
                   aria-label={`${monthTitle} ${day}`}
                   aria-pressed={isSelected}
@@ -478,13 +410,124 @@ export function CommandCenterSchedulePanel({
                   {day}
                   {hasShowing ? (
                     <span
-                      className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-kp-gold/85"
+                      className="absolute bottom-0.5 left-1/2 h-0.5 w-0.5 -translate-x-1/2 rounded-full bg-kp-gold/70"
                       aria-hidden
                     />
                   ) : null}
                 </button>
               );
             })}
+          </div>
+        </div>
+
+        {/* Schedule (right on lg) — primary detail */}
+        <div className="order-2 flex min-h-[220px] flex-col lg:min-h-[280px]">
+          <div className="mb-2 flex shrink-0 items-start justify-between gap-2 border-b border-kp-outline/40 pb-2">
+            <div className="min-w-0">
+              <h3 className="font-headline text-base font-semibold tracking-tight text-kp-on-surface">
+                {scheduleTitle}
+              </h3>
+              <p className="text-[11px] text-kp-on-surface-muted">
+                {selectedIsToday ? "What's on deck today" : "Selected day"}
+              </p>
+            </div>
+            <ScheduleAddMenu onNewTask={onNewTask} />
+          </div>
+
+          <div
+            className={cn(
+              "min-h-[140px] flex-1 overflow-y-auto overscroll-y-contain pr-0.5 lg:max-h-[min(420px,52vh)]",
+              selectedIsToday && "rounded-lg bg-kp-surface-high/[0.12]"
+            )}
+            tabIndex={0}
+            aria-label="Schedule for selected day"
+          >
+            {busy ? (
+              <ul className="space-y-2" aria-busy="true">
+                {[0, 1, 2].map((k) => (
+                  <li
+                    key={k}
+                    className="h-10 animate-pulse rounded-lg bg-kp-surface-high/40"
+                    aria-hidden
+                  />
+                ))}
+              </ul>
+            ) : merged.length === 0 ? (
+              <div className="flex flex-col gap-2 py-2">
+                <p className="text-sm text-kp-on-surface-muted">No calendar events</p>
+                <p className="text-[11px] text-kp-on-surface-muted/90">
+                  Nothing scheduled for this day — or add something new.
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <ScheduleAddMenu onNewTask={onNewTask} />
+                  <Button variant="ghost" size="sm" className={cn(kpBtnTertiary, "h-8 text-xs")} asChild>
+                    <Link href="/settings/connections">Connect calendar</Link>
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <ul className="space-y-1.5 pb-1">
+                {merged.map((s, index) => {
+                  const t = s.at;
+                  const timeStr = Number.isNaN(t.getTime())
+                    ? ""
+                    : t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+                  const isNow = selectedIsToday && index === scheduleNowIndex;
+                  const isNext = selectedIsToday && index === scheduleNextIndex;
+                  const overdue = s.badge === "overdue";
+                  const tag = scheduleKindSourceTag(s.kind);
+                  return (
+                    <li key={s.id}>
+                      <Link
+                        href={s.href}
+                        className={cn(
+                          "block rounded-md border px-2.5 py-2 transition-colors",
+                          overdue
+                            ? "border-amber-500/35 bg-amber-500/[0.06]"
+                            : isNext
+                              ? "border-kp-teal/40 bg-kp-teal/[0.06] ring-1 ring-kp-teal/20"
+                              : isNow
+                                ? "border-kp-teal/30 bg-kp-surface-high/30"
+                                : "border-kp-outline/70 bg-kp-surface-high/10 hover:border-kp-teal/20"
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-1.5">
+                            <span
+                              className={commandCenterSourceChipClass(tag)}
+                              title={kindLabel(s.kind)}
+                            >
+                              {tag}
+                            </span>
+                            <span className="truncate text-[10px] font-medium uppercase tracking-wide text-kp-on-surface-muted">
+                              {kindLabel(s.kind)}
+                            </span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <span className="text-[11px] font-semibold tabular-nums text-kp-teal/90">
+                              {timeStr}
+                            </span>
+                            {overdue ? (
+                              <span className="text-[9px] font-bold uppercase text-amber-600">Overdue</span>
+                            ) : isNow || isNext ? (
+                              <span className="text-[9px] font-bold uppercase text-kp-on-surface-muted">
+                                {isNow ? "Now" : "Next"}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                        <p className="mt-0.5 truncate text-sm font-medium leading-snug text-kp-on-surface">
+                          {s.title}
+                        </p>
+                        {s.subline ? (
+                          <p className="mt-0.5 truncate text-[11px] text-kp-on-surface-muted">{s.subline}</p>
+                        ) : null}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         </div>
       </div>

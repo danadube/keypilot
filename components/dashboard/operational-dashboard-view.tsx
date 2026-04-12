@@ -18,10 +18,16 @@ import {
   PageHeader,
   PageHeaderActionItem,
   PageHeaderActionButton,
-  PageHeaderActionsMenu,
+  PageHeaderActionsMenuSeparator,
   PageHeaderPrimaryAddMenu,
 } from "@/components/layout/PageHeader";
+import { CommandCenterLiveTitle } from "@/components/dashboard/command-center-live-title";
 import { CommandCenterSchedulePanel } from "@/components/dashboard/command-center-schedule-panel";
+import {
+  commandCenterSourceChipClass,
+  listingStageChipClass,
+} from "@/lib/dashboard/command-center-visual";
+import type { CommandCenterSourceTag } from "@/lib/dashboard/command-center-visual";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
 import type { TaskPilotPayload } from "@/lib/tasks/task-pilot-payload-mutate";
 import { apiFetcher } from "@/lib/fetcher";
@@ -114,10 +120,14 @@ export function OperationalDashboardView() {
 
   const snap = cc?.snapshot;
 
+  const ytdPrimary =
+    snap == null ? "—" : snap.ytdGci == null ? formatUsd(0) : formatUsd(snap.ytdGci);
   const ytdSecondary =
-    snap == null || snap.ytdGci == null
-      ? "Track closed deals"
-      : `${snap.ytdPercentToGoal != null ? `${Math.round(snap.ytdPercentToGoal)}% of ` : ""}${formatUsd(snap.annualGciGoal)} goal`;
+    snap == null
+      ? "Year-to-date GCI"
+      : snap.ytdGci == null
+        ? "No closed deals yet this year"
+        : `${snap.ytdPercentToGoal != null ? `${Math.round(snap.ytdPercentToGoal)}% of ` : ""}${formatUsd(snap.annualGciGoal)} goal`;
 
   const pipelineHref = cc?.crmAvailable !== false ? "/transactions/pipeline" : "/deals";
 
@@ -139,37 +149,31 @@ export function OperationalDashboardView() {
         ? `${snap.pipelineActiveDealsCount} active deal${snap.pipelineActiveDealsCount === 1 ? "" : "s"}`
         : snap.pipelineActiveTransactionsCount > 0
           ? `${snap.pipelineActiveTransactionsCount} active transaction${snap.pipelineActiveTransactionsCount === 1 ? "" : "s"}`
-          : "Open pipeline";
+          : "No open transactions in pipeline";
 
   const nextClosePrimary =
     snap?.nextClosing == null ? "—" : snap.nextClosing.daysUntil == null ? "—" : String(snap.nextClosing.daysUntil);
   const nextCloseSecondary =
-    snap?.nextClosing == null ? "Schedule a closing date" : snap.nextClosing.addressLine;
+    snap?.nextClosing == null ? "No closings scheduled" : snap.nextClosing.addressLine;
 
   const tasksPrimary =
     snap == null ? "—" : String(snap.tasksDueTotal);
   const tasksSecondary =
     snap == null
       ? "Task Pilot"
-      : snap.tasksOverdue > 0
-        ? `${snap.tasksOverdue} overdue`
-        : snap.tasksDueTotal > 0
-          ? "Due today / soon"
-          : "Clear";
+      : snap.tasksDueTotal === 0
+        ? "Nothing due right now"
+        : snap.tasksOverdue > 0
+          ? `${snap.tasksOverdue} overdue`
+          : "Due today / soon";
 
   return (
     <div className="space-y-5 pb-6 sm:space-y-6">
       <PageHeader
-        title="Command center"
-        subtitle="What to do right now to move deals forward — execution, not vanity metrics."
-        actionsMenu={
-          <PageHeaderActionsMenu>
-            <PageHeaderActionItem href="/properties/new">Add property</PageHeaderActionItem>
-            <PageHeaderActionItem href="/task-pilot">Task Pilot</PageHeaderActionItem>
-          </PageHeaderActionsMenu>
-        }
+        titleNode={<CommandCenterLiveTitle />}
+        subtitle="What needs attention right now to move deals forward — execution beats vanity metrics."
         primaryAction={
-          <PageHeaderPrimaryAddMenu>
+          <PageHeaderPrimaryAddMenu summaryLabel="Quick add">
             <PageHeaderActionItem href="/showing-hq/showings/new">New showing</PageHeaderActionItem>
             <PageHeaderActionItem href="/open-houses/new">New open house</PageHeaderActionItem>
             <PageHeaderActionButton type="button" onClick={() => setNewTaskModalOpen(true)}>
@@ -177,6 +181,9 @@ export function OperationalDashboardView() {
             </PageHeaderActionButton>
             <PageHeaderActionItem href="/transactions?new=1">New transaction</PageHeaderActionItem>
             <PageHeaderActionItem href="/contacts?new=1">New contact</PageHeaderActionItem>
+            <PageHeaderActionsMenuSeparator />
+            <PageHeaderActionItem href="/properties/new">Add property</PageHeaderActionItem>
+            <PageHeaderActionItem href="/settings/connections">Calendar & email</PageHeaderActionItem>
           </PageHeaderPrimaryAddMenu>
         }
       />
@@ -250,7 +257,7 @@ export function OperationalDashboardView() {
           <SnapshotTile
             href="/transactions/commissions"
             label="YTD GCI"
-            primary={snap?.ytdGci == null ? "—" : formatUsd(snap.ytdGci)}
+            primary={ytdPrimary}
             secondary={ytdSecondary}
             icon={HandCoins}
             loading={loading}
@@ -281,9 +288,9 @@ export function OperationalDashboardView() {
           />
           <SnapshotTile
             href="/properties"
-            label="Active listings"
+            label="Current listings"
             primary={snap == null ? "—" : String(snap.activeListingsCount)}
-            secondary="PropertyVault"
+            secondary="In PropertyVault"
             icon={Building2}
             loading={loading}
           />
@@ -305,6 +312,7 @@ export function OperationalDashboardView() {
               followUpsAll={followUpsAll}
               openTasks={openTasks}
               loading={loading}
+              onNewTask={() => setNewTaskModalOpen(true)}
             />
           </div>
           <div className="min-w-0 lg:col-span-4">
@@ -325,7 +333,7 @@ export function OperationalDashboardView() {
                   ))}
                 </ul>
               ) : (cc?.priorityTasks.length ?? 0) === 0 ? (
-                <p className="text-sm text-kp-on-surface-muted">Clear schedule</p>
+                <p className="text-sm text-kp-on-surface-muted">No tasks in the queue</p>
               ) : (
                 <ul className="space-y-2">
                   {cc!.priorityTasks.map((t) => (
@@ -340,7 +348,9 @@ export function OperationalDashboardView() {
                         )}
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">
+                          <span
+                            className={commandCenterSourceChipClass(t.sourceTag as CommandCenterSourceTag)}
+                          >
                             {t.sourceTag}
                           </span>
                           {t.overdue ? (
@@ -369,7 +379,7 @@ export function OperationalDashboardView() {
         <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
           <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="font-headline text-sm font-semibold text-kp-on-surface">Active listings</h3>
+              <h3 className="font-headline text-sm font-semibold text-kp-on-surface">Current listings</h3>
               <Link href="/properties" className="text-[11px] font-semibold text-kp-teal hover:underline">
                 PropertyVault
               </Link>
@@ -390,19 +400,21 @@ export function OperationalDashboardView() {
                   <li key={p.propertyId}>
                     <Link
                       href={p.href}
-                      className="block rounded-lg border border-kp-outline/80 bg-kp-surface-high/10 px-3 py-2.5 transition-colors hover:border-kp-teal/30"
+                      className="flex items-start justify-between gap-3 rounded-md border border-kp-outline/70 bg-kp-surface-high/[0.06] px-2.5 py-2 transition-colors hover:border-kp-teal/25"
                     >
-                      <p className="text-sm font-semibold text-kp-on-surface">{p.addressLine}</p>
-                      <p className="text-[11px] text-kp-on-surface-muted">
-                        {p.city}, {p.state}
-                      </p>
-                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]">
-                        <span className="font-medium text-kp-on-surface">
-                          {p.listingPrice != null ? formatUsd(p.listingPrice) : "Price TBD"}
-                        </span>
-                        <span className="text-kp-on-surface-muted">· {p.statusLabel}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold leading-tight text-kp-on-surface">
+                          {p.addressLine}
+                        </p>
+                        <p className="mt-0.5 text-[10px] leading-snug text-kp-on-surface-muted">{p.factsLine}</p>
+                        <p className="mt-0.5 text-[10px] leading-snug text-kp-on-surface-variant">{p.urgencyLine}</p>
                       </div>
-                      <p className="mt-1 text-[11px] text-kp-on-surface-variant">{p.urgencyLine}</p>
+                      <div className="flex shrink-0 flex-col items-end gap-1 text-right">
+                        <span className="text-sm font-semibold tabular-nums text-kp-on-surface">
+                          {p.listingPrice != null ? formatUsd(p.listingPrice) : "—"}
+                        </span>
+                        <span className={listingStageChipClass(p.stageChip)}>{p.stageLabel}</span>
+                      </div>
                     </Link>
                   </li>
                 ))}
@@ -431,30 +443,28 @@ export function OperationalDashboardView() {
                   <li key={a.id} className="border-b border-kp-outline/40 pb-2 last:border-0 last:pb-0">
                     {a.href ? (
                       <Link href={a.href} className="group block">
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
-                          {a.kind === "TRANSACTION" ? "Transaction" : "CRM"}
-                        </p>
-                        <p className="text-sm font-medium text-kp-on-surface group-hover:text-kp-teal group-hover:underline">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={commandCenterSourceChipClass(a.visualTag)}>{a.visualTag}</span>
+                          <span className="text-[10px] tabular-nums text-kp-on-surface-muted">
+                            {new Date(a.occurredAt).toLocaleString(undefined, {
+                              month: "short",
+                              day: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm font-medium text-kp-on-surface group-hover:text-kp-teal group-hover:underline">
                           {a.title}
                         </p>
                         {a.subline ? (
                           <p className="text-[11px] text-kp-on-surface-muted">{a.subline}</p>
                         ) : null}
-                        <p className="mt-0.5 text-[10px] text-kp-on-surface-muted/90">
-                          {new Date(a.occurredAt).toLocaleString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}
-                        </p>
                       </Link>
                     ) : (
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
-                          CRM
-                        </p>
-                        <p className="text-sm font-medium text-kp-on-surface">{a.title}</p>
+                        <span className={commandCenterSourceChipClass(a.visualTag)}>{a.visualTag}</span>
+                        <p className="mt-1 text-sm font-medium text-kp-on-surface">{a.title}</p>
                         {a.subline ? (
                           <p className="text-[11px] text-kp-on-surface-muted">{a.subline}</p>
                         ) : null}

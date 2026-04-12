@@ -8,6 +8,8 @@ import { getModulePageTitleTwoTone } from "@/lib/ui/module-page-title-two-tone";
 
 export type PageHeaderProps = {
   title?: string;
+  /** When set, renders instead of `title` (e.g. live clock heading). `subtitle` still renders below. */
+  titleNode?: React.ReactNode;
   subtitle?: string;
   /** When `title` is omitted, optional quiet label (e.g. ShowingHQ view name). */
   leading?: React.ReactNode;
@@ -20,6 +22,7 @@ export type PageHeaderProps = {
 
 export function PageHeader({
   title,
+  titleNode,
   subtitle,
   leading,
   actionsMenu,
@@ -28,8 +31,8 @@ export function PageHeader({
   className,
 }: PageHeaderProps) {
   const hasRight = Boolean(actionsMenu || secondaryActions || primaryAction);
-  const hasLeftContent = Boolean(title || subtitle || leading);
-  const titleTone = title ? getModulePageTitleTwoTone(title) : undefined;
+  const hasLeftContent = Boolean(title || titleNode || subtitle || leading);
+  const titleTone = title && !titleNode ? getModulePageTitleTwoTone(title) : undefined;
   const titleHeadingClass =
     "font-headline text-xl font-semibold tracking-tight md:text-2xl";
   return (
@@ -50,7 +53,16 @@ export function PageHeader({
       >
         {hasLeftContent ? (
           <div className="min-w-0">
-            {title ? (
+            {titleNode ? (
+              <>
+                <div className="min-w-0">{titleNode}</div>
+                {subtitle ? (
+                  <p className="mt-0.5 max-w-2xl text-sm leading-snug text-kp-on-surface-variant">
+                    {subtitle}
+                  </p>
+                ) : null}
+              </>
+            ) : title ? (
               <>
                 {titleTone ? (
                   <h1 className={titleHeadingClass}>
@@ -137,12 +149,19 @@ export const pageHeaderPrimaryCtaLinkClass = cn(
 );
 
 /** Gold primary “+ Add” control — same panel pattern as `PageHeaderActionsMenu`. */
-export function PageHeaderPrimaryAddMenu({ children }: { children: React.ReactNode }) {
+export function PageHeaderPrimaryAddMenu({
+  children,
+  summaryLabel = "Add",
+}: {
+  children: React.ReactNode;
+  /** Button label (e.g. dashboard `Quick add`). */
+  summaryLabel?: string;
+}) {
   return (
     <details className="group relative">
       <summary className={primaryAddSummaryClass}>
         <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        Add
+        {summaryLabel}
         <ChevronDown
           className="h-3.5 w-3.5 shrink-0 opacity-80 transition-transform group-open:rotate-180"
           aria-hidden

@@ -1,4 +1,5 @@
 import type { DashboardTaskSourceTag } from "@/lib/dashboard/infer-task-source-tag";
+import type { CommandCenterSourceTag, ListingStageChip } from "@/lib/dashboard/command-center-visual";
 
 export type CommandCenterAttentionStrip = {
   transactionId: string;
@@ -49,7 +50,10 @@ export type CommandCenterListingRow = {
   city: string;
   state: string;
   listingPrice: number | null;
-  statusLabel: string;
+  /** City, ST · short context */
+  factsLine: string;
+  stageChip: ListingStageChip;
+  stageLabel: string;
   urgencyLine: string;
   href: string;
 };
@@ -57,6 +61,7 @@ export type CommandCenterListingRow = {
 export type CommandCenterActivityRow = {
   id: string;
   kind: "TRANSACTION" | "CRM";
+  visualTag: CommandCenterSourceTag;
   occurredAt: string;
   title: string;
   subline: string | null;
