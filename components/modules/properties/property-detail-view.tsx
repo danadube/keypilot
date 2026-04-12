@@ -128,9 +128,8 @@ export function PropertyDetailView({ id }: { id: string }) {
     return Array.from(map.entries()).map(([contactId, name]) => ({ id: contactId, name }));
   }, [transactionsForProperty]);
   const hasPrimaryClient = linkedContacts.length > 0;
-  const linkClientHref = hasCrmAccess
-    ? `/transactions?new=1&propertyId=${encodeURIComponent(id)}`
-    : "/contacts";
+  /** ClientKeep — property context for future linking UX; not TransactionHQ. */
+  const linkClientHref = `/contacts?linkPropertyId=${encodeURIComponent(id)}`;
 
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -492,8 +491,8 @@ export function PropertyDetailView({ id }: { id: string }) {
                 className="rounded-lg border border-amber-500/35 bg-amber-500/[0.08] px-3 py-2 text-[11px] leading-snug text-amber-100"
                 role="status"
               >
-                <span className="font-semibold text-amber-50">Draft</span> — Link a client to complete this
-                listing. Operations stay blocked until a ClientKeep contact is tied via a deal.
+                <span className="font-semibold text-amber-50">Draft</span> — Link a client from ClientKeep to
+                complete this listing.
               </div>
             ) : null}
 
@@ -541,7 +540,7 @@ export function PropertyDetailView({ id }: { id: string }) {
                     href={linkClientHref}
                     className="mt-1 inline-block text-xs font-semibold text-kp-teal underline-offset-2 hover:underline"
                   >
-                    Link client
+                    Link from ClientKeep
                   </Link>
                 </div>
               )}

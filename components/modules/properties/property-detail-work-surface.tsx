@@ -42,7 +42,7 @@ function readinessRows(
       key: "client",
       label: "Primary client",
       ok: hasPrimaryClient,
-      actionLabel: "Link",
+      actionLabel: "ClientKeep",
       href: linkClientHref,
     },
     {

@@ -587,9 +587,19 @@ export function ContactsListView() {
   }
 
   const showContent = !loading && !error;
+  const linkPropertyIdParam = searchParams.get("linkPropertyId");
 
   return (
     <div className="min-h-full rounded-2xl bg-kp-bg pt-2 sm:pt-3">
+      {linkPropertyIdParam ? (
+        <div
+          className="mx-6 mb-3 rounded-lg border border-kp-teal/35 bg-kp-teal/[0.06] px-3 py-2 text-[11px] leading-snug text-kp-on-surface sm:mx-8"
+          role="status"
+        >
+          <span className="font-semibold text-kp-on-surface">ClientKeep</span> — Link this property to a
+          contact from their profile. Choose a contact below or add one, then set the relationship there.
+        </div>
+      ) : null}
       {/* ── Metric cards (CRM tier only) ─────────────────────────────────── */}
       {hasCrm && (
         <div className="grid gap-3 px-6 pb-4 sm:grid-cols-3 sm:px-8">
