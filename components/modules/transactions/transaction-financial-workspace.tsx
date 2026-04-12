@@ -342,7 +342,9 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
     return () => {
       cancelled = true;
     };
-  }, [transactionId, txn]);
+    // `txn?.dealId` is listed explicitly so the effect re-runs when a deal is linked/unlinked even if
+    // a future code path ever reused a stable `txn` object reference.
+  }, [transactionId, txn, txn?.dealId]);
 
   useEffect(() => {
     if (!txn) return;
