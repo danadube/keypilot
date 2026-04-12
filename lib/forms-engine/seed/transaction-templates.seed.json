@@ -1,0 +1,53 @@
+{
+  "version": "0.1.0-mvp",
+  "templates": [
+    {
+      "id": "tpl-ca-res-sell",
+      "jurisdictionProfileId": "US-CA",
+      "label": "California — residential listing",
+      "propertyTypes": ["residential", "*"],
+      "side": "SELL",
+      "documentRequirementRuleIds": ["ca-rla", "ca-tds-conditional"]
+    },
+    {
+      "id": "tpl-ca-res-buy",
+      "jurisdictionProfileId": "US-CA",
+      "label": "California — residential purchase",
+      "propertyTypes": ["residential", "*"],
+      "side": "BUY",
+      "documentRequirementRuleIds": ["ca-rpa", "ca-tds-conditional", "ops-schedule-signing"]
+    },
+    {
+      "id": "tpl-tx-res-sell",
+      "jurisdictionProfileId": "US-TX",
+      "label": "Texas — residential seller",
+      "propertyTypes": ["residential", "*"],
+      "side": "SELL",
+      "documentRequirementRuleIds": ["tx-seller-disclosure"]
+    },
+    {
+      "id": "tpl-tx-res-buy",
+      "jurisdictionProfileId": "US-TX",
+      "label": "Texas — residential buyer",
+      "propertyTypes": ["residential", "*"],
+      "side": "BUY",
+      "documentRequirementRuleIds": ["tx-contract"]
+    },
+    {
+      "id": "tpl-fl-res-buy",
+      "jurisdictionProfileId": "US-FL",
+      "label": "Florida — residential buyer",
+      "propertyTypes": ["residential", "*"],
+      "side": "BUY",
+      "documentRequirementRuleIds": ["fl-contract", "fl-spd"]
+    },
+    {
+      "id": "tpl-fl-res-sell",
+      "jurisdictionProfileId": "US-FL",
+      "label": "Florida — residential seller",
+      "propertyTypes": ["residential", "*"],
+      "side": "SELL",
+      "documentRequirementRuleIds": ["fl-spd"]
+    }
+  ]
+}

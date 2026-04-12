@@ -1,0 +1,38 @@
+{
+  "version": "0.1.0-mvp",
+  "profiles": [
+    {
+      "id": "US-CA",
+      "stateCode": "CA",
+      "displayName": "California",
+      "templateIdsByKey": {
+        "US-CA:residential:SELL": "tpl-ca-res-sell",
+        "US-CA:residential:BUY": "tpl-ca-res-buy",
+        "US-CA:*:*": "tpl-ca-res-sell"
+      },
+      "rulePackIds": ["pack-ca-res-001"]
+    },
+    {
+      "id": "US-TX",
+      "stateCode": "TX",
+      "displayName": "Texas",
+      "templateIdsByKey": {
+        "US-TX:residential:SELL": "tpl-tx-res-sell",
+        "US-TX:residential:BUY": "tpl-tx-res-buy",
+        "US-TX:*:*": "tpl-tx-res-buy"
+      },
+      "rulePackIds": ["pack-tx-res-001"]
+    },
+    {
+      "id": "US-FL",
+      "stateCode": "FL",
+      "displayName": "Florida",
+      "templateIdsByKey": {
+        "US-FL:residential:BUY": "tpl-fl-res-buy",
+        "US-FL:residential:SELL": "tpl-fl-res-sell",
+        "US-FL:*:*": "tpl-fl-res-buy"
+      },
+      "rulePackIds": ["pack-fl-res-001"]
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "version": "0.1.0-mvp",
+  "generatedAt": "2026-01-01",
+  "entries": [
+    {
+      "metadata": {
+        "formId": "CA-RLA",
+        "revisionId": "2024-01",
+        "title": "Residential Listing Agreement",
+        "shortCode": "RLA",
+        "jurisdictionState": "CA",
+        "providerId": "CAR",
+        "formFamily": "listing_agreement",
+        "propertyTypeTags": ["residential"]
+      }
+    },
+    {
+      "metadata": {
+        "formId": "CA-TDS",
+        "revisionId": "2024-01",
+        "title": "Transfer Disclosure Statement",
+        "shortCode": "TDS",
+        "jurisdictionState": "CA",
+        "providerId": "CAR",
+        "formFamily": "transfer_disclosure",
+        "propertyTypeTags": ["residential"]
+      }
+    },
+    {
+      "metadata": {
+        "formId": "CA-RPA",
+        "revisionId": "2024-01",
+        "title": "Residential Purchase Agreement",
+        "shortCode": "RPA",
+        "jurisdictionState": "CA",
+        "providerId": "CAR",
+        "formFamily": "purchase_agreement",
+        "propertyTypeTags": ["residential"]
+      }
+    },
+    {
+      "metadata": {
+        "formId": "TX-TREC-20-14",
+        "revisionId": "2024-01",
+        "title": "One to Four Family Residential Contract",
+        "shortCode": "TREC-20-14",
+        "jurisdictionState": "TX",
+        "providerId": "TREC",
+        "formFamily": "purchase_agreement",
+        "propertyTypeTags": ["residential"]
+      }
+    },
+    {
+      "metadata": {
+        "formId": "TX-TREC-25-10",
+        "revisionId": "2024-01",
+        "title": "Seller's Disclosure Notice",
+        "shortCode": "TREC-25-10",
+        "jurisdictionState": "TX",
+        "providerId": "TREC",
+        "formFamily": "seller_disclosure",
+        "propertyTypeTags": ["residential"]
+      }
+    },
+    {
+      "metadata": {
+        "formId": "FL-FAR-BAR-ASIS",
+        "revisionId": "2024-01",
+        "title": "FAR/BAR Residential Contract",
+        "shortCode": "FAR/BAR",
+        "jurisdictionState": "FL",
+        "providerId": "FAR",
+        "formFamily": "purchase_agreement",
+        "propertyTypeTags": ["residential"]
+      }
+    },
+    {
+      "metadata": {
+        "formId": "FL-SPD",
+        "revisionId": "2024-01",
+        "title": "Seller Property Disclosure",
+        "shortCode": "SPD",
+        "jurisdictionState": "FL",
+        "providerId": "FAR",
+        "formFamily": "seller_disclosure",
+        "propertyTypeTags": ["residential"]
+      }
+    }
+  ]
+}

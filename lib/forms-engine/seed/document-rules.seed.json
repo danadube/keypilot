@@ -1,0 +1,98 @@
+{
+  "version": "0.1.0-mvp",
+  "rules": [
+    {
+      "id": "ca-rla",
+      "label": "Residential Listing Agreement",
+      "formId": "CA-RLA",
+      "revisionPin": "2024-01",
+      "bucket": "required",
+      "when": { "type": "always" },
+      "stageHint": "listing_docs",
+      "sortOrder": 10
+    },
+    {
+      "id": "ca-tds-conditional",
+      "label": "Transfer Disclosure Statement",
+      "formId": "CA-TDS",
+      "revisionPin": "2024-01",
+      "bucket": "conditional",
+      "when": {
+        "type": "or",
+        "children": [{ "type": "property_type", "value": "residential" }, { "type": "always" }]
+      },
+      "stageHint": "disclosures",
+      "sortOrder": 20
+    },
+    {
+      "id": "ca-rpa",
+      "label": "Residential Purchase Agreement",
+      "formId": "CA-RPA",
+      "revisionPin": "2024-01",
+      "bucket": "required",
+      "when": { "type": "always" },
+      "stageHint": "contract",
+      "sortOrder": 10
+    },
+    {
+      "id": "tx-contract",
+      "label": "TREC One to Four Family Contract",
+      "formId": "TX-TREC-20-14",
+      "revisionPin": "2024-01",
+      "bucket": "required",
+      "when": { "type": "always" },
+      "stageHint": "contract",
+      "sortOrder": 10
+    },
+    {
+      "id": "tx-seller-disclosure",
+      "label": "Seller's Disclosure Notice",
+      "formId": "TX-TREC-25-10",
+      "revisionPin": "2024-01",
+      "bucket": "required",
+      "when": { "type": "always" },
+      "stageHint": "disclosures",
+      "sortOrder": 15
+    },
+    {
+      "id": "fl-contract",
+      "label": "FAR/BAR Residential Contract",
+      "formId": "FL-FAR-BAR-ASIS",
+      "revisionPin": "2024-01",
+      "bucket": "required",
+      "when": { "type": "always" },
+      "stageHint": "contract",
+      "sortOrder": 10
+    },
+    {
+      "id": "fl-spd",
+      "label": "Seller Property Disclosure",
+      "formId": "FL-SPD",
+      "revisionPin": "2024-01",
+      "bucket": "conditional",
+      "when": { "type": "property_type", "value": "residential" },
+      "stageHint": "disclosures",
+      "sortOrder": 20
+    },
+    {
+      "id": "broker-compliance-checklist",
+      "label": "Office file compliance checklist",
+      "formId": "CA-RLA",
+      "revisionPin": "2024-01",
+      "bucket": "compliance_only",
+      "when": { "type": "transaction_flag", "flag": "brokerComplianceReview" },
+      "stageHint": "compliance",
+      "sortOrder": 5
+    },
+    {
+      "id": "ops-schedule-signing",
+      "label": "Schedule signing appointment",
+      "formId": "CA-RPA",
+      "revisionPin": "2024-01",
+      "bucket": "operational_task",
+      "when": { "type": "transaction_flag", "flag": "needsSigningScheduled" },
+      "stageHint": "operations",
+      "sortOrder": 2
+    }
+  ]
+}
