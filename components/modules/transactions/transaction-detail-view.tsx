@@ -278,13 +278,17 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
                 )}
               </p>
 
-              <Link
-                href={`/properties/${txn.property.id}`}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-kp-teal hover:underline"
-              >
-                <MapPin className="h-3.5 w-3.5" />
-                Linked property — open in PropertyVault
-              </Link>
+              {txn.property?.id ? (
+                <Link
+                  href={`/properties/${txn.property.id}`}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-kp-teal hover:underline"
+                >
+                  <MapPin className="h-3.5 w-3.5" />
+                  Linked property — open in PropertyVault
+                </Link>
+              ) : (
+                <p className="text-xs text-kp-on-surface-variant">No property linked for this transaction.</p>
+              )}
             </div>
 
             <div className="mt-4 border-t border-kp-outline/40 pt-4">

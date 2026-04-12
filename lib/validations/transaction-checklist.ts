@@ -12,6 +12,11 @@ export const ApplyChecklistTemplateSchema = z.object({
   side: z.enum(["BUY", "SELL"]),
 });
 
+/** Seed granular CA pipeline document rows (checklist items with structured metadata). */
+export const SeedCaPipelineSchema = z.object({
+  side: z.enum(["BUY", "SELL"]),
+});
+
 export type CreateTransactionChecklistItemInput = z.infer<
   typeof CreateTransactionChecklistItemSchema
 >;
@@ -19,3 +24,4 @@ export type PatchTransactionChecklistItemInput = z.infer<
   typeof PatchTransactionChecklistItemSchema
 >;
 export type ApplyChecklistTemplateInput = z.infer<typeof ApplyChecklistTemplateSchema>;
+export type SeedCaPipelineInput = z.infer<typeof SeedCaPipelineSchema>;
