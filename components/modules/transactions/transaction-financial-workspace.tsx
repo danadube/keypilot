@@ -428,12 +428,15 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
 
   useEffect(() => {
     if (!setHeaderDetailActions || !txn) return;
+    // Header actions must reflect persisted transaction status (`txn.status`), not the
+    // financial form draft `status` state (user may edit without saving).
+    const savedStatus = txn.status;
     setHeaderDetailActions(
       <TransactionDetailActionsMenu
         transactionId={transactionId}
         propertyId={txn.property.id}
         primaryContactId={txn.primaryContactId}
-        currentStatus={txn.status}
+        currentStatus={savedStatus}
         menuAlign="end"
         onScrollToNote={scrollToActivityNote}
         onRefreshActivity={() => void refreshTransactionActivity()}
