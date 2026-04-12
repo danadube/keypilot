@@ -36,6 +36,7 @@ import {
   type DocumentStatus,
   type PipelineSide,
   type PipelineStageKey,
+  type RequirementKind,
 } from "@/lib/transactions/ca-pipeline-definitions";
 import type { PipelineChecklistMetaV1 } from "@/lib/transactions/pipeline-checklist-metadata";
 import {
@@ -289,20 +290,28 @@ function DealProgressStrip({
   complete,
   total,
   pct,
+  requiredStillOpen,
 }: {
   complete: number;
   total: number;
   pct: number;
+  requiredStillOpen: number;
 }) {
   const safePct = Math.min(100, Math.max(0, pct));
   return (
     <div className="mt-3 rounded-lg border border-kp-outline/40 bg-kp-bg/45 px-2.5 py-2" role="status">
-      <div className="mb-1.5 flex items-baseline justify-between gap-2">
+      <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface">
           Deal progress
         </span>
         <span className="text-xs tabular-nums text-kp-on-surface">
           {complete} of {total} complete · {safePct}%
+          {requiredStillOpen > 0 ? (
+            <span className="text-kp-on-surface-variant">
+              {" "}
+              · {requiredStillOpen} required still open
+            </span>
+          ) : null}
         </span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-kp-surface-high/90">
@@ -317,12 +326,16 @@ function DealProgressStrip({
 
 function WorkflowAttentionStrip({
   nextRequiredTitle,
+  nextRequiredDomId,
   requiredNotStarted,
   overdueCount,
+  onJumpToNextRequired,
 }: {
   nextRequiredTitle: string | null;
+  nextRequiredDomId: string | null;
   requiredNotStarted: number;
   overdueCount: number;
+  onJumpToNextRequired: () => void;
 }) {
   if (!nextRequiredTitle && requiredNotStarted === 0 && overdueCount === 0) return null;
   return (
@@ -333,7 +346,18 @@ function WorkflowAttentionStrip({
       <span className="font-semibold text-kp-on-surface">Now</span>
       {nextRequiredTitle ? (
         <span>
-          Next required: <span className="font-medium">{nextRequiredTitle}</span>
+          Next required:{" "}
+          {nextRequiredDomId ? (
+            <button
+              type="button"
+              className="font-semibold text-kp-teal underline decoration-kp-teal/50 underline-offset-2 hover:decoration-kp-teal"
+              onClick={onJumpToNextRequired}
+            >
+              {nextRequiredTitle}
+            </button>
+          ) : (
+            <span className="font-medium">{nextRequiredTitle}</span>
+          )}
         </span>
       ) : null}
       {requiredNotStarted > 0 ? (
@@ -368,6 +392,56 @@ function displayAttachmentLabel(raw: string): string {
   }
   const base = t.split(/[/\\]/).pop();
   return base || t;
+}
+
+/** Stable DOM id for scrolling / “next required” — matches persisted paperwork row when present. */
+function txnDocElementIdForEngine(
+  inst: TransactionDocumentInstance,
+  persisted: SerializedTransactionPaperworkDocument | undefined | null
+): string {
+  if (persisted?.id) return `txn-doc-${persisted.id}`;
+  return `txn-doc-fe-${inst.sourceRuleId.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
+}
+
+function txnDocElementIdForPipelineRow(rowId: string): string {
+  return `txn-doc-${rowId}`;
+}
+
+function attachmentCollapsedLabel(
+  hasFile: boolean,
+  opts: { required: boolean; docStatus: DocumentStatus }
+): string {
+  if (hasFile) return "Attached";
+  if (opts.required && opts.docStatus === "not_started") return "Upload required";
+  return "No document attached";
+}
+
+function formEngineRowSurfaceClass(bucket: RequirementBucket, docStatus: DocumentStatus): string {
+  if (docStatus === "complete") {
+    return cn("border-kp-outline/35 bg-kp-surface/45 opacity-[0.88]");
+  }
+  if (bucket === "conditional" || bucket === "optional") {
+    return cn("border-kp-outline/40 bg-kp-surface/30 opacity-[0.93]");
+  }
+  const requiredNotStarted =
+    (bucket === "required" || bucket === "brokerage_required") && docStatus === "not_started";
+  if (requiredNotStarted) {
+    return cn("border-kp-outline/70 bg-kp-surface ring-1 ring-amber-500/15");
+  }
+  return "border-kp-outline/55 bg-kp-surface shadow-sm";
+}
+
+function pipelineRowSurfaceClass(requirement: RequirementKind, docStatus: DocumentStatus): string {
+  if (docStatus === "complete") {
+    return cn("border-kp-outline/35 bg-kp-surface/45 opacity-[0.88]");
+  }
+  if (requirement !== "required") {
+    return cn("border-kp-outline/40 bg-kp-surface/30 opacity-[0.93]");
+  }
+  if (docStatus === "not_started") {
+    return cn("border-kp-outline/70 bg-kp-surface ring-1 ring-amber-500/15");
+  }
+  return "border-kp-outline/55 bg-kp-surface shadow-sm";
 }
 
 export function TransactionProgressWorkspace({
@@ -419,6 +493,9 @@ export function TransactionProgressWorkspace({
   const [savingSide, setSavingSide] = useState(false);
   const [stageJump, setStageJump] = useState<string>("");
   const [savingEngineSourceRuleId, setSavingEngineSourceRuleId] = useState<string | null>(null);
+  const [expandRequestDomId, setExpandRequestDomId] = useState<string | null>(null);
+
+  const clearExpandRequest = useCallback(() => setExpandRequestDomId(null), []);
 
   const resolvedSide = side === "BUY" || side === "SELL" ? side : null;
 
@@ -553,21 +630,36 @@ export function TransactionProgressWorkspace({
       const total = engineTry.instances.length;
       if (total === 0) return null;
       let complete = 0;
+      let requiredStillOpen = 0;
       for (const inst of engineTry.instances) {
         const row = paperworkBySourceRuleId.get(inst.sourceRuleId);
         const st = row?.docStatus ?? instanceStatusToDocumentStatus(inst.status);
         if (st === "complete") complete++;
+        const isReq = inst.bucket === "required" || inst.bucket === "brokerage_required";
+        if (isReq && st !== "complete") requiredStillOpen++;
       }
-      return { complete, total, pct: Math.round((complete / total) * 100) };
+      return {
+        complete,
+        total,
+        pct: Math.round((complete / total) * 100),
+        requiredStillOpen,
+      };
     }
     if (resolvedSide && pipelineRows.length > 0) {
       let complete = 0;
+      let requiredStillOpen = 0;
       for (const row of pipelineRows) {
         const m = tryParsePipelineMeta(row.notes);
         if (m?.docStatus === "complete") complete++;
+        if (m?.requirement === "required" && m.docStatus !== "complete") requiredStillOpen++;
       }
       const total = pipelineRows.length;
-      return { complete, total, pct: Math.round((complete / total) * 100) };
+      return {
+        complete,
+        total,
+        pct: Math.round((complete / total) * 100),
+        requiredStillOpen,
+      };
     }
     return null;
   }, [useEnginePipeline, engineTry, paperworkBySourceRuleId, resolvedSide, pipelineRows]);
@@ -576,6 +668,7 @@ export function TransactionProgressWorkspace({
     if (useEnginePipeline && engineTry?.ok) {
       const sorted = [...engineTry.instances].sort((a, b) => a.sortOrder - b.sortOrder);
       let nextRequiredTitle: string | null = null;
+      let nextRequiredDomId: string | null = null;
       let requiredNotStarted = 0;
       let overdueCount = 0;
       for (const inst of sorted) {
@@ -588,13 +681,15 @@ export function TransactionProgressWorkspace({
         }
         if (nextRequiredTitle === null && isReq && st !== "complete") {
           nextRequiredTitle = inst.title;
+          nextRequiredDomId = txnDocElementIdForEngine(inst, row);
         }
       }
-      return { nextRequiredTitle, requiredNotStarted, overdueCount };
+      return { nextRequiredTitle, nextRequiredDomId, requiredNotStarted, overdueCount };
     }
     if (resolvedSide && pipelineRows.length > 0) {
       const sorted = [...pipelineRows].sort((a, b) => a.sortOrder - b.sortOrder);
       let nextRequiredTitle: string | null = null;
+      let nextRequiredDomId: string | null = null;
       let requiredNotStarted = 0;
       let overdueCount = 0;
       for (const row of sorted) {
@@ -608,9 +703,10 @@ export function TransactionProgressWorkspace({
         }
         if (nextRequiredTitle === null && isReq && st !== "complete") {
           nextRequiredTitle = row.title;
+          nextRequiredDomId = txnDocElementIdForPipelineRow(row.id);
         }
       }
-      return { nextRequiredTitle, requiredNotStarted, overdueCount };
+      return { nextRequiredTitle, nextRequiredDomId, requiredNotStarted, overdueCount };
     }
     return null;
   }, [useEnginePipeline, engineTry, paperworkBySourceRuleId, resolvedSide, pipelineRows]);
@@ -753,16 +849,18 @@ export function TransactionProgressWorkspace({
             <h2 id="txn-pipeline-heading" className="text-base font-semibold text-kp-on-surface">
               Document workflow
             </h2>
-            <p className="mt-0.5 max-w-prose text-[11px] leading-snug text-kp-on-surface-variant">
-              Track documents by stage. Economics:{" "}
-              <Link
-                href={`/transactions/${transactionId}/financial`}
-                className="font-medium text-kp-teal underline-offset-2 hover:underline"
-              >
-                Financial &amp; records
-              </Link>
-              .
-            </p>
+            {!pipelineActive ? (
+              <p className="mt-0.5 max-w-prose text-[11px] leading-snug text-kp-on-surface-variant">
+                Track documents by stage. Economics:{" "}
+                <Link
+                  href={`/transactions/${transactionId}/financial`}
+                  className="font-medium text-kp-teal underline-offset-2 hover:underline"
+                >
+                  Financial &amp; records
+                </Link>
+                .
+              </p>
+            ) : null}
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
                 Deal status
@@ -915,9 +1013,9 @@ export function TransactionProgressWorkspace({
           ) : useEnginePipeline && engineTry?.ok ? (
             <div
               id="txn-pipeline-setup"
-              className="mt-3 flex flex-col gap-2 rounded-md border border-kp-outline/45 bg-kp-surface-high/45 px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+              className="mt-3 flex flex-col gap-1.5 rounded-md border border-kp-outline/40 bg-kp-surface-high/40 px-2 py-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
             >
-              <p className="min-w-0 text-sm font-semibold leading-tight text-kp-on-surface">
+              <p className="min-w-0 text-xs font-semibold leading-tight text-kp-on-surface sm:text-sm">
                 Pipeline: {jurisdictionLabel ?? "California"}{" "}
                 {resolvedSide === "SELL" ? "Listing" : "Buyer"} · {engineStageEntries.length} stages ·{" "}
                 {engineTry.instances.length} docs
@@ -984,9 +1082,9 @@ export function TransactionProgressWorkspace({
           ) : pipelineRows.length > 0 && resolvedSide ? (
             <div
               id="txn-pipeline-setup"
-              className="mt-3 flex flex-col gap-2 rounded-md border border-kp-outline/45 bg-kp-surface-high/45 px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+              className="mt-3 flex flex-col gap-1.5 rounded-md border border-kp-outline/40 bg-kp-surface-high/40 px-2 py-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
             >
-              <p className="min-w-0 text-sm font-semibold leading-tight text-kp-on-surface">
+              <p className="min-w-0 text-xs font-semibold leading-tight text-kp-on-surface sm:text-sm">
                 Pipeline: California {resolvedSide === "SELL" ? "Listing" : "Buyer"} ·{" "}
                 {PIPELINE_STAGE_ORDER[resolvedSide].length} stages · {pipelineRows.length} docs
                 {!canChangeSide ? (
@@ -1054,14 +1152,21 @@ export function TransactionProgressWorkspace({
               complete={progressStats.complete}
               total={progressStats.total}
               pct={progressStats.pct}
+              requiredStillOpen={progressStats.requiredStillOpen}
             />
           ) : null}
 
           {pipelineActive && workflowAttention && !busy ? (
             <WorkflowAttentionStrip
               nextRequiredTitle={workflowAttention.nextRequiredTitle}
+              nextRequiredDomId={workflowAttention.nextRequiredDomId}
               requiredNotStarted={workflowAttention.requiredNotStarted}
               overdueCount={workflowAttention.overdueCount}
+              onJumpToNextRequired={() => {
+                if (workflowAttention.nextRequiredDomId) {
+                  setExpandRequestDomId(workflowAttention.nextRequiredDomId);
+                }
+              }}
             />
           ) : null}
 
@@ -1109,6 +1214,8 @@ export function TransactionProgressWorkspace({
                                 persistedPaperwork={paperworkBySourceRuleId.get(inst.sourceRuleId)}
                                 archived={archived}
                                 disabled={savingEngineSourceRuleId === inst.sourceRuleId}
+                                expandRequestDomId={expandRequestDomId}
+                                onExpandHandled={clearExpandRequest}
                                 onSave={(patch) =>
                                   void saveEngineRow(
                                     inst,
@@ -1157,6 +1264,8 @@ export function TransactionProgressWorkspace({
                                     row={row}
                                     archived={archived}
                                     disabled={savingId === row.id}
+                                    expandRequestDomId={expandRequestDomId}
+                                    onExpandHandled={clearExpandRequest}
                                     onSave={(meta, due) => {
                                       void saveRow(row, meta, { dueDate: due });
                                     }}
@@ -1223,53 +1332,68 @@ function DocumentAttachField({
   };
 
   return (
-    <div className="space-y-1.5 sm:col-span-2">
+    <div className="space-y-1 sm:col-span-2">
       <p className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface">Attachment</p>
       {!hasPointer ? (
-        <div
-          className={cn(
-            "flex min-h-[3.25rem] cursor-pointer items-center gap-3 rounded-md border-2 border-dashed border-kp-teal/35 bg-kp-teal/[0.04] px-2.5 py-2 transition-colors",
-            !disabled && "hover:border-kp-teal/60 hover:bg-kp-teal/[0.07]",
-            disabled && "cursor-not-allowed opacity-55"
-          )}
-          role="button"
-          tabIndex={disabled ? -1 : 0}
-          onClick={() => !disabled && inputRef.current?.click()}
-          onKeyDown={(e) => {
-            if (disabled) return;
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              inputRef.current?.click();
-            }
-          }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            if (disabled) return;
-            onPick(e.dataTransfer.files?.[0]);
-          }}
-        >
-          <Upload className="h-4 w-4 shrink-0 text-kp-teal" aria-hidden />
-          <div className="min-w-0 flex-1 text-left">
-            <p className="text-xs font-semibold text-kp-on-surface">Upload document</p>
-            <p className="text-[10px] text-kp-on-surface-variant">or drop a file here</p>
+        <div className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={disabled}
+              className={cn(kpBtnPrimary, "h-8 px-3 text-xs font-semibold")}
+              onClick={() => inputRef.current?.click()}
+            >
+              <Upload className="mr-1.5 h-3.5 w-3.5" aria-hidden />
+              Upload document
+            </Button>
+            <span className="text-[10px] text-kp-on-surface-variant">Drop a file on the row below</span>
           </div>
-          <input
-            ref={inputRef}
-            type="file"
-            className="sr-only"
-            accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
-            disabled={disabled}
-            onChange={(e) => onPick(e.target.files?.[0])}
-          />
+          <div
+            className={cn(
+              "flex min-h-[2.25rem] items-center rounded border border-dashed border-kp-outline/50 bg-kp-bg/30 px-2 py-1 text-[10px] text-kp-on-surface-variant",
+              !disabled && "hover:border-kp-outline/70",
+              disabled && "opacity-55"
+            )}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (disabled) return;
+              onPick(e.dataTransfer.files?.[0]);
+            }}
+          >
+            <span className="text-kp-on-surface-variant/90">Drag and drop a file here</span>
+            <input
+              ref={inputRef}
+              type="file"
+              className="sr-only"
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
+              disabled={disabled}
+              onChange={(e) => onPick(e.target.files?.[0])}
+            />
+          </div>
+          <details className="text-[10px] text-kp-on-surface-variant">
+            <summary className="cursor-pointer select-none font-medium text-kp-on-surface-variant hover:text-kp-on-surface">
+              Paste link or path (advanced)
+            </summary>
+            <input
+              id={`${idPrefix}-adv`}
+              type="text"
+              value={value}
+              disabled={disabled}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="https://…"
+              className="mt-1 h-7 w-full rounded border border-kp-outline/60 bg-kp-surface px-2 text-[11px] text-kp-on-surface"
+            />
+          </details>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-kp-outline/55 bg-kp-surface-high/50 px-2 py-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 rounded border border-kp-outline/45 bg-kp-surface-high/40 px-2 py-1">
           <FileText className="h-3.5 w-3.5 shrink-0 text-kp-teal" aria-hidden />
-          <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-kp-on-surface" title={label}>
+          <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-kp-on-surface" title={label}>
             {label}
           </span>
           <div className="flex shrink-0 items-center gap-1">
@@ -1303,7 +1427,7 @@ function DocumentAttachField({
               disabled={disabled}
               onClick={() => onChange("")}
             >
-              Clear
+              Remove
             </Button>
             <input
               ref={inputRef}
@@ -1316,20 +1440,6 @@ function DocumentAttachField({
           </div>
         </div>
       )}
-      <details className="text-[10px] text-kp-on-surface-variant">
-        <summary className="cursor-pointer select-none font-medium text-kp-on-surface-variant hover:text-kp-on-surface">
-          Advanced: paste link or path
-        </summary>
-        <input
-          id={`${idPrefix}-adv`}
-          type="text"
-          value={value}
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="https://…"
-          className="mt-1.5 h-8 w-full rounded border border-kp-outline/60 bg-kp-surface px-2 text-[11px] text-kp-on-surface"
-        />
-      </details>
     </div>
   );
 }
@@ -1339,12 +1449,16 @@ function FormEngineDocumentRow({
   persistedPaperwork,
   archived,
   disabled,
+  expandRequestDomId,
+  onExpandHandled,
   onSave,
 }: {
   instance: TransactionDocumentInstance;
   persistedPaperwork: SerializedTransactionPaperworkDocument | undefined;
   archived: boolean;
   disabled: boolean;
+  expandRequestDomId: string | null;
+  onExpandHandled: () => void;
   onSave: (patch: {
     docStatus: DocumentStatus;
     dueYmd: string;
@@ -1352,6 +1466,7 @@ function FormEngineDocumentRow({
     comments: string;
   }) => void | Promise<void>;
 }) {
+  const domId = txnDocElementIdForEngine(instance, persistedPaperwork);
   const h0 = paperworkRowHydration(instance, persistedPaperwork);
   const [docStatus, setDocStatus] = useState<DocumentStatus>(h0.docStatus);
   const [docUrl, setDocUrl] = useState(h0.docUrl);
@@ -1378,11 +1493,22 @@ function FormEngineDocumentRow({
     persistedPaperwork?.executedDocumentFilePath,
   ]);
 
+  useEffect(() => {
+    if (!expandRequestDomId || expandRequestDomId !== domId) return;
+    setExpanded(true);
+    const t = window.setTimeout(() => {
+      document.getElementById(domId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      onExpandHandled();
+    }, 60);
+    return () => window.clearTimeout(t);
+  }, [expandRequestDomId, domId, onExpandHandled]);
+
   const scan = docStatusForScan(docStatus);
   const dueLine = dueScanLine(dueLocal, docStatus);
   const hasFilePointer = Boolean(docUrl.trim());
 
   const bucket = instance.bucket;
+  const isRequiredForCopy = bucket === "required" || bucket === "brokerage_required";
   const leftAccent =
     bucket === "brokerage_required"
       ? "border-l-[3px] border-l-violet-500/80"
@@ -1394,14 +1520,16 @@ function FormEngineDocumentRow({
 
   return (
     <li
+      id={domId}
       className={cn(
-        "overflow-hidden rounded-md border border-kp-outline/55 bg-kp-surface shadow-sm",
+        "overflow-hidden rounded-md border shadow-sm",
+        formEngineRowSurfaceClass(bucket, docStatus),
         leftAccent
       )}
     >
       <button
         type="button"
-        className="flex w-full items-start gap-1.5 border-b border-kp-outline/35 bg-kp-surface-high/35 px-2 py-1.5 text-left sm:gap-2 sm:px-2.5"
+        className="flex w-full items-start gap-1.5 border-b border-kp-outline/30 bg-kp-surface-high/25 px-2 py-1 text-left sm:gap-2 sm:px-2.5 sm:py-1.5"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
       >
@@ -1453,18 +1581,24 @@ function FormEngineDocumentRow({
           <span
             className={cn(
               "inline-flex max-w-[10rem] items-center gap-0.5 text-[10px] font-semibold leading-tight sm:max-w-[12rem]",
-              hasFilePointer ? "text-kp-teal" : "text-kp-on-surface-variant"
+              hasFilePointer ? "text-kp-teal" : "text-kp-on-surface-variant",
+              !hasFilePointer && isRequiredForCopy && docStatus === "not_started" && "text-amber-700 dark:text-amber-300/90"
             )}
           >
             <Link2 className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
-            <span className="truncate">{hasFilePointer ? "Attached" : "No file"}</span>
+            <span className="truncate">
+              {attachmentCollapsedLabel(hasFilePointer, {
+                required: isRequiredForCopy,
+                docStatus,
+              })}
+            </span>
           </span>
         </div>
       </button>
 
       {expanded ? (
-        <div className="space-y-2 border-t border-kp-outline/30 bg-kp-bg/20 px-2.5 py-2 sm:px-3">
-          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-kp-outline/25 pb-2">
+        <div className="space-y-1.5 border-t border-kp-outline/25 bg-kp-bg/15 px-2 py-1.5 sm:px-2.5 sm:py-2">
+          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-kp-outline/20 pb-1.5">
             <div>
               <p className="text-[13px] font-semibold text-kp-on-surface">{instance.title}</p>
               <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">
@@ -1480,11 +1614,13 @@ function FormEngineDocumentRow({
                 {dueLine.text}
               </span>
               <span className={cn("font-medium", hasFilePointer ? "text-kp-teal" : "text-kp-on-surface-variant")}>
-                {hasFilePointer ? displayAttachmentLabel(docUrl) || "Attached" : "No attachment"}
+                {hasFilePointer
+                  ? displayAttachmentLabel(docUrl) || "Attached"
+                  : attachmentCollapsedLabel(false, { required: isRequiredForCopy, docStatus })}
               </span>
             </div>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-1.5 sm:grid-cols-2">
             <div className="space-y-0.5">
               <label className="text-[10px] font-bold uppercase text-kp-on-surface">Status</label>
               <Select
@@ -1497,11 +1633,7 @@ function FormEngineDocumentRow({
                 </SelectTrigger>
                 <SelectContent>
                   {DOC_STATUS_OPTIONS.map((o) => (
-                    <SelectItem
-                      key={o.value}
-                      value={o.value}
-                      className="text-xs text-kp-on-surface focus:text-kp-on-surface"
-                    >
+                    <SelectItem key={o.value} value={o.value} className="text-xs">
                       {o.label}
                     </SelectItem>
                   ))}
@@ -1532,12 +1664,12 @@ function FormEngineDocumentRow({
                 onChange={(e) => setComments(e.target.value)}
                 rows={2}
                 placeholder="Short note…"
-                className="min-h-[2.5rem] w-full resize-y rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1 text-xs leading-snug text-kp-on-surface"
+                className="min-h-[2.25rem] w-full resize-y rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1 text-xs leading-snug text-kp-on-surface"
               />
             </div>
           </div>
 
-          <div className="flex justify-end pt-1">
+          <div className="flex justify-end pt-0.5">
             <Button
               type="button"
               size="sm"
@@ -1565,13 +1697,18 @@ function PipelineDocumentRow({
   row,
   archived,
   disabled,
+  expandRequestDomId,
+  onExpandHandled,
   onSave,
 }: {
   row: ChecklistItem;
   archived: boolean;
   disabled: boolean;
+  expandRequestDomId: string | null;
+  onExpandHandled: () => void;
   onSave: (meta: PipelineChecklistMetaV1, dueDate: string | null) => void;
 }) {
+  const domId = txnDocElementIdForPipelineRow(row.id);
   const meta = tryParsePipelineMeta(row.notes);
   const [docStatus, setDocStatus] = useState<DocumentStatus>(meta?.docStatus ?? "not_started");
   const [docUrl, setDocUrl] = useState(meta?.docUrl ?? "");
@@ -1593,17 +1730,31 @@ function PipelineDocumentRow({
     setDueLocal((prev) => (prev === due ? prev : due));
   }, [row.id, row.notes, row.dueDate]);
 
+  useEffect(() => {
+    if (!expandRequestDomId || expandRequestDomId !== domId) return;
+    setExpanded(true);
+    const t = window.setTimeout(() => {
+      document.getElementById(domId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      onExpandHandled();
+    }, 60);
+    return () => window.clearTimeout(t);
+  }, [expandRequestDomId, domId, onExpandHandled]);
+
   if (!meta) return null;
 
   const scan = docStatusForScan(docStatus);
   const dueLine = dueScanLine(dueLocal, docStatus);
   const hasFilePointer = Boolean(docUrl.trim());
+  const isRequiredForCopy = meta.requirement === "required";
 
   return (
-    <li className="overflow-hidden rounded-md border border-kp-outline/55 bg-kp-surface shadow-sm">
+    <li
+      id={domId}
+      className={cn("overflow-hidden rounded-md border shadow-sm", pipelineRowSurfaceClass(meta.requirement, docStatus))}
+    >
       <button
         type="button"
-        className="flex w-full items-start gap-1.5 border-b border-kp-outline/35 bg-kp-surface-high/35 px-2 py-1.5 text-left sm:gap-2 sm:px-2.5"
+        className="flex w-full items-start gap-1.5 border-b border-kp-outline/30 bg-kp-surface-high/25 px-2 py-1 text-left sm:gap-2 sm:px-2.5 sm:py-1.5"
         onClick={() => setExpanded((v) => !v)}
         aria-expanded={expanded}
       >
@@ -1647,18 +1798,24 @@ function PipelineDocumentRow({
           <span
             className={cn(
               "inline-flex max-w-[10rem] items-center gap-0.5 text-[10px] font-semibold leading-tight sm:max-w-[12rem]",
-              hasFilePointer ? "text-kp-teal" : "text-kp-on-surface-variant"
+              hasFilePointer ? "text-kp-teal" : "text-kp-on-surface-variant",
+              !hasFilePointer && isRequiredForCopy && docStatus === "not_started" && "text-amber-700 dark:text-amber-300/90"
             )}
           >
             <Link2 className="h-3 w-3 shrink-0 opacity-90" aria-hidden />
-            <span className="truncate">{hasFilePointer ? "Attached" : "No file"}</span>
+            <span className="truncate">
+              {attachmentCollapsedLabel(hasFilePointer, {
+                required: isRequiredForCopy,
+                docStatus,
+              })}
+            </span>
           </span>
         </div>
       </button>
 
       {expanded ? (
-        <div className="space-y-2 border-t border-kp-outline/30 bg-kp-bg/20 px-2.5 py-2 sm:px-3">
-          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-kp-outline/25 pb-2">
+        <div className="space-y-1.5 border-t border-kp-outline/25 bg-kp-bg/15 px-2 py-1.5 sm:px-2.5 sm:py-2">
+          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-kp-outline/20 pb-1.5">
             <div>
               <p className="text-[13px] font-semibold text-kp-on-surface">{row.title}</p>
               <p className="mt-0.5 text-[10px] text-kp-on-surface-variant">
@@ -1673,11 +1830,13 @@ function PipelineDocumentRow({
                 {dueLine.text}
               </span>
               <span className={cn("font-medium", hasFilePointer ? "text-kp-teal" : "text-kp-on-surface-variant")}>
-                {hasFilePointer ? displayAttachmentLabel(docUrl) || "Attached" : "No attachment"}
+                {hasFilePointer
+                  ? displayAttachmentLabel(docUrl) || "Attached"
+                  : attachmentCollapsedLabel(false, { required: isRequiredForCopy, docStatus })}
               </span>
             </div>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid gap-1.5 sm:grid-cols-2">
             <div className="space-y-0.5">
               <label className="text-[10px] font-bold uppercase text-kp-on-surface">Status</label>
               <Select
@@ -1690,11 +1849,7 @@ function PipelineDocumentRow({
                 </SelectTrigger>
                 <SelectContent>
                   {DOC_STATUS_OPTIONS.map((o) => (
-                    <SelectItem
-                      key={o.value}
-                      value={o.value}
-                      className="text-xs text-kp-on-surface focus:text-kp-on-surface"
-                    >
+                    <SelectItem key={o.value} value={o.value} className="text-xs">
                       {o.label}
                     </SelectItem>
                   ))}
@@ -1725,12 +1880,12 @@ function PipelineDocumentRow({
                 onChange={(e) => setComments(e.target.value)}
                 rows={2}
                 placeholder="Short note…"
-                className="min-h-[2.5rem] w-full resize-y rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1 text-xs leading-snug text-kp-on-surface"
+                className="min-h-[2.25rem] w-full resize-y rounded-md border border-kp-outline/70 bg-kp-surface px-2 py-1 text-xs leading-snug text-kp-on-surface"
               />
             </div>
           </div>
 
-          <div className="flex justify-end pt-1">
+          <div className="flex justify-end pt-0.5">
             <Button
               type="button"
               size="sm"

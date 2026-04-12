@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import useSWR from "swr";
 import { GitBranch } from "lucide-react";
 import { toast } from "sonner";
@@ -36,12 +36,9 @@ function mapRowToTimelineItem(row: TransactionActivityApiRow): ActivityTimelineI
 
 export function TransactionDetailActivityPanel({
   transactionId,
-  operationsCue,
   className,
 }: {
   transactionId: string;
-  /** State-driven “what to do now” — shown under the Activity header. */
-  operationsCue?: ReactNode;
   className?: string;
 }) {
   const key = transactionId ? `/api/v1/transactions/${transactionId}/activity` : null;
@@ -85,9 +82,8 @@ export function TransactionDetailActivityPanel({
       title="Activity"
       description="Chronological history — newest first. Quick notes here; use Actions for calls, status, and financial workspace."
       icon={<GitBranch className="h-3.5 w-3.5" />}
-      className={cn("min-h-[240px] border-kp-outline/50 bg-kp-surface/40", className)}
+      className={cn("min-h-[220px] border-kp-outline/40 bg-kp-surface/25", className)}
     >
-      {operationsCue}
       {busy ? (
         <ul className="space-y-2" aria-busy="true">
           {[0, 1, 2].map((i) => (
