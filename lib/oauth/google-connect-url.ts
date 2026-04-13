@@ -2,7 +2,7 @@
  * Browser-safe OAuth connect URLs only — do not import `google.ts` (pulls in googleapis).
  * Keep defaults in sync with `getGoogleOAuthRedirectOrigin()` in `lib/oauth/google.ts`.
  */
-const DEFAULT_CANONICAL = "https://danadube.com";
+const DEFAULT_CANONICAL = "https://keypilot-one.vercel.app";
 
 function getCanonicalOrigin(): string {
   return (process.env.NEXT_PUBLIC_GOOGLE_OAUTH_CANONICAL_ORIGIN?.trim() || DEFAULT_CANONICAL).replace(

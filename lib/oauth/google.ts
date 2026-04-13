@@ -1,16 +1,14 @@
 /**
  * Google OAuth 2.0 client for Calendar, Gmail, etc.
  *
- * The OAuth redirect URI is fixed to one production domain (default https://danadube.com) so
- * Google Cloud only needs a single authorized redirect URI. Preview deployments pass
- * `return_url` on connect and receive `returnTo` in signed OAuth state so post-auth redirects
- * can send users back to the preview origin.
+ * Single fixed redirect URI (default host below). Override with GOOGLE_OAUTH_REDIRECT_ORIGIN /
+ * NEXT_PUBLIC_GOOGLE_OAUTH_CANONICAL_ORIGIN. Other deployments pass `return_url` on connect and
+ * `returnTo` in OAuth state for post-auth redirects back to their origin.
  */
 
-import type { NextRequest } from "next/server";
 import { google } from "googleapis";
 
-const DEFAULT_REDIRECT_ORIGIN = "https://danadube.com";
+const DEFAULT_REDIRECT_ORIGIN = "https://keypilot-one.vercel.app";
 
 /**
  * Public site origin used for Google OAuth redirect and connect entry (no trailing slash).
@@ -32,20 +30,6 @@ export function getFixedGoogleOAuthRedirectUri(): string {
 /** Stored-token OAuth client: any one registered redirect URI from the same client is valid. */
 export function getDefaultGoogleOAuthRedirectUri(): string {
   return getFixedGoogleOAuthRedirectUri();
-}
-
-/**
- * Public origin for this request (Vercel sets x-forwarded-*). For post-OAuth UI redirects only,
- * not for Google redirect_uri.
- */
-export function getOAuthRequestOrigin(req: NextRequest): string {
-  const forwardedHost = req.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
-  const forwardedProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
-  if (forwardedHost) {
-    const proto = forwardedProto === "http" || forwardedProto === "https" ? forwardedProto : "https";
-    return `${proto}://${forwardedHost}`;
-  }
-  return req.nextUrl.origin;
 }
 
 /**
