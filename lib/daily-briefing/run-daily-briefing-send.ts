@@ -72,7 +72,7 @@ export async function attemptDailyBriefingSendForUser(
   const localDateKey = zonedDateKey(utcNow, tz);
   const to = resolveDailyBriefingDeliveryEmail(user, delivery);
 
-  let result: DailyBriefingSendAttemptResult;
+  let result!: DailyBriefingSendAttemptResult;
 
   if (!delivery.emailEnabled) {
     result = { status: "skipped", reason: "email_disabled" };
@@ -89,7 +89,8 @@ export async function attemptDailyBriefingSendForUser(
   } else {
     const { start, end } = zonedDayBoundsContaining(utcNow, tz);
 
-    let briefing;
+    let fetchFailed = false;
+    let briefing: Awaited<ReturnType<typeof fetchDailyBriefing>> | undefined;
     try {
       briefing = await fetchDailyBriefing(user, {
         now: utcNow,
@@ -100,39 +101,38 @@ export async function attemptDailyBriefingSendForUser(
       const msg = e instanceof Error ? e.message : String(e);
       console.error(`${LOG_PREFIX} fetch failed userId=${user.id}`, e);
       result = { status: "failed", error: `fetchDailyBriefing: ${msg}` };
-      await persistDailyBriefingSendAttemptLog({
-        userId: user.id,
-        targetEmail: to,
-        localDateKey,
-        result,
-        source: DailyBriefingSendLogSource.cron,
-      });
-      return result;
+      fetchFailed = true;
     }
 
-    const subject = buildDailyBriefingEmailSubject(briefing);
-    const html = renderDailyBriefingEmailHtml(briefing);
-    const text = renderDailyBriefingEmailPlainText(briefing);
-
-    const sendResult = await sendDailyBriefingEmail({ to, subject, html, text });
-    if (!sendResult.ok) {
-      if (sendResult.skipped) {
-        console.log(`${LOG_PREFIX} skip userId=${user.id} reason=send_env_unavailable detail=${sendResult.error}`);
-        result = { status: "skipped", reason: `send_env_unavailable:${sendResult.error}` };
+    if (!fetchFailed) {
+      if (briefing === undefined) {
+        result = { status: "failed", error: "fetchDailyBriefing: empty result" };
       } else {
-        result = { status: "failed", error: sendResult.error };
-      }
-    } else {
-      const todayKey = zonedDateKey(utcNow, tz);
-      await prismaAdmin.userDailyBriefingDelivery.update({
-        where: { userId: user.id },
-        data: { lastSentLocalDate: todayKey },
-      });
+        const subject = buildDailyBriefingEmailSubject(briefing);
+        const html = renderDailyBriefingEmailHtml(briefing);
+        const text = renderDailyBriefingEmailPlainText(briefing);
 
-      console.log(
-        `${LOG_PREFIX} sent userId=${user.id} to=${to} messageId=${sendResult.messageId ?? ""} localDate=${todayKey}`
-      );
-      result = { status: "sent", messageId: sendResult.messageId };
+        const sendResult = await sendDailyBriefingEmail({ to, subject, html, text });
+        if (!sendResult.ok) {
+          if (sendResult.skipped) {
+            console.log(`${LOG_PREFIX} skip userId=${user.id} reason=send_env_unavailable detail=${sendResult.error}`);
+            result = { status: "skipped", reason: `send_env_unavailable:${sendResult.error}` };
+          } else {
+            result = { status: "failed", error: sendResult.error };
+          }
+        } else {
+          const todayKey = zonedDateKey(utcNow, tz);
+          await prismaAdmin.userDailyBriefingDelivery.update({
+            where: { userId: user.id },
+            data: { lastSentLocalDate: todayKey },
+          });
+
+          console.log(
+            `${LOG_PREFIX} sent userId=${user.id} to=${to} messageId=${sendResult.messageId ?? ""} localDate=${todayKey}`
+          );
+          result = { status: "sent", messageId: sendResult.messageId };
+        }
+      }
     }
   }
 
