@@ -70,6 +70,19 @@ export function formatAgendaRowTime(ev: CalendarEvent): string {
 /** When line for calendar detail modals (timed range, all-day date, or Google-style day + range). */
 export function formatCalendarWhenForDetail(ev: CalendarEvent): string {
   if (ev.allDay) {
+    const meta = ev.metadata as { dateKey?: string } | undefined;
+    const dk = meta?.dateKey?.trim();
+    if (dk) {
+      const fromKey = parseLocalDateKeyToNoon(dk);
+      if (!Number.isNaN(fromKey.getTime())) {
+        return `${fromKey.toLocaleDateString(undefined, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        })} · All day`;
+      }
+    }
     const start = new Date(ev.start);
     if (Number.isNaN(start.getTime())) return "All day";
     return `${start.toLocaleDateString(undefined, {
