@@ -59,9 +59,36 @@ model User {
   contactFarmMemberships    ContactFarmMembership[]
   tasks                     Task[]
   farmImportRuns            FarmImportRun[]
+  dailyBriefingDelivery     UserDailyBriefingDelivery?
 
   @@index([clerkId])
   @@map("users")
+}
+
+/**
+ * Opt-in email delivery for the daily briefing (scheduled send). Default: off.
+ * Send time is interpreted in `timeZone`; dedupe uses the calendar date in that zone.
+ */
+model UserDailyBriefingDelivery {
+  id    String @id @default(uuid())
+  userId String @unique
+  /** When true, user may receive scheduled sends (subject to rollout env + due time). */
+  emailEnabled Boolean @default(false)
+  /** Minutes from local midnight in `timeZone` (0–1439), e.g. 480 = 08:00. */
+  sendLocalMinuteOfDay Int @default(480)
+  /** IANA timezone for schedule and “today” bounds in fetchDailyBriefing. */
+  timeZone String @default("America/Los_Angeles")
+  /** Optional override; otherwise User.email is used. */
+  deliveryEmailOverride String?
+  /** YYYY-MM-DD in `timeZone` — last calendar day we successfully sent for (dedupe). */
+  lastSentLocalDate String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([emailEnabled])
+  @@map("user_daily_briefing_deliveries")
 }
 
 /**

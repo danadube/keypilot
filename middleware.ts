@@ -14,6 +14,8 @@ const isPublicRoute = createRouteMatcher([
   "/api/v1/feedback/by-token/(.*)",
   "/api/v1/feedback/submit",
   "/api/v1/debug/rls-context(.*)",
+  /** Cron jobs authenticate inside the route (Vercel cron header or CRON_SECRET). */
+  "/api/cron/(.*)",
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/styleguide",

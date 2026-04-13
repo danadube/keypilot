@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { href: "/settings/automation", label: "Automation" },
   { href: "/settings/ai", label: "AI" },
   { href: "/settings/modules", label: "Modules" },
-  { href: "/settings/daily-briefing/preview", label: "Daily briefing preview" },
+  { href: "/settings/daily-briefing", label: "Daily briefing" },
 ];
 
 export default function SettingsLayout({
