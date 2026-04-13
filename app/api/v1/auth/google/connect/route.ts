@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { getGoogleOAuth2Client, getScopesForService } from "@/lib/oauth/google";
+import {
+  createGoogleOAuth2Client,
+  getGoogleOAuthRedirectUriForOrigin,
+  getOAuthRequestOrigin,
+  getScopesForService,
+} from "@/lib/oauth/google";
 
 export const dynamic = "force-dynamic";
 
@@ -13,20 +18,18 @@ export async function GET(req: NextRequest) {
 
     const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+    const origin = getOAuthRequestOrigin(req);
     if (!clientId || !clientSecret) {
-      return NextResponse.redirect(
-        new URL("/settings/connections?error=config_error", req.url)
-      );
+      return NextResponse.redirect(new URL("/settings/connections?error=config_error", origin));
     }
 
     const service = req.nextUrl.searchParams.get("service");
     if (!service || !ALLOWED_SERVICES.includes(service as (typeof ALLOWED_SERVICES)[number])) {
-      return NextResponse.redirect(
-        new URL("/settings/connections?error=invalid_service", req.url)
-      );
+      return NextResponse.redirect(new URL("/settings/connections?error=invalid_service", origin));
     }
 
-    const oauth2 = getGoogleOAuth2Client();
+    const redirectUri = getGoogleOAuthRedirectUriForOrigin(origin);
+    const oauth2 = createGoogleOAuth2Client(redirectUri);
     const scopes = getScopesForService(service as "google_calendar" | "gmail");
     const state = Buffer.from(JSON.stringify({ service, nonce: crypto.randomUUID() })).toString("base64url");
     const redirectUrl = oauth2.generateAuthUrl({
@@ -50,9 +53,8 @@ export async function GET(req: NextRequest) {
     const msg = (e as Error).message ?? "";
     const isConfigError = msg.includes("GOOGLE_CLIENT_ID") || msg.includes("GOOGLE_CLIENT_SECRET");
     const errorCode = isConfigError ? "config_error" : "auth_failed";
-    const origin = req.nextUrl.origin;
     return NextResponse.redirect(
-      new URL(`/settings/connections?error=${errorCode}`, origin)
+      new URL(`/settings/connections?error=${errorCode}`, getOAuthRequestOrigin(req))
     );
   }
 }

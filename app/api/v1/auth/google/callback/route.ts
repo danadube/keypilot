@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { getGoogleOAuth2Client } from "@/lib/oauth/google";
+import {
+  createGoogleOAuth2Client,
+  getGoogleOAuthRedirectUriForOrigin,
+  getOAuthRequestOrigin,
+} from "@/lib/oauth/google";
 import { prismaAdmin } from "@/lib/db";
 import { trackUsageEvent } from "@/lib/track-usage";
 
@@ -8,6 +12,7 @@ export const dynamic = "force-dynamic";
 
 /** GET /api/v1/auth/google/callback - OAuth callback, exchange code for tokens */
 export async function GET(req: NextRequest) {
+  const origin = getOAuthRequestOrigin(req);
   try {
     const user = await getCurrentUser();
     const code = req.nextUrl.searchParams.get("code");
@@ -16,48 +21,39 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       return NextResponse.redirect(
-        new URL(`/settings/connections?error=${encodeURIComponent(error)}`, req.url)
+        new URL(`/settings/connections?error=${encodeURIComponent(error)}`, origin)
       );
     }
 
     if (!code || !state) {
-      return NextResponse.redirect(
-        new URL("/settings/connections?error=missing_params", req.url)
-      );
+      return NextResponse.redirect(new URL("/settings/connections?error=missing_params", origin));
     }
 
     const stateCookie = req.cookies.get("google_oauth_state")?.value;
     if (!stateCookie || stateCookie !== state) {
-      return NextResponse.redirect(
-        new URL("/settings/connections?error=invalid_state", req.url)
-      );
+      return NextResponse.redirect(new URL("/settings/connections?error=invalid_state", origin));
     }
 
     let payload: { service: string; nonce: string };
     try {
       payload = JSON.parse(Buffer.from(state, "base64url").toString());
     } catch {
-      return NextResponse.redirect(
-        new URL("/settings/connections?error=invalid_state", req.url)
-      );
+      return NextResponse.redirect(new URL("/settings/connections?error=invalid_state", origin));
     }
 
     const service = payload.service;
     const GOOGLE_SERVICES = ["google_calendar", "gmail"] as const;
     if (!GOOGLE_SERVICES.includes(service as (typeof GOOGLE_SERVICES)[number])) {
-      return NextResponse.redirect(
-        new URL("/settings/connections?error=invalid_service", req.url)
-      );
+      return NextResponse.redirect(new URL("/settings/connections?error=invalid_service", origin));
     }
 
     const prismaService = service === "gmail" ? "GMAIL" : "GOOGLE_CALENDAR";
 
-    const oauth2 = getGoogleOAuth2Client();
+    const redirectUri = getGoogleOAuthRedirectUriForOrigin(origin);
+    const oauth2 = createGoogleOAuth2Client(redirectUri);
     const { tokens } = await oauth2.getToken(code);
     if (!tokens.access_token) {
-      return NextResponse.redirect(
-        new URL("/settings/connections?error=no_token", req.url)
-      );
+      return NextResponse.redirect(new URL("/settings/connections?error=no_token", origin));
     }
 
     oauth2.setCredentials(tokens);
@@ -85,7 +81,10 @@ export async function GET(req: NextRequest) {
         data: {
           status: "CONNECTED",
           accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token ?? undefined,
+          // Omit refresh token only when Google omits it (Prisma skips field); keeps prior refresh token.
+          ...(tokens.refresh_token != null && tokens.refresh_token !== ""
+            ? { refreshToken: tokens.refresh_token }
+            : {}),
           tokenExpiresAt,
           connectedAt: new Date(),
           errorMessage: null,
@@ -113,13 +112,13 @@ export async function GET(req: NextRequest) {
       void trackUsageEvent(user.id, "calendar_connected");
     }
 
-    const res = NextResponse.redirect(new URL(`/settings/connections?connected=${service}`, req.url));
+    const res = NextResponse.redirect(new URL(`/settings/connections?connected=${service}`, origin));
     res.cookies.delete("google_oauth_state");
     return res;
   } catch (e) {
     console.error("[auth/google/callback]", e);
     return NextResponse.redirect(
-      new URL("/settings/connections?error=auth_failed", req.url)
+      new URL("/settings/connections?error=auth_failed", getOAuthRequestOrigin(req))
     );
   }
 }

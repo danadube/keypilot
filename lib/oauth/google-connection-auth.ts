@@ -6,10 +6,7 @@
 import { google } from "googleapis";
 import type { OAuth2Client } from "google-auth-library";
 import { prismaAdmin } from "@/lib/db";
-
-const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL
-  ? `${process.env.NEXT_PUBLIC_APP_URL}/api/v1/auth/google/callback`
-  : "http://localhost:3000/api/v1/auth/google/callback";
+import { getDefaultGoogleOAuthRedirectUri } from "@/lib/oauth/google";
 
 /** Token fields read from Connection — any Google service using the same OAuth app. */
 export type GoogleConnectionTokens = {
@@ -25,7 +22,7 @@ function buildOAuth2Client(conn: GoogleConnectionTokens): OAuth2Client {
   if (!clientId || !clientSecret) {
     throw new Error("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set");
   }
-  const oauth2 = new google.auth.OAuth2(clientId, clientSecret, REDIRECT_URI);
+  const oauth2 = new google.auth.OAuth2(clientId, clientSecret, getDefaultGoogleOAuthRedirectUri());
   oauth2.setCredentials({
     access_token: conn.accessToken,
     refresh_token: conn.refreshToken ?? undefined,
