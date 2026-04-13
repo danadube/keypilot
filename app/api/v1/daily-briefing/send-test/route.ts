@@ -8,9 +8,12 @@ import {
   renderDailyBriefingEmailHtml,
   renderDailyBriefingEmailPlainText,
 } from "@/lib/daily-briefing/email/render-daily-briefing-email";
-import { resolveDailyBriefingDeliveryEmail } from "@/lib/daily-briefing/run-daily-briefing-send";
+import { persistDailyBriefingSendAttemptLog } from "@/lib/daily-briefing/persist-daily-briefing-send-log";
+import { resolveDailyBriefingDeliveryEmail, zonedDateKey } from "@/lib/daily-briefing/run-daily-briefing-send";
+import type { DailyBriefingSendAttemptResult } from "@/lib/daily-briefing/send-attempt-types";
 import { sendDailyBriefingEmail } from "@/lib/email/send-daily-briefing-email";
 import { withRLSContext } from "@/lib/db-context";
+import { DailyBriefingSendLogSource } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -47,11 +50,26 @@ export async function POST() {
     });
 
     const to = resolveDailyBriefingDeliveryEmail(user, delivery);
+    const localDateKey = zonedDateKey(utcNow, tz);
     const subject = `[Test] ${buildDailyBriefingEmailSubject(briefing)}`;
     const html = renderDailyBriefingEmailHtml(briefing);
     const text = renderDailyBriefingEmailPlainText(briefing);
 
     const result = await sendDailyBriefingEmail({ to, subject, html, text });
+    const attemptResult: DailyBriefingSendAttemptResult = result.ok
+      ? { status: "sent", messageId: result.messageId }
+      : result.skipped
+        ? { status: "skipped", reason: `send_env_unavailable:${result.error}` }
+        : { status: "failed", error: result.error };
+
+    await persistDailyBriefingSendAttemptLog({
+      userId: user.id,
+      targetEmail: to,
+      localDateKey,
+      result: attemptResult,
+      source: DailyBriefingSendLogSource.test,
+    });
+
     if (!result.ok) {
       console.error(`${LOG} failed userId=${user.id}`, result);
       return apiError(result.error, result.skipped ? 503 : 502);

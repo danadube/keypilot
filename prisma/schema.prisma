@@ -60,9 +60,44 @@ model User {
   tasks                     Task[]
   farmImportRuns            FarmImportRun[]
   dailyBriefingDelivery     UserDailyBriefingDelivery?
+  dailyBriefingSendLogs     UserDailyBriefingSendLog[]
 
   @@index([clerkId])
   @@map("users")
+}
+
+enum DailyBriefingSendLogStatus {
+  SENT
+  SKIPPED
+  FAILED
+}
+
+enum DailyBriefingSendLogSource {
+  cron
+  test
+}
+
+/**
+ * Append-only audit of daily briefing email attempts (cron or test send). RLS: own rows only.
+ */
+model UserDailyBriefingSendLog {
+  id     String @id @default(uuid())
+  userId String
+  /** Delivery target at time of attempt. */
+  targetEmail   String
+  /** YYYY-MM-DD in the user’s briefing timezone for this attempt. */
+  localDateKey  String
+  status        DailyBriefingSendLogStatus
+  /** Skip/fail reason or error text; null when sent successfully. */
+  detail        String? @db.VarChar(2000)
+  resendMessageId String?
+  source        DailyBriefingSendLogSource @default(cron)
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("user_daily_briefing_send_logs")
 }
 
 /**
