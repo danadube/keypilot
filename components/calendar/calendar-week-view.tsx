@@ -2,9 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ExternalLink } from "lucide-react";
-import { BrandModal } from "@/components/ui/BrandModal";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { CalendarEvent, CalendarSourceType } from "@/lib/calendar/calendar-event-types";
 import { layoutOverlappingIntervals } from "@/lib/calendar/overlap-layout";
@@ -66,88 +63,6 @@ const SOURCE_RING: Record<CalendarSourceType, string> = {
     "border-l-slate-400 bg-slate-500/[0.10] shadow-sm ring-1 ring-slate-400/15 ring-inset",
 };
 
-type ExternalMeta = {
-  calendarName?: string;
-  subline?: string;
-  location?: string;
-  htmlLink?: string;
-  readOnly?: boolean;
-};
-
-function formatEventDetailWhen(ev: CalendarEvent): string {
-  if (ev.allDay) return "All day";
-  const start = new Date(ev.start);
-  const end = new Date(ev.end);
-  if (Number.isNaN(start.getTime())) return "";
-  const dayPart = start.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-  const startClock = start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  if (Number.isNaN(end.getTime())) return `${dayPart} · ${startClock}`;
-  const endClock = end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  return `${dayPart} · ${startClock} – ${endClock}`;
-}
-
-function ExternalEventDetailModal({
-  ev,
-  open,
-  onOpenChange,
-}: {
-  ev: CalendarEvent | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}) {
-  if (!ev) return null;
-  const meta = ev.metadata as ExternalMeta | undefined;
-  const calendarName = meta?.calendarName ?? meta?.subline ?? "Google Calendar";
-  return (
-    <BrandModal
-      open={open}
-      onOpenChange={onOpenChange}
-      title={ev.title}
-      description="External calendar (read-only in KeyPilot)"
-      size="sm"
-      footer={
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {meta?.htmlLink ? (
-            <Button variant="outline" size="sm" asChild>
-              <a href={meta.htmlLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5">
-                Open in Google
-                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
-              </a>
-            </Button>
-          ) : null}
-          <Button type="button" size="sm" onClick={() => onOpenChange(false)}>
-            Close
-          </Button>
-        </div>
-      }
-    >
-      <dl className="space-y-3 text-sm">
-        <div>
-          <dt className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">When</dt>
-          <dd className="mt-0.5 text-kp-on-surface">{formatEventDetailWhen(ev)}</dd>
-        </div>
-        <div>
-          <dt className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">Calendar</dt>
-          <dd className="mt-0.5 text-kp-on-surface">{calendarName}</dd>
-        </div>
-        {meta?.location ? (
-          <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">Location</dt>
-            <dd className="mt-0.5 text-kp-on-surface">{meta.location}</dd>
-          </div>
-        ) : null}
-        <p className="rounded-md border border-kp-outline/50 bg-kp-bg/80 px-2.5 py-2 text-xs text-kp-on-surface-muted">
-          This event is synced from Google for planning only. Editing happens in Google Calendar.
-        </p>
-      </dl>
-    </BrandModal>
-  );
-}
-
 function useNowTickMs() {
   const [ms, setMs] = useState(() => Date.now());
   useEffect(() => {
@@ -193,7 +108,8 @@ export function CalendarWeekView({
   className,
   emptyHint = "none",
   onTimeGridCreate,
-  onAllDayCreate,
+  onAllDayBackgroundClick,
+  onExternalEventOpen,
 }: {
   weekStart: Date;
   events: CalendarEvent[];
@@ -202,8 +118,10 @@ export function CalendarWeekView({
   emptyHint?: CalendarWeekEmptyHint;
   /** Click on a timed slot (empty area); time is 30-min floored from click Y. */
   onTimeGridCreate?: (args: { dateKey: string; timeLocal: string }) => void;
-  /** Click all-day row background for that column. */
-  onAllDayCreate?: (args: { dateKey: string; allDay: true }) => void;
+  /** Click empty all-day row background — e.g. open day agenda (not quick-add). */
+  onAllDayBackgroundClick?: (args: { dateKey: string }) => void;
+  /** Google Calendar and other read-only external blocks. */
+  onExternalEventOpen?: (ev: CalendarEvent) => void;
 }) {
   const dayStarts = useMemo(() => {
     const start = startOfLocalDay(weekStart);
@@ -277,7 +195,6 @@ export function CalendarWeekView({
 
   const nowMs = useNowTickMs();
   const now = new Date(nowMs);
-  const [externalDetail, setExternalDetail] = useState<CalendarEvent | null>(null);
 
   const emptyOverlay =
     emptyHint === "none" ? null : (
@@ -290,7 +207,7 @@ export function CalendarWeekView({
             <>
               <p className="text-sm font-medium text-kp-on-surface-muted">No events this week</p>
               <p className="mt-1 text-xs leading-snug text-kp-on-surface-muted">
-                Click anywhere to add a showing, task, or follow-up.
+                Click a time slot to add, or use the all-day row to review the day.
               </p>
             </>
           ) : (
@@ -366,18 +283,18 @@ export function CalendarWeekView({
                   isToday && "bg-kp-teal/[0.07]"
                 )}
               >
-                {onAllDayCreate ? (
+                {onAllDayBackgroundClick ? (
                   <button
                     type="button"
-                    aria-label="Add to calendar on this day"
+                    aria-label="View this day or add to calendar"
                     className="absolute inset-0 z-[1] cursor-pointer rounded-sm bg-transparent transition-colors hover:bg-kp-teal/[0.06]"
-                    onClick={() => onAllDayCreate({ dateKey: dk, allDay: true })}
+                    onClick={() => onAllDayBackgroundClick({ dateKey: dk })}
                   />
                 ) : null}
                 <ul className="relative z-[10] flex flex-col gap-1">
                   {allDayByCol[col]!.map((ev) => (
                     <li key={ev.id}>
-                      <EventPill ev={ev} compact onExternalOpen={setExternalDetail} />
+                      <EventPill ev={ev} compact onExternalOpen={onExternalEventOpen} />
                     </li>
                   ))}
                 </ul>
@@ -418,18 +335,11 @@ export function CalendarWeekView({
               nowMs={nowMs}
               gridHeightRem={(GRID_END_HOUR - GRID_START_HOUR) * (HOUR_ROW_PX / 16)}
               onTimeGridCreate={onTimeGridCreate}
-              onExternalOpen={setExternalDetail}
+              onExternalOpen={onExternalEventOpen}
             />
           ))}
         </div>
       </div>
-      <ExternalEventDetailModal
-        ev={externalDetail}
-        open={externalDetail != null}
-        onOpenChange={(o) => {
-          if (!o) setExternalDetail(null);
-        }}
-      />
     </div>
   );
 }
@@ -441,7 +351,7 @@ function EventPill({
 }: {
   ev: CalendarEvent;
   compact?: boolean;
-  onExternalOpen: (ev: CalendarEvent) => void;
+  onExternalOpen?: (ev: CalendarEvent) => void;
 }) {
   const ring = SOURCE_RING[ev.sourceType] ?? SOURCE_RING.external;
   const start = new Date(ev.start);
@@ -475,7 +385,11 @@ function EventPill({
   );
   if (ev.sourceType === "external") {
     return (
-      <button type="button" className={shellClass} onClick={() => onExternalOpen(ev)}>
+      <button
+        type="button"
+        className={shellClass}
+        onClick={() => onExternalOpen?.(ev)}
+      >
         {inner}
       </button>
     );
@@ -507,7 +421,7 @@ function DayColumn({
   nowMs: number;
   gridHeightRem: number;
   onTimeGridCreate?: (args: { dateKey: string; timeLocal: string }) => void;
-  onExternalOpen: (ev: CalendarEvent) => void;
+  onExternalOpen?: (ev: CalendarEvent) => void;
 }) {
   const placements = useMemo(() => {
     const intervals = timedEvents.map((ev) => ({
@@ -561,7 +475,7 @@ function DayColumn({
                 <button
                   type="button"
                   className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
-                  onClick={() => onExternalOpen(ev)}
+                  onClick={() => onExternalOpen?.(ev)}
                 >
                   {ev.title}
                 </button>
@@ -637,7 +551,7 @@ function DayColumn({
                 style={blockStyle}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onExternalOpen(ev);
+                  onExternalOpen?.(ev);
                 }}
               >
                 {blockBody}
@@ -667,7 +581,7 @@ function DayColumn({
                 <button
                   type="button"
                   className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
-                  onClick={() => onExternalOpen(ev)}
+                  onClick={() => onExternalOpen?.(ev)}
                 >
                   {ev.title}
                 </button>

@@ -28,6 +28,13 @@ import {
   formatCalendarQuickAddSummary,
   type CalendarQuickAddPrefill,
 } from "@/components/calendar/add-event-modal";
+import { CalendarDayAgendaModal } from "@/components/calendar/calendar-day-agenda-modal";
+import { ExternalCalendarEventDetailModal } from "@/components/calendar/external-calendar-event-detail-modal";
+import {
+  filterEventsForLocalDay,
+  parseLocalDateKeyToNoon,
+  sortAgendaDayEvents,
+} from "@/lib/calendar/calendar-event-day-utils";
 
 function startOfLocalDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
@@ -82,7 +89,7 @@ function CalendarMonthOverview({
 }: {
   visibleMonth: Date;
   events: CalendarEvent[];
-  /** Opens Quick Add with prefilled day (and optional week context in parent). */
+  /** Opens day agenda for this local date (parent also syncs week/month navigation). */
   onDayClick: (d: Date) => void;
   activeWeekStart: Date;
 }) {
@@ -119,7 +126,7 @@ function CalendarMonthOverview({
       <div className="border-b border-kp-outline/70 bg-kp-surface-high/[0.08] px-4 py-3">
         <p className="font-headline text-base font-semibold tracking-tight text-kp-on-surface">{title}</p>
         <p className="mt-1 text-xs leading-snug text-kp-on-surface-muted">
-          Dots show load; the teal band is the week you see in Week view. Click a day to add to your calendar.
+          Dots show load; the teal band is the week you see in Week view. Click a day to review the agenda, then add if needed.
         </p>
       </div>
       <div className="p-3 sm:p-4">
@@ -212,6 +219,8 @@ export function CalendarPageView() {
   const [quickAddPrefill, setQuickAddPrefill] = useState<CalendarQuickAddPrefill | null>(null);
   const [followUpHintOpen, setFollowUpHintOpen] = useState(false);
   const [followUpHintSummary, setFollowUpHintSummary] = useState("");
+  const [agendaDay, setAgendaDay] = useState<Date | null>(null);
+  const [externalDetail, setExternalDetail] = useState<CalendarEvent | null>(null);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   /** When opening New task from the calendar (or after choosing Task in Add to Calendar), set due date/time. Cleared when the modal closes. */
   const [taskDuePrefill, setTaskDuePrefill] = useState<{ date: string; time: string } | null>(null);
@@ -241,6 +250,11 @@ export function CalendarPageView() {
   const events = data?.events ?? NO_EVENTS;
   const integrations = data?.integrations;
   const filtered = useMemo(() => filterEvents(events, filter), [events, filter]);
+
+  const agendaEventsForModal = useMemo(() => {
+    if (!agendaDay) return [];
+    return sortAgendaDayEvents(filterEventsForLocalDay(filtered, agendaDay));
+  }, [filtered, agendaDay]);
 
   const weekLabel = useMemo(() => {
     const a = weekStart;
@@ -317,14 +331,15 @@ export function CalendarPageView() {
     [onAddEventOpenChange]
   );
 
-  const onMonthDayClick = useCallback(
-    (d: Date) => {
-      setWeekStart(startOfWeekSunday(d));
-      setVisibleMonth(startOfMonth(d));
-      openAddEventModal({ date: localDateKey(d), time: "09:00" });
-    },
-    [openAddEventModal]
-  );
+  const onMonthDayOpenAgenda = useCallback((d: Date) => {
+    setWeekStart(startOfWeekSunday(d));
+    setVisibleMonth(startOfMonth(d));
+    setAgendaDay(startOfLocalDay(d));
+  }, []);
+
+  const onWeekAllDayOpenAgenda = useCallback(({ dateKey }: { dateKey: string }) => {
+    setAgendaDay(parseLocalDateKeyToNoon(dateKey));
+  }, []);
 
   const chipClass = (k: FilterKey) =>
     cn(
@@ -498,17 +513,41 @@ export function CalendarPageView() {
             onTimeGridCreate={({ dateKey, timeLocal }) =>
               openAddEventModal({ date: dateKey, time: timeLocal })
             }
-            onAllDayCreate={({ dateKey }) => openAddEventModal({ date: dateKey, time: "" })}
+            onAllDayBackgroundClick={onWeekAllDayOpenAgenda}
+            onExternalEventOpen={setExternalDetail}
           />
         </div>
       ) : view === "month" ? (
         <CalendarMonthOverview
           visibleMonth={visibleMonth}
           events={filterEvents(events, filter)}
-          onDayClick={onMonthDayClick}
+          onDayClick={onMonthDayOpenAgenda}
           activeWeekStart={weekStart}
         />
       ) : null}
+
+      <CalendarDayAgendaModal
+        open={agendaDay != null}
+        onOpenChange={(o) => {
+          if (!o) setAgendaDay(null);
+        }}
+        day={agendaDay}
+        events={agendaEventsForModal}
+        filterAll={filter === "all"}
+        onAdd={(prefill) => openAddEventModal(prefill)}
+        onExternalSelect={(ev) => {
+          setAgendaDay(null);
+          setExternalDetail(ev);
+        }}
+      />
+
+      <ExternalCalendarEventDetailModal
+        ev={externalDetail}
+        open={externalDetail != null}
+        onOpenChange={(o) => {
+          if (!o) setExternalDetail(null);
+        }}
+      />
 
       <AddEventModal
         open={addEventOpen}
