@@ -61,6 +61,7 @@ const SOURCE_RING: Record<CalendarSourceType, string> = {
   transaction: "border-l-amber-700 bg-amber-600/[0.14] shadow-sm",
   external:
     "border-l-slate-400 bg-slate-500/[0.10] shadow-sm ring-1 ring-slate-400/15 ring-inset",
+  holiday: "border-l-rose-400 bg-rose-500/[0.12] shadow-sm ring-1 ring-rose-400/15 ring-inset",
 };
 
 function useNowTickMs() {
@@ -110,6 +111,7 @@ export function CalendarWeekView({
   onTimeGridCreate,
   onAllDayBackgroundClick,
   onExternalEventOpen,
+  onHolidayEventOpen,
 }: {
   weekStart: Date;
   events: CalendarEvent[];
@@ -122,6 +124,8 @@ export function CalendarWeekView({
   onAllDayBackgroundClick?: (args: { dateKey: string }) => void;
   /** Google Calendar and other read-only external blocks. */
   onExternalEventOpen?: (ev: CalendarEvent) => void;
+  /** Built-in holiday layer (read-only). */
+  onHolidayEventOpen?: (ev: CalendarEvent) => void;
 }) {
   const dayStarts = useMemo(() => {
     const start = startOfLocalDay(weekStart);
@@ -294,7 +298,12 @@ export function CalendarWeekView({
                 <ul className="relative z-[10] flex flex-col gap-1">
                   {allDayByCol[col]!.map((ev) => (
                     <li key={ev.id}>
-                      <EventPill ev={ev} compact onExternalOpen={onExternalEventOpen} />
+                      <EventPill
+                        ev={ev}
+                        compact
+                        onExternalOpen={onExternalEventOpen}
+                        onHolidayOpen={onHolidayEventOpen}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -336,6 +345,7 @@ export function CalendarWeekView({
               gridHeightRem={(GRID_END_HOUR - GRID_START_HOUR) * (HOUR_ROW_PX / 16)}
               onTimeGridCreate={onTimeGridCreate}
               onExternalOpen={onExternalEventOpen}
+              onHolidayOpen={onHolidayEventOpen}
             />
           ))}
         </div>
@@ -348,10 +358,12 @@ function EventPill({
   ev,
   compact,
   onExternalOpen,
+  onHolidayOpen,
 }: {
   ev: CalendarEvent;
   compact?: boolean;
   onExternalOpen?: (ev: CalendarEvent) => void;
+  onHolidayOpen?: (ev: CalendarEvent) => void;
 }) {
   const ring = SOURCE_RING[ev.sourceType] ?? SOURCE_RING.external;
   const start = new Date(ev.start);
@@ -381,6 +393,9 @@ function EventPill({
       {ev.sourceType === "external" && sub ? (
         <p className="mt-0.5 truncate text-[9px] text-kp-on-surface-muted">{sub}</p>
       ) : null}
+      {ev.sourceType === "holiday" && meta?.subline ? (
+        <p className="mt-0.5 truncate text-[9px] text-kp-on-surface-muted">{meta.subline}</p>
+      ) : null}
     </>
   );
   if (ev.sourceType === "external") {
@@ -390,6 +405,13 @@ function EventPill({
         className={shellClass}
         onClick={() => onExternalOpen?.(ev)}
       >
+        {inner}
+      </button>
+    );
+  }
+  if (ev.sourceType === "holiday") {
+    return (
+      <button type="button" className={shellClass} onClick={() => onHolidayOpen?.(ev)}>
         {inner}
       </button>
     );
@@ -411,6 +433,7 @@ function DayColumn({
   gridHeightRem,
   onTimeGridCreate,
   onExternalOpen,
+  onHolidayOpen,
 }: {
   dayMidnight: Date;
   timedEvents: CalendarEvent[];
@@ -422,6 +445,7 @@ function DayColumn({
   gridHeightRem: number;
   onTimeGridCreate?: (args: { dateKey: string; timeLocal: string }) => void;
   onExternalOpen?: (ev: CalendarEvent) => void;
+  onHolidayOpen?: (ev: CalendarEvent) => void;
 }) {
   const placements = useMemo(() => {
     const intervals = timedEvents.map((ev) => ({
@@ -476,6 +500,14 @@ function DayColumn({
                   type="button"
                   className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
                   onClick={() => onExternalOpen?.(ev)}
+                >
+                  {ev.title}
+                </button>
+              ) : ev.sourceType === "holiday" ? (
+                <button
+                  type="button"
+                  className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
+                  onClick={() => onHolidayOpen?.(ev)}
                 >
                   {ev.title}
                 </button>
@@ -558,6 +590,22 @@ function DayColumn({
               </button>
             );
           }
+          if (ev.sourceType === "holiday") {
+            return (
+              <button
+                key={ev.id}
+                type="button"
+                className={blockClass}
+                style={blockStyle}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onHolidayOpen?.(ev);
+                }}
+              >
+                {blockBody}
+              </button>
+            );
+          }
           return (
             <Link
               key={ev.id}
@@ -582,6 +630,14 @@ function DayColumn({
                   type="button"
                   className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
                   onClick={() => onExternalOpen?.(ev)}
+                >
+                  {ev.title}
+                </button>
+              ) : ev.sourceType === "holiday" ? (
+                <button
+                  type="button"
+                  className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
+                  onClick={() => onHolidayOpen?.(ev)}
                 >
                   {ev.title}
                 </button>

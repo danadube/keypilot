@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
@@ -30,6 +30,19 @@ import {
 } from "@/components/calendar/add-event-modal";
 import { CalendarDayAgendaModal } from "@/components/calendar/calendar-day-agenda-modal";
 import { ExternalCalendarEventDetailModal } from "@/components/calendar/external-calendar-event-detail-modal";
+import { HolidayEventDetailModal } from "@/components/calendar/holiday-event-detail-modal";
+import {
+  CalendarLeftRail,
+  type DisplayContextGoogleAccount,
+} from "@/components/calendar/calendar-left-rail";
+import {
+  allLayersOn,
+  applyLayerVisibility,
+  DEFAULT_LAYER_VISIBILITY,
+  loadLayerVisibilityFromStorage,
+  saveLayerVisibilityToStorage,
+  type CalendarLayerVisibility,
+} from "@/lib/calendar/calendar-layer-visibility";
 import {
   buildEventsByDayMapForMonth,
   filterEventsForLocalDay,
@@ -74,14 +87,7 @@ function localDateKey(d: Date): string {
 
 type ViewMode = "week" | "month";
 
-type FilterKey = "all" | "showing" | "task" | "follow_up" | "transaction" | "external";
-
 const NO_EVENTS: CalendarEvent[] = [];
-
-function filterEvents(events: CalendarEvent[], key: FilterKey): CalendarEvent[] {
-  if (key === "all") return events;
-  return events.filter((e) => e.sourceType === key);
-}
 
 function CalendarMonthOverview({
   visibleMonth,
@@ -221,13 +227,14 @@ export function CalendarPageView() {
   const [view, setView] = useState<ViewMode>("week");
   const [weekStart, setWeekStart] = useState(() => startOfWeekSunday(new Date()));
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
-  const [filter, setFilter] = useState<FilterKey>("all");
+  const [layerVisibility, setLayerVisibility] = useState<CalendarLayerVisibility>(DEFAULT_LAYER_VISIBILITY);
   const [addEventOpen, setAddEventOpen] = useState(false);
   const [quickAddPrefill, setQuickAddPrefill] = useState<CalendarQuickAddPrefill | null>(null);
   const [followUpHintOpen, setFollowUpHintOpen] = useState(false);
   const [followUpHintSummary, setFollowUpHintSummary] = useState("");
   const [agendaDay, setAgendaDay] = useState<Date | null>(null);
   const [externalDetail, setExternalDetail] = useState<CalendarEvent | null>(null);
+  const [holidayDetail, setHolidayDetail] = useState<CalendarEvent | null>(null);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   /** When opening New task from the calendar (or after choosing Task in Add to Calendar), set due date/time. Cleared when the modal closes. */
   const [taskDuePrefill, setTaskDuePrefill] = useState<{ date: string; time: string } | null>(null);
@@ -254,9 +261,42 @@ export function CalendarPageView() {
     apiFetcher
   );
 
+  const { data: displayCtx } = useSWR<{ googleAccounts: DisplayContextGoogleAccount[] }>(
+    "/api/v1/calendar/display-context",
+    apiFetcher
+  );
+
+  useEffect(() => {
+    setLayerVisibility(loadLayerVisibilityFromStorage());
+  }, []);
+
+  useEffect(() => {
+    saveLayerVisibilityToStorage(layerVisibility);
+  }, [layerVisibility]);
+
   const events = data?.events ?? NO_EVENTS;
   const integrations = data?.integrations;
-  const filtered = useMemo(() => filterEvents(events, filter), [events, filter]);
+
+  const googleKeys = useMemo(() => {
+    const acc = displayCtx?.googleAccounts ?? [];
+    const keys: { connectionId: string; calendarId: string }[] = [];
+    for (const a of acc) {
+      for (const c of a.calendars) {
+        keys.push({ connectionId: a.connectionId, calendarId: c.id });
+      }
+    }
+    return keys;
+  }, [displayCtx]);
+
+  const filtered = useMemo(
+    () => applyLayerVisibility(events, layerVisibility, googleKeys),
+    [events, layerVisibility, googleKeys]
+  );
+
+  const allLayersVisible = useMemo(
+    () => allLayersOn(layerVisibility, googleKeys),
+    [layerVisibility, googleKeys]
+  );
 
   const agendaEventsForModal = useMemo(() => {
     if (!agendaDay) return [];
@@ -348,14 +388,6 @@ export function CalendarPageView() {
     setAgendaDay(parseLocalDateKeyToNoon(dateKey));
   }, []);
 
-  const chipClass = (k: FilterKey) =>
-    cn(
-      "rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors",
-      filter === k
-        ? "border-kp-teal/45 bg-kp-teal/12 text-kp-on-surface shadow-sm"
-        : "border-transparent bg-kp-surface-high/[0.08] text-kp-on-surface-muted hover:bg-kp-surface-high/18 hover:text-kp-on-surface"
-    );
-
   const weekEmptyHint: CalendarWeekEmptyHint = useMemo(() => {
     if (isLoading || view !== "week") return "none";
     if (events.length === 0) return "no-events";
@@ -367,26 +399,9 @@ export function CalendarPageView() {
     <div className="space-y-4 pb-8">
       <PageHeader
         title="Calendar"
-        subtitle="Plan your week across showings, follow-ups, tasks, and transactions."
-        primaryAction={
-          <PageHeaderPrimaryAddMenu summaryLabel="Quick add">
-            <PageHeaderActionItem href="/showing-hq/showings/new">New showing</PageHeaderActionItem>
-            <PageHeaderActionItem href="/open-houses/new">New open house</PageHeaderActionItem>
-            <PageHeaderActionButton type="button" onClick={() => openNewTaskWithPrefill(null)}>
-              New task
-            </PageHeaderActionButton>
-            <PageHeaderActionItem href="/showing-hq/follow-ups">Follow-up</PageHeaderActionItem>
-            <PageHeaderActionItem href="/transactions?new=1">New transaction</PageHeaderActionItem>
-            <PageHeaderActionsMenuSeparator />
-            <PageHeaderActionItem href="/settings/connections">Calendar &amp; email</PageHeaderActionItem>
-          </PageHeaderPrimaryAddMenu>
-        }
-      />
-
-      {/* Toolbar: navigation + view mode + filters */}
-      <div className="rounded-xl border border-kp-outline/90 bg-kp-surface-high/[0.06] p-2 shadow-sm sm:p-2.5">
-        <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:gap-3">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:gap-2">
+        subtitle="Pick layers on the left, navigate time in the header, and plan KeyPilot work with Google context."
+        secondaryActions={
+          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
             <Button
               type="button"
               variant="outline"
@@ -397,7 +412,7 @@ export function CalendarPageView() {
               Today
             </Button>
             <div
-              className="flex min-w-0 flex-1 items-center gap-0.5 sm:max-w-md"
+              className="flex min-w-0 max-w-[min(100%,20rem)] items-center gap-0.5"
               aria-label={view === "week" ? "Week range" : "Month"}
             >
               <Button
@@ -410,7 +425,7 @@ export function CalendarPageView() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <p className="min-w-0 flex-1 truncate text-center text-sm font-semibold tabular-nums text-kp-on-surface">
+              <p className="min-w-0 flex-1 truncate px-0.5 text-center text-xs font-semibold tabular-nums text-kp-on-surface sm:text-sm">
                 {view === "week" ? weekLabel : visibleMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
               </p>
               <Button
@@ -455,84 +470,82 @@ export function CalendarPageView() {
               </button>
             </div>
           </div>
+        }
+        primaryAction={
+          <PageHeaderPrimaryAddMenu summaryLabel="Quick add">
+            <PageHeaderActionItem href="/showing-hq/showings/new">New showing</PageHeaderActionItem>
+            <PageHeaderActionItem href="/open-houses/new">New open house</PageHeaderActionItem>
+            <PageHeaderActionButton type="button" onClick={() => openNewTaskWithPrefill(null)}>
+              New task
+            </PageHeaderActionButton>
+            <PageHeaderActionItem href="/showing-hq/follow-ups">Follow-up</PageHeaderActionItem>
+            <PageHeaderActionItem href="/transactions?new=1">New transaction</PageHeaderActionItem>
+            <PageHeaderActionsMenuSeparator />
+            <PageHeaderActionItem href="/settings/connections">Calendar &amp; email</PageHeaderActionItem>
+          </PageHeaderPrimaryAddMenu>
+        }
+      />
 
-          <div
-            className="flex flex-wrap items-center gap-1 border-t border-kp-outline/50 pt-2.5 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-3"
-            aria-label="Event filters"
-          >
-            <span className="mr-0.5 hidden text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted sm:inline">
-              Show
-            </span>
-            <button type="button" className={chipClass("all")} onClick={() => setFilter("all")}>
-              All
-            </button>
-            <button type="button" className={chipClass("showing")} onClick={() => setFilter("showing")}>
-              Showings
-            </button>
-            <button type="button" className={chipClass("task")} onClick={() => setFilter("task")}>
-              Tasks
-            </button>
-            <button type="button" className={chipClass("follow_up")} onClick={() => setFilter("follow_up")}>
-              Follow-ups
-            </button>
-            <button type="button" className={chipClass("transaction")} onClick={() => setFilter("transaction")}>
-              Deals
-            </button>
-            <button type="button" className={chipClass("external")} onClick={() => setFilter("external")}>
-              GCal
-            </button>
-          </div>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <CalendarLeftRail
+          visibility={layerVisibility}
+          onVisibilityChange={setLayerVisibility}
+          googleAccounts={displayCtx?.googleAccounts ?? []}
+          googleKeys={googleKeys}
+        />
+
+        <div className="min-w-0 flex-1 space-y-4">
+          {integrations && !integrations.googleCalendarConnected ? (
+            <p className="text-center text-[11px] leading-snug text-kp-on-surface-muted lg:text-left">
+              <Link
+                href="/settings/connections"
+                className="font-medium text-kp-teal/90 underline-offset-2 hover:text-kp-teal hover:underline"
+              >
+                Connect Google Calendar
+              </Link>{" "}
+              to layer read-only Google events (configure calendars in Connections).
+            </p>
+          ) : null}
+          {integrations?.googleCalendarConnected && integrations.googleCalendarFetchError ? (
+            <p
+              className="text-center text-[11px] leading-snug text-amber-800/90 dark:text-amber-300/90 lg:text-left"
+              role="status"
+            >
+              Google Calendar could not be loaded; showing KeyPilot and built-in layers only. Reconnect under{" "}
+              <Link href="/settings/connections" className="font-medium underline-offset-2 hover:underline">
+                Settings → Connections
+              </Link>
+              .
+            </p>
+          ) : null}
+
+          {isLoading ? (
+            <div className="h-64 animate-pulse rounded-xl bg-kp-surface-high/30" aria-busy aria-label="Loading calendar" />
+          ) : view === "week" ? (
+            <div className="rounded-xl border border-kp-outline/90 bg-kp-surface p-1.5 shadow-md sm:p-2.5">
+              <CalendarWeekView
+                weekStart={weekStart}
+                events={filtered}
+                emptyHint={weekEmptyHint}
+                onTimeGridCreate={({ dateKey, timeLocal }) =>
+                  openAddEventModal({ date: dateKey, time: timeLocal })
+                }
+                onAllDayBackgroundClick={onWeekAllDayOpenAgenda}
+                onExternalEventOpen={setExternalDetail}
+                onHolidayEventOpen={setHolidayDetail}
+              />
+            </div>
+          ) : view === "month" ? (
+            <CalendarMonthOverview
+              visibleMonth={visibleMonth}
+              events={filtered}
+              onDayClick={onMonthDayOpenAgenda}
+              activeWeekStart={weekStart}
+              selectedDayKey={agendaDay && view === "month" ? localDateKey(agendaDay) : null}
+            />
+          ) : null}
         </div>
       </div>
-
-      {integrations && !integrations.googleCalendarConnected ? (
-        <p className="text-center text-[11px] leading-snug text-kp-on-surface-muted">
-          <Link
-            href="/settings/connections"
-            className="font-medium text-kp-teal/90 underline-offset-2 hover:text-kp-teal hover:underline"
-          >
-            Connect Google Calendar
-          </Link>{" "}
-          to show external events next to KeyPilot work.
-        </p>
-      ) : null}
-      {integrations?.googleCalendarConnected && integrations.googleCalendarFetchError ? (
-        <p
-          className="text-center text-[11px] leading-snug text-amber-800/90 dark:text-amber-300/90"
-          role="status"
-        >
-          Google Calendar could not be loaded; showing KeyPilot events only. You can reconnect under{" "}
-          <Link href="/settings/connections" className="font-medium underline-offset-2 hover:underline">
-            Settings → Connections
-          </Link>
-          .
-        </p>
-      ) : null}
-
-      {isLoading ? (
-        <div className="h-64 animate-pulse rounded-xl bg-kp-surface-high/30" aria-busy aria-label="Loading calendar" />
-      ) : view === "week" ? (
-        <div className="rounded-xl border border-kp-outline/90 bg-kp-surface p-1.5 shadow-md sm:p-2.5">
-          <CalendarWeekView
-            weekStart={weekStart}
-            events={filtered}
-            emptyHint={weekEmptyHint}
-            onTimeGridCreate={({ dateKey, timeLocal }) =>
-              openAddEventModal({ date: dateKey, time: timeLocal })
-            }
-            onAllDayBackgroundClick={onWeekAllDayOpenAgenda}
-            onExternalEventOpen={setExternalDetail}
-          />
-        </div>
-      ) : view === "month" ? (
-        <CalendarMonthOverview
-          visibleMonth={visibleMonth}
-          events={filterEvents(events, filter)}
-          onDayClick={onMonthDayOpenAgenda}
-          activeWeekStart={weekStart}
-          selectedDayKey={agendaDay && view === "month" ? localDateKey(agendaDay) : null}
-        />
-      ) : null}
 
       <CalendarDayAgendaModal
         open={agendaDay != null}
@@ -541,11 +554,15 @@ export function CalendarPageView() {
         }}
         day={agendaDay}
         events={agendaEventsForModal}
-        filterAll={filter === "all"}
+        allLayersVisible={allLayersVisible}
         onAdd={(prefill) => openAddEventModal(prefill)}
         onExternalSelect={(ev) => {
           setAgendaDay(null);
           setExternalDetail(ev);
+        }}
+        onHolidaySelect={(ev) => {
+          setAgendaDay(null);
+          setHolidayDetail(ev);
         }}
       />
 
@@ -554,6 +571,14 @@ export function CalendarPageView() {
         open={externalDetail != null}
         onOpenChange={(o) => {
           if (!o) setExternalDetail(null);
+        }}
+      />
+
+      <HolidayEventDetailModal
+        ev={holidayDetail}
+        open={holidayDetail != null}
+        onOpenChange={(o) => {
+          if (!o) setHolidayDetail(null);
         }}
       />
 

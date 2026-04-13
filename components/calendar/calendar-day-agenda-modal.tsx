@@ -32,11 +32,13 @@ export type CalendarDayAgendaModalProps = {
   onOpenChange: (open: boolean) => void;
   /** Local calendar day being inspected; modal title derives from this. */
   day: Date | null;
-  /** Pre-filtered list (same source as calendar page, e.g. chip filter). */
+  /** Pre-filtered list (same source as calendar page layer visibility). */
   events: CalendarEvent[];
-  filterAll: boolean;
+  /** True when every layer is visible (vs. narrowed by the sidebar). */
+  allLayersVisible: boolean;
   onAdd: (prefill: CalendarQuickAddPrefill) => void;
   onExternalSelect: (ev: CalendarEvent) => void;
+  onHolidaySelect: (ev: CalendarEvent) => void;
 };
 
 export function CalendarDayAgendaModal({
@@ -44,9 +46,10 @@ export function CalendarDayAgendaModal({
   onOpenChange,
   day,
   events,
-  filterAll,
+  allLayersVisible,
   onAdd,
   onExternalSelect,
+  onHolidaySelect,
 }: CalendarDayAgendaModalProps) {
   const title = day
     ? day.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })
@@ -81,10 +84,12 @@ export function CalendarDayAgendaModal({
       {events.length === 0 ? (
         <div className="rounded-lg border border-dashed border-kp-outline/60 bg-kp-surface-high/[0.06] px-4 py-8 text-center">
           <p className="text-sm font-medium text-kp-on-surface">
-            {filterAll ? "No events on this day" : "Nothing in this category on this day"}
+            {allLayersVisible ? "No events on this day" : "Nothing visible with your current calendar layers"}
           </p>
           <p className="mt-1 text-xs text-kp-on-surface-muted">
-            Schedule something new or switch the Show filter to see other types.
+            {allLayersVisible
+              ? "Schedule something new from Quick add or click a time slot in week view."
+              : "Turn layers back on in the sidebar or add a new item."}
           </p>
           <Button type="button" size="sm" className={cn(kpBtnPrimary, "mt-4 gap-1.5")} onClick={handleAdd}>
             <Plus className="h-3.5 w-3.5" aria-hidden />
@@ -114,6 +119,16 @@ export function CalendarDayAgendaModal({
               return (
                 <li key={ev.id}>
                   <button type="button" className={shell} onClick={() => onExternalSelect(ev)}>
+                    {rowInner}
+                  </button>
+                </li>
+              );
+            }
+
+            if (ev.sourceType === "holiday") {
+              return (
+                <li key={ev.id}>
+                  <button type="button" className={shell} onClick={() => onHolidaySelect(ev)}>
                     {rowInner}
                   </button>
                 </li>

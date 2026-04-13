@@ -7,6 +7,8 @@ export const CalendarSourceTypeSchema = z.enum([
   "follow_up",
   "transaction",
   "external",
+  /** Built-in read-only layers (e.g. US federal holidays). */
+  "holiday",
 ]);
 
 export type CalendarSourceType = z.infer<typeof CalendarSourceTypeSchema>;

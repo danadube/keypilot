@@ -11,6 +11,7 @@ import {
   listGoogleAccountCalendars,
 } from "@/lib/adapters/google-calendar";
 import { getGoogleCalendarSelectedIds } from "@/lib/google-calendar-sync-preferences";
+import { buildUSHolidayEventsForRange } from "@/lib/calendar/built-in-calendars/us-federal-holidays";
 
 export const dynamic = "force-dynamic";
 
@@ -295,6 +296,9 @@ export async function GET(req: NextRequest) {
     } catch (err) {
       console.error("[calendar/events] Google connection lookup failed", err);
     }
+
+    events.push(...buildUSHolidayEventsForRange(rangeStart, rangeEnd));
+    events.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
 
     return NextResponse.json({
       data: {

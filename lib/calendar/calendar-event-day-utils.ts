@@ -96,4 +96,5 @@ export const MONTH_CELL_SOURCE_ACCENT: Record<CalendarSourceType, string> = {
   follow_up: "border-l-sky-500",
   transaction: "border-l-amber-700",
   external: "border-l-slate-400",
+  holiday: "border-l-rose-400",
 };
