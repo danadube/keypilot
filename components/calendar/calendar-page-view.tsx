@@ -63,22 +63,23 @@ function filterEvents(events: CalendarEvent[], key: FilterKey): CalendarEvent[] 
   return events.filter((e) => e.sourceType === key);
 }
 
-function CalendarMonthPlaceholder({
+function CalendarMonthOverview({
   visibleMonth,
   events,
   onSelectDay,
+  activeWeekStart,
 }: {
   visibleMonth: Date;
   events: CalendarEvent[];
   onSelectDay: (d: Date) => void;
+  activeWeekStart: Date;
 }) {
   const counts = useMemo(() => {
     const m = new Map<string, number>();
     for (const e of events) {
       const start = new Date(e.start);
       const dk =
-        (e.metadata as { dateKey?: string } | undefined)?.dateKey ??
-        (e.allDay ? localDateKey(start) : localDateKey(start));
+        (e.metadata as { dateKey?: string } | undefined)?.dateKey ?? localDateKey(start);
       m.set(dk, (m.get(dk) ?? 0) + 1);
     }
     return m;
@@ -98,46 +99,92 @@ function CalendarMonthPlaceholder({
   }, [visibleMonth]);
 
   const title = visibleMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const weekBandStart = startOfLocalDay(activeWeekStart);
+  const weekBandEnd = addDays(weekBandStart, 7);
 
   return (
-    <div className="rounded-xl border border-kp-outline bg-kp-surface p-4 shadow-sm">
-      <p className="mb-3 text-sm font-medium text-kp-on-surface">{title}</p>
-      <p className="mb-3 text-xs leading-snug text-kp-on-surface-muted">
-        Month view shows how busy each day is. Switch to Week for timed planning and links.
-      </p>
-      <div className="grid grid-cols-7 gap-px rounded-lg border border-kp-outline/60 bg-kp-outline/40 text-center text-[10px] font-medium uppercase text-kp-on-surface-muted">
-        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((w) => (
-          <div key={w} className="bg-kp-surface-high/[0.06] py-1">
-            {w}
+    <div className="rounded-xl border border-kp-outline bg-kp-surface shadow-sm">
+      <div className="border-b border-kp-outline/70 bg-kp-surface-high/[0.08] px-4 py-3">
+        <p className="font-headline text-base font-semibold tracking-tight text-kp-on-surface">{title}</p>
+        <p className="mt-1 text-xs leading-snug text-kp-on-surface-muted">
+          Dots show load; the teal band is the week you see in Week view. Open a day for the timed grid.
+        </p>
+      </div>
+      <div className="p-3 sm:p-4">
+        <div className="overflow-hidden rounded-lg border border-kp-outline/80 bg-kp-bg shadow-inner">
+          <div className="grid grid-cols-7 border-b border-kp-outline/70 bg-kp-surface-high/[0.12] text-center text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((w) => (
+              <div key={w} className="border-l border-kp-outline/50 py-2 first:border-l-0">
+                {w}
+              </div>
+            ))}
           </div>
-        ))}
-        {grid.map((cell, i) => {
-          if (cell.date == null) {
-            return <div key={`e-${i}`} className="min-h-[2.25rem] bg-kp-surface-high/[0.03]" />;
-          }
-          const d = cell.date;
-          const key = localDateKey(d);
-          const n = counts.get(key) ?? 0;
-          const isToday = localDateKey(d) === localDateKey(new Date());
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => {
-                onSelectDay(d);
-              }}
-              className={cn(
-                "relative min-h-[2.25rem] bg-kp-surface py-1 text-xs font-medium tabular-nums text-kp-on-surface transition-colors hover:bg-kp-surface-high/30",
-                isToday && "ring-1 ring-kp-teal/35"
-              )}
-            >
-              {d.getDate()}
-              {n > 0 ? (
-                <span className="absolute bottom-0.5 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-kp-teal/80" aria-hidden />
-              ) : null}
-            </button>
-          );
-        })}
+          <div className="grid grid-cols-7">
+            {grid.map((cell, i) => {
+              const colFirst = i % 7 === 0;
+              if (cell.date == null) {
+                return (
+                  <div
+                    key={`e-${i}`}
+                    className={cn(
+                      "min-h-[3.25rem] border-b border-l border-kp-outline/40 bg-kp-surface-high/[0.04]",
+                      colFirst && "border-l-0"
+                    )}
+                  />
+                );
+              }
+              const d = cell.date;
+              const key = localDateKey(d);
+              const n = counts.get(key) ?? 0;
+              const isToday = localDateKey(d) === localDateKey(new Date());
+              const dayStart = startOfLocalDay(d);
+              const inActiveWeek = dayStart >= weekBandStart && dayStart < weekBandEnd;
+              const filledDots = n <= 0 ? 0 : Math.min(n, 3);
+
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    onSelectDay(d);
+                  }}
+                  className={cn(
+                    "relative flex min-h-[3.25rem] flex-col items-center border-b border-l border-kp-outline/45 bg-kp-surface px-0.5 pb-1 pt-1.5 text-center transition-colors hover:z-[1] hover:bg-kp-surface-high/30",
+                    colFirst && "border-l-0",
+                    inActiveWeek && "bg-kp-teal/[0.09]",
+                    isToday && !inActiveWeek && "ring-1 ring-inset ring-kp-teal/40",
+                    isToday && inActiveWeek && "ring-2 ring-inset ring-kp-teal/55"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
+                      isToday
+                        ? "bg-kp-teal text-white shadow-md ring-2 ring-kp-teal/30"
+                        : "text-kp-on-surface"
+                    )}
+                  >
+                    {d.getDate()}
+                  </span>
+                  <span className="mt-1 flex h-3.5 items-center justify-center gap-0.5" aria-hidden>
+                    {[0, 1, 2].map((dot) => (
+                      <span
+                        key={dot}
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full transition-colors",
+                          dot < filledDots ? "bg-kp-teal/80" : "bg-kp-outline/25"
+                        )}
+                      />
+                    ))}
+                  </span>
+                  <span className="mt-0.5 min-h-[0.875rem] text-[9px] font-medium tabular-nums text-kp-on-surface-muted">
+                    {n > 0 ? (n > 9 ? "9+" : n) : <span className="invisible">0</span>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -203,10 +250,10 @@ export function CalendarPageView() {
 
   const chipClass = (k: FilterKey) =>
     cn(
-      "rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors",
+      "rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors",
       filter === k
-        ? "border-kp-teal/50 bg-kp-teal/10 text-kp-on-surface"
-        : "border-kp-outline/70 bg-kp-surface-high/[0.06] text-kp-on-surface-muted hover:border-kp-teal/25"
+        ? "border-kp-teal/45 bg-kp-teal/12 text-kp-on-surface shadow-sm"
+        : "border-transparent bg-kp-surface-high/[0.08] text-kp-on-surface-muted hover:bg-kp-surface-high/18 hover:text-kp-on-surface"
     );
 
   const emptyAll = !isLoading && view === "week" && events.length === 0;
@@ -232,128 +279,103 @@ export function CalendarPageView() {
         }
       />
 
-      {/* Controls */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={cn(kpBtnSecondary, "h-8 text-xs")}
-            onClick={goToday}
-          >
-            Today
-          </Button>
-          {view === "week" ? (
-            <div className="flex items-center gap-0.5">
+      {/* Toolbar: navigation + view mode + filters */}
+      <div className="rounded-xl border border-kp-outline/90 bg-kp-surface-high/[0.06] p-2 shadow-sm sm:p-2.5">
+        <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:gap-3">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={cn(kpBtnSecondary, "h-8 shrink-0 px-3 text-xs font-semibold")}
+              onClick={goToday}
+            >
+              Today
+            </Button>
+            <div
+              className="flex min-w-0 flex-1 items-center gap-0.5 sm:max-w-md"
+              aria-label={view === "week" ? "Week range" : "Month"}
+            >
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-kp-on-surface-muted"
-                onClick={goPrevWeek}
-                aria-label="Previous week"
+                className="h-8 w-8 shrink-0 text-kp-on-surface-muted hover:bg-kp-surface-high/40 hover:text-kp-on-surface"
+                onClick={view === "week" ? goPrevWeek : () => setVisibleMonth((m) => addMonths(m, -1))}
+                aria-label={view === "week" ? "Previous week" : "Previous month"}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <p className="min-w-[10rem] text-center text-sm font-semibold tabular-nums text-kp-on-surface">
-                {weekLabel}
+              <p className="min-w-0 flex-1 truncate text-center text-sm font-semibold tabular-nums text-kp-on-surface">
+                {view === "week" ? weekLabel : visibleMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
               </p>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-kp-on-surface-muted"
-                onClick={goNextWeek}
-                aria-label="Next week"
+                className="h-8 w-8 shrink-0 text-kp-on-surface-muted hover:bg-kp-surface-high/40 hover:text-kp-on-surface"
+                onClick={view === "week" ? goNextWeek : () => setVisibleMonth((m) => addMonths(m, 1))}
+                aria-label={view === "week" ? "Next week" : "Next month"}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-          ) : (
-            <div className="flex items-center gap-0.5">
-              <Button
+            <div
+              className="inline-flex shrink-0 rounded-lg border border-kp-outline/70 bg-kp-bg/80 p-0.5 shadow-sm"
+              role="group"
+              aria-label="Calendar view"
+            >
+              <button
                 type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-kp-on-surface-muted"
-                onClick={() => setVisibleMonth((m) => addMonths(m, -1))}
-                aria-label="Previous month"
+                onClick={() => setView("week")}
+                className={cn(
+                  "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors sm:px-3",
+                  view === "week"
+                    ? "bg-kp-teal/20 text-kp-on-surface shadow-sm"
+                    : "text-kp-on-surface-muted hover:text-kp-on-surface"
+                )}
               >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <p className="min-w-[10rem] text-center text-sm font-semibold text-kp-on-surface">
-                {visibleMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
-              </p>
-              <Button
+                Week
+              </button>
+              <button
                 type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-kp-on-surface-muted"
-                onClick={() => setVisibleMonth((m) => addMonths(m, 1))}
-                aria-label="Next month"
+                onClick={() => setView("month")}
+                className={cn(
+                  "rounded-md px-2.5 py-1 text-xs font-semibold transition-colors sm:px-3",
+                  view === "month"
+                    ? "bg-kp-teal/20 text-kp-on-surface shadow-sm"
+                    : "text-kp-on-surface-muted hover:text-kp-on-surface"
+                )}
               >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+                Month
+              </button>
             </div>
-          )}
-        </div>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2">
           <div
-            className="inline-flex rounded-lg border border-kp-outline/80 p-0.5"
-            role="group"
-            aria-label="Calendar view"
+            className="flex flex-wrap items-center gap-1 border-t border-kp-outline/50 pt-2.5 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-3"
+            aria-label="Event filters"
           >
-            <button
-              type="button"
-              onClick={() => setView("week")}
-              className={cn(
-                "rounded-md px-3 py-1 text-xs font-semibold transition-colors",
-                view === "week"
-                  ? "bg-kp-teal/15 text-kp-on-surface"
-                  : "text-kp-on-surface-muted hover:text-kp-on-surface"
-              )}
-            >
-              Week
+            <span className="mr-0.5 hidden text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted sm:inline">
+              Show
+            </span>
+            <button type="button" className={chipClass("all")} onClick={() => setFilter("all")}>
+              All
             </button>
-            <button
-              type="button"
-              onClick={() => setView("month")}
-              className={cn(
-                "rounded-md px-3 py-1 text-xs font-semibold transition-colors",
-                view === "month"
-                  ? "bg-kp-teal/15 text-kp-on-surface"
-                  : "text-kp-on-surface-muted hover:text-kp-on-surface"
-              )}
-            >
-              Month
+            <button type="button" className={chipClass("showing")} onClick={() => setFilter("showing")}>
+              Showings
+            </button>
+            <button type="button" className={chipClass("task")} onClick={() => setFilter("task")}>
+              Tasks
+            </button>
+            <button type="button" className={chipClass("follow_up")} onClick={() => setFilter("follow_up")}>
+              Follow-ups
+            </button>
+            <button type="button" className={chipClass("transaction")} onClick={() => setFilter("transaction")}>
+              Deals
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-1.5" aria-label="Event filters">
-        <button type="button" className={chipClass("all")} onClick={() => setFilter("all")}>
-          All
-        </button>
-        <button type="button" className={chipClass("showing")} onClick={() => setFilter("showing")}>
-          Showings
-        </button>
-        <button type="button" className={chipClass("task")} onClick={() => setFilter("task")}>
-          Tasks
-        </button>
-        <button type="button" className={chipClass("follow_up")} onClick={() => setFilter("follow_up")}>
-          Follow-ups
-        </button>
-        <button
-          type="button"
-          className={chipClass("transaction")}
-          onClick={() => setFilter("transaction")}
-        >
-          Deals
-        </button>
       </div>
 
       {emptyAll ? (
@@ -373,14 +395,15 @@ export function CalendarPageView() {
       {isLoading ? (
         <div className="h-64 animate-pulse rounded-xl bg-kp-surface-high/30" aria-busy aria-label="Loading calendar" />
       ) : view === "week" && !emptyAll && !emptyFilter ? (
-        <div className="rounded-xl border border-kp-outline bg-kp-surface p-2 shadow-sm sm:p-3">
+        <div className="rounded-xl border border-kp-outline/90 bg-kp-surface p-1.5 shadow-md sm:p-2.5">
           <CalendarWeekView weekStart={weekStart} events={filtered} />
         </div>
       ) : view === "month" ? (
-        <CalendarMonthPlaceholder
+        <CalendarMonthOverview
           visibleMonth={visibleMonth}
           events={filterEvents(events, filter)}
           onSelectDay={onSelectMonthDay}
+          activeWeekStart={weekStart}
         />
       ) : null}
 
