@@ -15,6 +15,7 @@ import {
   type ConnectionRecord,
 } from "@/lib/connections";
 import { Loader2, Mail, Plus } from "lucide-react";
+import { GoogleCalendarSyncPanel } from "@/components/settings/GoogleCalendarSyncPanel";
 
 const STATUS_TONE: Record<string, "default" | "success" | "warning" | "danger"> = {
   disconnected: "default",
@@ -332,8 +333,9 @@ export function ConnectionsPageContent() {
                           return (
                             <div
                               key={conn.id}
-                              className="flex items-center justify-between rounded-md bg-[var(--brand-surface-alt)] px-4 py-3"
+                              className="overflow-hidden rounded-md bg-[var(--brand-surface-alt)]"
                             >
+                              <div className="flex items-center justify-between px-4 py-3">
                               <div className="flex items-center gap-3 min-w-0">
                                 <Icon className="h-5 w-5 shrink-0 text-[var(--brand-text-muted)]" />
                                 <div className="min-w-0">
@@ -416,6 +418,10 @@ export function ConnectionsPageContent() {
                                   </BrandButton>
                                 )}
                               </div>
+                              </div>
+                              {isConnected && config?.service === "google_calendar" ? (
+                                <GoogleCalendarSyncPanel connectionId={conn.id} />
+                              ) : null}
                             </div>
                           );
                         })}

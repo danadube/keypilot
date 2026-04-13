@@ -31,7 +31,9 @@ import {
 import { CalendarDayAgendaModal } from "@/components/calendar/calendar-day-agenda-modal";
 import { ExternalCalendarEventDetailModal } from "@/components/calendar/external-calendar-event-detail-modal";
 import {
+  buildEventsByDayMapForMonth,
   filterEventsForLocalDay,
+  MONTH_CELL_SOURCE_ACCENT,
   parseLocalDateKeyToNoon,
   sortAgendaDayEvents,
 } from "@/lib/calendar/calendar-event-day-utils";
@@ -86,23 +88,17 @@ function CalendarMonthOverview({
   events,
   onDayClick,
   activeWeekStart,
+  selectedDayKey,
 }: {
   visibleMonth: Date;
   events: CalendarEvent[];
   /** Opens day agenda for this local date (parent also syncs week/month navigation). */
   onDayClick: (d: Date) => void;
   activeWeekStart: Date;
+  /** Highlights the day whose agenda is open (month view). */
+  selectedDayKey: string | null;
 }) {
-  const counts = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const e of events) {
-      const start = new Date(e.start);
-      const dk =
-        (e.metadata as { dateKey?: string } | undefined)?.dateKey ?? localDateKey(start);
-      m.set(dk, (m.get(dk) ?? 0) + 1);
-    }
-    return m;
-  }, [events]);
+  const eventsByDay = useMemo(() => buildEventsByDayMapForMonth(events, visibleMonth), [events, visibleMonth]);
 
   const grid = useMemo(() => {
     const first = startOfMonth(visibleMonth);
@@ -126,7 +122,7 @@ function CalendarMonthOverview({
       <div className="border-b border-kp-outline/70 bg-kp-surface-high/[0.08] px-4 py-3">
         <p className="font-headline text-base font-semibold tracking-tight text-kp-on-surface">{title}</p>
         <p className="mt-1 text-xs leading-snug text-kp-on-surface-muted">
-          Dots show load; the teal band is the week you see in Week view. Click a day to review the agenda, then add if needed.
+          Event titles preview in each cell. The teal band matches Week view. Click a day for the full agenda.
         </p>
       </div>
       <div className="p-3 sm:p-4">
@@ -154,11 +150,14 @@ function CalendarMonthOverview({
               }
               const d = cell.date;
               const key = localDateKey(d);
-              const n = counts.get(key) ?? 0;
+              const dayList = eventsByDay.get(key) ?? [];
+              const n = dayList.length;
+              const preview = dayList.slice(0, 2);
+              const overflow = Math.max(0, n - 2);
               const isToday = localDateKey(d) === localDateKey(new Date());
               const dayStart = startOfLocalDay(d);
               const inActiveWeek = dayStart >= weekBandStart && dayStart < weekBandEnd;
-              const filledDots = n <= 0 ? 0 : Math.min(n, 3);
+              const isAgendaSelected = selectedDayKey === key;
 
               return (
                 <button
@@ -168,37 +167,45 @@ function CalendarMonthOverview({
                     onDayClick(d);
                   }}
                   className={cn(
-                    "relative flex min-h-[3.25rem] cursor-pointer flex-col items-center border-b border-l border-kp-outline/45 bg-kp-surface px-0.5 pb-1 pt-1.5 text-center transition-colors hover:z-[1] hover:bg-kp-surface-high/30",
+                    "relative flex min-h-[4.75rem] cursor-pointer flex-col items-stretch border-b border-l border-kp-outline/45 bg-kp-surface px-1 pb-1 pt-1 text-left transition-colors hover:z-[1] hover:bg-kp-surface-high/30 sm:min-h-[5.25rem]",
                     colFirst && "border-l-0",
                     inActiveWeek && "bg-kp-teal/[0.09]",
                     isToday && !inActiveWeek && "ring-1 ring-inset ring-kp-teal/40",
-                    isToday && inActiveWeek && "ring-2 ring-inset ring-kp-teal/55"
+                    isToday && inActiveWeek && "ring-2 ring-inset ring-kp-teal/55",
+                    isAgendaSelected && "ring-2 ring-inset ring-kp-teal/70"
                   )}
                 >
-                  <span
-                    className={cn(
-                      "flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold tabular-nums",
-                      isToday
-                        ? "bg-kp-teal text-white shadow-md ring-2 ring-kp-teal/30"
-                        : "text-kp-on-surface"
-                    )}
-                  >
-                    {d.getDate()}
-                  </span>
-                  <span className="mt-1 flex h-3.5 items-center justify-center gap-0.5" aria-hidden>
-                    {[0, 1, 2].map((dot) => (
-                      <span
-                        key={dot}
+                  <div className="flex shrink-0 justify-center">
+                    <span
+                      className={cn(
+                        "flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums sm:h-7 sm:w-7 sm:text-xs",
+                        isToday
+                          ? "bg-kp-teal text-white shadow-md ring-2 ring-kp-teal/30"
+                          : "text-kp-on-surface"
+                      )}
+                    >
+                      {d.getDate()}
+                    </span>
+                  </div>
+                  <div className="mt-1 min-h-0 w-full flex-1 space-y-0.5">
+                    {preview.map((ev) => (
+                      <div
+                        key={ev.id}
                         className={cn(
-                          "h-1.5 w-1.5 rounded-full transition-colors",
-                          dot < filledDots ? "bg-kp-teal/80" : "bg-kp-outline/25"
+                          "truncate border-l-[2.5px] pl-1 text-[8px] font-medium leading-snug text-kp-on-surface sm:text-[9px]",
+                          MONTH_CELL_SOURCE_ACCENT[ev.sourceType] ?? MONTH_CELL_SOURCE_ACCENT.external
                         )}
-                      />
+                        title={ev.title}
+                      >
+                        {ev.title}
+                      </div>
                     ))}
-                  </span>
-                  <span className="mt-0.5 min-h-[0.875rem] text-[9px] font-medium tabular-nums text-kp-on-surface-muted">
-                    {n > 0 ? (n > 9 ? "9+" : n) : <span className="invisible">0</span>}
-                  </span>
+                    {overflow > 0 ? (
+                      <p className="pl-0.5 text-[8px] font-semibold tabular-nums text-kp-on-surface-muted sm:text-[9px]">
+                        +{overflow} more
+                      </p>
+                    ) : null}
+                  </div>
                 </button>
               );
             })}
@@ -523,6 +530,7 @@ export function CalendarPageView() {
           events={filterEvents(events, filter)}
           onDayClick={onMonthDayOpenAgenda}
           activeWeekStart={weekStart}
+          selectedDayKey={agendaDay && view === "month" ? localDateKey(agendaDay) : null}
         />
       ) : null}
 

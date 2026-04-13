@@ -6,7 +6,11 @@ import { prismaAdmin } from "@/lib/db";
 import { withRLSContext } from "@/lib/db-context";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import type { CalendarEvent } from "@/lib/calendar/calendar-event-types";
-import { fetchGoogleCalendarKeyPilotEvents } from "@/lib/adapters/google-calendar";
+import {
+  fetchGoogleCalendarKeyPilotEvents,
+  listGoogleAccountCalendars,
+} from "@/lib/adapters/google-calendar";
+import { getGoogleCalendarSelectedIds } from "@/lib/google-calendar-sync-preferences";
 
 export const dynamic = "force-dynamic";
 
@@ -246,6 +250,27 @@ export async function GET(req: NextRequest) {
       for (const conn of calendarConns) {
         if (!conn.accessToken) continue;
         try {
+          const selectedIds = getGoogleCalendarSelectedIds(conn.syncPreferences);
+          const labelMap: Record<string, string> = {};
+          try {
+            const allCals = await listGoogleAccountCalendars({
+              id: conn.id,
+              accessToken: conn.accessToken,
+              refreshToken: conn.refreshToken,
+              tokenExpiresAt: conn.tokenExpiresAt,
+              accountEmail: conn.accountEmail,
+            });
+            const allowed = new Set(selectedIds);
+            for (const c of allCals) {
+              if (allowed.has(c.id)) labelMap[c.id] = c.summary;
+            }
+          } catch (listErr) {
+            console.error("[calendar/events] Google calendar list failed; using account label only", conn.id, listErr);
+            for (const cid of selectedIds) {
+              labelMap[cid] = conn.accountEmail ?? "Google Calendar";
+            }
+          }
+
           const gEvents = await fetchGoogleCalendarKeyPilotEvents(
             {
               id: conn.id,
@@ -254,7 +279,9 @@ export async function GET(req: NextRequest) {
               tokenExpiresAt: conn.tokenExpiresAt,
               accountEmail: conn.accountEmail,
             },
-            { timeMin: rangeStart, timeMax: rangeEnd }
+            { timeMin: rangeStart, timeMax: rangeEnd },
+            selectedIds,
+            labelMap
           );
           events.push(...gEvents);
         } catch (err) {

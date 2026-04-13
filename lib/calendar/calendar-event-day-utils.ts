@@ -1,4 +1,4 @@
-import type { CalendarEvent } from "@/lib/calendar/calendar-event-types";
+import type { CalendarEvent, CalendarSourceType } from "@/lib/calendar/calendar-event-types";
 
 function startOfLocalDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
@@ -66,3 +66,34 @@ export function formatAgendaRowTime(ev: CalendarEvent): string {
   const b = end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   return `${a} – ${b}`;
 }
+
+function startOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
+}
+
+function addMonthsLocal(d: Date, n: number): Date {
+  const x = new Date(d);
+  x.setMonth(x.getMonth() + n);
+  return x;
+}
+
+/** Every local day in `visibleMonth` → sorted events touching that day (for month grid previews). */
+export function buildEventsByDayMapForMonth(events: CalendarEvent[], visibleMonth: Date): Map<string, CalendarEvent[]> {
+  const first = startOfMonth(visibleMonth);
+  const monthEnd = addMonthsLocal(first, 1);
+  const map = new Map<string, CalendarEvent[]>();
+  for (let cur = new Date(first); cur < monthEnd; cur = addDays(cur, 1)) {
+    const list = sortAgendaDayEvents(filterEventsForLocalDay(events, cur));
+    map.set(localDateKey(cur), list);
+  }
+  return map;
+}
+
+/** Left border accent for month cell preview lines (subtle source hint). */
+export const MONTH_CELL_SOURCE_ACCENT: Record<CalendarSourceType, string> = {
+  showing: "border-l-[#14b8a6]",
+  task: "border-l-amber-500",
+  follow_up: "border-l-sky-500",
+  transaction: "border-l-amber-700",
+  external: "border-l-slate-400",
+};

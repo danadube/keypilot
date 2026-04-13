@@ -3,6 +3,7 @@
  * Reusable pattern for future Outlook and Apple adapters.
  */
 
+import { createHash } from "crypto";
 import { google } from "googleapis";
 import type { calendar_v3 } from "googleapis";
 import { ensureValidGoogleOAuth2Client } from "@/lib/oauth/google-connection-auth";
@@ -16,6 +17,13 @@ export interface GoogleCalendarConnection {
   tokenExpiresAt: Date | null;
   accountEmail: string | null;
 }
+
+export type GoogleCalendarListEntry = {
+  id: string;
+  summary: string;
+  primary: boolean;
+  selected: boolean;
+};
 
 const DEFAULT_MAX_HOME = 50;
 const DEFAULT_MAX_AGGREGATION = 500;
@@ -53,8 +61,13 @@ function safeTimedEventEnd(start: Date, endDt: string | null | undefined): Date 
   return end;
 }
 
-async function listPrimaryCalendarEvents(
+function stableCalIdSegment(calendarId: string): string {
+  return createHash("sha256").update(calendarId).digest("hex").slice(0, 16);
+}
+
+async function listCalendarEventsForCalendarId(
   conn: GoogleCalendarConnection,
+  calendarId: string,
   options: { timeMin: Date; timeMax: Date; maxResults: number }
 ): Promise<calendar_v3.Schema$Event[]> {
   const auth = await ensureValidGoogleOAuth2Client(conn);
@@ -67,7 +80,7 @@ async function listPrimaryCalendarEvents(
   while (out.length < options.maxResults) {
     const remaining = options.maxResults - out.length;
     const { data } = await calendar.events.list({
-      calendarId: "primary",
+      calendarId,
       timeMin: options.timeMin.toISOString(),
       timeMax: options.timeMax.toISOString(),
       maxResults: Math.min(perPage, remaining),
@@ -80,6 +93,50 @@ async function listPrimaryCalendarEvents(
     if (!pageToken) break;
   }
 
+  return out;
+}
+
+/** @deprecated use listCalendarEventsForCalendarId with calendarId "primary" */
+async function listPrimaryCalendarEvents(
+  conn: GoogleCalendarConnection,
+  options: { timeMin: Date; timeMax: Date; maxResults: number }
+): Promise<calendar_v3.Schema$Event[]> {
+  return listCalendarEventsForCalendarId(conn, "primary", options);
+}
+
+/**
+ * Calendars visible to the user (for Settings + sync selection).
+ */
+export async function listGoogleAccountCalendars(
+  conn: GoogleCalendarConnection
+): Promise<{ id: string; summary: string; primary: boolean }[]> {
+  const auth = await ensureValidGoogleOAuth2Client(conn);
+  const calendar = google.calendar({ version: "v3", auth });
+  const out: { id: string; summary: string; primary: boolean }[] = [];
+  let pageToken: string | undefined;
+  do {
+    const { data } = await calendar.calendarList.list({
+      minAccessRole: "reader",
+      maxResults: 250,
+      pageToken,
+      showHidden: true,
+    });
+    for (const item of data.items ?? []) {
+      const id = item.id;
+      if (!id) continue;
+      out.push({
+        id,
+        summary: (item.summary ?? id).trim() || id,
+        primary: Boolean(item.primary),
+      });
+    }
+    pageToken = data.nextPageToken ?? undefined;
+  } while (pageToken);
+
+  out.sort((a, b) => {
+    if (a.primary !== b.primary) return a.primary ? -1 : 1;
+    return a.summary.localeCompare(b.summary, undefined, { sensitivity: "base" });
+  });
   return out;
 }
 
@@ -122,22 +179,13 @@ export async function fetchGoogleCalendarEvents(
 
 const GCAL_LABEL = "GCAL";
 
-/**
- * Primary-calendar read sync for `/calendar` aggregation: maps to KeyPilot CalendarEvent rows.
- * Expands multi-day all-day events to one row per day for month/week density and placement.
- */
-export async function fetchGoogleCalendarKeyPilotEvents(
+function mapItemsToKeyPilotEvents(
+  items: calendar_v3.Schema$Event[],
   conn: GoogleCalendarConnection,
-  options: { timeMin: Date; timeMax: Date; maxResults?: number }
-): Promise<CalendarEvent[]> {
-  const maxResults = options.maxResults ?? DEFAULT_MAX_AGGREGATION;
-  const items = await listPrimaryCalendarEvents(conn, {
-    timeMin: options.timeMin,
-    timeMax: options.timeMax,
-    maxResults,
-  });
-
-  const calendarSummary = conn.accountEmail ?? "Google Calendar";
+  calendarId: string,
+  calendarDisplayName: string
+): CalendarEvent[] {
+  const calSeg = stableCalIdSegment(calendarId);
   const out: CalendarEvent[] = [];
 
   for (const item of items) {
@@ -155,7 +203,7 @@ export async function fetchGoogleCalendarKeyPilotEvents(
       const keys = expandAllDayDateKeys(startDay, endDay);
       for (const dateKey of keys) {
         const { start, end } = closingStyleAllDayBounds(dateKey);
-        const id = `gcal-${conn.id}-${googleEventId}-${dateKey}`;
+        const id = `gcal-${conn.id}-${calSeg}-${googleEventId}-${dateKey}`;
         out.push({
           id,
           title,
@@ -168,9 +216,10 @@ export async function fetchGoogleCalendarKeyPilotEvents(
           relatedEntityId: googleEventId,
           metadata: {
             dateKey,
-            subline: calendarSummary,
+            subline: calendarDisplayName,
             googleEventId,
-            calendarName: calendarSummary,
+            googleCalendarId: calendarId,
+            calendarName: calendarDisplayName,
             readOnly: true,
             location,
             htmlLink,
@@ -187,7 +236,7 @@ export async function fetchGoogleCalendarKeyPilotEvents(
       const end = safeTimedEventEnd(start, endDt);
 
       out.push({
-        id: `gcal-${conn.id}-${googleEventId}`,
+        id: `gcal-${conn.id}-${calSeg}-${googleEventId}`,
         title,
         start: start.toISOString(),
         end: end.toISOString(),
@@ -197,9 +246,10 @@ export async function fetchGoogleCalendarKeyPilotEvents(
         relatedRoute: "/calendar",
         relatedEntityId: googleEventId,
         metadata: {
-          subline: calendarSummary,
+          subline: calendarDisplayName,
           googleEventId,
-          calendarName: calendarSummary,
+          googleCalendarId: calendarId,
+          calendarName: calendarDisplayName,
           readOnly: true,
           location,
           htmlLink,
@@ -209,6 +259,37 @@ export async function fetchGoogleCalendarKeyPilotEvents(
     }
   }
 
-  out.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   return out;
+}
+
+/**
+ * Read sync for `/calendar` aggregation. Fetches only selected calendar IDs.
+ * `calendarLabels` maps calendarId → display name (from calendar list).
+ */
+export async function fetchGoogleCalendarKeyPilotEvents(
+  conn: GoogleCalendarConnection,
+  options: { timeMin: Date; timeMax: Date; maxResults?: number },
+  calendarIds: string[],
+  calendarLabels: Record<string, string> = {}
+): Promise<CalendarEvent[]> {
+  const maxTotal = options.maxResults ?? DEFAULT_MAX_AGGREGATION;
+  const ids = calendarIds.filter((id) => id.trim().length > 0);
+  if (ids.length === 0) return [];
+
+  const perCal = Math.max(40, Math.floor(maxTotal / ids.length));
+  const accountFallback = conn.accountEmail ?? "Google Calendar";
+  const merged: CalendarEvent[] = [];
+
+  for (const calendarId of ids) {
+    const items = await listCalendarEventsForCalendarId(conn, calendarId, {
+      timeMin: options.timeMin,
+      timeMax: options.timeMax,
+      maxResults: perCal,
+    });
+    const label = calendarLabels[calendarId]?.trim() || accountFallback;
+    merged.push(...mapItemsToKeyPilotEvents(items, conn, calendarId, label));
+  }
+
+  merged.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+  return merged;
 }

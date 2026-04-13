@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { withRLSContext } from "@/lib/db-context";
 import { apiErrorFromCaught } from "@/lib/api-response";
+import { buildGoogleCalendarsSyncPatch } from "@/lib/google-calendar-sync-preferences";
 import { z } from "zod";
+import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,10 @@ const PATCH_BODY = z.object({
   enabledForCalendar: z.boolean().optional(),
   enabledForPriorityInbox: z.boolean().optional(),
   accountLabel: z.string().nullable().optional(),
+  /** Merge into Connection.syncPreferences (e.g. calendar list selection). */
+  syncPreferences: z.record(z.string(), z.unknown()).optional(),
+  /** Shortcut: persists `googleCalendars.selectedIds` under syncPreferences. */
+  googleCalendarSelectedIds: z.array(z.string()).min(1).optional(),
 });
 
 /** PATCH /api/v1/settings/connections/[id] - Update connection settings */
@@ -42,6 +48,18 @@ export async function PATCH(
         });
       }
 
+      let nextSync: Prisma.InputJsonValue | undefined;
+      if (data.googleCalendarSelectedIds) {
+        const prev = (conn.syncPreferences as Record<string, unknown> | null) ?? {};
+        nextSync = {
+          ...prev,
+          ...buildGoogleCalendarsSyncPatch(data.googleCalendarSelectedIds),
+        } as Prisma.InputJsonValue;
+      } else if (data.syncPreferences !== undefined) {
+        const prev = (conn.syncPreferences as Record<string, unknown> | null) ?? {};
+        nextSync = { ...prev, ...data.syncPreferences } as Prisma.InputJsonValue;
+      }
+
       await tx.connection.update({
         where: { id },
         data: {
@@ -51,6 +69,7 @@ export async function PATCH(
           ...(data.enabledForCalendar !== undefined && { enabledForCalendar: data.enabledForCalendar }),
           ...(data.enabledForPriorityInbox !== undefined && { enabledForPriorityInbox: data.enabledForPriorityInbox }),
           ...(data.accountLabel !== undefined && { accountLabel: data.accountLabel }),
+          ...(nextSync !== undefined && { syncPreferences: nextSync }),
         },
       });
 
