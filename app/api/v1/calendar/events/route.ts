@@ -7,6 +7,7 @@ import { withRLSContext } from "@/lib/db-context";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import type { CalendarEvent } from "@/lib/calendar/calendar-event-types";
 import {
+  ensureLabelMapForSelectedGoogleCalendars,
   fetchGoogleCalendarKeyPilotEvents,
   listGoogleAccountCalendars,
 } from "@/lib/adapters/google-calendar";
@@ -272,6 +273,8 @@ export async function GET(req: NextRequest) {
               labelMap[cid] = conn.accountEmail ?? "Google Calendar";
             }
           }
+
+          ensureLabelMapForSelectedGoogleCalendars(selectedIds, labelMap, conn.accountEmail);
 
           const gEvents = await fetchGoogleCalendarKeyPilotEvents(
             {

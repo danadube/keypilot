@@ -263,6 +263,33 @@ function mapItemsToKeyPilotEvents(
 }
 
 /**
+ * When `calendar.list` succeeds but omits a selected ID (deleted calendar, revoked access, stale
+ * `syncPreferences`), fill `labelMap` so event rows get a per-calendar label — not the generic
+ * account fallback used when the key is missing entirely.
+ */
+export function ensureLabelMapForSelectedGoogleCalendars(
+  selectedIds: string[],
+  labelMap: Record<string, string>,
+  accountEmail: string | null
+): void {
+  const acct = accountEmail?.trim() || "Google Calendar";
+  for (const cid of selectedIds) {
+    if (!cid.trim()) continue;
+    if (labelMap[cid]?.trim()) continue;
+    if (cid === "primary") {
+      labelMap[cid] = `Primary calendar · ${acct}`;
+      continue;
+    }
+    labelMap[cid] = `Google calendar (${formatStaleCalendarIdForLabel(cid)})`;
+  }
+}
+
+function formatStaleCalendarIdForLabel(id: string): string {
+  if (id.length <= 44) return id;
+  return `${id.slice(0, 18)}…${id.slice(-12)}`;
+}
+
+/**
  * Read sync for `/calendar` aggregation. Fetches only selected calendar IDs.
  * `calendarLabels` maps calendarId → display name (from calendar list).
  */
