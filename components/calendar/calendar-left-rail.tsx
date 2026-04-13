@@ -50,7 +50,7 @@ function LayerRow({
           {accentClassName ? (
             <span className={cn("h-2 w-2 shrink-0 rounded-sm", accentClassName)} aria-hidden />
           ) : null}
-          <span className="text-[13px] font-medium leading-tight text-kp-on-surface">{label}</span>
+          <span className="text-[12px] font-medium leading-tight text-kp-on-surface">{label}</span>
         </span>
         {description ? (
           <span className="mt-0.5 block text-[11px] leading-snug text-kp-on-surface-muted">{description}</span>
@@ -112,17 +112,17 @@ export function CalendarLeftRail({
     <aside
       className={cn(
         "flex w-full flex-col rounded-xl border border-kp-outline/80 bg-kp-surface-high/[0.05] shadow-sm",
-        "lg:max-h-[min(85vh,calc(100vh-10rem))] lg:w-[17.5rem] lg:shrink-0 lg:overflow-y-auto",
+        "lg:max-h-[min(85vh,calc(100vh-10rem))] lg:w-[12.75rem] xl:w-[13.25rem] lg:shrink-0 lg:overflow-y-auto",
         className
       )}
     >
-      <div className="border-b border-kp-outline/60 px-3 py-2.5">
-        <div className="flex items-center gap-2">
-          <Layers className="h-4 w-4 text-kp-teal" aria-hidden />
-          <p className="font-headline text-sm font-semibold text-kp-on-surface">Calendars</p>
+      <div className="border-b border-kp-outline/60 px-2 py-2 sm:px-2.5">
+        <div className="flex items-center gap-1.5">
+          <Layers className="h-3.5 w-3.5 shrink-0 text-kp-teal" aria-hidden />
+          <p className="font-headline text-[13px] font-semibold leading-tight text-kp-on-surface">Calendars</p>
         </div>
-        <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-muted">
-          Choose what appears on your week and month views.
+        <p className="mt-1 text-[10px] leading-snug text-kp-on-surface-muted">
+          Layers for week and month views.
         </p>
         <button
           type="button"
@@ -177,7 +177,17 @@ export function CalendarLeftRail({
                     {acct.accountEmail ?? "Google account"}
                   </p>
                   {acct.fetchError ? (
-                    <p className="mt-1 px-1.5 text-[11px] text-amber-800/90 dark:text-amber-300/90">{acct.fetchError}</p>
+                    <div className="mt-1.5 space-y-1.5 rounded-md border border-amber-500/35 bg-amber-500/[0.07] px-2 py-1.5">
+                      <p className="text-[10px] leading-snug text-amber-950/90 dark:text-amber-100/95">
+                        {acct.fetchError}
+                      </p>
+                      <Link
+                        href="/settings/connections"
+                        className="inline-flex text-[10px] font-semibold text-kp-teal hover:underline"
+                      >
+                        Open Connections
+                      </Link>
+                    </div>
                   ) : null}
                   {acct.calendars.length === 0 && !acct.fetchError ? (
                     <p className="mt-1 px-1.5 text-[11px] text-kp-on-surface-muted">No calendars selected for sync.</p>
@@ -222,7 +232,7 @@ export function CalendarLeftRail({
         </section>
       </div>
 
-      <div className="mt-auto border-t border-kp-outline/55 px-3 py-2.5">
+      <div className="mt-auto border-t border-kp-outline/55 px-2 py-2 sm:px-2.5">
         <Link
           href="/settings/connections"
           className="text-[11px] font-medium text-kp-teal/90 underline-offset-2 hover:text-kp-teal hover:underline"

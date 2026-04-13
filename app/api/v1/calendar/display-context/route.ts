@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { withRLSContext } from "@/lib/db-context";
 import { listGoogleAccountCalendars } from "@/lib/adapters/google-calendar";
 import { getGoogleCalendarSelectedIds } from "@/lib/google-calendar-sync-preferences";
+import { getGoogleCalendarListUserFacingError } from "@/lib/calendar/google-calendar-user-messages";
 import { apiErrorFromCaught } from "@/lib/api-response";
 
 export const dynamic = "force-dynamic";
@@ -66,12 +67,11 @@ export async function GET() {
             })),
         });
       } catch (e) {
-        const msg = e instanceof Error ? e.message : "Could not list calendars";
         console.error("[calendar/display-context]", conn.id, e);
         googleAccounts.push({
           connectionId: conn.id,
           accountEmail: conn.accountEmail,
-          fetchError: msg,
+          fetchError: getGoogleCalendarListUserFacingError(e),
           calendars: [],
         });
       }

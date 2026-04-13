@@ -12,6 +12,7 @@ import {
 } from "@/lib/adapters/google-calendar";
 import { getGoogleCalendarSelectedIds } from "@/lib/google-calendar-sync-preferences";
 import { buildUSHolidayEventsForRange } from "@/lib/calendar/built-in-calendars/us-federal-holidays";
+import { getGoogleCalendarListUserFacingError } from "@/lib/calendar/google-calendar-user-messages";
 
 export const dynamic = "force-dynamic";
 
@@ -287,8 +288,8 @@ export async function GET(req: NextRequest) {
           events.push(...gEvents);
         } catch (err) {
           console.error("[calendar/events] Google Calendar fetch failed", conn.id, err);
-          const msg = err instanceof Error ? err.message : "Google Calendar unavailable";
-          googleCalendarFetchError = googleCalendarFetchError ?? msg;
+          googleCalendarFetchError =
+            googleCalendarFetchError ?? getGoogleCalendarListUserFacingError(err);
         }
       }
 

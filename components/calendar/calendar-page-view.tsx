@@ -131,11 +131,11 @@ function CalendarMonthOverview({
           Event titles preview in each cell. The teal band matches Week view. Click a day for the full agenda.
         </p>
       </div>
-      <div className="p-3 sm:p-4">
+      <div className="p-3.5 sm:p-5">
         <div className="overflow-hidden rounded-lg border border-kp-outline/80 bg-kp-bg shadow-inner">
           <div className="grid grid-cols-7 border-b border-kp-outline/70 bg-kp-surface-high/[0.12] text-center text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((w) => (
-              <div key={w} className="border-l border-kp-outline/50 py-2 first:border-l-0">
+              <div key={w} className="border-l border-kp-outline/50 py-2.5 first:border-l-0 sm:py-3">
                 {w}
               </div>
             ))}
@@ -173,7 +173,7 @@ function CalendarMonthOverview({
                     onDayClick(d);
                   }}
                   className={cn(
-                    "relative flex min-h-[4.75rem] cursor-pointer flex-col items-stretch border-b border-l border-kp-outline/45 bg-kp-surface px-1 pb-1 pt-1 text-left transition-colors hover:z-[1] hover:bg-kp-surface-high/30 sm:min-h-[5.25rem]",
+                    "relative flex min-h-[5rem] cursor-pointer flex-col items-stretch border-b border-l border-kp-outline/45 bg-kp-surface px-1.5 pb-1.5 pt-1.5 text-left transition-colors hover:z-[1] hover:bg-kp-surface-high/30 sm:min-h-[5.75rem]",
                     colFirst && "border-l-0",
                     inActiveWeek && "bg-kp-teal/[0.09]",
                     isToday && !inActiveWeek && "ring-1 ring-inset ring-kp-teal/40",
@@ -486,7 +486,7 @@ export function CalendarPageView() {
         }
       />
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:gap-3">
         <CalendarLeftRail
           visibility={layerVisibility}
           onVisibilityChange={setLayerVisibility}
@@ -522,7 +522,7 @@ export function CalendarPageView() {
           {isLoading ? (
             <div className="h-64 animate-pulse rounded-xl bg-kp-surface-high/30" aria-busy aria-label="Loading calendar" />
           ) : view === "week" ? (
-            <div className="rounded-xl border border-kp-outline/90 bg-kp-surface p-1.5 shadow-md sm:p-2.5">
+            <div className="rounded-xl border border-kp-outline/90 bg-kp-surface p-0.5 shadow-md sm:p-1.5 md:p-2">
               <CalendarWeekView
                 weekStart={weekStart}
                 events={filtered}

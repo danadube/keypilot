@@ -12,6 +12,8 @@ const GRID_MINUTES = (GRID_END_HOUR - GRID_START_HOUR) * 60;
 /** Slightly denser than default h-12 to reduce empty feel */
 const HOUR_ROW_PX = 40;
 const HOUR_ROW_REM = `${HOUR_ROW_PX / 16}rem`;
+/** Narrower time gutter so seven day columns get more width (fits common dashboards without min-width scroll). */
+const TIME_GUTTER_REM = "3rem";
 
 function startOfLocalDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
@@ -222,14 +224,19 @@ export function CalendarWeekView({
     );
 
   return (
-    <div className={cn("overflow-x-auto", className)}>
-      <div className="relative inline-block min-w-[860px] w-full">
+    <div
+      className={cn(
+        "w-full min-w-0 max-lg:overflow-x-auto lg:overflow-x-visible",
+        className
+      )}
+    >
+      <div className="relative w-full min-w-0 max-lg:inline-block max-lg:min-w-[28rem]">
         {emptyOverlay}
         {/* Column headers */}
         <div
           className="grid border-b-2 border-kp-outline/80 bg-kp-surface-high/[0.12]"
           style={{
-            gridTemplateColumns: `3.5rem repeat(7, minmax(0, 1fr))`,
+            gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
           }}
         >
           <div className="border-r-2 border-kp-outline/55 p-2" aria-hidden />
@@ -270,7 +277,7 @@ export function CalendarWeekView({
         <div
           className="grid border-b-2 border-kp-outline/80 bg-kp-bg/40"
           style={{
-            gridTemplateColumns: `3.5rem repeat(7, minmax(0, 1fr))`,
+            gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
           }}
         >
           <div className="flex items-start justify-end border-r-2 border-kp-outline/50 bg-kp-surface-high/[0.06] px-1 py-2 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
@@ -316,7 +323,7 @@ export function CalendarWeekView({
         <div
           className="grid bg-kp-bg/30"
           style={{
-            gridTemplateColumns: `3.5rem repeat(7, minmax(0, 1fr))`,
+            gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
           }}
         >
           <div className="relative border-r-2 border-kp-outline/55 bg-kp-surface-high/[0.08]">
