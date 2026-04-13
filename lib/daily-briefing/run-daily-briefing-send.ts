@@ -105,7 +105,8 @@ export async function attemptDailyBriefingSendForUser(
   const sendResult = await sendDailyBriefingEmail({ to, subject, html, text });
   if (!sendResult.ok) {
     if (sendResult.skipped) {
-      return { status: "failed", error: sendResult.error };
+      console.log(`${LOG_PREFIX} skip userId=${user.id} reason=send_env_unavailable detail=${sendResult.error}`);
+      return { status: "skipped", reason: `send_env_unavailable:${sendResult.error}` };
     }
     return { status: "failed", error: sendResult.error };
   }
