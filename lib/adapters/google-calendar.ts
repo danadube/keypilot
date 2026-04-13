@@ -44,6 +44,15 @@ function closingStyleAllDayBounds(dateKeyYmd: string): { start: string; end: str
   return { start: start.toISOString(), end: end.toISOString() };
 }
 
+/** Timed event end from Google: invalid `endDt` or end before start would make `.toISOString()` throw or mis-render. */
+function safeTimedEventEnd(start: Date, endDt: string | null | undefined): Date {
+  const fallback = new Date(start.getTime() + 60 * 60 * 1000);
+  if (endDt == null || endDt === "") return fallback;
+  const end = new Date(endDt);
+  if (Number.isNaN(end.getTime()) || end.getTime() < start.getTime()) return fallback;
+  return end;
+}
+
 async function listPrimaryCalendarEvents(
   conn: GoogleCalendarConnection,
   options: { timeMin: Date; timeMax: Date; maxResults: number }
@@ -174,8 +183,8 @@ export async function fetchGoogleCalendarKeyPilotEvents(
 
     if (startDt) {
       const start = new Date(startDt);
-      const end = endDt ? new Date(endDt) : new Date(start.getTime() + 60 * 60 * 1000);
       if (Number.isNaN(start.getTime())) continue;
+      const end = safeTimedEventEnd(start, endDt);
 
       out.push({
         id: `gcal-${conn.id}-${googleEventId}`,
