@@ -221,7 +221,7 @@ export function CalendarWeekView({
         <div
           className="grid border-b-2 border-kp-outline/80 bg-kp-surface-high/[0.12]"
           style={{
-            gridTemplateColumns: `3.25rem repeat(7, minmax(0, 1fr))`,
+            gridTemplateColumns: `3.5rem repeat(7, minmax(0, 1fr))`,
           }}
         >
           <div className="border-r-2 border-kp-outline/55 p-2" aria-hidden />
@@ -262,7 +262,7 @@ export function CalendarWeekView({
         <div
           className="grid border-b-2 border-kp-outline/80 bg-kp-bg/40"
           style={{
-            gridTemplateColumns: `3.25rem repeat(7, minmax(0, 1fr))`,
+            gridTemplateColumns: `3.5rem repeat(7, minmax(0, 1fr))`,
           }}
         >
           <div className="flex items-start justify-end border-r-2 border-kp-outline/50 bg-kp-surface-high/[0.06] px-1 py-2 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
@@ -303,17 +303,17 @@ export function CalendarWeekView({
         <div
           className="grid bg-kp-bg/30"
           style={{
-            gridTemplateColumns: `3.25rem repeat(7, minmax(0, 1fr))`,
+            gridTemplateColumns: `3.5rem repeat(7, minmax(0, 1fr))`,
           }}
         >
           <div className="relative border-r-2 border-kp-outline/55 bg-kp-surface-high/[0.08]">
             {hourLabels.map(({ label, hour }) => (
               <div
                 key={hour}
-                className="relative border-b border-kp-outline/40 pr-1.5 text-right"
-                style={{ height: HOUR_ROW_REM }}
+                className="relative flex items-center justify-end border-b border-kp-outline/40 px-1.5"
+                style={{ height: HOUR_ROW_REM, minHeight: HOUR_ROW_REM }}
               >
-                <span className="absolute -top-2 right-0 text-[10px] font-semibold tabular-nums text-kp-on-surface-muted">
+                <span className="text-[10px] font-semibold tabular-nums leading-none text-kp-on-surface-muted">
                   {label}
                 </span>
               </div>
