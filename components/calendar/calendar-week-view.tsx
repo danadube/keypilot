@@ -72,10 +72,11 @@ function useNowTickMs() {
   return ms;
 }
 
-function nowIndicatorFrac(dayMidnight: Date): number | null {
-  const now = new Date();
-  if (localDateKey(now) !== localDateKey(dayMidnight)) return null;
-  const mins = now.getHours() * 60 + now.getMinutes() - GRID_START_HOUR * 60;
+/** `referenceNow` comes from a single parent tick so we do not mount N intervals in day columns. */
+function nowIndicatorFrac(dayMidnight: Date, referenceNow: Date): number | null {
+  if (localDateKey(referenceNow) !== localDateKey(dayMidnight)) return null;
+  const mins =
+    referenceNow.getHours() * 60 + referenceNow.getMinutes() - GRID_START_HOUR * 60;
   if (mins < 0 || mins > GRID_MINUTES) return null;
   return mins / GRID_MINUTES;
 }
@@ -160,6 +161,7 @@ export function CalendarWeekView({
   }, []);
 
   const nowMs = useNowTickMs();
+  const now = new Date(nowMs);
 
   return (
     <div className={cn("overflow-x-auto", className)}>
@@ -173,7 +175,7 @@ export function CalendarWeekView({
         >
           <div className="border-r-2 border-kp-outline/55 p-2" aria-hidden />
           {dayStarts.map((d, i) => {
-            const isToday = localDateKey(d) === localDateKey(new Date());
+            const isToday = localDateKey(d) === localDateKey(now);
             return (
               <div
                 key={i}
@@ -216,7 +218,7 @@ export function CalendarWeekView({
             All day
           </div>
           {dayStarts.map((d, col) => {
-            const isToday = localDateKey(d) === localDateKey(new Date());
+            const isToday = localDateKey(d) === localDateKey(now);
             return (
             <div
               key={`allday-${col}`}
@@ -265,7 +267,8 @@ export function CalendarWeekView({
               timedEvents={timedByCol[col] ?? []}
               early={overflowEarly[col] ?? []}
               late={overflowLate[col] ?? []}
-              isTodayCol={localDateKey(dayMidnight) === localDateKey(new Date(nowMs))}
+              isTodayCol={localDateKey(dayMidnight) === localDateKey(now)}
+              nowMs={nowMs}
               gridHeightRem={(GRID_END_HOUR - GRID_START_HOUR) * (HOUR_ROW_PX / 16)}
             />
           ))}
@@ -311,6 +314,7 @@ function DayColumn({
   early,
   late,
   isTodayCol,
+  nowMs,
   gridHeightRem,
 }: {
   dayMidnight: Date;
@@ -318,6 +322,8 @@ function DayColumn({
   early: CalendarEvent[];
   late: CalendarEvent[];
   isTodayCol: boolean;
+  /** Wall clock from parent {@link CalendarWeekView}'s single `useNowTickMs` — avoids N intervals. */
+  nowMs: number;
   gridHeightRem: number;
 }) {
   const placements = useMemo(() => {
@@ -329,8 +335,7 @@ function DayColumn({
     return layoutOverlappingIntervals(intervals);
   }, [timedEvents]);
 
-  useNowTickMs();
-  const nowFrac = nowIndicatorFrac(dayMidnight);
+  const nowFrac = nowIndicatorFrac(dayMidnight, new Date(nowMs));
 
   return (
     <div
