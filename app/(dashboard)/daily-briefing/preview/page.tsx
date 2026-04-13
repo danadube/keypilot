@@ -1,12 +1,6 @@
-import type { Metadata } from "next";
-import { DailyBriefingPreviewView } from "@/components/daily-briefing/daily-briefing-preview-view";
+import { permanentRedirect } from "next/navigation";
 
-export const metadata: Metadata = {
-  title: "Daily briefing preview | KeyPilot",
-  description:
-    "Preview the daily briefing email (HTML and plain text) using the same renderer as delivery — no email sent.",
-};
-
-export default function DailyBriefingPreviewPage() {
-  return <DailyBriefingPreviewView />;
+/** @deprecated Use `/settings/daily-briefing/preview` (settings shell + nav). */
+export default function LegacyDailyBriefingPreviewRedirect() {
+  permanentRedirect("/settings/daily-briefing/preview");
 }
