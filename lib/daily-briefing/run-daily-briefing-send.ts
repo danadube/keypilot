@@ -11,7 +11,10 @@ import {
   isDailyBriefingCronSendsEnabled,
   isUserEligibleForDailyBriefingRollout,
 } from "@/lib/daily-briefing/delivery-rollout";
-import { persistDailyBriefingSendAttemptLog } from "@/lib/daily-briefing/persist-daily-briefing-send-log";
+import {
+  DAILY_BRIEFING_SKIP_NOT_DUE,
+  persistDailyBriefingSendAttemptLog,
+} from "@/lib/daily-briefing/persist-daily-briefing-send-log";
 import type { DailyBriefingSendAttemptResult } from "@/lib/daily-briefing/send-attempt-types";
 import { sendDailyBriefingEmail } from "@/lib/email/send-daily-briefing-email";
 import { prismaAdmin } from "@/lib/db";
@@ -82,7 +85,7 @@ export async function attemptDailyBriefingSendForUser(
     console.log(`${LOG_PREFIX} skip userId=${user.id} reason=rollout_not_eligible`);
     result = { status: "skipped", reason: "rollout_not_eligible" };
   } else if (!isDueForSend(utcNow, delivery)) {
-    result = { status: "skipped", reason: "not_due" };
+    result = { status: "skipped", reason: DAILY_BRIEFING_SKIP_NOT_DUE };
   } else {
     const { start, end } = zonedDayBoundsContaining(utcNow, tz);
 
@@ -170,7 +173,7 @@ export async function runDailyBriefingCron(utcNow: Date = new Date()): Promise<R
     processed += 1;
     if (!isDueForSend(utcNow, delivery)) {
       skipped += 1;
-      results.push({ userId: user.id, status: "skipped", detail: "not_due" });
+      results.push({ userId: user.id, status: "skipped", detail: DAILY_BRIEFING_SKIP_NOT_DUE });
       continue;
     }
     const attempt = await attemptDailyBriefingSendForUser(user, delivery, utcNow);
