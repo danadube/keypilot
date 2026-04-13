@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { TransactionStatus } from "@prisma/client";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
+import { prismaAdmin } from "@/lib/db";
 import { withRLSContext } from "@/lib/db-context";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import type { CalendarEvent } from "@/lib/calendar/calendar-event-types";
+import { fetchGoogleCalendarKeyPilotEvents } from "@/lib/adapters/google-calendar";
 
 export const dynamic = "force-dynamic";
 
@@ -224,7 +226,58 @@ export async function GET(req: NextRequest) {
       return out;
     });
 
-    return NextResponse.json({ data: { events } });
+    let googleCalendarConnected = false;
+    let googleCalendarFetchError: string | null = null;
+
+    try {
+      const calendarConns = await prismaAdmin.connection.findMany({
+        where: {
+          userId: user.id,
+          provider: "GOOGLE",
+          service: "GOOGLE_CALENDAR",
+          status: "CONNECTED",
+          isEnabled: true,
+          enabledForCalendar: true,
+          accessToken: { not: null },
+        },
+      });
+      googleCalendarConnected = calendarConns.length > 0;
+
+      for (const conn of calendarConns) {
+        if (!conn.accessToken) continue;
+        try {
+          const gEvents = await fetchGoogleCalendarKeyPilotEvents(
+            {
+              id: conn.id,
+              accessToken: conn.accessToken,
+              refreshToken: conn.refreshToken,
+              tokenExpiresAt: conn.tokenExpiresAt,
+              accountEmail: conn.accountEmail,
+            },
+            { timeMin: rangeStart, timeMax: rangeEnd }
+          );
+          events.push(...gEvents);
+        } catch (err) {
+          console.error("[calendar/events] Google Calendar fetch failed", conn.id, err);
+          const msg = err instanceof Error ? err.message : "Google Calendar unavailable";
+          googleCalendarFetchError = googleCalendarFetchError ?? msg;
+        }
+      }
+
+      events.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+    } catch (err) {
+      console.error("[calendar/events] Google connection lookup failed", err);
+    }
+
+    return NextResponse.json({
+      data: {
+        events,
+        integrations: {
+          googleCalendarConnected,
+          googleCalendarFetchError,
+        },
+      },
+    });
   } catch (e) {
     return apiErrorFromCaught(e);
   }

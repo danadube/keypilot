@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { ExternalLink } from "lucide-react";
+import { BrandModal } from "@/components/ui/BrandModal";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { CalendarEvent, CalendarSourceType } from "@/lib/calendar/calendar-event-types";
 import { layoutOverlappingIntervals } from "@/lib/calendar/overlap-layout";
@@ -59,8 +62,91 @@ const SOURCE_RING: Record<CalendarSourceType, string> = {
   task: "border-l-amber-500 bg-amber-400/[0.16] shadow-sm",
   follow_up: "border-l-sky-500 bg-sky-500/[0.14] shadow-sm",
   transaction: "border-l-amber-700 bg-amber-600/[0.14] shadow-sm",
-  external: "border-l-slate-400 bg-slate-500/[0.12] shadow-sm",
+  external:
+    "border-l-slate-400 bg-slate-500/[0.10] shadow-sm ring-1 ring-slate-400/15 ring-inset",
 };
+
+type ExternalMeta = {
+  calendarName?: string;
+  subline?: string;
+  location?: string;
+  htmlLink?: string;
+  readOnly?: boolean;
+};
+
+function formatEventDetailWhen(ev: CalendarEvent): string {
+  if (ev.allDay) return "All day";
+  const start = new Date(ev.start);
+  const end = new Date(ev.end);
+  if (Number.isNaN(start.getTime())) return "";
+  const dayPart = start.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+  const startClock = start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  if (Number.isNaN(end.getTime())) return `${dayPart} · ${startClock}`;
+  const endClock = end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return `${dayPart} · ${startClock} – ${endClock}`;
+}
+
+function ExternalEventDetailModal({
+  ev,
+  open,
+  onOpenChange,
+}: {
+  ev: CalendarEvent | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  if (!ev) return null;
+  const meta = ev.metadata as ExternalMeta | undefined;
+  const calendarName = meta?.calendarName ?? meta?.subline ?? "Google Calendar";
+  return (
+    <BrandModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={ev.title}
+      description="External calendar (read-only in KeyPilot)"
+      size="sm"
+      footer={
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {meta?.htmlLink ? (
+            <Button variant="outline" size="sm" asChild>
+              <a href={meta.htmlLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5">
+                Open in Google
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              </a>
+            </Button>
+          ) : null}
+          <Button type="button" size="sm" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </div>
+      }
+    >
+      <dl className="space-y-3 text-sm">
+        <div>
+          <dt className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">When</dt>
+          <dd className="mt-0.5 text-kp-on-surface">{formatEventDetailWhen(ev)}</dd>
+        </div>
+        <div>
+          <dt className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">Calendar</dt>
+          <dd className="mt-0.5 text-kp-on-surface">{calendarName}</dd>
+        </div>
+        {meta?.location ? (
+          <div>
+            <dt className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">Location</dt>
+            <dd className="mt-0.5 text-kp-on-surface">{meta.location}</dd>
+          </div>
+        ) : null}
+        <p className="rounded-md border border-kp-outline/50 bg-kp-bg/80 px-2.5 py-2 text-xs text-kp-on-surface-muted">
+          This event is synced from Google for planning only. Editing happens in Google Calendar.
+        </p>
+      </dl>
+    </BrandModal>
+  );
+}
 
 function useNowTickMs() {
   const [ms, setMs] = useState(() => Date.now());
@@ -191,6 +277,7 @@ export function CalendarWeekView({
 
   const nowMs = useNowTickMs();
   const now = new Date(nowMs);
+  const [externalDetail, setExternalDetail] = useState<CalendarEvent | null>(null);
 
   const emptyOverlay =
     emptyHint === "none" ? null : (
@@ -290,7 +377,7 @@ export function CalendarWeekView({
                 <ul className="relative z-[10] flex flex-col gap-1">
                   {allDayByCol[col]!.map((ev) => (
                     <li key={ev.id}>
-                      <EventPill ev={ev} compact />
+                      <EventPill ev={ev} compact onExternalOpen={setExternalDetail} />
                     </li>
                   ))}
                 </ul>
@@ -331,15 +418,31 @@ export function CalendarWeekView({
               nowMs={nowMs}
               gridHeightRem={(GRID_END_HOUR - GRID_START_HOUR) * (HOUR_ROW_PX / 16)}
               onTimeGridCreate={onTimeGridCreate}
+              onExternalOpen={setExternalDetail}
             />
           ))}
         </div>
       </div>
+      <ExternalEventDetailModal
+        ev={externalDetail}
+        open={externalDetail != null}
+        onOpenChange={(o) => {
+          if (!o) setExternalDetail(null);
+        }}
+      />
     </div>
   );
 }
 
-function EventPill({ ev, compact }: { ev: CalendarEvent; compact?: boolean }) {
+function EventPill({
+  ev,
+  compact,
+  onExternalOpen,
+}: {
+  ev: CalendarEvent;
+  compact?: boolean;
+  onExternalOpen: (ev: CalendarEvent) => void;
+}) {
   const ring = SOURCE_RING[ev.sourceType] ?? SOURCE_RING.external;
   const start = new Date(ev.start);
   const timeStr = ev.allDay
@@ -347,16 +450,15 @@ function EventPill({ ev, compact }: { ev: CalendarEvent; compact?: boolean }) {
     : Number.isNaN(start.getTime())
       ? ""
       : start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  return (
-    <Link
-      href={ev.relatedRoute}
-      onClick={(e) => e.stopPropagation()}
-      className={cn(
-        "relative z-10 block rounded-md border border-kp-outline/55 border-l-[3px] px-1.5 py-1 text-left transition-colors hover:brightness-[1.02]",
-        ring,
-        compact ? "text-[10px] leading-snug" : "text-[11px] leading-snug"
-      )}
-    >
+  const meta = ev.metadata as { calendarName?: string; subline?: string } | undefined;
+  const sub = meta?.calendarName ?? meta?.subline;
+  const shellClass = cn(
+    "relative z-10 block w-full rounded-md border border-kp-outline/55 border-l-[3px] px-1.5 py-1 text-left transition-colors hover:brightness-[1.02]",
+    ring,
+    compact ? "text-[10px] leading-snug" : "text-[11px] leading-snug"
+  );
+  const inner = (
+    <>
       <div className="flex items-center justify-between gap-1">
         <span className="font-mono text-[9px] font-semibold uppercase text-kp-on-surface-muted">
           {ev.sourceLabel}
@@ -366,6 +468,21 @@ function EventPill({ ev, compact }: { ev: CalendarEvent; compact?: boolean }) {
       <p className={cn("mt-0.5 truncate font-medium text-kp-on-surface", compact ? "text-[10px]" : "text-[11px]")}>
         {ev.title}
       </p>
+      {ev.sourceType === "external" && sub ? (
+        <p className="mt-0.5 truncate text-[9px] text-kp-on-surface-muted">{sub}</p>
+      ) : null}
+    </>
+  );
+  if (ev.sourceType === "external") {
+    return (
+      <button type="button" className={shellClass} onClick={() => onExternalOpen(ev)}>
+        {inner}
+      </button>
+    );
+  }
+  return (
+    <Link href={ev.relatedRoute} onClick={(e) => e.stopPropagation()} className={shellClass}>
+      {inner}
     </Link>
   );
 }
@@ -379,6 +496,7 @@ function DayColumn({
   nowMs,
   gridHeightRem,
   onTimeGridCreate,
+  onExternalOpen,
 }: {
   dayMidnight: Date;
   timedEvents: CalendarEvent[];
@@ -389,6 +507,7 @@ function DayColumn({
   nowMs: number;
   gridHeightRem: number;
   onTimeGridCreate?: (args: { dateKey: string; timeLocal: string }) => void;
+  onExternalOpen: (ev: CalendarEvent) => void;
 }) {
   const placements = useMemo(() => {
     const intervals = timedEvents.map((ev) => ({
@@ -438,9 +557,19 @@ function DayColumn({
           {early.map((ev) => (
             <div key={ev.id} className="rounded border border-dashed border-kp-outline/60 bg-kp-bg/95 px-1 py-0.5 text-[9px] text-kp-on-surface-muted shadow-sm backdrop-blur-sm">
               <span className="font-medium text-kp-on-surface-variant">Before 8:00</span> ·{" "}
-              <Link href={ev.relatedRoute} className="underline-offset-2 hover:text-kp-teal hover:underline">
-                {ev.title}
-              </Link>
+              {ev.sourceType === "external" ? (
+                <button
+                  type="button"
+                  className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
+                  onClick={() => onExternalOpen(ev)}
+                >
+                  {ev.title}
+                </button>
+              ) : (
+                <Link href={ev.relatedRoute} className="underline-offset-2 hover:text-kp-teal hover:underline">
+                  {ev.title}
+                </Link>
+              )}
             </div>
           ))}
         </div>
@@ -473,23 +602,19 @@ function DayColumn({
           const widthPct = 100 / cols;
           const leftPct = col * widthPct;
           const ring = SOURCE_RING[ev.sourceType] ?? SOURCE_RING.external;
-          return (
-            <Link
-              key={ev.id}
-              href={ev.relatedRoute}
-              onClick={(e) => e.stopPropagation()}
-              className={cn(
-                "absolute z-[5] overflow-hidden rounded-md border border-kp-outline/50 border-l-[3px] px-1 py-0.5 text-[10px] transition-colors hover:z-[6] hover:brightness-[1.03]",
-                ring
-              )}
-              style={{
-                top: `${clip.topFrac * 100}%`,
-                height: `${clip.heightFrac * 100}%`,
-                left: `${leftPct + 0.5}%`,
-                width: `${widthPct - 1}%`,
-                minHeight: "1.35rem",
-              }}
-            >
+          const blockClass = cn(
+            "absolute z-[5] overflow-hidden rounded-md border border-kp-outline/50 border-l-[3px] px-1 py-0.5 text-left text-[10px] transition-colors hover:z-[6] hover:brightness-[1.03]",
+            ring
+          );
+          const blockStyle = {
+            top: `${clip.topFrac * 100}%`,
+            height: `${clip.heightFrac * 100}%`,
+            left: `${leftPct + 0.5}%`,
+            width: `${widthPct - 1}%`,
+            minHeight: "1.35rem",
+          } as const;
+          const blockBody = (
+            <>
               <div className="flex items-start justify-between gap-0.5">
                 <span className="shrink-0 font-mono text-[8px] font-bold uppercase text-kp-on-surface-muted">
                   {ev.sourceLabel}
@@ -501,6 +626,33 @@ function DayColumn({
                   ? ""
                   : `${start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })} – ${end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`}
               </p>
+            </>
+          );
+          if (ev.sourceType === "external") {
+            return (
+              <button
+                key={ev.id}
+                type="button"
+                className={blockClass}
+                style={blockStyle}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onExternalOpen(ev);
+                }}
+              >
+                {blockBody}
+              </button>
+            );
+          }
+          return (
+            <Link
+              key={ev.id}
+              href={ev.relatedRoute}
+              onClick={(e) => e.stopPropagation()}
+              className={blockClass}
+              style={blockStyle}
+            >
+              {blockBody}
             </Link>
           );
         })}
@@ -511,9 +663,19 @@ function DayColumn({
           {late.map((ev) => (
             <div key={ev.id} className="rounded border border-dashed border-kp-outline/60 bg-kp-bg/80 px-1 py-0.5 text-[9px] text-kp-on-surface-muted shadow-sm">
               <span className="font-medium text-kp-on-surface-variant">After 6:00</span> ·{" "}
-              <Link href={ev.relatedRoute} className="underline-offset-2 hover:text-kp-teal hover:underline">
-                {ev.title}
-              </Link>
+              {ev.sourceType === "external" ? (
+                <button
+                  type="button"
+                  className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
+                  onClick={() => onExternalOpen(ev)}
+                >
+                  {ev.title}
+                </button>
+              ) : (
+                <Link href={ev.relatedRoute} className="underline-offset-2 hover:text-kp-teal hover:underline">
+                  {ev.title}
+                </Link>
+              )}
             </div>
           ))}
         </div>

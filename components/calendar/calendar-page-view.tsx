@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import useSWR from "swr";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -57,7 +58,7 @@ function localDateKey(d: Date): string {
 
 type ViewMode = "week" | "month";
 
-type FilterKey = "all" | "showing" | "task" | "follow_up" | "transaction";
+type FilterKey = "all" | "showing" | "task" | "follow_up" | "transaction" | "external";
 
 const NO_EVENTS: CalendarEvent[] = [];
 
@@ -214,12 +215,19 @@ export function CalendarPageView() {
     return { start: first, end };
   }, [view, weekStart, visibleMonth]);
 
-  const { data, isLoading, mutate } = useSWR<{ events: CalendarEvent[] }>(
+  const { data, isLoading, mutate } = useSWR<{
+    events: CalendarEvent[];
+    integrations?: {
+      googleCalendarConnected: boolean;
+      googleCalendarFetchError: string | null;
+    };
+  }>(
     `/api/v1/calendar/events?rangeStartIso=${encodeURIComponent(range.start.toISOString())}&rangeEndIso=${encodeURIComponent(range.end.toISOString())}`,
     apiFetcher
   );
 
   const events = data?.events ?? NO_EVENTS;
+  const integrations = data?.integrations;
   const filtered = useMemo(() => filterEvents(events, filter), [events, filter]);
 
   const weekLabel = useMemo(() => {
@@ -398,9 +406,36 @@ export function CalendarPageView() {
             <button type="button" className={chipClass("transaction")} onClick={() => setFilter("transaction")}>
               Deals
             </button>
+            <button type="button" className={chipClass("external")} onClick={() => setFilter("external")}>
+              GCal
+            </button>
           </div>
         </div>
       </div>
+
+      {integrations && !integrations.googleCalendarConnected ? (
+        <p className="text-center text-[11px] leading-snug text-kp-on-surface-muted">
+          <Link
+            href="/settings/connections"
+            className="font-medium text-kp-teal/90 underline-offset-2 hover:text-kp-teal hover:underline"
+          >
+            Connect Google Calendar
+          </Link>{" "}
+          to show external events next to KeyPilot work.
+        </p>
+      ) : null}
+      {integrations?.googleCalendarConnected && integrations.googleCalendarFetchError ? (
+        <p
+          className="text-center text-[11px] leading-snug text-amber-800/90 dark:text-amber-300/90"
+          role="status"
+        >
+          Google Calendar could not be loaded; showing KeyPilot events only. You can reconnect under{" "}
+          <Link href="/settings/connections" className="font-medium underline-offset-2 hover:underline">
+            Settings → Connections
+          </Link>
+          .
+        </p>
+      ) : null}
 
       {isLoading ? (
         <div className="h-64 animate-pulse rounded-xl bg-kp-surface-high/30" aria-busy aria-label="Loading calendar" />
