@@ -67,6 +67,32 @@ export function formatAgendaRowTime(ev: CalendarEvent): string {
   return `${a} – ${b}`;
 }
 
+/** When line for calendar detail modals (timed range, all-day date, or Google-style day + range). */
+export function formatCalendarWhenForDetail(ev: CalendarEvent): string {
+  if (ev.allDay) {
+    const start = new Date(ev.start);
+    if (Number.isNaN(start.getTime())) return "All day";
+    return `${start.toLocaleDateString(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    })} · All day`;
+  }
+  const start = new Date(ev.start);
+  const end = new Date(ev.end);
+  if (Number.isNaN(start.getTime())) return "";
+  const dayPart = start.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  });
+  const startClock = start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  if (Number.isNaN(end.getTime())) return `${dayPart} · ${startClock}`;
+  const endClock = end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return `${dayPart} · ${startClock} – ${endClock}`;
+}
+
 function startOfMonth(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
 }

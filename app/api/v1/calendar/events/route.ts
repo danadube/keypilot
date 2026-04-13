@@ -145,6 +145,7 @@ export async function GET(req: NextRequest) {
           metadata: {
             subline: addr,
             propertyAddress: addr,
+            workspace: "ShowingHQ",
           },
         });
       }
@@ -168,7 +169,11 @@ export async function GET(req: NextRequest) {
           sourceLabel: "TASK",
           relatedRoute: "/task-pilot",
           relatedEntityId: t.id,
-          metadata: { subline: sub },
+          metadata: {
+            subline: sub,
+            workspace: "Task Pilot",
+            taskPlainTitle: t.title.trim() || null,
+          },
         });
       }
 
@@ -186,7 +191,12 @@ export async function GET(req: NextRequest) {
           sourceLabel: "CRM",
           relatedRoute: `/contacts/${f.contact.id}`,
           relatedEntityId: f.id,
-          metadata: { subline: name, contactName: name },
+          metadata: {
+            subline: name,
+            contactName: name,
+            contactId: f.contact.id,
+            workspace: "ClientKeep",
+          },
         });
       }
 
@@ -204,7 +214,12 @@ export async function GET(req: NextRequest) {
           sourceLabel: "TXN",
           relatedRoute: `/transactions/${c.transactionId}#txn-pipeline-workspace`,
           relatedEntityId: c.id,
-          metadata: { subline: line, transactionId: c.transactionId },
+          metadata: {
+            subline: line,
+            transactionId: c.transactionId,
+            workspace: "TransactionHQ",
+            milestoneKind: "checklist",
+          },
         });
       }
 
@@ -225,7 +240,13 @@ export async function GET(req: NextRequest) {
           sourceLabel: "TXN",
           relatedRoute: `/transactions/${txn.id}`,
           relatedEntityId: txn.id,
-          metadata: { subline: line, kind: "closing", dateKey: dk },
+          metadata: {
+            subline: line,
+            kind: "closing",
+            dateKey: dk,
+            workspace: "TransactionHQ",
+            milestoneKind: "closing",
+          },
         });
       }
 

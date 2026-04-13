@@ -4,6 +4,7 @@ import { ExternalLink } from "lucide-react";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { Button } from "@/components/ui/button";
 import type { CalendarEvent } from "@/lib/calendar/calendar-event-types";
+import { formatCalendarWhenForDetail } from "@/lib/calendar/calendar-event-day-utils";
 
 type ExternalMeta = {
   calendarName?: string;
@@ -12,22 +13,6 @@ type ExternalMeta = {
   htmlLink?: string;
   readOnly?: boolean;
 };
-
-function formatEventDetailWhen(ev: CalendarEvent): string {
-  if (ev.allDay) return "All day";
-  const start = new Date(ev.start);
-  const end = new Date(ev.end);
-  if (Number.isNaN(start.getTime())) return "";
-  const dayPart = start.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-  const startClock = start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  if (Number.isNaN(end.getTime())) return `${dayPart} · ${startClock}`;
-  const endClock = end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
-  return `${dayPart} · ${startClock} – ${endClock}`;
-}
 
 export function ExternalCalendarEventDetailModal({
   ev,
@@ -67,7 +52,7 @@ export function ExternalCalendarEventDetailModal({
       <dl className="space-y-3 text-sm">
         <div>
           <dt className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">When</dt>
-          <dd className="mt-0.5 text-kp-on-surface">{formatEventDetailWhen(ev)}</dd>
+          <dd className="mt-0.5 text-kp-on-surface">{formatCalendarWhenForDetail(ev)}</dd>
         </div>
         <div>
           <dt className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">Calendar</dt>

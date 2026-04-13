@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Plus } from "lucide-react";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { Button } from "@/components/ui/button";
@@ -39,6 +38,8 @@ export type CalendarDayAgendaModalProps = {
   onAdd: (prefill: CalendarQuickAddPrefill) => void;
   onExternalSelect: (ev: CalendarEvent) => void;
   onHolidaySelect: (ev: CalendarEvent) => void;
+  /** KeyPilot events — open detail modal (same pattern as external/holiday). */
+  onInternalSelect: (ev: CalendarEvent) => void;
 };
 
 export function CalendarDayAgendaModal({
@@ -50,6 +51,7 @@ export function CalendarDayAgendaModal({
   onAdd,
   onExternalSelect,
   onHolidaySelect,
+  onInternalSelect,
 }: CalendarDayAgendaModalProps) {
   const title = day
     ? day.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })
@@ -137,9 +139,16 @@ export function CalendarDayAgendaModal({
 
             return (
               <li key={ev.id}>
-                <Link href={ev.relatedRoute} className={cn(shell, "block")} onClick={() => onOpenChange(false)}>
+                <button
+                  type="button"
+                  className={shell}
+                  onClick={() => {
+                    onOpenChange(false);
+                    onInternalSelect(ev);
+                  }}
+                >
                   {rowInner}
-                </Link>
+                </button>
               </li>
             );
           })}

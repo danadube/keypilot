@@ -114,6 +114,7 @@ export function CalendarWeekView({
   onAllDayBackgroundClick,
   onExternalEventOpen,
   onHolidayEventOpen,
+  onInternalEventOpen,
 }: {
   weekStart: Date;
   events: CalendarEvent[];
@@ -128,6 +129,8 @@ export function CalendarWeekView({
   onExternalEventOpen?: (ev: CalendarEvent) => void;
   /** Built-in holiday layer (read-only). */
   onHolidayEventOpen?: (ev: CalendarEvent) => void;
+  /** KeyPilot-sourced events — detail modal before navigating to the owning workspace. */
+  onInternalEventOpen?: (ev: CalendarEvent) => void;
 }) {
   const dayStarts = useMemo(() => {
     const start = startOfLocalDay(weekStart);
@@ -310,6 +313,7 @@ export function CalendarWeekView({
                         compact
                         onExternalOpen={onExternalEventOpen}
                         onHolidayOpen={onHolidayEventOpen}
+                        onInternalOpen={onInternalEventOpen}
                       />
                     </li>
                   ))}
@@ -353,6 +357,7 @@ export function CalendarWeekView({
               onTimeGridCreate={onTimeGridCreate}
               onExternalOpen={onExternalEventOpen}
               onHolidayOpen={onHolidayEventOpen}
+              onInternalOpen={onInternalEventOpen}
             />
           ))}
         </div>
@@ -366,11 +371,13 @@ function EventPill({
   compact,
   onExternalOpen,
   onHolidayOpen,
+  onInternalOpen,
 }: {
   ev: CalendarEvent;
   compact?: boolean;
   onExternalOpen?: (ev: CalendarEvent) => void;
   onHolidayOpen?: (ev: CalendarEvent) => void;
+  onInternalOpen?: (ev: CalendarEvent) => void;
 }) {
   const ring = SOURCE_RING[ev.sourceType] ?? SOURCE_RING.external;
   const start = new Date(ev.start);
@@ -423,6 +430,13 @@ function EventPill({
       </button>
     );
   }
+  if (onInternalOpen) {
+    return (
+      <button type="button" className={shellClass} onClick={() => onInternalOpen(ev)}>
+        {inner}
+      </button>
+    );
+  }
   return (
     <Link href={ev.relatedRoute} onClick={(e) => e.stopPropagation()} className={shellClass}>
       {inner}
@@ -441,6 +455,7 @@ function DayColumn({
   onTimeGridCreate,
   onExternalOpen,
   onHolidayOpen,
+  onInternalOpen,
 }: {
   dayMidnight: Date;
   timedEvents: CalendarEvent[];
@@ -453,6 +468,7 @@ function DayColumn({
   onTimeGridCreate?: (args: { dateKey: string; timeLocal: string }) => void;
   onExternalOpen?: (ev: CalendarEvent) => void;
   onHolidayOpen?: (ev: CalendarEvent) => void;
+  onInternalOpen?: (ev: CalendarEvent) => void;
 }) {
   const placements = useMemo(() => {
     const intervals = timedEvents.map((ev) => ({
@@ -515,6 +531,14 @@ function DayColumn({
                   type="button"
                   className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
                   onClick={() => onHolidayOpen?.(ev)}
+                >
+                  {ev.title}
+                </button>
+              ) : onInternalOpen ? (
+                <button
+                  type="button"
+                  className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
+                  onClick={() => onInternalOpen(ev)}
                 >
                   {ev.title}
                 </button>
@@ -613,6 +637,22 @@ function DayColumn({
               </button>
             );
           }
+          if (onInternalOpen) {
+            return (
+              <button
+                key={ev.id}
+                type="button"
+                className={blockClass}
+                style={blockStyle}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onInternalOpen(ev);
+                }}
+              >
+                {blockBody}
+              </button>
+            );
+          }
           return (
             <Link
               key={ev.id}
@@ -645,6 +685,14 @@ function DayColumn({
                   type="button"
                   className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
                   onClick={() => onHolidayOpen?.(ev)}
+                >
+                  {ev.title}
+                </button>
+              ) : onInternalOpen ? (
+                <button
+                  type="button"
+                  className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
+                  onClick={() => onInternalOpen(ev)}
                 >
                   {ev.title}
                 </button>

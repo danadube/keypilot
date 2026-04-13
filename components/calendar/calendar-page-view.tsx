@@ -31,6 +31,7 @@ import {
 import { CalendarDayAgendaModal } from "@/components/calendar/calendar-day-agenda-modal";
 import { ExternalCalendarEventDetailModal } from "@/components/calendar/external-calendar-event-detail-modal";
 import { HolidayEventDetailModal } from "@/components/calendar/holiday-event-detail-modal";
+import { InternalCalendarEventDetailModal } from "@/components/calendar/internal-calendar-event-detail-modal";
 import {
   CalendarLeftRail,
   type DisplayContextGoogleAccount,
@@ -235,6 +236,7 @@ export function CalendarPageView() {
   const [agendaDay, setAgendaDay] = useState<Date | null>(null);
   const [externalDetail, setExternalDetail] = useState<CalendarEvent | null>(null);
   const [holidayDetail, setHolidayDetail] = useState<CalendarEvent | null>(null);
+  const [internalDetail, setInternalDetail] = useState<CalendarEvent | null>(null);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   /** When opening New task from the calendar (or after choosing Task in Add to Calendar), set due date/time. Cleared when the modal closes. */
   const [taskDuePrefill, setTaskDuePrefill] = useState<{ date: string; time: string } | null>(null);
@@ -533,6 +535,7 @@ export function CalendarPageView() {
                 onAllDayBackgroundClick={onWeekAllDayOpenAgenda}
                 onExternalEventOpen={setExternalDetail}
                 onHolidayEventOpen={setHolidayDetail}
+                onInternalEventOpen={setInternalDetail}
               />
             </div>
           ) : view === "month" ? (
@@ -564,6 +567,10 @@ export function CalendarPageView() {
           setAgendaDay(null);
           setHolidayDetail(ev);
         }}
+        onInternalSelect={(ev) => {
+          setAgendaDay(null);
+          setInternalDetail(ev);
+        }}
       />
 
       <ExternalCalendarEventDetailModal
@@ -580,6 +587,15 @@ export function CalendarPageView() {
         onOpenChange={(o) => {
           if (!o) setHolidayDetail(null);
         }}
+      />
+
+      <InternalCalendarEventDetailModal
+        ev={internalDetail}
+        open={internalDetail != null}
+        onOpenChange={(o) => {
+          if (!o) setInternalDetail(null);
+        }}
+        onTaskCompleted={() => void mutate()}
       />
 
       <AddEventModal
