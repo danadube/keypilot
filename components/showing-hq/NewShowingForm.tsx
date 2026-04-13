@@ -51,7 +51,14 @@ type Property = {
   zip: string;
 };
 
-export function NewShowingForm() {
+export function NewShowingForm({
+  initialScheduledDate,
+  initialScheduledTime,
+}: {
+  /** From calendar quick-add or shared links (`?scheduledDate=YYYY-MM-DD`). */
+  initialScheduledDate?: string;
+  initialScheduledTime?: string;
+} = {}) {
   const router = useRouter();
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,8 +66,8 @@ export function NewShowingForm() {
   const [error, setError] = useState<string | null>(null);
 
   const [propertyId, setPropertyId] = useState("");
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [scheduledTime, setScheduledTime] = useState("");
+  const [scheduledDate, setScheduledDate] = useState(() => initialScheduledDate?.trim() ?? "");
+  const [scheduledTime, setScheduledTime] = useState(() => initialScheduledTime?.trim() ?? "");
   const [buyerAgentName, setBuyerAgentName] = useState("");
   const [buyerAgentEmail, setBuyerAgentEmail] = useState("");
   const [buyerName, setBuyerName] = useState("");

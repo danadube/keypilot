@@ -369,7 +369,7 @@ export function CalendarWeekView({
                 {onAllDayCreate ? (
                   <button
                     type="button"
-                    aria-label="Add task on this day"
+                    aria-label="Add to calendar on this day"
                     className="absolute inset-0 z-[1] cursor-pointer rounded-sm bg-transparent transition-colors hover:bg-kp-teal/[0.06]"
                     onClick={() => onAllDayCreate({ dateKey: dk, allDay: true })}
                   />
@@ -579,7 +579,7 @@ function DayColumn({
         {onTimeGridCreate ? (
           <button
             type="button"
-            aria-label="Add task at this time"
+            aria-label="Add to calendar at this time"
             className="absolute inset-0 z-[2] cursor-pointer rounded-sm bg-transparent transition-colors hover:bg-kp-teal/[0.05]"
             onClick={(e) => {
               const r = e.currentTarget.getBoundingClientRect();

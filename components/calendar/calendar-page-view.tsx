@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import useSWR from "swr";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -21,6 +22,12 @@ import {
   type CalendarWeekEmptyHint,
 } from "@/components/calendar/calendar-week-view";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
+import {
+  AddEventModal,
+  FollowUpCalendarHintModal,
+  formatCalendarQuickAddSummary,
+  type CalendarQuickAddPrefill,
+} from "@/components/calendar/add-event-modal";
 
 function startOfLocalDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
@@ -112,7 +119,7 @@ function CalendarMonthOverview({
       <div className="border-b border-kp-outline/70 bg-kp-surface-high/[0.08] px-4 py-3">
         <p className="font-headline text-base font-semibold tracking-tight text-kp-on-surface">{title}</p>
         <p className="mt-1 text-xs leading-snug text-kp-on-surface-muted">
-          Dots show load; the teal band is the week you see in Week view. Click a day to quick-add a task.
+          Dots show load; the teal band is the week you see in Week view. Click a day to add to your calendar.
         </p>
       </div>
       <div className="p-3 sm:p-4">
@@ -196,12 +203,17 @@ function CalendarMonthOverview({
 }
 
 export function CalendarPageView() {
+  const router = useRouter();
   const [view, setView] = useState<ViewMode>("week");
   const [weekStart, setWeekStart] = useState(() => startOfWeekSunday(new Date()));
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [addEventOpen, setAddEventOpen] = useState(false);
+  const [quickAddPrefill, setQuickAddPrefill] = useState<CalendarQuickAddPrefill | null>(null);
+  const [followUpHintOpen, setFollowUpHintOpen] = useState(false);
+  const [followUpHintSummary, setFollowUpHintSummary] = useState("");
   const [newTaskOpen, setNewTaskOpen] = useState(false);
-  /** When opening New task from the calendar, set due date/time for the form. Cleared when the modal closes. */
+  /** When opening New task from the calendar (or after choosing Task in Add to Calendar), set due date/time. Cleared when the modal closes. */
   const [taskDuePrefill, setTaskDuePrefill] = useState<{ date: string; time: string } | null>(null);
 
   const range = useMemo(() => {
@@ -257,7 +269,7 @@ export function CalendarPageView() {
     setWeekStart((w) => addDays(w, 7));
   }, []);
 
-  const openTaskModal = useCallback((prefill: { date: string; time: string } | null) => {
+  const openNewTaskWithPrefill = useCallback((prefill: { date: string; time: string } | null) => {
     setTaskDuePrefill(prefill);
     setNewTaskOpen(true);
   }, []);
@@ -267,13 +279,51 @@ export function CalendarPageView() {
     if (!open) setTaskDuePrefill(null);
   }, []);
 
+  const openAddEventModal = useCallback((prefill: CalendarQuickAddPrefill) => {
+    setQuickAddPrefill(prefill);
+    setAddEventOpen(true);
+  }, []);
+
+  const onAddEventOpenChange = useCallback((open: boolean) => {
+    setAddEventOpen(open);
+    if (!open) setQuickAddPrefill(null);
+  }, []);
+
+  const onChooseShowingFromQuickAdd = useCallback(
+    (prefill: CalendarQuickAddPrefill) => {
+      onAddEventOpenChange(false);
+      const qs = new URLSearchParams();
+      qs.set("scheduledDate", prefill.date);
+      if (prefill.time.trim()) qs.set("scheduledTime", prefill.time.trim());
+      router.push(`/showing-hq/showings/new?${qs.toString()}`);
+    },
+    [onAddEventOpenChange, router]
+  );
+
+  const onChooseTaskFromQuickAdd = useCallback(
+    (prefill: CalendarQuickAddPrefill) => {
+      onAddEventOpenChange(false);
+      openNewTaskWithPrefill(prefill);
+    },
+    [onAddEventOpenChange, openNewTaskWithPrefill]
+  );
+
+  const onChooseFollowUpFromQuickAdd = useCallback(
+    (prefill: CalendarQuickAddPrefill) => {
+      onAddEventOpenChange(false);
+      setFollowUpHintSummary(formatCalendarQuickAddSummary(prefill));
+      setFollowUpHintOpen(true);
+    },
+    [onAddEventOpenChange]
+  );
+
   const onMonthDayClick = useCallback(
     (d: Date) => {
       setWeekStart(startOfWeekSunday(d));
       setVisibleMonth(startOfMonth(d));
-      openTaskModal({ date: localDateKey(d), time: "09:00" });
+      openAddEventModal({ date: localDateKey(d), time: "09:00" });
     },
-    [openTaskModal]
+    [openAddEventModal]
   );
 
   const chipClass = (k: FilterKey) =>
@@ -300,7 +350,7 @@ export function CalendarPageView() {
           <PageHeaderPrimaryAddMenu summaryLabel="Quick add">
             <PageHeaderActionItem href="/showing-hq/showings/new">New showing</PageHeaderActionItem>
             <PageHeaderActionItem href="/open-houses/new">New open house</PageHeaderActionItem>
-            <PageHeaderActionButton type="button" onClick={() => openTaskModal(null)}>
+            <PageHeaderActionButton type="button" onClick={() => openNewTaskWithPrefill(null)}>
               New task
             </PageHeaderActionButton>
             <PageHeaderActionItem href="/showing-hq/follow-ups">Follow-up</PageHeaderActionItem>
@@ -446,9 +496,9 @@ export function CalendarPageView() {
             events={filtered}
             emptyHint={weekEmptyHint}
             onTimeGridCreate={({ dateKey, timeLocal }) =>
-              openTaskModal({ date: dateKey, time: timeLocal })
+              openAddEventModal({ date: dateKey, time: timeLocal })
             }
-            onAllDayCreate={({ dateKey }) => openTaskModal({ date: dateKey, time: "" })}
+            onAllDayCreate={({ dateKey }) => openAddEventModal({ date: dateKey, time: "" })}
           />
         </div>
       ) : view === "month" ? (
@@ -459,6 +509,24 @@ export function CalendarPageView() {
           activeWeekStart={weekStart}
         />
       ) : null}
+
+      <AddEventModal
+        open={addEventOpen}
+        onOpenChange={onAddEventOpenChange}
+        prefill={quickAddPrefill}
+        onChooseShowing={onChooseShowingFromQuickAdd}
+        onChooseTask={onChooseTaskFromQuickAdd}
+        onChooseFollowUp={onChooseFollowUpFromQuickAdd}
+      />
+
+      <FollowUpCalendarHintModal
+        open={followUpHintOpen}
+        onOpenChange={(o) => {
+          setFollowUpHintOpen(o);
+          if (!o) setFollowUpHintSummary("");
+        }}
+        prefillSummary={followUpHintSummary}
+      />
 
       <NewTaskModal
         open={newTaskOpen}
