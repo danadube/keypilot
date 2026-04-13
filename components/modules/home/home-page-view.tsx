@@ -15,6 +15,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { buildGoogleOAuthConnectUrl } from "@/lib/oauth/google-connect-url";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import {
@@ -343,6 +344,10 @@ export function HomePageView() {
     const t = new Date();
     return new Date(t.getFullYear(), t.getMonth(), t.getDate());
   });
+  const [gmailOAuthHref, setGmailOAuthHref] = useState(() => buildGoogleOAuthConnectUrl("gmail"));
+  useEffect(() => {
+    setGmailOAuthHref(buildGoogleOAuthConnectUrl("gmail", window.location.origin));
+  }, []);
 
   const loadData = useCallback((retryCount = 0) => {
     setError(null);
@@ -670,7 +675,7 @@ export function HomePageView() {
         action={
           !emailData?.hasGmailConnection ? (
             <Link
-              href="/api/v1/auth/google/connect?service=gmail"
+              href={gmailOAuthHref}
               className="text-xs font-medium text-kp-teal hover:underline"
             >
               Connect Gmail

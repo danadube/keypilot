@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import {
   createGoogleOAuth2Client,
-  getGoogleOAuthRedirectUriForOrigin,
-  getOAuthRequestOrigin,
+  getFixedGoogleOAuthRedirectUri,
+  getGoogleOAuthRedirectOrigin,
 } from "@/lib/oauth/google";
 import { prismaAdmin } from "@/lib/db";
 import { trackUsageEvent } from "@/lib/track-usage";
@@ -12,48 +12,52 @@ export const dynamic = "force-dynamic";
 
 /** GET /api/v1/auth/google/callback - OAuth callback, exchange code for tokens */
 export async function GET(req: NextRequest) {
-  const origin = getOAuthRequestOrigin(req);
+  const canonicalBase = getGoogleOAuthRedirectOrigin();
+  const redirectUri = getFixedGoogleOAuthRedirectUri();
+  const oauth2 = createGoogleOAuth2Client(redirectUri);
+
+  const code = req.nextUrl.searchParams.get("code");
+  const stateParam = req.nextUrl.searchParams.get("state");
+  const oauthError = req.nextUrl.searchParams.get("error");
+
+  if (oauthError) {
+    return NextResponse.redirect(
+      new URL(`/settings/connections?error=${encodeURIComponent(oauthError)}`, canonicalBase)
+    );
+  }
+
+  if (!code || !stateParam) {
+    return NextResponse.redirect(new URL("/settings/connections?error=missing_params", canonicalBase));
+  }
+
+  const stateCookie = req.cookies.get("google_oauth_state")?.value;
+  if (!stateCookie || stateCookie !== stateParam) {
+    return NextResponse.redirect(new URL("/settings/connections?error=invalid_state", canonicalBase));
+  }
+
+  let payload: { service: string; nonce: string; returnTo?: string };
+  try {
+    payload = JSON.parse(Buffer.from(stateParam, "base64url").toString());
+  } catch {
+    return NextResponse.redirect(new URL("/settings/connections?error=invalid_state", canonicalBase));
+  }
+
+  const appBase = payload.returnTo ?? canonicalBase;
+
   try {
     const user = await getCurrentUser();
-    const code = req.nextUrl.searchParams.get("code");
-    const state = req.nextUrl.searchParams.get("state");
-    const error = req.nextUrl.searchParams.get("error");
-
-    if (error) {
-      return NextResponse.redirect(
-        new URL(`/settings/connections?error=${encodeURIComponent(error)}`, origin)
-      );
-    }
-
-    if (!code || !state) {
-      return NextResponse.redirect(new URL("/settings/connections?error=missing_params", origin));
-    }
-
-    const stateCookie = req.cookies.get("google_oauth_state")?.value;
-    if (!stateCookie || stateCookie !== state) {
-      return NextResponse.redirect(new URL("/settings/connections?error=invalid_state", origin));
-    }
-
-    let payload: { service: string; nonce: string };
-    try {
-      payload = JSON.parse(Buffer.from(state, "base64url").toString());
-    } catch {
-      return NextResponse.redirect(new URL("/settings/connections?error=invalid_state", origin));
-    }
 
     const service = payload.service;
     const GOOGLE_SERVICES = ["google_calendar", "gmail"] as const;
     if (!GOOGLE_SERVICES.includes(service as (typeof GOOGLE_SERVICES)[number])) {
-      return NextResponse.redirect(new URL("/settings/connections?error=invalid_service", origin));
+      return NextResponse.redirect(new URL("/settings/connections?error=invalid_service", appBase));
     }
 
     const prismaService = service === "gmail" ? "GMAIL" : "GOOGLE_CALENDAR";
 
-    const redirectUri = getGoogleOAuthRedirectUriForOrigin(origin);
-    const oauth2 = createGoogleOAuth2Client(redirectUri);
     const { tokens } = await oauth2.getToken(code);
     if (!tokens.access_token) {
-      return NextResponse.redirect(new URL("/settings/connections?error=no_token", origin));
+      return NextResponse.redirect(new URL("/settings/connections?error=no_token", appBase));
     }
 
     oauth2.setCredentials(tokens);
@@ -81,7 +85,6 @@ export async function GET(req: NextRequest) {
         data: {
           status: "CONNECTED",
           accessToken: tokens.access_token,
-          // Omit refresh token only when Google omits it (Prisma skips field); keeps prior refresh token.
           ...(tokens.refresh_token != null && tokens.refresh_token !== ""
             ? { refreshToken: tokens.refresh_token }
             : {}),
@@ -112,13 +115,11 @@ export async function GET(req: NextRequest) {
       void trackUsageEvent(user.id, "calendar_connected");
     }
 
-    const res = NextResponse.redirect(new URL(`/settings/connections?connected=${service}`, origin));
+    const res = NextResponse.redirect(new URL(`/settings/connections?connected=${service}`, appBase));
     res.cookies.delete("google_oauth_state");
     return res;
   } catch (e) {
     console.error("[auth/google/callback]", e);
-    return NextResponse.redirect(
-      new URL("/settings/connections?error=auth_failed", getOAuthRequestOrigin(req))
-    );
+    return NextResponse.redirect(new URL("/settings/connections?error=auth_failed", appBase));
   }
 }

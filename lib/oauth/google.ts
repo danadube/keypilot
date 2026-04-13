@@ -1,25 +1,42 @@
 /**
  * Google OAuth 2.0 client for Calendar, Gmail, etc.
  *
- * Authorization must use a redirect URI that matches the host where the user started OAuth
- * (e.g. Vercel preview URL). A single NEXT_PUBLIC_APP_URL breaks previews: Google sends the user
- * to production, the state cookie stays on preview → invalid_state, and Clerk session may not
- * match → flaky connect/reconnect.
+ * The OAuth redirect URI is fixed to one production domain (default https://danadube.com) so
+ * Google Cloud only needs a single authorized redirect URI. Preview deployments pass
+ * `return_url` on connect and receive `returnTo` in signed OAuth state so post-auth redirects
+ * can send users back to the preview origin.
  */
 
 import type { NextRequest } from "next/server";
 import { google } from "googleapis";
 
-/** Canonical redirect for non-request flows (e.g. token refresh client — any registered URI works). */
+const DEFAULT_REDIRECT_ORIGIN = "https://danadube.com";
+
+/**
+ * Public site origin used for Google OAuth redirect and connect entry (no trailing slash).
+ * Server: GOOGLE_OAUTH_REDIRECT_ORIGIN. Client: NEXT_PUBLIC_GOOGLE_OAUTH_CANONICAL_ORIGIN (same value).
+ */
+export function getGoogleOAuthRedirectOrigin(): string {
+  const raw =
+    process.env.GOOGLE_OAUTH_REDIRECT_ORIGIN?.trim() ||
+    process.env.NEXT_PUBLIC_GOOGLE_OAUTH_CANONICAL_ORIGIN?.trim() ||
+    DEFAULT_REDIRECT_ORIGIN;
+  return raw.replace(/\/$/, "");
+}
+
+/** Single registered redirect URI for Google OAuth (authorize + token exchange). */
+export function getFixedGoogleOAuthRedirectUri(): string {
+  return `${getGoogleOAuthRedirectOrigin()}/api/v1/auth/google/callback`;
+}
+
+/** Stored-token OAuth client: any one registered redirect URI from the same client is valid. */
 export function getDefaultGoogleOAuthRedirectUri(): string {
-  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "");
-  if (base) return `${base}/api/v1/auth/google/callback`;
-  return "http://localhost:3000/api/v1/auth/google/callback";
+  return getFixedGoogleOAuthRedirectUri();
 }
 
 /**
- * Public origin for this request (Vercel sets x-forwarded-*; local uses nextUrl).
- * Use for OAuth redirect URI and post-auth redirects so they stay on the same deployment.
+ * Public origin for this request (Vercel sets x-forwarded-*). For post-OAuth UI redirects only,
+ * not for Google redirect_uri.
  */
 export function getOAuthRequestOrigin(req: NextRequest): string {
   const forwardedHost = req.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
@@ -31,9 +48,30 @@ export function getOAuthRequestOrigin(req: NextRequest): string {
   return req.nextUrl.origin;
 }
 
-export function getGoogleOAuthRedirectUriForOrigin(requestOrigin: string): string {
-  const base = requestOrigin.replace(/\/$/, "");
-  return `${base}/api/v1/auth/google/callback`;
+/**
+ * Validates `return_url` from connect query (full origin URL). Returns normalized origin or null.
+ */
+export function parseAllowedOAuthReturnOrigin(returnUrl: string | null): string | null {
+  if (!returnUrl?.trim()) return null;
+  let u: URL;
+  try {
+    u = new URL(returnUrl.trim());
+  } catch {
+    return null;
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+  const host = u.hostname.toLowerCase();
+  if (host === "localhost" || host === "127.0.0.1") {
+    const port = u.port ? `:${u.port}` : "";
+    return `${u.protocol}//${host}${port}`;
+  }
+  if (host === "danadube.com" || host === "www.danadube.com") {
+    return "https://danadube.com";
+  }
+  if (host.endsWith(".vercel.app")) {
+    return `https://${host}`;
+  }
+  return null;
 }
 
 export function createGoogleOAuth2Client(redirectUri: string) {
@@ -45,9 +83,8 @@ export function createGoogleOAuth2Client(redirectUri: string) {
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 }
 
-/** @deprecated Prefer createGoogleOAuth2Client with getGoogleOAuthRedirectUriForOrigin(getOAuthRequestOrigin(req)) for connect/callback. */
 export function getGoogleOAuth2Client() {
-  return createGoogleOAuth2Client(getDefaultGoogleOAuthRedirectUri());
+  return createGoogleOAuth2Client(getFixedGoogleOAuthRedirectUri());
 }
 
 export const GOOGLE_SCOPES = {

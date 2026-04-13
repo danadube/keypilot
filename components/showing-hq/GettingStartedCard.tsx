@@ -16,6 +16,7 @@ import {
   Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { buildGoogleOAuthConnectUrl } from "@/lib/oauth/google-connect-url";
 
 export interface GettingStartedStep {
   id: string;
@@ -167,9 +168,18 @@ export function buildGettingStartedSteps(params: {
   hasVisitors: boolean;
   hasFollowUps: boolean;
   hasBranding?: boolean;
+  /** Current app origin so OAuth can return here after fixed-domain redirect (e.g. preview). */
+  oauthReturnOrigin?: string;
 }): GettingStartedStep[] {
-  const { hasOpenHouse, hasCalendar, hasGmail, hasVisitors, hasFollowUps, hasBranding = false } =
-    params;
+  const {
+    hasOpenHouse,
+    hasCalendar,
+    hasGmail,
+    hasVisitors,
+    hasFollowUps,
+    hasBranding = false,
+    oauthReturnOrigin,
+  } = params;
   return [
     {
       id: "open-house",
@@ -195,14 +205,14 @@ export function buildGettingStartedSteps(params: {
     {
       id: "gmail",
       label: "Connect Gmail",
-      href: "/api/v1/auth/google/connect?service=gmail",
+      href: buildGoogleOAuthConnectUrl("gmail", oauthReturnOrigin),
       done: hasGmail,
       icon: <Mail className="h-5 w-5" />,
     },
     {
       id: "calendar",
       label: "Connect Google Calendar",
-      href: "/api/v1/auth/google/connect?service=google_calendar",
+      href: buildGoogleOAuthConnectUrl("google_calendar", oauthReturnOrigin),
       done: hasCalendar,
       icon: <Calendar className="h-5 w-5" />,
     },

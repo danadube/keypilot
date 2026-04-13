@@ -16,6 +16,7 @@ import {
 } from "@/lib/connections";
 import { Loader2, Mail, Plus } from "lucide-react";
 import { GoogleCalendarSyncPanel } from "@/components/settings/GoogleCalendarSyncPanel";
+import { buildGoogleOAuthConnectUrl } from "@/lib/oauth/google-connect-url";
 
 const STATUS_TONE: Record<string, "default" | "success" | "warning" | "danger"> = {
   disconnected: "default",
@@ -124,7 +125,10 @@ export function ConnectionsPageContent() {
       const svc = service === "gmail" ? "gmail" : service === "google_calendar" ? "google_calendar" : "google_calendar";
       setActionId(service ?? provider);
       setIsRedirecting(true);
-      window.location.href = `${window.location.origin}/api/v1/auth/google/connect?service=${svc}`;
+      window.location.href = buildGoogleOAuthConnectUrl(
+        svc === "gmail" ? "gmail" : "google_calendar",
+        window.location.origin
+      );
       return;
     }
     setActionId(provider);

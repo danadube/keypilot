@@ -167,12 +167,14 @@ function propLine(p: { address1?: string | null; city?: string; state?: string }
  */
 export function ShowingHQDashboardView() {
   const [gettingStartedDismissed, setGettingStartedDismissed] = useState(false);
+  const [oauthReturnOrigin, setOauthReturnOrigin] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setGettingStartedDismissed(
         localStorage.getItem(GETTING_STARTED_DISMISSED_KEY) === "1"
       );
+      setOauthReturnOrigin(window.location.origin);
     }
   }, []);
 
@@ -253,6 +255,7 @@ export function ShowingHQDashboardView() {
     hasVisitors: stats.totalVisitors > 0,
     hasFollowUps: followUpTasks.length > 0,
     hasBranding: connections.hasBranding ?? false,
+    oauthReturnOrigin,
   });
 
   const formatMediumDate = (d: string) =>
