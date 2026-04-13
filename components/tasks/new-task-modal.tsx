@@ -33,6 +33,10 @@ export type NewTaskModalProps = {
   initialTitle?: string;
   /** Optional notes / context stored on the task. */
   initialDescription?: string | null;
+  /** Prefill for due date (`YYYY-MM-DD`), e.g. from calendar click. */
+  initialDueDate?: string | null;
+  /** Prefill for due time (`HH:mm`), e.g. from calendar slot. Empty = midnight for that date when date is set. */
+  initialDueTime?: string | null;
   onCreated?: () => void;
 };
 
@@ -51,6 +55,8 @@ export function NewTaskModal({
   defaultPropertyId,
   initialTitle = "",
   initialDescription = "",
+  initialDueDate = null,
+  initialDueTime = null,
   onCreated,
 }: NewTaskModalProps) {
   const [title, setTitle] = useState("");
@@ -69,8 +75,8 @@ export function NewTaskModal({
     if (!open) return;
     setTitle(initialTitle.trim());
     setDescription((initialDescription ?? "").trim());
-    setDueDatePart("");
-    setDueTimePart("");
+    setDueDatePart((initialDueDate ?? "").trim());
+    setDueTimePart((initialDueTime ?? "").trim());
     setContactId(defaultContactId ?? "");
     setPropertyId(defaultPropertyId ?? "");
     setSubmitting(false);
@@ -86,7 +92,15 @@ export function NewTaskModal({
       .then((j) => setProperties(Array.isArray(j.data) ? j.data : []))
       .catch(() => setProperties([]))
       .finally(() => setLoadingProperties(false));
-  }, [open, defaultContactId, defaultPropertyId, initialTitle, initialDescription]);
+  }, [
+    open,
+    defaultContactId,
+    defaultPropertyId,
+    initialTitle,
+    initialDescription,
+    initialDueDate,
+    initialDueTime,
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

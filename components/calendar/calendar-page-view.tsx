@@ -15,7 +15,10 @@ import { cn } from "@/lib/utils";
 import { kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { apiFetcher } from "@/lib/fetcher";
 import type { CalendarEvent } from "@/lib/calendar/calendar-event-types";
-import { CalendarWeekView } from "@/components/calendar/calendar-week-view";
+import {
+  CalendarWeekView,
+  type CalendarWeekEmptyHint,
+} from "@/components/calendar/calendar-week-view";
 import { NewTaskModal } from "@/components/tasks/new-task-modal";
 
 function startOfLocalDay(d: Date): Date {
@@ -66,12 +69,13 @@ function filterEvents(events: CalendarEvent[], key: FilterKey): CalendarEvent[] 
 function CalendarMonthOverview({
   visibleMonth,
   events,
-  onSelectDay,
+  onDayClick,
   activeWeekStart,
 }: {
   visibleMonth: Date;
   events: CalendarEvent[];
-  onSelectDay: (d: Date) => void;
+  /** Opens Quick Add with prefilled day (and optional week context in parent). */
+  onDayClick: (d: Date) => void;
   activeWeekStart: Date;
 }) {
   const counts = useMemo(() => {
@@ -107,7 +111,7 @@ function CalendarMonthOverview({
       <div className="border-b border-kp-outline/70 bg-kp-surface-high/[0.08] px-4 py-3">
         <p className="font-headline text-base font-semibold tracking-tight text-kp-on-surface">{title}</p>
         <p className="mt-1 text-xs leading-snug text-kp-on-surface-muted">
-          Dots show load; the teal band is the week you see in Week view. Open a day for the timed grid.
+          Dots show load; the teal band is the week you see in Week view. Click a day to quick-add a task.
         </p>
       </div>
       <div className="p-3 sm:p-4">
@@ -146,10 +150,10 @@ function CalendarMonthOverview({
                   key={key}
                   type="button"
                   onClick={() => {
-                    onSelectDay(d);
+                    onDayClick(d);
                   }}
                   className={cn(
-                    "relative flex min-h-[3.25rem] flex-col items-center border-b border-l border-kp-outline/45 bg-kp-surface px-0.5 pb-1 pt-1.5 text-center transition-colors hover:z-[1] hover:bg-kp-surface-high/30",
+                    "relative flex min-h-[3.25rem] cursor-pointer flex-col items-center border-b border-l border-kp-outline/45 bg-kp-surface px-0.5 pb-1 pt-1.5 text-center transition-colors hover:z-[1] hover:bg-kp-surface-high/30",
                     colFirst && "border-l-0",
                     inActiveWeek && "bg-kp-teal/[0.09]",
                     isToday && !inActiveWeek && "ring-1 ring-inset ring-kp-teal/40",
@@ -196,6 +200,8 @@ export function CalendarPageView() {
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
   const [filter, setFilter] = useState<FilterKey>("all");
   const [newTaskOpen, setNewTaskOpen] = useState(false);
+  /** When opening New task from the calendar, set due date/time for the form. Cleared when the modal closes. */
+  const [taskDuePrefill, setTaskDuePrefill] = useState<{ date: string; time: string } | null>(null);
 
   const range = useMemo(() => {
     if (view === "week") {
@@ -243,10 +249,24 @@ export function CalendarPageView() {
     setWeekStart((w) => addDays(w, 7));
   }, []);
 
-  const onSelectMonthDay = useCallback((d: Date) => {
-    setWeekStart(startOfWeekSunday(d));
-    setView("week");
+  const openTaskModal = useCallback((prefill: { date: string; time: string } | null) => {
+    setTaskDuePrefill(prefill);
+    setNewTaskOpen(true);
   }, []);
+
+  const onNewTaskOpenChange = useCallback((open: boolean) => {
+    setNewTaskOpen(open);
+    if (!open) setTaskDuePrefill(null);
+  }, []);
+
+  const onMonthDayClick = useCallback(
+    (d: Date) => {
+      setWeekStart(startOfWeekSunday(d));
+      setVisibleMonth(startOfMonth(d));
+      openTaskModal({ date: localDateKey(d), time: "09:00" });
+    },
+    [openTaskModal]
+  );
 
   const chipClass = (k: FilterKey) =>
     cn(
@@ -256,8 +276,12 @@ export function CalendarPageView() {
         : "border-transparent bg-kp-surface-high/[0.08] text-kp-on-surface-muted hover:bg-kp-surface-high/18 hover:text-kp-on-surface"
     );
 
-  const emptyAll = !isLoading && view === "week" && events.length === 0;
-  const emptyFilter = !isLoading && view === "week" && events.length > 0 && filtered.length === 0;
+  const weekEmptyHint: CalendarWeekEmptyHint = useMemo(() => {
+    if (isLoading || view !== "week") return "none";
+    if (events.length === 0) return "no-events";
+    if (filtered.length === 0) return "filter-empty";
+    return "none";
+  }, [isLoading, view, events.length, filtered.length]);
 
   return (
     <div className="space-y-4 pb-8">
@@ -268,7 +292,7 @@ export function CalendarPageView() {
           <PageHeaderPrimaryAddMenu summaryLabel="Quick add">
             <PageHeaderActionItem href="/showing-hq/showings/new">New showing</PageHeaderActionItem>
             <PageHeaderActionItem href="/open-houses/new">New open house</PageHeaderActionItem>
-            <PageHeaderActionButton type="button" onClick={() => setNewTaskOpen(true)}>
+            <PageHeaderActionButton type="button" onClick={() => openTaskModal(null)}>
               New task
             </PageHeaderActionButton>
             <PageHeaderActionItem href="/showing-hq/follow-ups">Follow-up</PageHeaderActionItem>
@@ -378,36 +402,36 @@ export function CalendarPageView() {
         </div>
       </div>
 
-      {emptyAll ? (
-        <div className="rounded-lg border border-dashed border-kp-outline/70 bg-kp-surface-high/[0.04] px-4 py-6 text-center">
-          <p className="text-sm font-medium text-kp-on-surface-muted">No events this week</p>
-          <p className="mt-1 text-xs text-kp-on-surface-muted">
-            When you add showings, tasks, follow-ups, and transaction dates, they land here automatically.
-          </p>
-        </div>
-      ) : null}
-      {emptyFilter ? (
-        <div className="rounded-lg border border-dashed border-kp-outline/60 bg-kp-surface-high/[0.04] px-4 py-4 text-center">
-          <p className="text-sm text-kp-on-surface-muted">Nothing in this category for this view.</p>
-        </div>
-      ) : null}
-
       {isLoading ? (
         <div className="h-64 animate-pulse rounded-xl bg-kp-surface-high/30" aria-busy aria-label="Loading calendar" />
-      ) : view === "week" && !emptyAll && !emptyFilter ? (
+      ) : view === "week" ? (
         <div className="rounded-xl border border-kp-outline/90 bg-kp-surface p-1.5 shadow-md sm:p-2.5">
-          <CalendarWeekView weekStart={weekStart} events={filtered} />
+          <CalendarWeekView
+            weekStart={weekStart}
+            events={filtered}
+            emptyHint={weekEmptyHint}
+            onTimeGridCreate={({ dateKey, timeLocal }) =>
+              openTaskModal({ date: dateKey, time: timeLocal })
+            }
+            onAllDayCreate={({ dateKey }) => openTaskModal({ date: dateKey, time: "" })}
+          />
         </div>
       ) : view === "month" ? (
         <CalendarMonthOverview
           visibleMonth={visibleMonth}
           events={filterEvents(events, filter)}
-          onSelectDay={onSelectMonthDay}
+          onDayClick={onMonthDayClick}
           activeWeekStart={weekStart}
         />
       ) : null}
 
-      <NewTaskModal open={newTaskOpen} onOpenChange={setNewTaskOpen} onCreated={() => void mutate()} />
+      <NewTaskModal
+        open={newTaskOpen}
+        onOpenChange={onNewTaskOpenChange}
+        initialDueDate={taskDuePrefill?.date ?? null}
+        initialDueTime={taskDuePrefill?.time ?? null}
+        onCreated={() => void mutate()}
+      />
     </div>
   );
 }

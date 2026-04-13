@@ -81,14 +81,43 @@ function nowIndicatorFrac(dayMidnight: Date, referenceNow: Date): number | null 
   return mins / GRID_MINUTES;
 }
 
+/** Floor Y position in the time grid to start-of-slot time (30-minute slots), 8:00–5:30 PM window. */
+function snappedHourMinuteFromGridClick(clientY: number, rectTop: number, rectHeight: number): {
+  hour: number;
+  minute: number;
+} {
+  const y = clientY - rectTop;
+  const safeH = Math.max(rectHeight, 1);
+  const frac = Math.max(0, Math.min(1, y / safeH));
+  const from8min = Math.floor((frac * GRID_MINUTES) / 30) * 30;
+  const clamped = Math.min(from8min, GRID_MINUTES - 30);
+  const totalMin = GRID_START_HOUR * 60 + clamped;
+  return { hour: Math.floor(totalMin / 60), minute: totalMin % 60 };
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+export type CalendarWeekEmptyHint = "none" | "no-events" | "filter-empty";
+
 export function CalendarWeekView({
   weekStart,
   events,
   className,
+  emptyHint = "none",
+  onTimeGridCreate,
+  onAllDayCreate,
 }: {
   weekStart: Date;
   events: CalendarEvent[];
   className?: string;
+  /** In-grid empty messaging; does not replace the grid. */
+  emptyHint?: CalendarWeekEmptyHint;
+  /** Click on a timed slot (empty area); time is 30-min floored from click Y. */
+  onTimeGridCreate?: (args: { dateKey: string; timeLocal: string }) => void;
+  /** Click all-day row background for that column. */
+  onAllDayCreate?: (args: { dateKey: string; allDay: true }) => void;
 }) {
   const dayStarts = useMemo(() => {
     const start = startOfLocalDay(weekStart);
@@ -163,9 +192,31 @@ export function CalendarWeekView({
   const nowMs = useNowTickMs();
   const now = new Date(nowMs);
 
+  const emptyOverlay =
+    emptyHint === "none" ? null : (
+      <div
+        className="pointer-events-none absolute inset-0 z-[15] flex items-center justify-center px-6 py-10"
+        role="status"
+      >
+        <div className="max-w-md rounded-lg border border-kp-outline/40 bg-kp-surface/85 px-4 py-3 text-center shadow-sm backdrop-blur-[2px]">
+          {emptyHint === "no-events" ? (
+            <>
+              <p className="text-sm font-medium text-kp-on-surface-muted">No events this week</p>
+              <p className="mt-1 text-xs leading-snug text-kp-on-surface-muted">
+                Click anywhere to add a showing, task, or follow-up.
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-kp-on-surface-muted">Nothing in this category for this view.</p>
+          )}
+        </div>
+      </div>
+    );
+
   return (
     <div className={cn("overflow-x-auto", className)}>
-      <div className="inline-block min-w-[860px] w-full">
+      <div className="relative inline-block min-w-[860px] w-full">
+        {emptyOverlay}
         {/* Column headers */}
         <div
           className="grid border-b-2 border-kp-outline/80 bg-kp-surface-high/[0.12]"
@@ -219,22 +270,31 @@ export function CalendarWeekView({
           </div>
           {dayStarts.map((d, col) => {
             const isToday = localDateKey(d) === localDateKey(now);
+            const dk = localDateKey(d);
             return (
-            <div
-              key={`allday-${col}`}
-              className={cn(
-                "min-h-[2.25rem] border-l-2 border-kp-outline/45 px-0.5 py-1",
-                isToday && "bg-kp-teal/[0.07]"
-              )}
-            >
-              <ul className="flex flex-col gap-1">
-                {allDayByCol[col]!.map((ev) => (
-                  <li key={ev.id}>
-                    <EventPill ev={ev} compact />
-                  </li>
-                ))}
-              </ul>
-            </div>
+              <div
+                key={`allday-${col}`}
+                className={cn(
+                  "relative min-h-[2.25rem] border-l-2 border-kp-outline/45 px-0.5 py-1",
+                  isToday && "bg-kp-teal/[0.07]"
+                )}
+              >
+                {onAllDayCreate ? (
+                  <button
+                    type="button"
+                    aria-label="Add task on this day"
+                    className="absolute inset-0 z-[1] cursor-pointer rounded-sm bg-transparent transition-colors hover:bg-kp-teal/[0.06]"
+                    onClick={() => onAllDayCreate({ dateKey: dk, allDay: true })}
+                  />
+                ) : null}
+                <ul className="relative z-[10] flex flex-col gap-1">
+                  {allDayByCol[col]!.map((ev) => (
+                    <li key={ev.id}>
+                      <EventPill ev={ev} compact />
+                    </li>
+                  ))}
+                </ul>
+              </div>
             );
           })}
         </div>
@@ -270,6 +330,7 @@ export function CalendarWeekView({
               isTodayCol={localDateKey(dayMidnight) === localDateKey(now)}
               nowMs={nowMs}
               gridHeightRem={(GRID_END_HOUR - GRID_START_HOUR) * (HOUR_ROW_PX / 16)}
+              onTimeGridCreate={onTimeGridCreate}
             />
           ))}
         </div>
@@ -289,8 +350,9 @@ function EventPill({ ev, compact }: { ev: CalendarEvent; compact?: boolean }) {
   return (
     <Link
       href={ev.relatedRoute}
+      onClick={(e) => e.stopPropagation()}
       className={cn(
-        "block rounded-md border border-kp-outline/55 border-l-[3px] px-1.5 py-1 text-left transition-colors hover:brightness-[1.02]",
+        "relative z-10 block rounded-md border border-kp-outline/55 border-l-[3px] px-1.5 py-1 text-left transition-colors hover:brightness-[1.02]",
         ring,
         compact ? "text-[10px] leading-snug" : "text-[11px] leading-snug"
       )}
@@ -316,6 +378,7 @@ function DayColumn({
   isTodayCol,
   nowMs,
   gridHeightRem,
+  onTimeGridCreate,
 }: {
   dayMidnight: Date;
   timedEvents: CalendarEvent[];
@@ -325,6 +388,7 @@ function DayColumn({
   /** Wall clock from parent {@link CalendarWeekView}'s single `useNowTickMs` — avoids N intervals. */
   nowMs: number;
   gridHeightRem: number;
+  onTimeGridCreate?: (args: { dateKey: string; timeLocal: string }) => void;
 }) {
   const placements = useMemo(() => {
     const intervals = timedEvents.map((ev) => ({
@@ -383,6 +447,21 @@ function DayColumn({
       ) : null}
 
       <div className="relative" style={{ height: `${gridHeightRem}rem` }}>
+        {onTimeGridCreate ? (
+          <button
+            type="button"
+            aria-label="Add task at this time"
+            className="absolute inset-0 z-[2] cursor-pointer rounded-sm bg-transparent transition-colors hover:bg-kp-teal/[0.05]"
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              const { hour, minute } = snappedHourMinuteFromGridClick(e.clientY, r.top, r.height);
+              onTimeGridCreate({
+                dateKey: localDateKey(dayMidnight),
+                timeLocal: `${pad2(hour)}:${pad2(minute)}`,
+              });
+            }}
+          />
+        ) : null}
         {timedEvents.map((ev) => {
           const start = new Date(ev.start);
           const end = new Date(ev.end);
@@ -398,6 +477,7 @@ function DayColumn({
             <Link
               key={ev.id}
               href={ev.relatedRoute}
+              onClick={(e) => e.stopPropagation()}
               className={cn(
                 "absolute z-[5] overflow-hidden rounded-md border border-kp-outline/50 border-l-[3px] px-1 py-0.5 text-[10px] transition-colors hover:z-[6] hover:brightness-[1.03]",
                 ring
