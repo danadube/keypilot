@@ -12,7 +12,7 @@ import { persistDailyBriefingSendAttemptLog } from "@/lib/daily-briefing/persist
 import { resolveDailyBriefingDeliveryEmail, zonedDateKey } from "@/lib/daily-briefing/run-daily-briefing-send";
 import type { DailyBriefingSendAttemptResult } from "@/lib/daily-briefing/send-attempt-types";
 import { sendDailyBriefingEmail } from "@/lib/email/send-daily-briefing-email";
-import { withRLSContext } from "@/lib/db-context";
+import { withRLSContextOrFallbackAdmin } from "@/lib/db-context";
 import { DailyBriefingSendLogSource } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,7 @@ export async function POST() {
     }
 
     const user = await getCurrentUser();
-    const delivery = await withRLSContext(user.id, (tx) =>
+    const delivery = await withRLSContextOrFallbackAdmin(user.id, "POST /api/v1/daily-briefing/send-test delivery", (tx) =>
       tx.userDailyBriefingDelivery.findUnique({
         where: { userId: user.id },
       })
@@ -72,7 +72,11 @@ export async function POST() {
 
     if (!result.ok) {
       console.error(`${LOG} failed userId=${user.id}`, result);
-      return apiError(result.error, result.skipped ? 503 : 502);
+      return apiError(
+        result.error,
+        result.skipped ? 503 : 502,
+        result.skipped ? "RESEND_UNAVAILABLE" : "SEND_FAILED"
+      );
     }
 
     console.log(`${LOG} ok userId=${user.id} to=${to} messageId=${result.messageId ?? ""}`);

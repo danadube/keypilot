@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
-import { withRLSContext } from "@/lib/db-context";
+import { withRLSContextOrFallbackAdmin } from "@/lib/db-context";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import type { ScheduleChecklistItem } from "@/lib/dashboard/command-center-types";
 
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
       return apiError("dayEnd must be after dayStart", 400);
     }
 
-    const rows = await withRLSContext(user.id, (tx) =>
+    const rows = await withRLSContextOrFallbackAdmin(user.id, "GET /api/v1/dashboard/schedule-day", (tx) =>
       tx.transactionChecklistItem.findMany({
         where: {
           isComplete: false,

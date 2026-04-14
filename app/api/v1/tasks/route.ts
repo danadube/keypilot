@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
-import { withRLSContext } from "@/lib/db-context";
+import { withRLSContextOrFallbackAdmin } from "@/lib/db-context";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { CreateTaskSchema } from "@/lib/validations/task";
 import { serializeTask, type TaskRow } from "@/lib/tasks/task-serialize";
@@ -42,7 +42,10 @@ export async function GET(req: NextRequest) {
     const todayEnd = new Date(todayStart);
     todayEnd.setDate(todayEnd.getDate() + 1);
 
-    const { overdue, dueToday, upcoming, completed } = await withRLSContext(user.id, async (tx) => {
+    const { overdue, dueToday, upcoming, completed } = await withRLSContextOrFallbackAdmin(
+      user.id,
+      "GET /api/v1/tasks",
+      async (tx) => {
       const openRows = await tx.task.findMany({
         where: {
           userId: user.id,
@@ -73,7 +76,8 @@ export async function GET(req: NextRequest) {
         upcoming: buckets.upcoming,
         completed: completedRows.map((r) => serializeTask(r as TaskRow)),
       };
-    });
+    }
+    );
 
     const counts = {
       openOverdue: overdue.length,
@@ -108,7 +112,7 @@ export async function POST(req: NextRequest) {
     const { title, description, dueAt, priority, contactId, propertyId } = parsed.data;
     const due = parseOptionalTaskDueAt(dueAt ?? null);
 
-    const createdId = await withRLSContext(user.id, async (tx) => {
+    const createdId = await withRLSContextOrFallbackAdmin(user.id, "POST /api/v1/tasks", async (tx) => {
       if (contactId) {
         const c = await tx.contact.findFirst({
           where: { id: contactId, deletedAt: null },

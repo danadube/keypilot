@@ -5,7 +5,7 @@ import {
   type UserActivityType,
   type Prisma,
 } from "@prisma/client";
-import { withRLSContext } from "@/lib/db-context";
+import { withRLSContextOrFallbackAdmin } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { transactionPropertySelect } from "@/lib/transactions/create-transaction";
 import {
@@ -142,7 +142,7 @@ export async function getCommandCenterPayload(user: User): Promise<CommandCenter
     return Number.isFinite(n) && n > 0 ? n : 300_000;
   })();
 
-  return withRLSContext(user.id, async (tx) => {
+  return withRLSContextOrFallbackAdmin(user.id, "getCommandCenterPayload", async (tx) => {
     const [
       openTaskRows,
       dealRows,

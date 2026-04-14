@@ -1,4 +1,4 @@
-import { withRLSContext } from "@/lib/db-context";
+import { withRLSContextOrFallbackAdmin } from "@/lib/db-context";
 import { transactionPropertySelect } from "@/lib/transactions/create-transaction";
 import {
   serializeAgentFollowUpRow,
@@ -36,7 +36,7 @@ export async function loadScheduleContextForBriefing(
   const weekEnd = new Date(todayStart);
   weekEnd.setDate(weekEnd.getDate() + 8);
 
-  return withRLSContext(userId, async (tx) => {
+  return withRLSContextOrFallbackAdmin(userId, "loadScheduleContextForBriefing", async (tx) => {
     const [showingRows, followRows, openTaskRows, checklistRows] = await Promise.all([
       tx.showing.findMany({
         where: {
