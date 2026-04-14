@@ -6,6 +6,7 @@ import { hasCrmAccess } from "@/lib/product-tier";
 import { CreateTransactionChecklistItemSchema } from "@/lib/validations/transaction";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { recordTransactionActivity } from "@/lib/transactions/record-transaction-activity";
+import { scheduleOutboundSync, syncTransactionChecklistOutbound } from "@/lib/google-calendar/outbound-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -132,6 +133,8 @@ export async function POST(
     });
 
     if (row === null) return apiError("Transaction not found", 404);
+
+    scheduleOutboundSync(() => syncTransactionChecklistOutbound(user.id, row.id));
 
     return NextResponse.json({ data: row }, { status: 201 });
   } catch (e) {

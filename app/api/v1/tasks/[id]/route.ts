@@ -5,6 +5,7 @@ import { withRLSContext } from "@/lib/db-context";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { UpdateTaskSchema } from "@/lib/validations/task";
 import { parseOptionalTaskDueAt } from "@/lib/tasks/parse-task-due-at";
+import { scheduleOutboundSync, syncTaskOutbound } from "@/lib/google-calendar/outbound-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,8 @@ export async function PATCH(
       return NextResponse.json({ error: { message: "Task not found" } }, { status: 404 });
     }
 
+    scheduleOutboundSync(() => syncTaskOutbound(user.id, id));
+
     return NextResponse.json({ data: { ok: true } });
   } catch (e) {
     return apiErrorFromCaught(e);
@@ -82,6 +85,8 @@ export async function DELETE(
     if (!deleted) {
       return NextResponse.json({ error: { message: "Task not found" } }, { status: 404 });
     }
+
+    scheduleOutboundSync(() => syncTaskOutbound(user.id, id));
 
     return NextResponse.json({ data: { ok: true } });
   } catch (e) {

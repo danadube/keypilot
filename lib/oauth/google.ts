@@ -73,7 +73,8 @@ export function getGoogleOAuth2Client() {
 
 export const GOOGLE_SCOPES = {
   google_calendar: [
-    "https://www.googleapis.com/auth/calendar.events.readonly",
+    /** Create/update/delete events KeyPilot mirrors to Google (outbound sync). Includes read access to events. */
+    "https://www.googleapis.com/auth/calendar.events",
     /** Required for `calendar.calendarList.list` so users can choose which calendars sync into KeyPilot. */
     "https://www.googleapis.com/auth/calendar.readonly",
     "https://www.googleapis.com/auth/spreadsheets.readonly",

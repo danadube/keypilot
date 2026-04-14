@@ -3,7 +3,10 @@ import { getCurrentUser } from "@/lib/auth";
 import { withRLSContext } from "@/lib/db-context";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { listGoogleAccountCalendars } from "@/lib/adapters/google-calendar";
-import { getGoogleCalendarSelectedIds } from "@/lib/google-calendar-sync-preferences";
+import {
+  getGoogleCalendarOutboundPreferences,
+  getGoogleCalendarSelectedIds,
+} from "@/lib/google-calendar-sync-preferences";
 
 export const dynamic = "force-dynamic";
 
@@ -47,9 +50,21 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
         tokenExpiresAt: conn.tokenExpiresAt,
         accountEmail: conn.accountEmail,
       });
+      const writableCalendars = await listGoogleAccountCalendars(
+        {
+          id: conn.id,
+          accessToken: conn.accessToken!,
+          refreshToken: conn.refreshToken,
+          tokenExpiresAt: conn.tokenExpiresAt,
+          accountEmail: conn.accountEmail,
+        },
+        { minAccessRole: "writer" }
+      );
       const selectedIds = getGoogleCalendarSelectedIds(conn.syncPreferences);
       const idSet = new Set(calendars.map((c) => c.id));
       const sanitizedSelected = selectedIds.filter((sid) => idSet.has(sid));
+
+      const outbound = getGoogleCalendarOutboundPreferences(conn.syncPreferences);
 
       return NextResponse.json({
         data: {
@@ -60,6 +75,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
             selected: sanitizedSelected.includes(c.id),
           })),
           selectedIds: sanitizedSelected.length > 0 ? sanitizedSelected : ["primary"],
+          writableCalendars: writableCalendars.map((c) => ({
+            id: c.id,
+            summary: c.summary,
+            primary: c.primary,
+          })),
+          outbound,
         },
       });
     } catch (e) {

@@ -5,6 +5,11 @@ import { hasCrmAccess } from "@/lib/product-tier";
 import { UpdateTransactionChecklistItemSchema } from "@/lib/validations/transaction";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { recordTransactionActivity } from "@/lib/transactions/record-transaction-activity";
+import {
+  deleteOutboundMirror,
+  scheduleOutboundSync,
+  syncTransactionChecklistOutbound,
+} from "@/lib/google-calendar/outbound-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +74,9 @@ export async function PATCH(
     });
 
     if (!item) return apiError("Checklist item not found", 404);
+
+    scheduleOutboundSync(() => syncTransactionChecklistOutbound(user.id, itemId));
+
     return NextResponse.json({ data: item });
   } catch (e) {
     return apiErrorFromCaught(e);
@@ -104,6 +112,9 @@ export async function DELETE(
     });
 
     if (!deleted) return apiError("Checklist item not found", 404);
+
+    scheduleOutboundSync(() => deleteOutboundMirror(user.id, "TRANSACTION_CHECKLIST", itemId));
+
     return NextResponse.json({ data: { deleted: true } });
   } catch (e) {
     return apiErrorFromCaught(e);

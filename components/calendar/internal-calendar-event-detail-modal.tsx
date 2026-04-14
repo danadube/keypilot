@@ -24,6 +24,11 @@ type InternalMeta = {
   taskPlainTitle?: string | null;
   milestoneKind?: string;
   kind?: string;
+  googleOutbound?: {
+    status: string;
+    lastSyncedAt: string | null;
+    lastError: string | null;
+  };
 };
 
 function stripTitlePrefix(title: string, label: string): string {
@@ -214,6 +219,32 @@ export function InternalCalendarEventDetailModal({
           <dt className="text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-muted">When</dt>
           <dd className="mt-1 text-[13px] leading-snug text-kp-on-surface">{whenLine}</dd>
         </div>
+
+        {meta?.googleOutbound ? (
+          <div>
+            <dt className="text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-muted">
+              Google Calendar
+            </dt>
+            <dd className="mt-1 text-[13px] leading-snug text-kp-on-surface-muted">
+              {meta.googleOutbound.status === "SYNCED" ? (
+                <>
+                  Mirrored from KeyPilot to your selected Google calendar
+                  {meta.googleOutbound.lastSyncedAt
+                    ? ` · last updated ${new Date(meta.googleOutbound.lastSyncedAt).toLocaleString()}`
+                    : ""}
+                  .
+                </>
+              ) : meta.googleOutbound.status === "ERROR" ? (
+                <span className="text-amber-800 dark:text-amber-200">
+                  Google sync error
+                  {meta.googleOutbound.lastError ? ` — ${meta.googleOutbound.lastError}` : ""}
+                </span>
+              ) : (
+                <>Sync pending…</>
+              )}
+            </dd>
+          </div>
+        ) : null}
 
         {taskOverdue ? (
           <p className="text-xs font-medium text-amber-800 dark:text-amber-200">Past due — complete or reschedule in Task Pilot.</p>

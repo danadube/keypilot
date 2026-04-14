@@ -108,15 +108,17 @@ async function listPrimaryCalendarEvents(
  * Calendars visible to the user (for Settings + sync selection).
  */
 export async function listGoogleAccountCalendars(
-  conn: GoogleCalendarConnection
+  conn: GoogleCalendarConnection,
+  options: { minAccessRole?: "freeBusyReader" | "reader" | "writer" | "owner" } = {}
 ): Promise<{ id: string; summary: string; primary: boolean }[]> {
   const auth = await ensureValidGoogleOAuth2Client(conn);
   const calendar = google.calendar({ version: "v3", auth });
+  const minAccessRole = options.minAccessRole ?? "reader";
   const out: { id: string; summary: string; primary: boolean }[] = [];
   let pageToken: string | undefined;
   do {
     const { data } = await calendar.calendarList.list({
-      minAccessRole: "reader",
+      minAccessRole,
       maxResults: 250,
       pageToken,
       showHidden: true,
@@ -319,4 +321,45 @@ export async function fetchGoogleCalendarKeyPilotEvents(
 
   merged.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   return merged;
+}
+
+export async function insertGoogleCalendarEvent(
+  conn: GoogleCalendarConnection,
+  calendarId: string,
+  body: calendar_v3.Schema$Event
+): Promise<calendar_v3.Schema$Event> {
+  const auth = await ensureValidGoogleOAuth2Client(conn);
+  const calendar = google.calendar({ version: "v3", auth });
+  const { data } = await calendar.events.insert({
+    calendarId,
+    requestBody: body,
+  });
+  if (!data.id) throw new Error("Google Calendar events.insert returned no event id");
+  return data;
+}
+
+export async function patchGoogleCalendarEvent(
+  conn: GoogleCalendarConnection,
+  calendarId: string,
+  eventId: string,
+  body: calendar_v3.Schema$Event
+): Promise<calendar_v3.Schema$Event> {
+  const auth = await ensureValidGoogleOAuth2Client(conn);
+  const calendar = google.calendar({ version: "v3", auth });
+  const { data } = await calendar.events.patch({
+    calendarId,
+    eventId,
+    requestBody: body,
+  });
+  return data;
+}
+
+export async function deleteGoogleCalendarEvent(
+  conn: GoogleCalendarConnection,
+  calendarId: string,
+  eventId: string
+): Promise<void> {
+  const auth = await ensureValidGoogleOAuth2Client(conn);
+  const calendar = google.calendar({ version: "v3", auth });
+  await calendar.events.delete({ calendarId, eventId });
 }

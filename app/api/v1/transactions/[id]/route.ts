@@ -13,6 +13,12 @@ import { mergeCommissionInputs } from "@/lib/transactions/commission-inputs";
 import { computeTransactionFinancials } from "@/lib/transactions/transaction-financials";
 import { assertPrimaryContactAccessible } from "@/lib/transactions/assert-primary-contact";
 import { serializeTransactionDecimals } from "@/lib/transactions/serialize-transaction";
+import { prismaAdmin } from "@/lib/db";
+import {
+  deleteOutboundMirror,
+  scheduleOutboundSync,
+  syncTransactionClosingOutbound,
+} from "@/lib/google-calendar/outbound-sync";
 import type { Prisma } from "@prisma/client";
 import type { TransactionKind } from "@prisma/client";
 
@@ -185,6 +191,9 @@ export async function PATCH(
     });
 
     if (!transaction) return apiError("Transaction not found", 404);
+
+    scheduleOutboundSync(() => syncTransactionClosingOutbound(user.id, id));
+
     return NextResponse.json({
       data: { ...transaction, ...serializeTransactionDecimals(transaction) },
     });
@@ -213,6 +222,11 @@ export async function DELETE(
     }
     const { id } = await params;
 
+    const checklistIds = await prismaAdmin.transactionChecklistItem.findMany({
+      where: { transactionId: id, transaction: { userId: user.id } },
+      select: { id: true },
+    });
+
     const deleted = await withRLSContext(user.id, async (tx) => {
       const existing = await tx.transaction.findFirst({
         where: { id, userId: user.id },
@@ -225,6 +239,12 @@ export async function DELETE(
     });
 
     if (!deleted) return apiError("Transaction not found", 404);
+
+    for (const row of checklistIds) {
+      scheduleOutboundSync(() => deleteOutboundMirror(user.id, "TRANSACTION_CHECKLIST", row.id));
+    }
+    scheduleOutboundSync(() => deleteOutboundMirror(user.id, "TRANSACTION_CLOSING", id));
+
     return NextResponse.json({ data: { deleted: true } });
   } catch (e) {
     return apiErrorFromCaught(e);

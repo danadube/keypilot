@@ -7,6 +7,7 @@ import { CreateTaskSchema } from "@/lib/validations/task";
 import { serializeTask, type TaskRow } from "@/lib/tasks/task-serialize";
 import { bucketOpenTasksByDue } from "@/lib/tasks/task-buckets";
 import { parseOptionalTaskDueAt } from "@/lib/tasks/parse-task-due-at";
+import { scheduleOutboundSync, syncTaskOutbound } from "@/lib/google-calendar/outbound-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -146,6 +147,8 @@ export async function POST(req: NextRequest) {
       });
       return row.id;
     });
+
+    scheduleOutboundSync(() => syncTaskOutbound(user.id, createdId));
 
     return NextResponse.json({ data: { id: createdId } });
   } catch (e) {

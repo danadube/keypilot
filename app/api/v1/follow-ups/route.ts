@@ -8,6 +8,7 @@ import {
   bucketAgentFollowUpsByDue,
   serializeAgentFollowUpRow,
 } from "@/lib/follow-ups/agent-follow-up-buckets";
+import { scheduleOutboundSync, syncFollowUpOutbound } from "@/lib/google-calendar/outbound-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -113,6 +114,8 @@ export async function POST(req: NextRequest) {
 
     if ("error" in result)
       return apiError(result.error ?? "Could not create follow-up", 400);
+
+    scheduleOutboundSync(() => syncFollowUpOutbound(user.id, result.id));
 
     return NextResponse.json({ data: { id: result.id } });
   } catch (e) {

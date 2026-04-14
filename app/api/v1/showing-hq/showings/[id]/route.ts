@@ -13,6 +13,7 @@ import {
   UpdateShowingSchema,
 } from "@/lib/validations/showing";
 import { apiErrorFromCaught } from "@/lib/api-response";
+import { scheduleOutboundSync, syncShowingOutbound } from "@/lib/google-calendar/outbound-sync";
 
 async function showingWithUsage<
   T extends {
@@ -85,6 +86,7 @@ export async function PATCH(
         where: { id },
         data: { deletedAt: new Date() },
       });
+      scheduleOutboundSync(() => syncShowingOutbound(user.id, id));
       return NextResponse.json({ data: { archived: true, id } });
     }
 
@@ -115,6 +117,7 @@ export async function PATCH(
           { status: 404 }
         );
       }
+      scheduleOutboundSync(() => syncShowingOutbound(user.id, id));
       return NextResponse.json({ data: await showingWithUsage(showing, id) });
     }
 
@@ -188,6 +191,8 @@ export async function PATCH(
       },
     });
 
+    scheduleOutboundSync(() => syncShowingOutbound(user.id, id));
+
     return NextResponse.json({ data: await showingWithUsage(showing, id) });
   } catch (e) {
     return apiErrorFromCaught(e);
@@ -231,6 +236,7 @@ export async function DELETE(
       where: { id },
       data: { deletedAt: new Date() },
     });
+    scheduleOutboundSync(() => syncShowingOutbound(user.id, id));
     return NextResponse.json({ data: { deleted: true } });
   } catch (e) {
     return apiErrorFromCaught(e);

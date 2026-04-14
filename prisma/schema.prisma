@@ -61,6 +61,7 @@ model User {
   farmImportRuns            FarmImportRun[]
   dailyBriefingDelivery     UserDailyBriefingDelivery?
   dailyBriefingSendLogs     UserDailyBriefingSendLog[]
+  googleCalendarOutboundSyncs GoogleCalendarOutboundSync[]
 
   @@index([clerkId])
   @@map("users")
@@ -1137,11 +1138,53 @@ model Connection {
   updatedAt               DateTime           @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  googleCalendarOutboundSyncs GoogleCalendarOutboundSync[]
 
   @@unique([userId, provider, service, accountEmail])
   @@index([userId])
   @@index([userId, provider])
   @@map("connections")
+}
+
+/**
+ * KeyPilot → Google Calendar outbound mirror (one row per KeyPilot entity we own on Google).
+ * Used for stable create/update/delete — never for matching by title.
+ */
+enum GoogleCalendarOutboundSourceType {
+  SHOWING
+  TASK
+  FOLLOW_UP
+  TRANSACTION_CHECKLIST
+  TRANSACTION_CLOSING
+}
+
+enum GoogleCalendarOutboundSyncStatus {
+  PENDING
+  SYNCED
+  ERROR
+}
+
+model GoogleCalendarOutboundSync {
+  id               String                           @id @default(uuid())
+  userId           String
+  connectionId     String
+  sourceType       GoogleCalendarOutboundSourceType
+  sourceId         String
+  googleCalendarId String
+  googleEventId    String
+  status           GoogleCalendarOutboundSyncStatus @default(PENDING)
+  lastSyncedAt     DateTime?
+  lastError        String?                          @db.Text
+  createdAt        DateTime                         @default(now())
+  updatedAt        DateTime                         @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connection Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, sourceType, sourceId])
+  @@index([userId])
+  @@index([connectionId])
+  @@map("google_calendar_outbound_syncs")
 }
 
 enum ConnectionProvider {

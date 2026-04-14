@@ -12,6 +12,7 @@ import {
   listGoogleAccountCalendars,
 } from "@/lib/adapters/google-calendar";
 import { getGoogleCalendarSelectedIds } from "@/lib/google-calendar-sync-preferences";
+import { loadOutboundMirroredGoogleEventKeys } from "@/lib/google-calendar/outbound-sync";
 import { buildUSHolidayEventsForRange } from "@/lib/calendar/built-in-calendars/us-federal-holidays";
 import { getGoogleCalendarListUserFacingError } from "@/lib/calendar/google-calendar-user-messages";
 
@@ -29,6 +30,26 @@ const DEFAULT_BLOCK_MS = 30 * 60 * 1000;
 
 function dateKeyUtc(d: Date): string {
   return d.toISOString().slice(0, 10);
+}
+
+function outboundKeyFromCalendarEvent(ev: CalendarEvent): string | null {
+  switch (ev.sourceType) {
+    case "showing":
+      return `SHOWING:${ev.relatedEntityId}`;
+    case "task":
+      return `TASK:${ev.relatedEntityId}`;
+    case "follow_up":
+      return `FOLLOW_UP:${ev.relatedEntityId}`;
+    case "transaction": {
+      const m = ev.metadata as { milestoneKind?: string; kind?: string } | undefined;
+      if (m?.milestoneKind === "closing" || m?.kind === "closing") {
+        return `TRANSACTION_CLOSING:${ev.relatedEntityId}`;
+      }
+      return `TRANSACTION_CHECKLIST:${ev.relatedEntityId}`;
+    }
+    default:
+      return null;
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -51,7 +72,7 @@ export async function GET(req: NextRequest) {
       return apiError("rangeEnd must be after rangeStart", 400);
     }
 
-    const events: CalendarEvent[] = await withRLSContext(user.id, async (tx) => {
+    const nativeEvents: CalendarEvent[] = await withRLSContext(user.id, async (tx) => {
       const out: CalendarEvent[] = [];
 
       const [showings, tasks, followUps, checklistRows, closings] = await Promise.all([
@@ -254,6 +275,29 @@ export async function GET(req: NextRequest) {
       return out;
     });
 
+    const outboundRows = await prismaAdmin.googleCalendarOutboundSync.findMany({
+      where: { userId: user.id },
+    });
+    const outboundLookup = new Map(outboundRows.map((r) => [`${r.sourceType}:${r.sourceId}`, r]));
+
+    const events: CalendarEvent[] = nativeEvents.map((ev) => {
+      const key = outboundKeyFromCalendarEvent(ev);
+      if (!key) return ev;
+      const row = outboundLookup.get(key);
+      if (!row) return ev;
+      return {
+        ...ev,
+        metadata: {
+          ...(ev.metadata ?? {}),
+          googleOutbound: {
+            status: row.status,
+            lastSyncedAt: row.lastSyncedAt?.toISOString() ?? null,
+            lastError: row.lastError,
+          },
+        },
+      };
+    });
+
     let googleCalendarConnected = false;
     let googleCalendarFetchError: string | null = null;
 
@@ -270,6 +314,8 @@ export async function GET(req: NextRequest) {
         },
       });
       googleCalendarConnected = calendarConns.length > 0;
+
+      const mirroredKeys = await loadOutboundMirroredGoogleEventKeys(user.id);
 
       for (const conn of calendarConns) {
         if (!conn.accessToken) continue;
@@ -309,7 +355,22 @@ export async function GET(req: NextRequest) {
             selectedIds,
             labelMap
           );
-          events.push(...gEvents);
+          for (const ge of gEvents) {
+            const m = ge.metadata as {
+              connectionId?: string;
+              googleCalendarId?: string;
+              googleEventId?: string;
+            };
+            if (
+              m?.connectionId &&
+              m?.googleCalendarId &&
+              m?.googleEventId &&
+              mirroredKeys.has(`${m.connectionId}\t${m.googleCalendarId}\t${m.googleEventId}`)
+            ) {
+              continue;
+            }
+            events.push(ge);
+          }
         } catch (err) {
           console.error("[calendar/events] Google Calendar fetch failed", conn.id, err);
           googleCalendarFetchError =

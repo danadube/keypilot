@@ -8,6 +8,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
 import { CreateShowingSchema } from "@/lib/validations/showing";
 import { apiErrorFromCaught } from "@/lib/api-response";
+import { scheduleOutboundSync, syncShowingOutbound } from "@/lib/google-calendar/outbound-sync";
 import { generateId } from "@/lib/id";
 import { normalizeShowingHqListSearchQ } from "@/lib/showing-hq/list-search-q";
 
@@ -127,6 +128,8 @@ export async function POST(req: NextRequest) {
         },
       });
     }
+
+    scheduleOutboundSync(() => syncShowingOutbound(user.id, showing.id));
 
     return NextResponse.json({ data: showing });
   } catch (e) {

@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { withRLSContext } from "@/lib/db-context";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { UpdateFollowUpTaskSchema } from "@/lib/validations/follow-up-task";
+import { scheduleOutboundSync, syncFollowUpOutbound } from "@/lib/google-calendar/outbound-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,8 @@ export async function PATCH(
     if (!ok) {
       return NextResponse.json({ error: { message: "Follow-up not found" } }, { status: 404 });
     }
+
+    scheduleOutboundSync(() => syncFollowUpOutbound(user.id, id));
 
     return NextResponse.json({ data: { ok: true } });
   } catch (e) {

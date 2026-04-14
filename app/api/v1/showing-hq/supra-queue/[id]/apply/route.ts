@@ -9,6 +9,7 @@ import { ApplySupraQueueItemSchema } from "@/lib/validations/supra-queue";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { applyShowingEndedSupraQueueItem } from "@/lib/showing-hq/apply-showing-ended-supra-queue-item";
 import { persistShowingBuyerAgentFeedbackDraftAfterSupraApply } from "@/lib/showing-hq/showing-buyer-agent-feedback-draft";
+import { scheduleOutboundSync, syncShowingOutbound } from "@/lib/google-calendar/outbound-sync";
 import {
   ShowingSource,
   SupraPropertyMatchStatus,
@@ -375,6 +376,8 @@ export async function POST(
     } catch (draftErr) {
       console.error("[supra-apply] feedback draft hook failed (non-fatal)", draftErr);
     }
+
+    scheduleOutboundSync(() => syncShowingOutbound(user.id, result.showingId));
 
     return NextResponse.json({
       data: {
