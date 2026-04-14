@@ -6,14 +6,16 @@ import { cn } from "@/lib/utils";
 import type { CalendarEvent, CalendarSourceType } from "@/lib/calendar/calendar-event-types";
 import { layoutOverlappingIntervals } from "@/lib/calendar/overlap-layout";
 
-const GRID_START_HOUR = 8;
-const GRID_END_HOUR = 18;
+const GRID_START_HOUR = 0;
+const GRID_END_HOUR = 24;
 const GRID_MINUTES = (GRID_END_HOUR - GRID_START_HOUR) * 60;
-/** Tightened slightly vs 40px while keeping half-hour slots scannable */
-const HOUR_ROW_PX = 38;
+/** Per-hour row height; full day scrolls vertically (24 rows) */
+const HOUR_ROW_PX = 40;
 const HOUR_ROW_REM = `${HOUR_ROW_PX / 16}rem`;
 /** Room for 11px time labels without clipping */
 const TIME_GUTTER_REM = "3.375rem";
+/** Max height of the timed grid scroll area (viewport-relative, cap for very tall screens) */
+const TIME_GRID_MAX_HEIGHT = "min(72vh,56rem)";
 
 function startOfLocalDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
@@ -32,19 +34,15 @@ function localDateKey(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function minutesSinceLocalMidnight(d: Date): number {
-  return d.getHours() * 60 + d.getMinutes();
-}
-
 function clipToVisibleGrid(
   start: Date,
   end: Date,
   dayMidnight: Date
 ): { topFrac: number; heightFrac: number } | null {
   const winStart = new Date(dayMidnight);
-  winStart.setHours(GRID_START_HOUR, 0, 0, 0);
+  winStart.setHours(0, 0, 0, 0);
   const winEnd = new Date(dayMidnight);
-  winEnd.setHours(GRID_END_HOUR, 0, 0, 0);
+  winEnd.setHours(24, 0, 0, 0);
   const s = Math.max(start.getTime(), winStart.getTime());
   const e = Math.min(end.getTime(), winEnd.getTime());
   if (e <= s) return null;
@@ -52,7 +50,7 @@ function clipToVisibleGrid(
   const durMin = (e - s) / 60000;
   return {
     topFrac: topMin / GRID_MINUTES,
-    heightFrac: Math.max(durMin / GRID_MINUTES, 0.028),
+    heightFrac: Math.max(durMin / GRID_MINUTES, 0.012),
   };
 }
 
@@ -79,13 +77,12 @@ function useNowTickMs() {
 /** `referenceNow` comes from a single parent tick so we do not mount N intervals in day columns. */
 function nowIndicatorFrac(dayMidnight: Date, referenceNow: Date): number | null {
   if (localDateKey(referenceNow) !== localDateKey(dayMidnight)) return null;
-  const mins =
-    referenceNow.getHours() * 60 + referenceNow.getMinutes() - GRID_START_HOUR * 60;
+  const mins = referenceNow.getHours() * 60 + referenceNow.getMinutes();
   if (mins < 0 || mins > GRID_MINUTES) return null;
   return mins / GRID_MINUTES;
 }
 
-/** Floor Y position in the time grid to start-of-slot time (30-minute slots), 8:00–5:30 PM window. */
+/** Floor Y position in the time grid to start-of-slot time (30-minute slots), full local day. */
 function snappedHourMinuteFromGridClick(clientY: number, rectTop: number, rectHeight: number): {
   hour: number;
   minute: number;
@@ -93,10 +90,9 @@ function snappedHourMinuteFromGridClick(clientY: number, rectTop: number, rectHe
   const y = clientY - rectTop;
   const safeH = Math.max(rectHeight, 1);
   const frac = Math.max(0, Math.min(1, y / safeH));
-  const from8min = Math.floor((frac * GRID_MINUTES) / 30) * 30;
-  const clamped = Math.min(from8min, GRID_MINUTES - 30);
-  const totalMin = GRID_START_HOUR * 60 + clamped;
-  return { hour: Math.floor(totalMin / 60), minute: totalMin % 60 };
+  const slotMin = Math.floor((frac * GRID_MINUTES) / 30) * 30;
+  const clamped = Math.min(slotMin, GRID_MINUTES - 30);
+  return { hour: Math.floor(clamped / 60), minute: clamped % 60 };
 }
 
 function pad2(n: number): string {
@@ -137,11 +133,9 @@ function CalendarWeekViewContent({
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
   }, [weekStart]);
 
-  const { allDayByCol, timedByCol, overflowEarly, overflowLate } = useMemo(() => {
+  const { allDayByCol, timedByCol } = useMemo(() => {
     const allDay: CalendarEvent[][] = Array.from({ length: 7 }, () => []);
     const timed: CalendarEvent[][] = Array.from({ length: 7 }, () => []);
-    const early: CalendarEvent[][] = Array.from({ length: 7 }, () => []);
-    const late: CalendarEvent[][] = Array.from({ length: 7 }, () => []);
 
     for (const ev of events) {
       if (ev.allDay) {
@@ -164,18 +158,6 @@ function CalendarWeekViewContent({
         const dayKey = localDateKey(mid);
         if (localDateKey(start) !== dayKey) continue;
 
-        const msStart = minutesSinceLocalMidnight(start);
-        const winStartMin = GRID_START_HOUR * 60;
-        const winEndMin = GRID_END_HOUR * 60;
-        if (msStart < winStartMin) {
-          early[i]!.push(ev);
-          break;
-        }
-        if (msStart >= winEndMin) {
-          late[i]!.push(ev);
-          break;
-        }
-
         const clip = clipToVisibleGrid(start, end, mid);
         if (clip) timed[i]!.push(ev);
         break;
@@ -185,14 +167,12 @@ function CalendarWeekViewContent({
     return {
       allDayByCol: allDay,
       timedByCol: timed,
-      overflowEarly: early,
-      overflowLate: late,
     };
   }, [events, dayStarts]);
 
   const hourLabels = useMemo(() => {
     const out: { label: string; hour: number }[] = [];
-    for (let h = GRID_START_HOUR; h < GRID_END_HOUR; h++) {
+    for (let h = 0; h < 24; h++) {
       const d = new Date(2000, 0, 1, h, 0, 0, 0);
       out.push({
         hour: h,
@@ -235,131 +215,136 @@ function CalendarWeekViewContent({
     >
       <div className="relative w-full min-w-0 max-lg:inline-block max-lg:min-w-[28rem]">
         {emptyOverlay}
-        {/* Column headers */}
-        <div
-          className="grid border-b border-kp-outline/70 bg-kp-surface-high/[0.1]"
-          style={{
-            gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
-          }}
-        >
-          <div className="border-r border-kp-outline/50 p-1.5" aria-hidden />
-          {dayStarts.map((d, i) => {
-            const isToday = localDateKey(d) === localDateKey(now);
-            return (
-              <div
-                key={i}
-                className={cn(
-                  "border-l border-kp-outline/50 px-0.5 py-2 text-center",
-                  isToday && "bg-gradient-to-b from-kp-teal/14 to-kp-teal/[0.04] ring-1 ring-inset ring-kp-teal/25"
-                )}
-              >
-                <p
+        {/* Weekday + all-day: fixed above the scrollable timed grid (no horizontal compression) */}
+        <div className="border-b border-kp-outline/50 bg-kp-surface">
+          <div
+            className="grid border-b border-kp-outline/70 bg-kp-surface-high/[0.1]"
+            style={{
+              gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
+            }}
+          >
+            <div className="border-r border-kp-outline/50 p-1.5" aria-hidden />
+            {dayStarts.map((d, i) => {
+              const isToday = localDateKey(d) === localDateKey(now);
+              return (
+                <div
+                  key={i}
                   className={cn(
-                    "text-[10px] font-bold uppercase tracking-wide",
-                    isToday ? "text-kp-teal" : "text-kp-on-surface-muted"
+                    "border-l border-kp-outline/50 px-0.5 py-2 text-center",
+                    isToday && "bg-gradient-to-b from-kp-teal/14 to-kp-teal/[0.04] ring-1 ring-inset ring-kp-teal/25"
                   )}
                 >
-                  {d.toLocaleDateString("en-US", { weekday: "short" })}
-                </p>
-                <p
-                  className={cn(
-                    "mt-0.5 inline-flex min-w-[1.75rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[13px] font-bold tabular-nums leading-none",
-                    isToday
-                      ? "bg-kp-teal text-white shadow-md ring-2 ring-kp-teal/25"
-                      : "text-kp-on-surface"
-                  )}
-                >
-                  {d.getDate()}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* All-day row */}
-        <div
-          className="grid border-b border-kp-outline/70 bg-kp-bg/50"
-          style={{
-            gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
-          }}
-        >
-          <div className="flex items-start justify-end border-r border-kp-outline/50 bg-kp-surface-high/[0.08] px-1.5 py-2 text-right">
-            <span className="text-[11px] font-semibold leading-tight text-kp-on-surface/80">All day</span>
+                  <p
+                    className={cn(
+                      "text-[10px] font-bold uppercase tracking-wide",
+                      isToday ? "text-kp-teal" : "text-kp-on-surface-muted"
+                    )}
+                  >
+                    {d.toLocaleDateString("en-US", { weekday: "short" })}
+                  </p>
+                  <p
+                    className={cn(
+                      "mt-0.5 inline-flex min-w-[1.75rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[13px] font-bold tabular-nums leading-none",
+                      isToday
+                        ? "bg-kp-teal text-white shadow-md ring-2 ring-kp-teal/25"
+                        : "text-kp-on-surface"
+                    )}
+                  >
+                    {d.getDate()}
+                  </p>
+                </div>
+              );
+            })}
           </div>
-          {dayStarts.map((d, col) => {
-            const isToday = localDateKey(d) === localDateKey(now);
-            const dk = localDateKey(d);
-            return (
-              <div
-                key={`allday-${col}`}
-                className={cn(
-                  "relative min-h-[2.5rem] border-l border-kp-outline/45 px-1 py-1",
-                  isToday && "bg-kp-teal/[0.05]"
-                )}
-              >
-                {onAllDayBackgroundClick ? (
-                  <button
-                    type="button"
-                    aria-label="View this day or add to calendar"
-                    className="absolute inset-0 z-[1] cursor-pointer rounded-sm bg-transparent transition-colors hover:bg-kp-teal/[0.06]"
-                    onClick={() => onAllDayBackgroundClick({ dateKey: dk })}
-                  />
-                ) : null}
-                <ul className="relative z-[10] flex flex-col gap-1">
-                  {allDayByCol[col]!.map((ev) => (
-                    <li key={ev.id}>
-                      <EventPill
-                        ev={ev}
-                        compact
-                        onExternalOpen={onExternalEventOpen}
-                        onHolidayOpen={onHolidayEventOpen}
-                        onInternalOpen={onInternalEventOpen}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
+
+          <div
+            className="grid border-b border-kp-outline/70 bg-kp-bg/50"
+            style={{
+              gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
+            }}
+          >
+            <div className="flex items-start justify-end border-r border-kp-outline/50 bg-kp-surface-high/[0.08] px-1.5 py-2 text-right">
+              <span className="text-[11px] font-semibold leading-tight text-kp-on-surface/80">All day</span>
+            </div>
+            {dayStarts.map((d, col) => {
+              const isToday = localDateKey(d) === localDateKey(now);
+              const dk = localDateKey(d);
+              return (
+                <div
+                  key={`allday-${col}`}
+                  className={cn(
+                    "relative min-h-[2.5rem] border-l border-kp-outline/45 px-1 py-1",
+                    isToday && "bg-kp-teal/[0.05]"
+                  )}
+                >
+                  {onAllDayBackgroundClick ? (
+                    <button
+                      type="button"
+                      aria-label="View this day or add to calendar"
+                      className="absolute inset-0 z-[1] cursor-pointer rounded-sm bg-transparent transition-colors hover:bg-kp-teal/[0.06]"
+                      onClick={() => onAllDayBackgroundClick({ dateKey: dk })}
+                    />
+                  ) : null}
+                  <ul className="relative z-[10] flex flex-col gap-1">
+                    {allDayByCol[col]!.map((ev) => (
+                      <li key={ev.id}>
+                        <EventPill
+                          ev={ev}
+                          compact
+                          onExternalOpen={onExternalEventOpen}
+                          onHolidayOpen={onHolidayEventOpen}
+                          onInternalOpen={onInternalEventOpen}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Time grid */}
+        {/* Full 24-hour timed grid — scrolls inside the calendar canvas */}
         <div
-          className="grid bg-kp-bg/25"
-          style={{
-            gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
-          }}
+          className="overflow-y-auto overscroll-y-contain border-b border-kp-outline/60 bg-kp-bg/25"
+          style={{ maxHeight: TIME_GRID_MAX_HEIGHT }}
+          aria-label="Week time grid"
         >
-          <div className="relative border-r border-kp-outline/50 bg-kp-surface-high/[0.1]">
-            {hourLabels.map(({ label, hour }) => (
-              <div
-                key={hour}
-                className="relative flex items-start justify-end border-b border-kp-outline/35 pt-0.5 pr-2"
-                style={{ height: HOUR_ROW_REM, minHeight: HOUR_ROW_REM }}
-              >
-                <span className="text-[11px] font-medium tabular-nums leading-none text-kp-on-surface/75">
-                  {label}
-                </span>
-              </div>
+          <div
+            className="grid min-w-0"
+            style={{
+              gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
+            }}
+          >
+            <div className="relative border-r border-kp-outline/50 bg-kp-surface-high/[0.1]">
+              {hourLabels.map(({ label, hour }) => (
+                <div
+                  key={hour}
+                  className="relative flex items-start justify-end border-b border-kp-outline/35 pt-0.5 pr-2"
+                  style={{ height: HOUR_ROW_REM, minHeight: HOUR_ROW_REM }}
+                >
+                  <span className="text-[11px] font-medium tabular-nums leading-none text-kp-on-surface/75">
+                    {label}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {dayStarts.map((dayMidnight, col) => (
+              <DayColumn
+                key={col}
+                dayMidnight={dayMidnight}
+                timedEvents={timedByCol[col] ?? []}
+                isTodayCol={localDateKey(dayMidnight) === localDateKey(now)}
+                nowMs={nowMs}
+                gridHeightRem={(GRID_END_HOUR - GRID_START_HOUR) * (HOUR_ROW_PX / 16)}
+                onTimeGridCreate={onTimeGridCreate}
+                onExternalOpen={onExternalEventOpen}
+                onHolidayOpen={onHolidayEventOpen}
+                onInternalOpen={onInternalEventOpen}
+              />
             ))}
           </div>
-
-          {dayStarts.map((dayMidnight, col) => (
-            <DayColumn
-              key={col}
-              dayMidnight={dayMidnight}
-              timedEvents={timedByCol[col] ?? []}
-              early={overflowEarly[col] ?? []}
-              late={overflowLate[col] ?? []}
-              isTodayCol={localDateKey(dayMidnight) === localDateKey(now)}
-              nowMs={nowMs}
-              gridHeightRem={(GRID_END_HOUR - GRID_START_HOUR) * (HOUR_ROW_PX / 16)}
-              onTimeGridCreate={onTimeGridCreate}
-              onExternalOpen={onExternalEventOpen}
-              onHolidayOpen={onHolidayEventOpen}
-              onInternalOpen={onInternalEventOpen}
-            />
-          ))}
         </div>
       </div>
     </div>
@@ -378,7 +363,7 @@ export function CalendarWeekView(props: Parameters<typeof CalendarWeekViewConten
         )}
         aria-hidden
       >
-        <div className="relative w-full min-h-[min(28rem,70vh)] rounded-lg border border-kp-outline/35 bg-kp-surface-high/20 animate-pulse" />
+        <div className="relative w-full min-h-[min(56rem,85vh)] rounded-lg border border-kp-outline/35 bg-kp-surface-high/20 animate-pulse" />
       </div>
     );
   }
@@ -466,8 +451,6 @@ function EventPill({
 function DayColumn({
   dayMidnight,
   timedEvents,
-  early,
-  late,
   isTodayCol,
   nowMs,
   gridHeightRem,
@@ -478,8 +461,6 @@ function DayColumn({
 }: {
   dayMidnight: Date;
   timedEvents: CalendarEvent[];
-  early: CalendarEvent[];
-  late: CalendarEvent[];
   isTodayCol: boolean;
   /** Wall clock from parent {@link CalendarWeekView}'s single `useNowTickMs` — avoids N intervals. */
   nowMs: number;
@@ -507,9 +488,9 @@ function DayColumn({
         isTodayCol && "bg-kp-teal/[0.035] shadow-[inset_1px_0_0_0_rgba(45,180,170,0.14)]"
       )}
     >
-      {/* hour + half-hour lines */}
+      {/* hour + half-hour lines (24 hours) */}
       <div className="pointer-events-none absolute inset-0">
-        {Array.from({ length: GRID_END_HOUR - GRID_START_HOUR }, (_, i) => (
+        {Array.from({ length: 24 }, (_, i) => (
           <div
             key={i}
             className="relative border-b border-kp-outline/40"
@@ -529,45 +510,6 @@ function DayColumn({
           <span className="absolute -left-px -top-2.5 rounded bg-kp-teal px-1 py-px text-[8px] font-bold uppercase tracking-wide text-white shadow-sm">
             Now
           </span>
-        </div>
-      ) : null}
-
-      {early.length > 0 ? (
-        <div className="absolute left-0 right-0 top-0 z-10 space-y-0.5 px-0.5 pt-0.5">
-          {early.map((ev) => (
-            <div key={ev.id} className="rounded border border-dashed border-kp-outline/60 bg-kp-bg/95 px-1 py-0.5 text-[9px] text-kp-on-surface-muted shadow-sm backdrop-blur-sm">
-              <span className="font-medium text-kp-on-surface-variant">Before 8:00</span> ·{" "}
-              {ev.sourceType === "external" ? (
-                <button
-                  type="button"
-                  className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
-                  onClick={() => onExternalOpen?.(ev)}
-                >
-                  {ev.title}
-                </button>
-              ) : ev.sourceType === "holiday" ? (
-                <button
-                  type="button"
-                  className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
-                  onClick={() => onHolidayOpen?.(ev)}
-                >
-                  {ev.title}
-                </button>
-              ) : onInternalOpen ? (
-                <button
-                  type="button"
-                  className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
-                  onClick={() => onInternalOpen(ev)}
-                >
-                  {ev.title}
-                </button>
-              ) : (
-                <Link href={ev.relatedRoute} className="underline-offset-2 hover:text-kp-teal hover:underline">
-                  {ev.title}
-                </Link>
-              )}
-            </div>
-          ))}
         </div>
       ) : null}
 
@@ -687,45 +629,6 @@ function DayColumn({
           );
         })}
       </div>
-
-      {late.length > 0 ? (
-        <div className="space-y-0.5 border-t-2 border-kp-outline/45 bg-kp-surface-high/[0.06] px-0.5 py-1">
-          {late.map((ev) => (
-            <div key={ev.id} className="rounded border border-dashed border-kp-outline/60 bg-kp-bg/80 px-1 py-0.5 text-[9px] text-kp-on-surface-muted shadow-sm">
-              <span className="font-medium text-kp-on-surface-variant">After 6:00</span> ·{" "}
-              {ev.sourceType === "external" ? (
-                <button
-                  type="button"
-                  className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
-                  onClick={() => onExternalOpen?.(ev)}
-                >
-                  {ev.title}
-                </button>
-              ) : ev.sourceType === "holiday" ? (
-                <button
-                  type="button"
-                  className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
-                  onClick={() => onHolidayOpen?.(ev)}
-                >
-                  {ev.title}
-                </button>
-              ) : onInternalOpen ? (
-                <button
-                  type="button"
-                  className="text-left underline-offset-2 hover:text-kp-teal hover:underline"
-                  onClick={() => onInternalOpen(ev)}
-                >
-                  {ev.title}
-                </button>
-              ) : (
-                <Link href={ev.relatedRoute} className="underline-offset-2 hover:text-kp-teal hover:underline">
-                  {ev.title}
-                </Link>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 }
