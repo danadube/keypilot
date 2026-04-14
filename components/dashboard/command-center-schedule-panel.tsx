@@ -86,15 +86,7 @@ function ScheduleAddMenu({ onNewTask }: { onNewTask: () => void }) {
   );
 }
 
-export function CommandCenterSchedulePanel({
-  showings,
-  followUpsAll,
-  openTasks,
-  loading,
-  onNewTask,
-  fillHeight,
-  className,
-}: {
+export type CommandCenterSchedulePanelProps = {
   showings: CommandCenterScheduleShowing[];
   followUpsAll: SerializedAgentFollowUp[];
   openTasks: SerializedTask[];
@@ -103,7 +95,18 @@ export function CommandCenterSchedulePanel({
   /** Stretch to parent height (dashboard Today’s work column). */
   fillHeight?: boolean;
   className?: string;
-}) {
+};
+
+/** Renders after mount so local calendar state matches the browser (avoids SSR UTC vs client TZ hydration errors). */
+function CommandCenterSchedulePanelContent({
+  showings,
+  followUpsAll,
+  openTasks,
+  loading,
+  onNewTask,
+  fillHeight,
+  className,
+}: CommandCenterSchedulePanelProps) {
   /** Advances over time so "today", overdue-on-today, and calendar markers stay correct past midnight. */
   const [currentTime, setCurrentTime] = useState(() => new Date());
   useEffect(() => {
@@ -187,8 +190,8 @@ export function CommandCenterSchedulePanel({
   );
 
   const selectedIsToday = isSameLocalDay(selectedDay, currentTime);
-  /** Live wall clock for now/next within the day; day boundaries use `currentTime` (refreshed at midnight + interval). */
-  const nowMs = Date.now();
+  /** Same clock source as `currentTime` so SSR and hydration agree (avoid `Date.now()` vs server time). */
+  const nowMs = currentTime.getTime();
   let scheduleNowIndex = -1;
   let scheduleNextIndex = -1;
   if (selectedIsToday && merged.length > 0) {
@@ -215,14 +218,14 @@ export function CommandCenterSchedulePanel({
     setVisibleMonth((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1));
   }, []);
 
-  const monthTitle = visibleMonth.toLocaleDateString(undefined, {
+  const monthTitle = visibleMonth.toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
   });
 
   const scheduleTitle = selectedIsToday
     ? "Schedule"
-    : selectedDay.toLocaleDateString(undefined, {
+    : selectedDay.toLocaleDateString("en-US", {
         weekday: "long",
         month: "short",
         day: "numeric",
@@ -405,7 +408,7 @@ export function CommandCenterSchedulePanel({
                   const t = s.at;
                   const timeStr = Number.isNaN(t.getTime())
                     ? ""
-                    : t.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+                    : t.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
                   const isNow = selectedIsToday && index === scheduleNowIndex;
                   const isNext = selectedIsToday && index === scheduleNextIndex;
                   const overdue = s.badge === "overdue";
@@ -467,4 +470,39 @@ export function CommandCenterSchedulePanel({
       </div>
     </div>
   );
+}
+
+export function CommandCenterSchedulePanel(props: CommandCenterSchedulePanelProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) {
+    return (
+      <div
+        className={cn(
+          "rounded-xl border border-kp-outline bg-kp-surface p-2.5 shadow-sm sm:p-3",
+          props.fillHeight && "flex h-full min-h-0 flex-col",
+          props.className
+        )}
+        aria-hidden
+      >
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4",
+            props.fillHeight && "min-h-0 flex-1"
+          )}
+        >
+          <div className="order-1 h-[min(280px,42vh)] min-h-[200px] animate-pulse rounded-lg bg-kp-surface-high/25 lg:min-h-[240px]" />
+          <div
+            className={cn(
+              "order-2 min-h-[160px] animate-pulse rounded-lg bg-kp-surface-high/20 lg:min-h-[220px]",
+              props.fillHeight && "min-h-0 flex-1"
+            )}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return <CommandCenterSchedulePanelContent {...props} />;
 }

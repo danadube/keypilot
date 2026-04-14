@@ -105,7 +105,7 @@ function pad2(n: number): string {
 
 export type CalendarWeekEmptyHint = "none" | "no-events" | "filter-empty";
 
-export function CalendarWeekView({
+function CalendarWeekViewContent({
   weekStart,
   events,
   className,
@@ -196,7 +196,7 @@ export function CalendarWeekView({
       const d = new Date(2000, 0, 1, h, 0, 0, 0);
       out.push({
         hour: h,
-        label: d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
+        label: d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
       });
     }
     return out;
@@ -259,7 +259,7 @@ export function CalendarWeekView({
                     isToday ? "text-kp-teal" : "text-kp-on-surface-muted"
                   )}
                 >
-                  {d.toLocaleDateString(undefined, { weekday: "short" })}
+                  {d.toLocaleDateString("en-US", { weekday: "short" })}
                 </p>
                 <p
                   className={cn(
@@ -366,6 +366,25 @@ export function CalendarWeekView({
   );
 }
 
+export function CalendarWeekView(props: Parameters<typeof CalendarWeekViewContent>[0]) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) {
+    return (
+      <div
+        className={cn(
+          "w-full min-w-0 max-lg:overflow-x-auto lg:overflow-x-visible",
+          props.className
+        )}
+        aria-hidden
+      >
+        <div className="relative w-full min-h-[min(28rem,70vh)] rounded-lg border border-kp-outline/35 bg-kp-surface-high/20 animate-pulse" />
+      </div>
+    );
+  }
+  return <CalendarWeekViewContent {...props} />;
+}
+
 function EventPill({
   ev,
   compact,
@@ -385,7 +404,7 @@ function EventPill({
     ? "All day"
     : Number.isNaN(start.getTime())
       ? ""
-      : start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      : start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   const meta = ev.metadata as { calendarName?: string; subline?: string } | undefined;
   const sub = meta?.calendarName ?? meta?.subline;
   const shellClass = cn(
@@ -601,7 +620,7 @@ function DayColumn({
               <p className="mt-0.5 text-[8px] tabular-nums text-kp-on-surface-muted">
                 {Number.isNaN(start.getTime())
                   ? ""
-                  : `${start.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })} – ${end.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}`}
+                  : `${start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} – ${end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`}
               </p>
             </>
           );

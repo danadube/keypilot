@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 
 /**
- * Live-updating dashboard heading: full date on one line, clock on the next.
+ * Renders only after mount so server HTML and the first client pass match (local clock + timezone).
  */
-export function CommandCenterLiveTitle() {
+function CommandCenterLiveTitleInner() {
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -37,4 +37,23 @@ export function CommandCenterLiveTitle() {
       </p>
     </div>
   );
+}
+
+/**
+ * Live-updating dashboard heading: full date on one line, clock on the next.
+ */
+export function CommandCenterLiveTitle() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted) {
+    return (
+      <div className="space-y-0.5" aria-hidden>
+        <div className="h-[1.75rem] max-w-[18rem] animate-pulse rounded-md bg-kp-surface-high/35 md:h-[2rem]" />
+        <div className="h-6 max-w-[6rem] animate-pulse rounded-md bg-kp-surface-high/30 md:h-7" />
+      </div>
+    );
+  }
+
+  return <CommandCenterLiveTitleInner />;
 }
