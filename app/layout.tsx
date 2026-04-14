@@ -27,6 +27,10 @@ const newsreader = Newsreader({
 export const metadata: Metadata = {
   title: "KeyPilot",
   description: "Real estate operations SaaS platform",
+  icons: {
+    icon: [{ url: "/icon.png", type: "image/png" }],
+    apple: "/icon.png",
+  },
 };
 
 export default function RootLayout({
