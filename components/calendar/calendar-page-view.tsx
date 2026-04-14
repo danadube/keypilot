@@ -132,11 +132,14 @@ function CalendarMonthOverview({
           Preview lines use the same source colors as Week view. The pale band is the week you last viewed. Click a day for the full agenda.
         </p>
       </div>
-      <div className="p-3.5 sm:p-5">
+      <div className="p-3 sm:p-4 lg:p-5">
         <div className="overflow-hidden rounded-lg border border-kp-outline/80 bg-kp-bg shadow-inner">
           <div className="grid grid-cols-7 border-b border-kp-outline/60 bg-kp-surface-high/[0.1] text-center text-[11px] font-bold uppercase tracking-wide text-kp-on-surface-muted">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((w) => (
-              <div key={w} className="border-l border-kp-outline/45 py-2 first:border-l-0 sm:py-2.5">
+              <div
+                key={w}
+                className="flex min-h-[2.75rem] items-center justify-center border-l border-kp-outline/45 py-2 first:border-l-0 sm:min-h-[3rem] sm:py-2.5"
+              >
                 {w}
               </div>
             ))}
@@ -149,7 +152,7 @@ function CalendarMonthOverview({
                   <div
                     key={`e-${i}`}
                     className={cn(
-                      "min-h-[3.25rem] border-b border-l border-kp-outline/40 bg-kp-surface-high/[0.04]",
+                      "min-h-[4.5rem] border-b border-l border-kp-outline/40 bg-kp-surface-high/[0.04] sm:min-h-[5rem]",
                       colFirst && "border-l-0"
                     )}
                   />
@@ -159,8 +162,8 @@ function CalendarMonthOverview({
               const key = localDateKey(d);
               const dayList = eventsByDay.get(key) ?? [];
               const n = dayList.length;
-              const preview = dayList.slice(0, 2);
-              const overflow = Math.max(0, n - 2);
+              const preview = dayList.slice(0, 3);
+              const overflow = Math.max(0, n - 3);
               const isToday = localDateKey(d) === localDateKey(new Date());
               const dayStart = startOfLocalDay(d);
               const inActiveWeek = dayStart >= weekBandStart && dayStart < weekBandEnd;
@@ -174,7 +177,7 @@ function CalendarMonthOverview({
                     onDayClick(d);
                   }}
                   className={cn(
-                    "relative flex min-h-[5.25rem] cursor-pointer flex-col items-stretch border-b border-l border-kp-outline/40 bg-kp-surface px-1.5 pb-1 pt-1.5 text-left transition-colors hover:z-[1] hover:bg-kp-surface-high/25 sm:min-h-[5.85rem]",
+                    "relative flex min-h-[7.25rem] cursor-pointer flex-col items-stretch border-b border-l border-kp-outline/40 bg-kp-surface px-2 pb-2 pt-2 text-left transition-colors hover:z-[1] hover:bg-kp-surface-high/25 sm:min-h-[8rem] lg:min-h-[8.25rem]",
                     colFirst && "border-l-0",
                     inActiveWeek && "bg-kp-teal/[0.045]",
                     isToday && !inActiveWeek && !isAgendaSelected && "bg-kp-teal/[0.04]",
@@ -194,12 +197,12 @@ function CalendarMonthOverview({
                       {d.getDate()}
                     </span>
                   </div>
-                  <div className="mt-1 min-h-0 w-full flex-1 space-y-1">
+                  <div className="mt-1.5 min-h-0 w-full flex-1 space-y-1.5">
                     {preview.map((ev) => (
                       <div
                         key={ev.id}
                         className={cn(
-                          "truncate border-l-[3px] pl-1.5 text-[10px] font-medium leading-tight text-kp-on-surface sm:text-[11px]",
+                          "truncate border-l-[3px] pl-2 text-[10px] font-medium leading-snug text-kp-on-surface sm:text-[11px] sm:leading-snug",
                           MONTH_CELL_SOURCE_ACCENT[ev.sourceType] ?? MONTH_CELL_SOURCE_ACCENT.external
                         )}
                         title={ev.title}
@@ -208,7 +211,7 @@ function CalendarMonthOverview({
                       </div>
                     ))}
                     {overflow > 0 ? (
-                      <p className="mt-0.5 inline-flex w-full items-center justify-center rounded border border-kp-outline/50 bg-kp-surface-high/[0.2] py-0.5 pl-1 pr-1 text-[10px] font-semibold tabular-nums text-kp-on-surface sm:text-[11px]">
+                      <p className="mt-0.5 inline-flex w-full items-center justify-center rounded border border-kp-outline/50 bg-kp-surface-high/[0.2] py-1 pl-1 pr-1 text-[10px] font-semibold tabular-nums leading-none text-kp-on-surface sm:text-[11px]">
                         +{overflow} more
                       </p>
                     ) : null}
