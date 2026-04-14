@@ -40,7 +40,7 @@ export async function fetchDailyBriefing(user: User, options?: FetchDailyBriefin
       "Schedule bounds use the server’s local calendar day for this request. Pass dayStartIso and dayEndIso for the user’s timezone.";
   }
 
-  // Sequential: heavy read aggregations (direct prismaAdmin queries, no $transaction).
+  // Sequential: one RLS-scoped transaction at a time (avoids nested concurrent $transaction / P2028).
   const commandCenter = await getCommandCenterPayload(user);
   const scheduleCtx = await loadScheduleContextForBriefing(user.id, { dayStart, dayEnd, now });
 

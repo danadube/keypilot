@@ -5,7 +5,7 @@ import {
   type UserActivityType,
   type Prisma,
 } from "@prisma/client";
-import { prismaAdmin } from "@/lib/db";
+import { withRLSContextOrFallbackAdmin } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { transactionPropertySelect } from "@/lib/transactions/create-transaction";
 import {
@@ -142,16 +142,16 @@ export async function getCommandCenterPayload(user: User): Promise<CommandCenter
     return Number.isFinite(n) && n > 0 ? n : 300_000;
   })();
 
-  // Read-only aggregation: explicit userId / ownership filters (no interactive $transaction).
-  const [
-    openTaskRows,
-    dealRows,
-    propertyRows,
-    propertyTotalCount,
-    userActivities,
-    transactionActivities,
-  ] = await Promise.all([
-    prismaAdmin.task.findMany({
+  return withRLSContextOrFallbackAdmin(user.id, "getCommandCenterPayload", async (tx) => {
+    const [
+      openTaskRows,
+      dealRows,
+      propertyRows,
+      propertyTotalCount,
+      userActivities,
+      transactionActivities,
+    ] = await Promise.all([
+      tx.task.findMany({
         where: { userId: user.id, status: "OPEN" },
         include: {
           contact: { select: { id: true, firstName: true, lastName: true } },
@@ -162,11 +162,11 @@ export async function getCommandCenterPayload(user: User): Promise<CommandCenter
         orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
         take: 200,
       }),
-      prismaAdmin.deal.findMany({
+      tx.deal.findMany({
         where: { userId: user.id, status: { notIn: INACTIVE_DEAL } },
         select: { id: true },
       }),
-      prismaAdmin.property.findMany({
+      tx.property.findMany({
         where: { createdByUserId: user.id, deletedAt: null },
         orderBy: { updatedAt: "desc" },
         take: 8,
@@ -180,10 +180,10 @@ export async function getCommandCenterPayload(user: User): Promise<CommandCenter
           updatedAt: true,
         },
       }),
-      prismaAdmin.property.count({
+      tx.property.count({
         where: { createdByUserId: user.id, deletedAt: null },
       }),
-      prismaAdmin.userActivity.findMany({
+      tx.userActivity.findMany({
         where: { userId: user.id },
         orderBy: { createdAt: "desc" },
         take: 14,
@@ -193,7 +193,7 @@ export async function getCommandCenterPayload(user: User): Promise<CommandCenter
         },
       }),
       crm
-        ? prismaAdmin.transactionActivity.findMany({
+        ? tx.transactionActivity.findMany({
             where: { transaction: { userId: user.id, deletedAt: null } },
             orderBy: { createdAt: "desc" },
             take: 14,
@@ -256,7 +256,7 @@ export async function getCommandCenterPayload(user: User): Promise<CommandCenter
     let nextClosing: CommandCenterSnapshot["nextClosing"] = null;
 
     if (crm) {
-      const ytdRows = await prismaAdmin.transaction.findMany({
+      const ytdRows = await tx.transaction.findMany({
         where: {
           userId: user.id,
           deletedAt: null,
@@ -271,7 +271,7 @@ export async function getCommandCenterPayload(user: User): Promise<CommandCenter
       }, 0);
       if (ytdGci === 0) ytdGci = null;
 
-      const pipelineTx = await prismaAdmin.transaction.findMany({
+      const pipelineTx = await tx.transaction.findMany({
         where: {
           userId: user.id,
           deletedAt: null,
@@ -290,7 +290,7 @@ export async function getCommandCenterPayload(user: User): Promise<CommandCenter
       }, 0);
       if (pipelineEstimatedGci === 0) pipelineEstimatedGci = null;
 
-      const nextRow = await prismaAdmin.transaction.findFirst({
+      const nextRow = await tx.transaction.findFirst({
         where: {
           userId: user.id,
           deletedAt: null,
@@ -321,7 +321,7 @@ export async function getCommandCenterPayload(user: User): Promise<CommandCenter
         };
       }
 
-      const attentionTx = await prismaAdmin.transaction.findMany({
+      const attentionTx = await tx.transaction.findMany({
         where: {
           userId: user.id,
           deletedAt: null,
@@ -340,7 +340,7 @@ export async function getCommandCenterPayload(user: User): Promise<CommandCenter
       });
 
       const checklistCounts = await incompleteChecklistCountsByTransactionIds(
-        prismaAdmin,
+        tx,
         attentionTx.map((t) => t.id)
       );
 
@@ -416,7 +416,7 @@ export async function getCommandCenterPayload(user: User): Promise<CommandCenter
     const txnsForProps =
       propertyIds.length === 0
         ? []
-        : await prismaAdmin.transaction.findMany({
+        : await tx.transaction.findMany({
             where: {
               userId: user.id,
               deletedAt: null,
@@ -432,14 +432,14 @@ export async function getCommandCenterPayload(user: User): Promise<CommandCenter
           });
 
     const checklistByTxn = await incompleteChecklistCountsByTransactionIds(
-      prismaAdmin,
+      tx,
       txnsForProps.map((x) => x.id)
     );
 
     const showingCounts =
       propertyIds.length === 0
         ? []
-        : await prismaAdmin.showing.groupBy({
+        : await tx.showing.groupBy({
             by: ["propertyId"],
             where: {
               hostUserId: user.id,
@@ -532,13 +532,14 @@ export async function getCommandCenterPayload(user: User): Promise<CommandCenter
     );
     const recentActivity = activityMerged.slice(0, 18);
 
-  const result: CommandCenterPayload = {
-    crmAvailable: crm,
-    attention,
-    snapshot,
-    priorityTasks,
-    activeListings,
-    recentActivity,
-  };
-  return result;
+    const result: CommandCenterPayload = {
+      crmAvailable: crm,
+      attention,
+      snapshot,
+      priorityTasks,
+      activeListings,
+      recentActivity,
+    };
+    return result;
+  });
 }
