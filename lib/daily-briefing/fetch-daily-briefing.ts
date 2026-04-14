@@ -40,10 +40,10 @@ export async function fetchDailyBriefing(user: User, options?: FetchDailyBriefin
       "Schedule bounds use the server’s local calendar day for this request. Pass dayStartIso and dayEndIso for the user’s timezone.";
   }
 
-  const [commandCenter, scheduleCtx] = await Promise.all([
-    getCommandCenterPayload(user),
-    loadScheduleContextForBriefing(user.id, { dayStart, dayEnd, now }),
-  ]);
+  // Sequential: each loader opens its own Prisma transaction (`withRLSContextOrFallbackAdmin`).
+  // Running them in parallel caused P2028 (transaction start timeout) on constrained local pools.
+  const commandCenter = await getCommandCenterPayload(user);
+  const scheduleCtx = await loadScheduleContextForBriefing(user.id, { dayStart, dayEnd, now });
 
   return buildDailyBriefing({
     commandCenter,
