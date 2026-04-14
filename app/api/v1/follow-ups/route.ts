@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
+import { prismaAdmin } from "@/lib/db";
 import { withRLSContext } from "@/lib/db-context";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { CreateFollowUpTaskSchema } from "@/lib/validations/follow-up-task";
@@ -27,29 +28,27 @@ export async function GET() {
     let upcoming: ReturnType<typeof serializeAgentFollowUpRow>[] = [];
     let all: ReturnType<typeof serializeAgentFollowUpRow>[] = [];
     try {
-      const rows = await withRLSContext(user.id, (tx) =>
-        tx.followUp.findMany({
-          where: {
-            createdByUserId: user.id,
-            deletedAt: null,
-            status: { not: "CLOSED" },
-            dueAt: { lte: weekEnd },
-          },
-          include: {
-            contact: {
-              select: {
-                id: true,
-                firstName: true,
-                lastName: true,
-                email: true,
-                phone: true,
-              },
+      const rows = await prismaAdmin.followUp.findMany({
+        where: {
+          createdByUserId: user.id,
+          deletedAt: null,
+          status: { not: "CLOSED" },
+          dueAt: { lte: weekEnd },
+        },
+        include: {
+          contact: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
             },
           },
-          orderBy: { dueAt: "asc" },
-          take: 80,
-        })
-      );
+        },
+        orderBy: { dueAt: "asc" },
+        take: 80,
+      });
       all = rows.map(serializeAgentFollowUpRow);
       const buckets = bucketAgentFollowUpsByDue(all, todayStart, todayEnd);
       overdue = buckets.overdue;

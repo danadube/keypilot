@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
+import { prismaAdmin } from "@/lib/db";
 import { withRLSContextOrFallbackAdmin } from "@/lib/db-context";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { CreateTaskSchema } from "@/lib/validations/task";
@@ -42,42 +43,34 @@ export async function GET(req: NextRequest) {
     const todayEnd = new Date(todayStart);
     todayEnd.setDate(todayEnd.getDate() + 1);
 
-    const { overdue, dueToday, upcoming, completed } = await withRLSContextOrFallbackAdmin(
-      user.id,
-      "GET /api/v1/tasks",
-      async (tx) => {
-      const openRows = await tx.task.findMany({
-        where: {
-          userId: user.id,
-          status: "OPEN",
-          ...contactFilter,
-          ...propertyFilter,
-        },
-        include: taskInclude,
-        orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
-        take: 200,
-      });
-      const completedRows = await tx.task.findMany({
-        where: {
-          userId: user.id,
-          status: "COMPLETED",
-          ...contactFilter,
-          ...propertyFilter,
-        },
-        include: taskInclude,
-        orderBy: { completedAt: "desc" },
-        take: 80,
-      });
-      const openSerialized = openRows.map((r) => serializeTask(r as TaskRow));
-      const buckets = bucketOpenTasksByDue(openSerialized, todayStart, todayEnd);
-      return {
-        overdue: buckets.overdue,
-        dueToday: buckets.dueToday,
-        upcoming: buckets.upcoming,
-        completed: completedRows.map((r) => serializeTask(r as TaskRow)),
-      };
-    }
-    );
+    const openRows = await prismaAdmin.task.findMany({
+      where: {
+        userId: user.id,
+        status: "OPEN",
+        ...contactFilter,
+        ...propertyFilter,
+      },
+      include: taskInclude,
+      orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
+      take: 200,
+    });
+    const completedRows = await prismaAdmin.task.findMany({
+      where: {
+        userId: user.id,
+        status: "COMPLETED",
+        ...contactFilter,
+        ...propertyFilter,
+      },
+      include: taskInclude,
+      orderBy: { completedAt: "desc" },
+      take: 80,
+    });
+    const openSerialized = openRows.map((r) => serializeTask(r as TaskRow));
+    const buckets = bucketOpenTasksByDue(openSerialized, todayStart, todayEnd);
+    const overdue = buckets.overdue;
+    const dueToday = buckets.dueToday;
+    const upcoming = buckets.upcoming;
+    const completed = completedRows.map((r) => serializeTask(r as TaskRow));
 
     const counts = {
       openOverdue: overdue.length,

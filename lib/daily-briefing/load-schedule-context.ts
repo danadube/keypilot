@@ -1,4 +1,4 @@
-import { withRLSContextOrFallbackAdmin } from "@/lib/db-context";
+import { prismaAdmin } from "@/lib/db";
 import { transactionPropertySelect } from "@/lib/transactions/create-transaction";
 import {
   serializeAgentFollowUpRow,
@@ -36,9 +36,9 @@ export async function loadScheduleContextForBriefing(
   const weekEnd = new Date(todayStart);
   weekEnd.setDate(weekEnd.getDate() + 8);
 
-  return withRLSContextOrFallbackAdmin(userId, "loadScheduleContextForBriefing", async (tx) => {
-    const [showingRows, followRows, openTaskRows, checklistRows] = await Promise.all([
-      tx.showing.findMany({
+  // Read-only: explicit user / host scoping (no interactive $transaction).
+  const [showingRows, followRows, openTaskRows, checklistRows] = await Promise.all([
+    prismaAdmin.showing.findMany({
         where: {
           hostUserId: userId,
           deletedAt: null,
@@ -50,7 +50,7 @@ export async function loadScheduleContextForBriefing(
         orderBy: { scheduledAt: "asc" },
         take: 80,
       }),
-      tx.followUp.findMany({
+    prismaAdmin.followUp.findMany({
         where: {
           createdByUserId: userId,
           deletedAt: null,
@@ -71,13 +71,13 @@ export async function loadScheduleContextForBriefing(
         orderBy: { dueAt: "asc" },
         take: 80,
       }),
-      tx.task.findMany({
+    prismaAdmin.task.findMany({
         where: { userId, status: "OPEN" },
         include: taskInclude,
         orderBy: [{ dueAt: "asc" }, { createdAt: "desc" }],
         take: 200,
       }),
-      tx.transactionChecklistItem.findMany({
+    prismaAdmin.transactionChecklistItem.findMany({
         where: {
           isComplete: false,
           dueDate: { not: null, gte: dayStart, lt: dayEnd },
@@ -94,9 +94,9 @@ export async function loadScheduleContextForBriefing(
         orderBy: [{ dueDate: "asc" }, { sortOrder: "asc" }],
         take: 80,
       }),
-    ]);
+  ]);
 
-    const showings: CommandCenterScheduleShowing[] = showingRows.map((s) => ({
+  const showings: CommandCenterScheduleShowing[] = showingRows.map((s) => ({
       id: s.id,
       scheduledAt: s.scheduledAt.toISOString(),
       buyerName: s.buyerName,
@@ -109,18 +109,17 @@ export async function loadScheduleContextForBriefing(
         : null,
     }));
 
-    const followUps = followRows.map(serializeAgentFollowUpRow);
-    const openTasks = openTaskRows.map((r) => serializeTask(r as TaskRow));
+  const followUps = followRows.map(serializeAgentFollowUpRow);
+  const openTasks = openTaskRows.map((r) => serializeTask(r as TaskRow));
 
-    const checklistItems: ScheduleChecklistItem[] = checklistRows.map((r) => ({
+  const checklistItems: ScheduleChecklistItem[] = checklistRows.map((r) => ({
       id: r.id,
       title: r.title,
       dueAt: r.dueDate!.toISOString(),
       transactionId: r.transactionId,
       addressLine: `${r.transaction.property.address1}, ${r.transaction.property.city}`,
       href: `/transactions/${r.transactionId}#txn-pipeline-workspace`,
-    }));
+  }));
 
-    return { showings, followUps, openTasks, checklistItems };
-  });
+  return { showings, followUps, openTasks, checklistItems };
 }
