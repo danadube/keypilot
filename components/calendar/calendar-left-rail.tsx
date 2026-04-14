@@ -1,7 +1,8 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
-import { Layers } from "lucide-react";
+import { Layers, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   type CalendarLayerVisibility,
@@ -36,7 +37,7 @@ function LayerRow({
   return (
     <label
       htmlFor={id}
-      className="flex cursor-pointer items-start gap-2.5 rounded-md border border-transparent px-1.5 py-1.5 transition-colors hover:bg-kp-surface-high/25"
+      className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-transparent px-2 py-1.5 transition-colors hover:bg-kp-surface-high/30"
     >
       <input
         id={id}
@@ -50,13 +51,35 @@ function LayerRow({
           {accentClassName ? (
             <span className={cn("h-2 w-2 shrink-0 rounded-sm", accentClassName)} aria-hidden />
           ) : null}
-          <span className="text-[12px] font-medium leading-tight text-kp-on-surface">{label}</span>
+          <span className="text-[13px] font-medium leading-snug text-kp-on-surface">{label}</span>
         </span>
         {description ? (
           <span className="mt-0.5 block text-[11px] leading-snug text-kp-on-surface-muted">{description}</span>
         ) : null}
       </span>
     </label>
+  );
+}
+
+function SectionBlock({
+  title,
+  hint,
+  children,
+  className,
+}: {
+  title: string;
+  hint?: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section className={cn("space-y-2", className)}>
+      <div className="px-0.5">
+        <h3 className="text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-muted">{title}</h3>
+        {hint ? <p className="mt-1 text-[11px] leading-snug text-kp-on-surface-muted">{hint}</p> : null}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -112,24 +135,24 @@ export function CalendarLeftRail({
     <aside
       className={cn(
         "flex w-full flex-col rounded-xl border border-kp-outline/80 bg-kp-surface-high/[0.05] shadow-sm",
-        "lg:max-h-[min(85vh,calc(100vh-10rem))] lg:w-[12.75rem] xl:w-[13.25rem] lg:shrink-0 lg:overflow-y-auto",
+        "lg:max-h-[min(85vh,calc(100vh-10rem))] lg:w-[13.5rem] xl:w-[14rem] lg:shrink-0 lg:overflow-y-auto",
         className
       )}
     >
-      <div className="border-b border-kp-outline/60 px-2 py-2 sm:px-2.5">
-        <div className="flex items-center gap-1.5">
-          <Layers className="h-3.5 w-3.5 shrink-0 text-kp-teal" aria-hidden />
-          <p className="font-headline text-[13px] font-semibold leading-tight text-kp-on-surface">Calendars</p>
+      <div className="border-b border-kp-outline/60 px-3 py-2.5">
+        <div className="flex items-center gap-2">
+          <Layers className="h-4 w-4 shrink-0 text-kp-teal" aria-hidden />
+          <p className="font-headline text-[14px] font-semibold leading-tight text-kp-on-surface">Calendars</p>
         </div>
-        <p className="mt-1 text-[10px] leading-snug text-kp-on-surface-muted">
-          Layers for week and month views.
+        <p className="mt-1.5 text-[11px] leading-snug text-kp-on-surface-muted">
+          Turn layers on or off for week and month views.
         </p>
         <button
           type="button"
           disabled={allOn}
           onClick={showAll}
           className={cn(
-            "mt-2 text-[11px] font-semibold text-kp-teal underline-offset-2 hover:underline",
+            "mt-2.5 text-[11px] font-semibold text-kp-teal underline-offset-2 hover:underline",
             allOn && "cursor-not-allowed opacity-40 hover:no-underline"
           )}
         >
@@ -137,11 +160,8 @@ export function CalendarLeftRail({
         </button>
       </div>
 
-      <div className="space-y-4 px-2 py-3">
-        <section>
-          <h3 className="px-1.5 pb-1.5 text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">
-            My calendars
-          </h3>
+      <div className="space-y-5 px-3 py-4">
+        <SectionBlock title="KeyPilot" hint="Your schedule from ShowingHQ, tasks, CRM, and deals.">
           <div className="space-y-0.5">
             {INTERNAL.map((row) => (
               <LayerRow
@@ -155,44 +175,49 @@ export function CalendarLeftRail({
               />
             ))}
           </div>
-        </section>
+        </SectionBlock>
 
-        <section>
-          <h3 className="px-1.5 pb-1.5 text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">
-            Google calendars
-          </h3>
+        <SectionBlock
+          title="Google"
+          hint="Read-only sync for planning. Create or edit events in Google Calendar."
+          className="border-t border-kp-outline/45 pt-5"
+        >
           {googleAccounts.length === 0 ? (
-            <p className="px-1.5 text-[12px] leading-snug text-kp-on-surface-muted">
-              Connect Google under{" "}
-              <Link href="/settings/connections" className="font-medium text-kp-teal hover:underline">
+            <p className="text-[12px] leading-relaxed text-kp-on-surface-muted">
+              Connect an account in{" "}
+              <Link href="/settings/connections" className="font-semibold text-kp-teal hover:underline">
                 Settings → Connections
               </Link>{" "}
-              to layer read-only Google events here.
+              to show Google events here.
             </p>
           ) : (
             <div className="space-y-3">
               {googleAccounts.map((acct) => (
-                <div key={acct.connectionId}>
-                  <p className="truncate px-1.5 text-[11px] font-semibold text-kp-on-surface">
+                <div
+                  key={acct.connectionId}
+                  className="rounded-lg border border-kp-outline/45 bg-kp-surface-high/[0.07] p-2.5"
+                >
+                  <p className="truncate text-[12px] font-semibold text-kp-on-surface" title={acct.accountEmail ?? undefined}>
                     {acct.accountEmail ?? "Google account"}
                   </p>
                   {acct.fetchError ? (
-                    <div className="mt-1.5 space-y-1.5 rounded-md border border-amber-500/35 bg-amber-500/[0.07] px-2 py-1.5">
-                      <p className="text-[10px] leading-snug text-amber-950/90 dark:text-amber-100/95">
-                        {acct.fetchError}
-                      </p>
+                    <div className="mt-2 space-y-1.5 rounded-md border border-amber-500/40 bg-amber-500/[0.08] px-2.5 py-2">
+                      <p className="text-[11px] leading-snug text-amber-950/90 dark:text-amber-100/95">{acct.fetchError}</p>
                       <Link
                         href="/settings/connections"
-                        className="inline-flex text-[10px] font-semibold text-kp-teal hover:underline"
+                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-kp-teal hover:underline"
                       >
-                        Open Connections
+                        <Settings className="h-3 w-3 shrink-0 opacity-80" aria-hidden />
+                        Fix in Connections
                       </Link>
                     </div>
                   ) : null}
                   {acct.calendars.length === 0 && !acct.fetchError ? (
-                    <p className="mt-1 px-1.5 text-[11px] text-kp-on-surface-muted">No calendars selected for sync.</p>
+                    <p className="mt-2 text-[11px] leading-snug text-kp-on-surface-muted">
+                      No calendars selected. Choose which to sync in Connections.
+                    </p>
                   ) : (
-                    <div className="mt-1 space-y-0.5">
+                    <div className="mt-2 space-y-0.5">
                       {acct.calendars.map((cal) => {
                         const cid = `gcal-${acct.connectionId}-${cal.id}`;
                         return (
@@ -202,9 +227,7 @@ export function CalendarLeftRail({
                             label={cal.summary}
                             description={cal.primary ? "Primary · read-only in KeyPilot" : "Read-only in KeyPilot"}
                             accentClassName="bg-slate-400"
-                            checked={
-                              visibility.googleCalendar[googleLayerKey(acct.connectionId, cal.id)] !== false
-                            }
+                            checked={visibility.googleCalendar[googleLayerKey(acct.connectionId, cal.id)] !== false}
                             onCheckedChange={(v) => setGoogle(acct.connectionId, cal.id, v)}
                           />
                         );
@@ -215,30 +238,33 @@ export function CalendarLeftRail({
               ))}
             </div>
           )}
-        </section>
+        </SectionBlock>
 
-        <section>
-          <h3 className="px-1.5 pb-1.5 text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">
-            Other calendars
-          </h3>
+        <SectionBlock
+          title="Holidays"
+          hint="Built-in US federal dates for context (not editable)."
+          className="border-t border-kp-outline/45 pt-5"
+        >
           <LayerRow
             id="layer-us-holidays"
             label="US Holidays"
-            description="US federal holidays (built-in)"
+            description="Federal holidays"
             accentClassName="bg-rose-400"
             checked={visibility.usHolidays}
             onCheckedChange={setHolidays}
           />
-        </section>
+        </SectionBlock>
       </div>
 
-      <div className="mt-auto border-t border-kp-outline/55 px-2 py-2 sm:px-2.5">
+      <div className="mt-auto border-t border-kp-outline/55 px-3 py-2.5">
         <Link
           href="/settings/connections"
-          className="text-[11px] font-medium text-kp-teal/90 underline-offset-2 hover:text-kp-teal hover:underline"
+          className="flex items-center gap-2 rounded-lg border border-kp-outline/55 bg-kp-surface-high/[0.08] px-2.5 py-2 text-[12px] font-semibold text-kp-on-surface transition-colors hover:border-kp-outline/80 hover:bg-kp-surface-high/20"
         >
-          Calendar &amp; email settings
+          <Settings className="h-4 w-4 shrink-0 text-kp-teal" aria-hidden />
+          <span className="min-w-0 leading-snug">Manage connections</span>
         </Link>
+        <p className="mt-2 px-0.5 text-[10px] leading-snug text-kp-on-surface-muted">OAuth, email, and which Google calendars sync.</p>
       </div>
     </aside>
   );

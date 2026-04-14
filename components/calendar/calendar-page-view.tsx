@@ -401,7 +401,7 @@ export function CalendarPageView() {
     <div className="space-y-4 pb-8">
       <PageHeader
         title="Calendar"
-        subtitle="Pick layers on the left, navigate time in the header, and plan KeyPilot work with Google context."
+        subtitle="Toggle KeyPilot calendars, Google, and holidays on the left. Week and month views share the same layers."
         secondaryActions={
           <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
             <Button
@@ -498,23 +498,23 @@ export function CalendarPageView() {
 
         <div className="min-w-0 flex-1 space-y-4">
           {integrations && !integrations.googleCalendarConnected ? (
-            <p className="text-center text-[11px] leading-snug text-kp-on-surface-muted lg:text-left">
+            <p className="text-center text-[12px] leading-relaxed text-kp-on-surface-muted lg:text-left">
               <Link
                 href="/settings/connections"
-                className="font-medium text-kp-teal/90 underline-offset-2 hover:text-kp-teal hover:underline"
+                className="font-semibold text-kp-teal/90 underline-offset-2 hover:text-kp-teal hover:underline"
               >
-                Connect Google Calendar
+                Connect Google
               </Link>{" "}
-              to layer read-only Google events (configure calendars in Connections).
+              to show read-only Google events alongside KeyPilot. Choose which calendars sync in Connections.
             </p>
           ) : null}
           {integrations?.googleCalendarConnected && integrations.googleCalendarFetchError ? (
             <p
-              className="text-center text-[11px] leading-snug text-amber-800/90 dark:text-amber-300/90 lg:text-left"
+              className="text-center text-[12px] leading-relaxed text-amber-800/90 dark:text-amber-300/90 lg:text-left"
               role="status"
             >
-              Google Calendar could not be loaded; showing KeyPilot and built-in layers only. Reconnect under{" "}
-              <Link href="/settings/connections" className="font-medium underline-offset-2 hover:underline">
+              Google Calendar did not load; KeyPilot and holiday layers still show. Reconnect in{" "}
+              <Link href="/settings/connections" className="font-semibold underline-offset-2 hover:underline">
                 Settings → Connections
               </Link>
               .

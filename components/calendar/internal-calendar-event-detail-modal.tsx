@@ -14,6 +14,9 @@ import {
   localDateKey,
 } from "@/lib/calendar/calendar-event-day-utils";
 
+const CALLOUT =
+  "rounded-lg border border-kp-outline/45 bg-kp-bg/70 px-3 py-2.5 text-xs leading-relaxed text-kp-on-surface-muted";
+
 type InternalMeta = {
   subline?: string;
   workspace?: string;
@@ -132,7 +135,7 @@ export function InternalCalendarEventDetailModal({
   const isChecklistTxn = ev.sourceType === "transaction" && !isClosingTxn;
 
   const footer = (
-    <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="flex w-full flex-wrap items-center justify-between gap-2">
       <div className="flex flex-wrap items-center gap-2">
         {ev.sourceType === "task" ? (
           <>
@@ -201,13 +204,15 @@ export function InternalCalendarEventDetailModal({
       onOpenChange={onOpenChange}
       title={headline}
       description={description}
+      descriptionClassName="text-[13px]"
       size="md"
+      bodyClassName="pt-3"
       footer={footer}
     >
-      <dl className="space-y-3 text-sm">
+      <dl className="space-y-4 text-sm">
         <div>
-          <dt className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">When</dt>
-          <dd className="mt-0.5 text-kp-on-surface">{whenLine}</dd>
+          <dt className="text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-muted">When</dt>
+          <dd className="mt-1 text-[13px] leading-snug text-kp-on-surface">{whenLine}</dd>
         </div>
 
         {taskOverdue ? (
@@ -216,37 +221,33 @@ export function InternalCalendarEventDetailModal({
 
         {ev.sourceType === "follow_up" && dueLine ? (
           <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">Follow-up</dt>
-            <dd className={cn("mt-0.5", dueLine.className)}>{dueLine.text}</dd>
+            <dt className="text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-muted">Follow-up</dt>
+            <dd className={cn("mt-1 text-[13px] leading-snug", dueLine.className)}>{dueLine.text}</dd>
           </div>
         ) : null}
 
         {meta?.contactName && ev.sourceType === "follow_up" ? (
           <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">Contact</dt>
-            <dd className="mt-0.5 font-medium text-kp-on-surface">{meta.contactName}</dd>
+            <dt className="text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-muted">Contact</dt>
+            <dd className="mt-1 text-[13px] font-medium leading-snug text-kp-on-surface">{meta.contactName}</dd>
           </div>
         ) : null}
 
         {whereLine ? (
           <div>
-            <dt className="text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">
+            <dt className="text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-muted">
               {ev.sourceType === "follow_up" ? "Context" : ev.sourceType === "transaction" ? "Property" : "Where"}
             </dt>
-            <dd className="mt-0.5 text-kp-on-surface">{whereLine}</dd>
+            <dd className="mt-1 text-[13px] leading-snug text-kp-on-surface">{whereLine}</dd>
           </div>
         ) : null}
 
         {isChecklistTxn ? (
-          <p className="rounded-md border border-kp-outline/50 bg-kp-bg/80 px-2.5 py-2 text-xs text-kp-on-surface-muted">
-            Opens TransactionHQ on the pipeline workspace; your checklist item is due on this date.
-          </p>
+          <p className={CALLOUT}>Opens TransactionHQ on the pipeline workspace; the checklist item is due on this date.</p>
         ) : null}
 
         {isClosingTxn ? (
-          <p className="rounded-md border border-kp-outline/50 bg-kp-bg/80 px-2.5 py-2 text-xs text-kp-on-surface-muted">
-            Closing date for this transaction — confirm timing and documents in TransactionHQ.
-          </p>
+          <p className={CALLOUT}>Closing date for this transaction — confirm timing and documents in TransactionHQ.</p>
         ) : null}
       </dl>
     </BrandModal>
