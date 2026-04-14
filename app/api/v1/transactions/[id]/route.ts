@@ -13,14 +13,12 @@ import { mergeCommissionInputs } from "@/lib/transactions/commission-inputs";
 import { computeTransactionFinancials } from "@/lib/transactions/transaction-financials";
 import { assertPrimaryContactAccessible } from "@/lib/transactions/assert-primary-contact";
 import { serializeTransactionDecimals } from "@/lib/transactions/serialize-transaction";
-import { prismaAdmin } from "@/lib/db";
 import {
   deleteOutboundMirror,
   scheduleOutboundSync,
   syncTransactionClosingOutbound,
 } from "@/lib/google-calendar/outbound-sync";
-import type { Prisma } from "@prisma/client";
-import type { TransactionKind } from "@prisma/client";
+import { Prisma, type TransactionKind } from "@prisma/client";
 
 const propertySelect = {
   id: true,
@@ -222,26 +220,31 @@ export async function DELETE(
     }
     const { id } = await params;
 
-    const checklistIds = await prismaAdmin.transactionChecklistItem.findMany({
-      where: { transactionId: id, transaction: { userId: user.id } },
-      select: { id: true },
-    });
+    /**
+     * Lock the transaction row, list checklist ids, and delete in one DB transaction so a
+     * concurrent checklist insert cannot commit between list and delete (which would orphan
+     * `google_calendar_outbound_syncs` rows for TRANSACTION_CHECKLIST).
+     */
+    const checklistIds = await withRLSContext(user.id, async (tx) => {
+      const locked = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`SELECT "id" FROM "transactions" WHERE "id" = ${id} AND "userId" = ${user.id} FOR UPDATE`
+      );
+      if (locked.length === 0) return null;
 
-    const deleted = await withRLSContext(user.id, async (tx) => {
-      const existing = await tx.transaction.findFirst({
-        where: { id, userId: user.id },
+      const items = await tx.transactionChecklistItem.findMany({
+        where: { transactionId: id },
         select: { id: true },
       });
-      if (!existing) return false;
 
       await tx.transaction.delete({ where: { id } });
-      return true;
+
+      return items.map((i) => i.id);
     });
 
-    if (!deleted) return apiError("Transaction not found", 404);
+    if (checklistIds === null) return apiError("Transaction not found", 404);
 
     for (const row of checklistIds) {
-      scheduleOutboundSync(() => deleteOutboundMirror(user.id, "TRANSACTION_CHECKLIST", row.id));
+      scheduleOutboundSync(() => deleteOutboundMirror(user.id, "TRANSACTION_CHECKLIST", row));
     }
     scheduleOutboundSync(() => deleteOutboundMirror(user.id, "TRANSACTION_CLOSING", id));
 
