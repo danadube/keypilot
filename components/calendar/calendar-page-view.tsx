@@ -129,14 +129,14 @@ function CalendarMonthOverview({
       <div className="border-b border-kp-outline/70 bg-kp-surface-high/[0.08] px-4 py-3">
         <p className="font-headline text-base font-semibold tracking-tight text-kp-on-surface">{title}</p>
         <p className="mt-1 text-xs leading-snug text-kp-on-surface-muted">
-          Event titles preview in each cell. The teal band matches Week view. Click a day for the full agenda.
+          Preview lines use the same source colors as Week view. The pale band is the week you last viewed. Click a day for the full agenda.
         </p>
       </div>
       <div className="p-3.5 sm:p-5">
         <div className="overflow-hidden rounded-lg border border-kp-outline/80 bg-kp-bg shadow-inner">
-          <div className="grid grid-cols-7 border-b border-kp-outline/70 bg-kp-surface-high/[0.12] text-center text-[10px] font-bold uppercase tracking-wide text-kp-on-surface-muted">
+          <div className="grid grid-cols-7 border-b border-kp-outline/60 bg-kp-surface-high/[0.1] text-center text-[11px] font-bold uppercase tracking-wide text-kp-on-surface-muted">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((w) => (
-              <div key={w} className="border-l border-kp-outline/50 py-2.5 first:border-l-0 sm:py-3">
+              <div key={w} className="border-l border-kp-outline/45 py-2 first:border-l-0 sm:py-2.5">
                 {w}
               </div>
             ))}
@@ -174,32 +174,32 @@ function CalendarMonthOverview({
                     onDayClick(d);
                   }}
                   className={cn(
-                    "relative flex min-h-[5rem] cursor-pointer flex-col items-stretch border-b border-l border-kp-outline/45 bg-kp-surface px-1.5 pb-1.5 pt-1.5 text-left transition-colors hover:z-[1] hover:bg-kp-surface-high/30 sm:min-h-[5.75rem]",
+                    "relative flex min-h-[5.25rem] cursor-pointer flex-col items-stretch border-b border-l border-kp-outline/40 bg-kp-surface px-1.5 pb-1 pt-1.5 text-left transition-colors hover:z-[1] hover:bg-kp-surface-high/25 sm:min-h-[5.85rem]",
                     colFirst && "border-l-0",
-                    inActiveWeek && "bg-kp-teal/[0.09]",
-                    isToday && !inActiveWeek && "ring-1 ring-inset ring-kp-teal/40",
-                    isToday && inActiveWeek && "ring-2 ring-inset ring-kp-teal/55",
-                    isAgendaSelected && "ring-2 ring-inset ring-kp-teal/70"
+                    inActiveWeek && "bg-kp-teal/[0.045]",
+                    isToday && !inActiveWeek && !isAgendaSelected && "bg-kp-teal/[0.04]",
+                    isToday && inActiveWeek && !isAgendaSelected && "bg-kp-teal/[0.07]",
+                    isAgendaSelected && "z-[1] bg-kp-surface-high/[0.35] shadow-[inset_0_0_0_2px_rgba(45,180,170,0.45)]"
                   )}
                 >
                   <div className="flex shrink-0 justify-center">
                     <span
                       className={cn(
-                        "flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold tabular-nums sm:h-7 sm:w-7 sm:text-xs",
+                        "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold tabular-nums sm:h-8 sm:w-8 sm:text-[13px]",
                         isToday
-                          ? "bg-kp-teal text-white shadow-md ring-2 ring-kp-teal/30"
+                          ? "bg-kp-teal text-white shadow-md ring-2 ring-kp-teal/25"
                           : "text-kp-on-surface"
                       )}
                     >
                       {d.getDate()}
                     </span>
                   </div>
-                  <div className="mt-1 min-h-0 w-full flex-1 space-y-0.5">
+                  <div className="mt-1 min-h-0 w-full flex-1 space-y-1">
                     {preview.map((ev) => (
                       <div
                         key={ev.id}
                         className={cn(
-                          "truncate border-l-[2.5px] pl-1 text-[8px] font-medium leading-snug text-kp-on-surface sm:text-[9px]",
+                          "truncate border-l-[3px] pl-1.5 text-[10px] font-medium leading-tight text-kp-on-surface sm:text-[11px]",
                           MONTH_CELL_SOURCE_ACCENT[ev.sourceType] ?? MONTH_CELL_SOURCE_ACCENT.external
                         )}
                         title={ev.title}
@@ -208,7 +208,7 @@ function CalendarMonthOverview({
                       </div>
                     ))}
                     {overflow > 0 ? (
-                      <p className="pl-0.5 text-[8px] font-semibold tabular-nums text-kp-on-surface-muted sm:text-[9px]">
+                      <p className="mt-0.5 inline-flex w-full items-center justify-center rounded border border-kp-outline/50 bg-kp-surface-high/[0.2] py-0.5 pl-1 pr-1 text-[10px] font-semibold tabular-nums text-kp-on-surface sm:text-[11px]">
                         +{overflow} more
                       </p>
                     ) : null}

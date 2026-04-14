@@ -9,11 +9,11 @@ import { layoutOverlappingIntervals } from "@/lib/calendar/overlap-layout";
 const GRID_START_HOUR = 8;
 const GRID_END_HOUR = 18;
 const GRID_MINUTES = (GRID_END_HOUR - GRID_START_HOUR) * 60;
-/** Slightly denser than default h-12 to reduce empty feel */
-const HOUR_ROW_PX = 40;
+/** Tightened slightly vs 40px while keeping half-hour slots scannable */
+const HOUR_ROW_PX = 38;
 const HOUR_ROW_REM = `${HOUR_ROW_PX / 16}rem`;
-/** Narrower time gutter so seven day columns get more width (fits common dashboards without min-width scroll). */
-const TIME_GUTTER_REM = "3rem";
+/** Room for 11px time labels without clipping */
+const TIME_GUTTER_REM = "3.375rem";
 
 function startOfLocalDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
@@ -62,8 +62,8 @@ const SOURCE_RING: Record<CalendarSourceType, string> = {
   follow_up: "border-l-sky-500 bg-sky-500/[0.14] shadow-sm",
   transaction: "border-l-amber-700 bg-amber-600/[0.14] shadow-sm",
   external:
-    "border-l-slate-400 bg-slate-500/[0.10] shadow-sm ring-1 ring-slate-400/15 ring-inset",
-  holiday: "border-l-rose-400 bg-rose-500/[0.12] shadow-sm ring-1 ring-rose-400/15 ring-inset",
+    "border-l-slate-400 bg-slate-500/[0.11] shadow-sm ring-1 ring-slate-400/20 ring-inset",
+  holiday: "border-l-rose-400 bg-rose-500/[0.13] shadow-sm ring-1 ring-rose-400/20 ring-inset",
 };
 
 function useNowTickMs() {
@@ -237,20 +237,20 @@ function CalendarWeekViewContent({
         {emptyOverlay}
         {/* Column headers */}
         <div
-          className="grid border-b-2 border-kp-outline/80 bg-kp-surface-high/[0.12]"
+          className="grid border-b border-kp-outline/70 bg-kp-surface-high/[0.1]"
           style={{
             gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
           }}
         >
-          <div className="border-r-2 border-kp-outline/55 p-2" aria-hidden />
+          <div className="border-r border-kp-outline/50 p-1.5" aria-hidden />
           {dayStarts.map((d, i) => {
             const isToday = localDateKey(d) === localDateKey(now);
             return (
               <div
                 key={i}
                 className={cn(
-                  "border-l-2 border-kp-outline/55 px-1 py-2.5 text-center",
-                  isToday && "bg-gradient-to-b from-kp-teal/18 to-kp-teal/[0.06] ring-1 ring-inset ring-kp-teal/35"
+                  "border-l border-kp-outline/50 px-0.5 py-2 text-center",
+                  isToday && "bg-gradient-to-b from-kp-teal/14 to-kp-teal/[0.04] ring-1 ring-inset ring-kp-teal/25"
                 )}
               >
                 <p
@@ -263,7 +263,7 @@ function CalendarWeekViewContent({
                 </p>
                 <p
                   className={cn(
-                    "mt-0.5 inline-flex min-w-[1.75rem] items-center justify-center rounded-full px-1.5 py-0.5 text-sm font-bold tabular-nums",
+                    "mt-0.5 inline-flex min-w-[1.75rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[13px] font-bold tabular-nums leading-none",
                     isToday
                       ? "bg-kp-teal text-white shadow-md ring-2 ring-kp-teal/25"
                       : "text-kp-on-surface"
@@ -278,13 +278,13 @@ function CalendarWeekViewContent({
 
         {/* All-day row */}
         <div
-          className="grid border-b-2 border-kp-outline/80 bg-kp-bg/40"
+          className="grid border-b border-kp-outline/70 bg-kp-bg/50"
           style={{
             gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
           }}
         >
-          <div className="flex items-start justify-end border-r-2 border-kp-outline/50 bg-kp-surface-high/[0.06] px-1 py-2 text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface-muted">
-            All day
+          <div className="flex items-start justify-end border-r border-kp-outline/50 bg-kp-surface-high/[0.08] px-1.5 py-2 text-right">
+            <span className="text-[11px] font-semibold leading-tight text-kp-on-surface/80">All day</span>
           </div>
           {dayStarts.map((d, col) => {
             const isToday = localDateKey(d) === localDateKey(now);
@@ -293,8 +293,8 @@ function CalendarWeekViewContent({
               <div
                 key={`allday-${col}`}
                 className={cn(
-                  "relative min-h-[2.25rem] border-l-2 border-kp-outline/45 px-0.5 py-1",
-                  isToday && "bg-kp-teal/[0.07]"
+                  "relative min-h-[2.5rem] border-l border-kp-outline/45 px-1 py-1",
+                  isToday && "bg-kp-teal/[0.05]"
                 )}
               >
                 {onAllDayBackgroundClick ? (
@@ -325,19 +325,19 @@ function CalendarWeekViewContent({
 
         {/* Time grid */}
         <div
-          className="grid bg-kp-bg/30"
+          className="grid bg-kp-bg/25"
           style={{
             gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
           }}
         >
-          <div className="relative border-r-2 border-kp-outline/55 bg-kp-surface-high/[0.08]">
+          <div className="relative border-r border-kp-outline/50 bg-kp-surface-high/[0.1]">
             {hourLabels.map(({ label, hour }) => (
               <div
                 key={hour}
-                className="relative flex items-center justify-end border-b border-kp-outline/40 px-1.5"
+                className="relative flex items-start justify-end border-b border-kp-outline/35 pt-0.5 pr-2"
                 style={{ height: HOUR_ROW_REM, minHeight: HOUR_ROW_REM }}
               >
-                <span className="text-[10px] font-semibold tabular-nums leading-none text-kp-on-surface-muted">
+                <span className="text-[11px] font-medium tabular-nums leading-none text-kp-on-surface/75">
                   {label}
                 </span>
               </div>
@@ -408,19 +408,19 @@ function EventPill({
   const meta = ev.metadata as { calendarName?: string; subline?: string } | undefined;
   const sub = meta?.calendarName ?? meta?.subline;
   const shellClass = cn(
-    "relative z-10 block w-full rounded-md border border-kp-outline/55 border-l-[3px] px-1.5 py-1 text-left transition-colors hover:brightness-[1.02]",
+    "relative z-10 block w-full rounded-md border border-kp-outline/50 border-l-[3px] px-1.5 py-1 text-left shadow-sm transition-colors hover:brightness-[1.02]",
     ring,
     compact ? "text-[10px] leading-snug" : "text-[11px] leading-snug"
   );
   const inner = (
     <>
       <div className="flex items-center justify-between gap-1">
-        <span className="font-mono text-[9px] font-semibold uppercase text-kp-on-surface-muted">
+        <span className="truncate text-[9px] font-semibold uppercase tracking-wide text-kp-on-surface/70">
           {ev.sourceLabel}
         </span>
         <span className="shrink-0 text-[9px] tabular-nums text-kp-on-surface-muted">{timeStr}</span>
       </div>
-      <p className={cn("mt-0.5 truncate font-medium text-kp-on-surface", compact ? "text-[10px]" : "text-[11px]")}>
+      <p className={cn("mt-0.5 truncate font-semibold leading-snug text-kp-on-surface", compact ? "text-[10px]" : "text-[11px]")}>
         {ev.title}
       </p>
       {ev.sourceType === "external" && sub ? (
@@ -503,8 +503,8 @@ function DayColumn({
   return (
     <div
       className={cn(
-        "relative border-l-2 border-kp-outline/45",
-        isTodayCol && "bg-kp-teal/[0.04] shadow-[inset_0_0_0_1px_rgba(45,180,170,0.12)]"
+        "relative border-l border-kp-outline/45",
+        isTodayCol && "bg-kp-teal/[0.035] shadow-[inset_1px_0_0_0_rgba(45,180,170,0.14)]"
       )}
     >
       {/* hour + half-hour lines */}
@@ -515,7 +515,7 @@ function DayColumn({
             className="relative border-b border-kp-outline/40"
             style={{ height: HOUR_ROW_REM }}
           >
-            <div className="absolute left-0 right-0 top-1/2 border-b border-dotted border-kp-outline/20" />
+            <div className="absolute left-0 right-0 top-1/2 border-b border-dotted border-kp-outline/25" />
           </div>
         ))}
       </div>
@@ -599,25 +599,27 @@ function DayColumn({
           const leftPct = col * widthPct;
           const ring = SOURCE_RING[ev.sourceType] ?? SOURCE_RING.external;
           const blockClass = cn(
-            "absolute z-[5] overflow-hidden rounded-md border border-kp-outline/50 border-l-[3px] px-1 py-0.5 text-left text-[10px] transition-colors hover:z-[6] hover:brightness-[1.03]",
+            "absolute z-[5] overflow-hidden rounded-md border border-kp-outline/45 border-l-[3px] px-1 py-px text-left text-[10px] shadow-sm transition-colors hover:z-[6] hover:brightness-[1.03]",
             ring
           );
+          /** Narrow gutter between side-by-side overlapping columns for separation */
+          const gapPct = 0.9;
           const blockStyle = {
             top: `${clip.topFrac * 100}%`,
             height: `${clip.heightFrac * 100}%`,
-            left: `${leftPct + 0.5}%`,
-            width: `${widthPct - 1}%`,
+            left: `calc(${leftPct}% + ${gapPct / 2}%)`,
+            width: `calc(${widthPct}% - ${gapPct}%)`,
             minHeight: "1.35rem",
           } as const;
           const blockBody = (
             <>
               <div className="flex items-start justify-between gap-0.5">
-                <span className="shrink-0 font-mono text-[8px] font-bold uppercase text-kp-on-surface-muted">
+                <span className="line-clamp-1 shrink min-w-0 text-[8px] font-semibold uppercase tracking-wide text-kp-on-surface/65">
                   {ev.sourceLabel}
                 </span>
               </div>
-              <p className="line-clamp-2 font-medium leading-tight text-kp-on-surface">{ev.title}</p>
-              <p className="mt-0.5 text-[8px] tabular-nums text-kp-on-surface-muted">
+              <p className="line-clamp-2 font-semibold leading-[1.15] text-kp-on-surface">{ev.title}</p>
+              <p className="mt-0.5 text-[9px] tabular-nums leading-tight text-kp-on-surface-muted">
                 {Number.isNaN(start.getTime())
                   ? ""
                   : `${start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} – ${end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`}
