@@ -221,9 +221,13 @@ export async function DELETE(
     const { id } = await params;
 
     /**
-     * Lock the transaction row, list checklist ids, and delete in one DB transaction so a
-     * concurrent checklist insert cannot commit between list and delete (which would orphan
-     * `google_calendar_outbound_syncs` rows for TRANSACTION_CHECKLIST).
+     * Delete the transaction in one DB transaction with explicit locking so the checklist id
+     * list used for outbound cleanup matches what CASCADE removes:
+     * - `FOR UPDATE` on `transactions` blocks concurrent inserts into `transaction_checklist_items`
+     *   (FK validation takes `FOR KEY SHARE` on the parent, which conflicts with `FOR UPDATE`).
+     * - `SELECT … FOR UPDATE` on existing checklist rows locks those rows for the duration of
+     *   this transaction so the id set is stable before `DELETE` / cascade.
+     * Using `findMany` alone does not acquire row locks, which weakens that guarantee.
      */
     const checklistIds = await withRLSContext(user.id, async (tx) => {
       const locked = await tx.$queryRaw<Array<{ id: string }>>(
@@ -231,10 +235,9 @@ export async function DELETE(
       );
       if (locked.length === 0) return null;
 
-      const items = await tx.transactionChecklistItem.findMany({
-        where: { transactionId: id },
-        select: { id: true },
-      });
+      const items = await tx.$queryRaw<Array<{ id: string }>>(
+        Prisma.sql`SELECT "id" FROM "transaction_checklist_items" WHERE "transactionId" = ${id} FOR UPDATE`
+      );
 
       await tx.transaction.delete({ where: { id } });
 
