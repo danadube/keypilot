@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { ChevronDown, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ export type CalendarAddFlowType = "task" | "showing" | "follow_up";
 
 type ContactRow = { id: string; firstName: string; lastName: string };
 type PropertyRow = { id: string; address1: string; city: string; state: string; zip: string };
+type FollowUpPriority = "LOW" | "MEDIUM" | "HIGH";
 
 export type CalendarAddFlowCoordinatorProps = {
   open: boolean;
@@ -78,6 +79,14 @@ export function CalendarAddFlowCoordinator({
   const [selectedContactId, setSelectedContactId] = useState("");
   const [followUpTitle, setFollowUpTitle] = useState("");
   const [followUpNotes, setFollowUpNotes] = useState("");
+  const [followUpMoreOpen, setFollowUpMoreOpen] = useState(false);
+  const [followUpPriority, setFollowUpPriority] = useState<FollowUpPriority>("MEDIUM");
+  const [taskMoreOpen, setTaskMoreOpen] = useState(false);
+  const [taskDescription, setTaskDescription] = useState("");
+  const [taskOptionalContactId, setTaskOptionalContactId] = useState("");
+  const [taskOptionalContactQuery, setTaskOptionalContactQuery] = useState("");
+  const [taskOptionalPropertyId, setTaskOptionalPropertyId] = useState("");
+  const [taskOptionalPropertyQuery, setTaskOptionalPropertyQuery] = useState("");
   const [propertyQuery, setPropertyQuery] = useState("");
   const [selectedPropertyId, setSelectedPropertyId] = useState("");
 
@@ -94,6 +103,14 @@ export function CalendarAddFlowCoordinator({
     setSelectedContactId("");
     setFollowUpTitle("");
     setFollowUpNotes("");
+    setFollowUpMoreOpen(false);
+    setFollowUpPriority("MEDIUM");
+    setTaskMoreOpen(false);
+    setTaskDescription("");
+    setTaskOptionalContactId("");
+    setTaskOptionalContactQuery("");
+    setTaskOptionalPropertyId("");
+    setTaskOptionalPropertyQuery("");
     setPropertyQuery("");
     setSelectedPropertyId("");
     setSubmitting(false);
@@ -145,6 +162,18 @@ export function CalendarAddFlowCoordinator({
     return properties.filter((p) => propertyLabel(p).toLowerCase().includes(q)).slice(0, 80);
   }, [properties, propertyQuery]);
 
+  const filteredTaskOptionalContacts = useMemo(() => {
+    const q = taskOptionalContactQuery.trim().toLowerCase();
+    if (!q) return contacts.slice(0, 80);
+    return contacts.filter((c) => contactLabel(c).toLowerCase().includes(q)).slice(0, 80);
+  }, [contacts, taskOptionalContactQuery]);
+
+  const filteredTaskOptionalProperties = useMemo(() => {
+    const q = taskOptionalPropertyQuery.trim().toLowerCase();
+    if (!q) return properties.slice(0, 80);
+    return properties.filter((p) => propertyLabel(p).toLowerCase().includes(q)).slice(0, 80);
+  }, [properties, taskOptionalPropertyQuery]);
+
   const selectedContact = useMemo(
     () => contacts.find((c) => c.id === selectedContactId) ?? null,
     [contacts, selectedContactId]
@@ -152,6 +181,14 @@ export function CalendarAddFlowCoordinator({
   const selectedProperty = useMemo(
     () => properties.find((p) => p.id === selectedPropertyId) ?? null,
     [properties, selectedPropertyId]
+  );
+  const selectedTaskOptionalContact = useMemo(
+    () => contacts.find((c) => c.id === taskOptionalContactId) ?? null,
+    [contacts, taskOptionalContactId]
+  );
+  const selectedTaskOptionalProperty = useMemo(
+    () => properties.find((p) => p.id === taskOptionalPropertyId) ?? null,
+    [properties, taskOptionalPropertyId]
   );
 
   const handleClose = useCallback(() => {
@@ -166,10 +203,10 @@ export function CalendarAddFlowCoordinator({
     try {
       await createTaskClient({
         title,
-        description: null,
+        description: taskDescription.trim() ? taskDescription.trim() : null,
         dueAt,
-        contactId: null,
-        propertyId: null,
+        contactId: taskOptionalContactId.trim() || null,
+        propertyId: taskOptionalPropertyId.trim() || null,
       });
       toast.success("Task created");
       handleClose();
@@ -179,7 +216,17 @@ export function CalendarAddFlowCoordinator({
     } finally {
       setSubmitting(false);
     }
-  }, [taskTitle, submitting, draftDate, draftTime, handleClose, onCreated]);
+  }, [
+    taskTitle,
+    taskDescription,
+    taskOptionalContactId,
+    taskOptionalPropertyId,
+    submitting,
+    draftDate,
+    draftTime,
+    handleClose,
+    onCreated,
+  ]);
 
   const handleFollowUpSave = useCallback(async () => {
     if (!selectedContactId || submitting) {
@@ -204,6 +251,7 @@ export function CalendarAddFlowCoordinator({
         title,
         notes: followUpNotes.trim() || null,
         dueAtIso,
+        priority: followUpPriority,
       });
       toast.success("Follow-up created");
       handleClose();
@@ -220,6 +268,7 @@ export function CalendarAddFlowCoordinator({
     draftTime,
     followUpTitle,
     followUpNotes,
+    followUpPriority,
     handleClose,
     onCreated,
   ]);
@@ -289,7 +338,7 @@ export function CalendarAddFlowCoordinator({
       title="Add to calendar"
       description={undefined}
       size="sm"
-      bodyClassName="space-y-2.5 overflow-y-auto pt-0.5 max-h-[min(78vh,20rem)]"
+      bodyClassName="space-y-2.5 overflow-y-auto pt-0.5 max-h-[min(82vh,26rem)]"
       footer={
         <div className="flex w-full flex-wrap items-center justify-end gap-2 py-0.5">
           <Button type="button" variant="outline" size="sm" className={kpBtnSecondary} onClick={handleClose} disabled={submitting}>
@@ -414,13 +463,168 @@ export function CalendarAddFlowCoordinator({
           </div>
         </div>
 
+        {/* Task — optional context (collapsed by default) */}
+        {activeType === "task" ? (
+          <div className="space-y-1.5">
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => setTaskMoreOpen((v) => !v)}
+              aria-expanded={taskMoreOpen}
+              className={cn(
+                "flex w-full items-center justify-between gap-2 rounded-md border border-kp-outline/40 bg-kp-bg/40 px-2 py-1.5 text-left transition-colors",
+                "hover:border-kp-teal/35 hover:bg-kp-teal/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal/45",
+                submitting && "pointer-events-none opacity-60"
+              )}
+            >
+              <span className="text-[11px] font-semibold text-kp-on-surface">More options</span>
+              <span className="flex items-center gap-1.5 text-[10px] text-kp-on-surface-muted">
+                <span>Optional</span>
+                <ChevronDown
+                  className={cn("h-3.5 w-3.5 shrink-0 transition-transform", taskMoreOpen && "rotate-180")}
+                  aria-hidden
+                />
+              </span>
+            </button>
+            {taskMoreOpen ? (
+              <div className="space-y-2.5 rounded-md border border-kp-outline/30 bg-kp-surface-high/[0.03] px-2 py-2">
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-medium text-kp-on-surface-muted">Contact</Label>
+                  {selectedTaskOptionalContact ? (
+                    <div className="flex items-center justify-between gap-2 rounded-md border border-kp-outline/50 bg-kp-surface-high/15 px-2 py-1.5 text-xs">
+                      <span className="min-w-0 truncate font-medium text-kp-on-surface">
+                        {contactLabel(selectedTaskOptionalContact)}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 shrink-0 px-1.5 text-[10px]"
+                        onClick={() => setTaskOptionalContactId("")}
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <Input
+                        value={taskOptionalContactQuery}
+                        onChange={(e) => setTaskOptionalContactQuery(e.target.value)}
+                        placeholder="Search by name…"
+                        className={fieldClass}
+                        disabled={loadingRefs}
+                        autoComplete="off"
+                      />
+                      <div className={cn(listShell, "mt-1")} role="listbox" aria-label="Matching contacts for task">
+                        {loadingRefs ? (
+                          <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">Loading…</p>
+                        ) : filteredTaskOptionalContacts.length === 0 ? (
+                          <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">No matches.</p>
+                        ) : (
+                          filteredTaskOptionalContacts.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              role="option"
+                              aria-selected={taskOptionalContactId === c.id}
+                              className={listBtn}
+                              onClick={() => {
+                                setTaskOptionalContactId(c.id);
+                                setTaskOptionalContactQuery("");
+                              }}
+                            >
+                              {contactLabel(c)}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[11px] font-medium text-kp-on-surface-muted">Property</Label>
+                  {selectedTaskOptionalProperty ? (
+                    <div className="flex items-center justify-between gap-2 rounded-md border border-kp-outline/50 bg-kp-surface-high/15 px-2 py-1.5 text-xs">
+                      <span className="min-w-0 truncate font-medium text-kp-on-surface">
+                        {propertyLabel(selectedTaskOptionalProperty)}
+                      </span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 shrink-0 px-1.5 text-[10px]"
+                        onClick={() => setTaskOptionalPropertyId("")}
+                      >
+                        Clear
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <Input
+                        value={taskOptionalPropertyQuery}
+                        onChange={(e) => setTaskOptionalPropertyQuery(e.target.value)}
+                        placeholder="Search listings…"
+                        className={fieldClass}
+                        disabled={loadingRefs}
+                        autoComplete="off"
+                      />
+                      <div className={cn(listShell, "mt-1")} role="listbox" aria-label="Matching properties for task">
+                        {loadingRefs ? (
+                          <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">Loading…</p>
+                        ) : filteredTaskOptionalProperties.length === 0 ? (
+                          <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">No matches.</p>
+                        ) : (
+                          filteredTaskOptionalProperties.map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              role="option"
+                              aria-selected={taskOptionalPropertyId === p.id}
+                              className={listBtn}
+                              onClick={() => {
+                                setTaskOptionalPropertyId(p.id);
+                                setTaskOptionalPropertyQuery("");
+                              }}
+                            >
+                              {propertyLabel(p)}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="calendar-add-task-desc" className="text-[11px] font-medium text-kp-on-surface-muted">
+                    Note
+                  </Label>
+                  <Textarea
+                    id="calendar-add-task-desc"
+                    value={taskDescription}
+                    onChange={(e) => setTaskDescription(e.target.value)}
+                    placeholder="Short description or context"
+                    className={cn(fieldClass, "min-h-[2.5rem] resize-y py-1.5")}
+                    rows={2}
+                    maxLength={20000}
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         {/* 3 — Type-specific */}
         {activeType === "follow_up" ? (
           <div className="space-y-2">
             <div className="space-y-1">
-              <Label className="text-[11px] font-medium text-kp-on-surface-muted">
+              <Label className="text-[11px] font-medium text-kp-on-surface-muted" id="calendar-add-fu-contact-label">
                 Contact <span className="text-destructive">*</span>
               </Label>
+              {!selectedContact ? (
+                <p id="calendar-add-fu-contact-hint" className="text-[10px] leading-snug text-kp-on-surface-muted">
+                  Search by name, then tap a row to select. Type to narrow the list.
+                </p>
+              ) : null}
               {selectedContact ? (
                 <div className="flex items-center justify-between gap-2 rounded-md border border-kp-outline/50 bg-kp-surface-high/15 px-2 py-1.5 text-xs">
                   <span className="min-w-0 truncate font-medium text-kp-on-surface">{contactLabel(selectedContact)}</span>
@@ -433,14 +637,18 @@ export function CalendarAddFlowCoordinator({
                   <Input
                     value={contactQuery}
                     onChange={(e) => setContactQuery(e.target.value)}
-                    placeholder="Search contacts…"
+                    placeholder="Search by name…"
                     className={fieldClass}
                     disabled={loadingRefs}
                     autoComplete="off"
+                    aria-labelledby="calendar-add-fu-contact-label"
+                    aria-describedby={!selectedContact ? "calendar-add-fu-contact-hint" : undefined}
                   />
                   <div className={cn(listShell, "mt-1")} role="listbox" aria-label="Matching contacts">
                     {loadingRefs ? (
                       <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">Loading…</p>
+                    ) : contacts.length === 0 ? (
+                      <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">No contacts yet. Add contacts first.</p>
                     ) : filteredContacts.length === 0 ? (
                       <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">No matches.</p>
                     ) : (
@@ -464,19 +672,61 @@ export function CalendarAddFlowCoordinator({
                 </>
               )}
             </div>
-            <div className="space-y-1">
-              <Label htmlFor="calendar-add-fu-notes" className="text-[11px] font-medium text-kp-on-surface-muted">
-                Note (optional)
-              </Label>
-              <Textarea
-                id="calendar-add-fu-notes"
-                value={followUpNotes}
-                onChange={(e) => setFollowUpNotes(e.target.value)}
-                placeholder="Short context"
-                className={cn(fieldClass, "min-h-[2.75rem] resize-y py-1.5")}
-                rows={2}
-                maxLength={20000}
-              />
+            <div className="space-y-1.5">
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={() => setFollowUpMoreOpen((v) => !v)}
+                aria-expanded={followUpMoreOpen}
+                className={cn(
+                  "flex w-full items-center justify-between gap-2 rounded-md border border-kp-outline/40 bg-kp-bg/40 px-2 py-1.5 text-left transition-colors",
+                  "hover:border-kp-teal/35 hover:bg-kp-teal/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal/45",
+                  submitting && "pointer-events-none opacity-60"
+                )}
+              >
+                <span className="text-[11px] font-semibold text-kp-on-surface">More options</span>
+                <span className="flex items-center gap-1.5 text-[10px] text-kp-on-surface-muted">
+                  <span>Note · priority</span>
+                  <ChevronDown
+                    className={cn("h-3.5 w-3.5 shrink-0 transition-transform", followUpMoreOpen && "rotate-180")}
+                    aria-hidden
+                  />
+                </span>
+              </button>
+              {followUpMoreOpen ? (
+                <div className="space-y-2.5 rounded-md border border-kp-outline/30 bg-kp-surface-high/[0.03] px-2 py-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="calendar-add-fu-notes" className="text-[11px] font-medium text-kp-on-surface-muted">
+                      Short note
+                    </Label>
+                    <Textarea
+                      id="calendar-add-fu-notes"
+                      value={followUpNotes}
+                      onChange={(e) => setFollowUpNotes(e.target.value)}
+                      placeholder="Optional context for this follow-up"
+                      className={cn(fieldClass, "min-h-[2.75rem] resize-y py-1.5")}
+                      rows={2}
+                      maxLength={20000}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="calendar-add-fu-priority" className="text-[11px] font-medium text-kp-on-surface-muted">
+                      Priority
+                    </Label>
+                    <select
+                      id="calendar-add-fu-priority"
+                      value={followUpPriority}
+                      disabled={submitting}
+                      onChange={(e) => setFollowUpPriority(e.target.value as FollowUpPriority)}
+                      className={cn(fieldClass, "cursor-pointer py-1.5")}
+                    >
+                      <option value="LOW">Low</option>
+                      <option value="MEDIUM">Medium</option>
+                      <option value="HIGH">High</option>
+                    </select>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         ) : null}
