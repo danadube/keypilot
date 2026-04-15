@@ -17,7 +17,10 @@ import {
 } from "@/lib/google-calendar-sync-preferences";
 import { loadOutboundMirroredGoogleEventKeys } from "@/lib/google-calendar/outbound-sync";
 import { buildUSHolidayEventsForRange } from "@/lib/calendar/built-in-calendars/us-federal-holidays";
-import { getGoogleCalendarListUserFacingError } from "@/lib/calendar/google-calendar-user-messages";
+import {
+  formatStoredOutboundErrorForDisplay,
+  getGoogleCalendarListUserFacingError,
+} from "@/lib/calendar/google-calendar-user-messages";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +65,7 @@ function buildGoogleOutboundMetadata(
   return {
     status: row.status,
     lastSyncedAt: row.lastSyncedAt?.toISOString() ?? null,
-    lastError: row.lastError,
+    lastError: formatStoredOutboundErrorForDisplay(row.lastError),
     googleCalendarId: row.googleCalendarId,
     targetCalendarSummary,
     openInGoogleUrl: row.googleEventHtmlLink,

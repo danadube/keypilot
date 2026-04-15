@@ -10,6 +10,9 @@ import {
   patchGoogleCalendarEvent,
   type GoogleCalendarConnection,
 } from "@/lib/adapters/google-calendar";
+import {
+  getGoogleOutboundPushUserFacingError,
+} from "@/lib/calendar/google-calendar-user-messages";
 import { getGoogleCalendarOutboundPreferences } from "@/lib/google-calendar-sync-preferences";
 import { prismaAdmin } from "@/lib/db";
 import { resolveAppOrigin } from "@/lib/daily-briefing/email/app-origin";
@@ -176,9 +179,12 @@ export async function deleteOutboundMirror(
   });
 }
 
-function trimError(err: unknown): string {
-  const s = err instanceof Error ? err.message : String(err);
+function trimErrorMessage(s: string): string {
   return s.length > 1900 ? `${s.slice(0, 1897)}...` : s;
+}
+
+function persistOutboundError(err: unknown): string {
+  return trimErrorMessage(getGoogleOutboundPushUserFacingError(err));
 }
 
 async function pushToGoogle(params: {
@@ -278,12 +284,13 @@ async function pushToGoogle(params: {
     });
   } catch (e) {
     console.error("[google-calendar outbound] push failed", params.sourceType, params.sourceId, e);
+    const persisted = persistOutboundError(e);
     if (existing && !existing.googleEventId.startsWith("__kp_")) {
       await prismaAdmin.googleCalendarOutboundSync.update({
         where: { id: existing.id },
         data: {
           status: "ERROR",
-          lastError: trimError(e),
+          lastError: persisted,
           lastSyncedAt: null,
           googleEventHtmlLink: null,
         },
@@ -305,14 +312,14 @@ async function pushToGoogle(params: {
           googleCalendarId: calId,
           googleEventId: "__kp_error__",
           status: "ERROR",
-          lastError: trimError(e),
+          lastError: persisted,
           googleEventHtmlLink: null,
         },
         update: {
           connectionId: ctx.connection.id,
           googleCalendarId: calId,
           status: "ERROR",
-          lastError: trimError(e),
+          lastError: persisted,
           lastSyncedAt: null,
           googleEventHtmlLink: null,
         },
@@ -512,6 +519,30 @@ export async function syncTransactionChecklistOutbound(
   });
 }
 
+/** Re-run outbound sync for one source (e.g. after a transient Google error). KeyPilot remains source of truth. */
+export async function retryOutboundSyncForSource(
+  userId: string,
+  sourceType: GoogleCalendarOutboundSourceType,
+  sourceId: string
+): Promise<void> {
+  switch (sourceType) {
+    case "SHOWING":
+      return syncShowingOutbound(userId, sourceId);
+    case "TASK":
+      return syncTaskOutbound(userId, sourceId);
+    case "FOLLOW_UP":
+      return syncFollowUpOutbound(userId, sourceId);
+    case "TRANSACTION_CHECKLIST":
+      return syncTransactionChecklistOutbound(userId, sourceId);
+    case "TRANSACTION_CLOSING":
+      return syncTransactionClosingOutbound(userId, sourceId);
+    default: {
+      const _exhaustive: never = sourceType;
+      throw new Error(`Unknown outbound source type: ${String(_exhaustive)}`);
+    }
+  }
+}
+
 export async function syncTransactionClosingOutbound(
   userId: string,
   transactionId: string
@@ -596,6 +627,12 @@ export async function loadOutboundMirroredGoogleEventKeys(userId: string): Promi
   );
 }
 
-export function scheduleOutboundSync(fn: () => Promise<void>): void {
-  void fn().catch((e) => console.error("[google-calendar outbound] scheduled sync failed", e));
+export function scheduleOutboundSync(fn: () => Promise<void>, context?: string): void {
+  void fn().catch((e) => {
+    console.error(
+      "[google-calendar outbound] scheduled sync failed",
+      context ? `(${context})` : "",
+      e
+    );
+  });
 }

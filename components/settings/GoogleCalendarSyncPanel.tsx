@@ -181,6 +181,10 @@ export function GoogleCalendarSyncPanel({ connectionId }: { connectionId: string
             <span className="block mt-0.5 text-[var(--brand-text-muted)]">
               KeyPilot remains the source of truth; Google receives a copy for visibility.
             </span>
+            <span className="block mt-1.5 text-[var(--brand-text-muted)]">
+              If mirroring fails, open the item on Calendar for the reason and Retry sync to Google, or reconnect here
+              if Google access expired.
+            </span>
           </p>
         ) : null}
         <label className="mt-2 flex cursor-pointer items-start gap-2 text-xs">

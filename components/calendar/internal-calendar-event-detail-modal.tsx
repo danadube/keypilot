@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import { CheckCircle2, ExternalLink } from "lucide-react";
+import { AlertTriangle, CheckCircle2, ExternalLink, Loader2 } from "lucide-react";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,6 +13,29 @@ import {
   formatCalendarWhenForDetail,
   localDateKey,
 } from "@/lib/calendar/calendar-event-day-utils";
+
+function outboundRetryPayload(ev: CalendarEvent): {
+  sourceType: "SHOWING" | "TASK" | "FOLLOW_UP" | "TRANSACTION_CHECKLIST" | "TRANSACTION_CLOSING";
+  sourceId: string;
+} | null {
+  switch (ev.sourceType) {
+    case "showing":
+      return { sourceType: "SHOWING", sourceId: ev.relatedEntityId };
+    case "task":
+      return { sourceType: "TASK", sourceId: ev.relatedEntityId };
+    case "follow_up":
+      return { sourceType: "FOLLOW_UP", sourceId: ev.relatedEntityId };
+    case "transaction": {
+      const m = ev.metadata as { milestoneKind?: string; kind?: string } | undefined;
+      if (m?.milestoneKind === "closing" || m?.kind === "closing") {
+        return { sourceType: "TRANSACTION_CLOSING", sourceId: ev.relatedEntityId };
+      }
+      return { sourceType: "TRANSACTION_CHECKLIST", sourceId: ev.relatedEntityId };
+    }
+    default:
+      return null;
+  }
+}
 
 const CALLOUT =
   "rounded-lg border border-kp-outline/45 bg-kp-bg/70 px-3 py-2.5 text-xs leading-relaxed text-kp-on-surface-muted";
@@ -79,13 +102,17 @@ export function InternalCalendarEventDetailModal({
   open,
   onOpenChange,
   onTaskCompleted,
+  onOutboundRetried,
 }: {
   ev: CalendarEvent | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onTaskCompleted?: () => void | Promise<void>;
+  /** Called after a successful outbound retry so the parent can refetch calendar data. */
+  onOutboundRetried?: () => void | Promise<void>;
 }) {
   const [completing, setCompleting] = useState(false);
+  const [retryingOutbound, setRetryingOutbound] = useState(false);
 
   const markTaskComplete = useCallback(async () => {
     if (!ev || ev.sourceType !== "task") return;
@@ -109,6 +136,30 @@ export function InternalCalendarEventDetailModal({
       setCompleting(false);
     }
   }, [ev, onOpenChange, onTaskCompleted]);
+
+  const retryOutboundSync = useCallback(async () => {
+    if (!ev) return;
+    const payload = outboundRetryPayload(ev);
+    if (!payload) return;
+    setRetryingOutbound(true);
+    try {
+      const res = await fetch("/api/v1/calendar/google-outbound/retry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error((json as { error?: { message?: string } }).error?.message ?? "Retry failed");
+      }
+      toast.success("Sync to Google retried");
+      await onOutboundRetried?.();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not retry sync");
+    } finally {
+      setRetryingOutbound(false);
+    }
+  }, [ev, onOutboundRetried]);
 
   if (!ev) return null;
   if (ev.sourceType === "external" || ev.sourceType === "holiday") return null;
@@ -277,10 +328,56 @@ export function InternalCalendarEventDetailModal({
                   )}
                 </>
               ) : meta.googleOutbound.status === "ERROR" ? (
-                <span className="text-amber-800 dark:text-amber-200">
-                  Could not update Google Calendar
-                  {meta.googleOutbound.lastError ? ` — ${meta.googleOutbound.lastError}` : ""}
-                </span>
+                <div className="space-y-2">
+                  <div className="rounded-lg border border-amber-800/25 bg-amber-500/10 px-3 py-2.5 dark:border-amber-200/20 dark:bg-amber-500/10">
+                    <p className="flex items-start gap-2 text-kp-on-surface">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-800 dark:text-amber-200" aria-hidden />
+                      <span>
+                        <span className="font-medium">Could not mirror to Google.</span> KeyPilot is still correct —
+                        update the item here.{" "}
+                        {meta.googleOutbound.lastError ? (
+                          <span className="block mt-1.5 text-[12px] font-normal text-kp-on-surface-muted">
+                            {meta.googleOutbound.lastError}
+                          </span>
+                        ) : null}
+                      </span>
+                    </p>
+                    {meta.googleOutbound.targetCalendarSummary || meta.googleOutbound.googleCalendarId ? (
+                      <p className="mt-2 text-[12px] text-kp-on-surface-muted">
+                        Target:{" "}
+                        <span className="font-medium text-kp-on-surface">
+                          {meta.googleOutbound.targetCalendarSummary?.trim() ||
+                            meta.googleOutbound.googleCalendarId ||
+                            "selected calendar"}
+                        </span>
+                        {meta.googleOutbound.googleAccountEmail ? (
+                          <span> · {meta.googleOutbound.googleAccountEmail}</span>
+                        ) : null}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={retryingOutbound}
+                      className={cn(kpBtnSecondary, "gap-1.5")}
+                      onClick={() => void retryOutboundSync()}
+                    >
+                      {retryingOutbound ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                      ) : null}
+                      {retryingOutbound ? "Retrying…" : "Retry sync to Google"}
+                    </Button>
+                    <Button variant="outline" size="sm" className={kpBtnSecondary} asChild>
+                      <Link href="/settings/connections" onClick={() => onOpenChange(false)}>
+                        Calendar settings
+                        <ExternalLink className="ml-1 inline h-3.5 w-3.5 opacity-70" aria-hidden />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
               ) : (
                 <p>
                   Sync to Google is pending for{" "}

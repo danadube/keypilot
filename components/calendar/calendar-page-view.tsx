@@ -561,6 +561,7 @@ export function CalendarPageView() {
           if (!o) setInternalDetail(null);
         }}
         onTaskCompleted={() => void mutate()}
+        onOutboundRetried={() => void mutate()}
       />
 
       <CalendarAddFlowCoordinator
