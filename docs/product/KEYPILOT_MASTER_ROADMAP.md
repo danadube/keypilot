@@ -1,10 +1,22 @@
 # KeyPilot Master Roadmap
 
-**Last updated:** March 30, 2026
+**Last updated:** April 15, 2026
+
+## How this file fits with other roadmaps
+
+| Document | Use it for |
+|----------|------------|
+| **This file** (`KEYPILOT_MASTER_ROADMAP.md`) | **Shipped vs upcoming product work** — **Completed / Shipped**, **NOW**, **NEXT**, priorities, and progress logging. |
+| [`docs/platform/keypilot-roadmap-v2.md`](../platform/keypilot-roadmap-v2.md) | **Multi-quarter OS / strategy thesis** — sequencing and positioning when the question is bigger than the current sprint. |
+| [`docs/ai-context/ROADMAP.md`](../ai-context/ROADMAP.md) | **Historical phased outline** for AI sessions; cross-check v2 and this master file before treating phase names as current. |
+
+There is no contradiction: **this file wins for “what should we build next week”**; **v2 wins for “how does this quarter fit the five-year OS story”**; **ai-context/ROADMAP** is retained for continuity, not for naming current milestones.
+
+---
 
 ## Maintenance Rules
 
-- This file is the **single source of truth** for product progress and priorities in the KeyPilot repo.
+- This file is the **single source of truth** for **product progress, shipped scope, and near-term priorities** in the KeyPilot repo.
 - It **must** be reviewed and updated **on every merge to `main`** (and as part of each PR that targets `main`).
 - When a feature ships:
   - Add it under **Completed / Shipped** (with enough context to remember what it did).

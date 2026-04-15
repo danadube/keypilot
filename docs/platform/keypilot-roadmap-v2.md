@@ -1,6 +1,15 @@
 # KeyPilot Roadmap v2
 
-**Strategic source of truth** for phased product and engineering planning (KeyPilot as a real estate operating system). Prefer this file when deciding OS-level sequencing; the in-app **Roadmap** at `/roadmap` stays the customer-facing milestone view, and [`docs/ai-context/ROADMAP.md`](../ai-context/ROADMAP.md) keeps historical AI context.
+**Strategic source of truth** for **multi-quarter / OS-level** product and engineering planning (KeyPilot as a real estate operating system). Use this when deciding **sequencing and positioning** across modules—not for week-to-week shipped vs not-shipped detail.
+
+**How this relates to other docs:**
+
+| Document | Role |
+|----------|------|
+| **This file (v2)** | Long-horizon **thesis and phased OS plan** (Cursor- and exec-friendly). |
+| [`docs/product/KEYPILOT_MASTER_ROADMAP.md`](../product/KEYPILOT_MASTER_ROADMAP.md) | **Near-term truth** — what shipped, **NOW / NEXT**, tech debt tied to releases. **Prefer this for sprint-level work.** |
+| In-app **`/roadmap`** | Customer-facing milestone view (product marketing / narrative). |
+| [`docs/ai-context/ROADMAP.md`](../ai-context/ROADMAP.md) | **Historical** phase labels for long-running AI context; **not** the live priority list. |
 
 **Scope:** Post RealOffice360 analysis — Cursor- and dev-friendly phased plan.
 

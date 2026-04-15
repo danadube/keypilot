@@ -1,5 +1,9 @@
 # KeyPilot – What You Need to Do Next
 
+> **April 2026 — onboarding note:** This file is a **short personal checklist** style guide. **Canonical setup** (Supabase, Clerk, Vercel, env vars, checkpoints) lives in **[`docs/SETUP.md`](SETUP.md)**. **Product priorities** live in **[`docs/product/KEYPILOT_MASTER_ROADMAP.md`](product/KEYPILOT_MASTER_ROADMAP.md)**. Prefer those for “source of truth”; keep this file for a quick linear list if you still find it useful.
+
+---
+
 Here’s what’s done and what’s left.
 
 ---
@@ -16,8 +20,10 @@ Here’s what’s done and what’s left.
 
 ### 1. Create tables (run this in your terminal)
 
+From your KeyPilot repo root (directory containing `package.json`):
+
 ```bash
-cd /Users/danadube/Documents/-CODE_PROJECTS/KeyPilot
+cd /path/to/your/keypilot
 npx prisma db push
 ```
 
@@ -32,7 +38,7 @@ You should see: `Your database is now in sync with your schema.`
 3. Go to **Configure** → **API Keys**.
 4. Copy the **Publishable key** (starts with `pk_test_`).
 5. Copy the **Secret key** (starts with `sk_test_`).
-6. Send me both keys (or paste them here), and I’ll update `.env.local` for you.
+6. Add both keys to `.env.local` yourself, or share them through your team’s secure channel if someone else manages your env files.
 
 ---
 
@@ -71,10 +77,9 @@ You should see: `Your database is now in sync with your schema.`
 | Step | Task | Status |
 |------|------|--------|
 | 1 | Run `npx prisma db push` | You do this |
-| 2 | Create Clerk app, get keys, share them | You do this |
-| 3 | I add Clerk keys to .env.local | I do it once you share |
-| 4 | Import repo on Vercel, add env vars, deploy | You do this |
-| 5 | Add Clerk webhook, add secret to Vercel, redeploy | You do this |
+| 2 | Create Clerk app, add keys to `.env.local` | You do this |
+| 3 | Import repo on Vercel, add env vars, deploy | You do this |
+| 4 | Add Clerk webhook, add secret to Vercel, redeploy | You do this |
 
 ---
 

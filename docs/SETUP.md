@@ -76,8 +76,9 @@ You will set up:
 
 **Prepare your project:**
 1. Open Terminal (Mac) or Command Prompt / PowerShell (Windows).
-2. Navigate to your KeyPilot folder:  
-   `cd /Users/danadube/Documents/-CODE_PROJECTS/KeyPilot`
+2. Navigate to your local KeyPilot clone (the folder that contains `package.json` and `prisma/`), for example:  
+   `cd ~/code/keypilot`  
+   (Use your actual path; avoid hard-coding another machine’s directory.)
 3. If `.env.local` doesn’t exist, create it:  
    `touch .env.local`
 4. Open `.env.local` in your editor (VS Code, Cursor, etc.).

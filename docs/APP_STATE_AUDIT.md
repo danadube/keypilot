@@ -1,13 +1,15 @@
 # KeyPilot app state audit
 
-**Generated:** inspection of `main` at **`6373cbb`** (post-merge: navigation integrity, bulk farm memberships, FarmTrackr mailing/labels, transaction linking clarity).  
+> **Document status — April 2026:** This audit was originally captured with **`main` at `6373cbb`**. The **executive summary and module table** were refreshed for documentation accuracy (e.g. **TaskPilot** is a live gated module, not a blank stub). **§4 Branch triage** lists **`origin/*` names as of the original audit** — they go stale quickly; always run `git fetch` and inspect `git branch -r` / merge ancestry before acting on merge advice.
+
+**Generated (original):** inspection of `main` at **`6373cbb`** (post-merge: navigation integrity, bulk farm memberships, FarmTrackr mailing/labels, transaction linking clarity).  
 **Method:** `app/(dashboard)` route inventory, `lib/modules.ts`, representative page/components, `git` comparison of **`origin/*` branches** that are **not** ancestors of `main`. No product code changes in the audit commit.
 
 ---
 
 ## 1. Executive summary
 
-**Where KeyPilot is now:** A ShowingHQ-first Next.js 14 app (Clerk, Prisma/Postgres, REST under `/api/v1`) with **solid private showings + open houses (public sign-in)**, **properties**, **contacts/deals**, **transactions + commissions + statement import**, **follow-ups**, and **FarmTrackr** (territories, areas, CSV/Sheets import, **bulk membership** actions, **mailing list CSV + Avery 5160 label sheet**). **Navigation** in `lib/modules.ts` matches **real routes** (dead TaskPilot/SellerPulse/FarmTrackr sub-links removed; FarmTrackr is **`available: true`** when tier allows).
+**Where KeyPilot is now:** A ShowingHQ-first Next.js 14 app (Clerk, Prisma/Postgres, REST under `/api/v1`) with **solid private showings + open houses (public sign-in)**, **properties**, **contacts/deals**, **transactions + commissions + statement import**, **follow-ups**, **FarmTrackr** (territories, areas, CSV/Sheets import, **bulk membership** actions, **mailing list CSV + Avery 5160 label sheet**), and **TaskPilot** (`/task-pilot` task workspace + `/api/v1/tasks`). **Navigation** in `lib/modules.ts` matches **real routes** (FarmTrackr is **`available: true`** when tier allows; scaffold modules stay gated with no misleading child links).
 
 **Biggest strengths**
 
@@ -24,7 +26,7 @@
 
 **Biggest gaps**
 
-- **TaskPilot:** single “coming soon” page; no task queue/calendar product yet.
+- **TaskPilot:** usable task list and APIs; **deeper** cross-module task + calendar unification is still roadmap (see master roadmap).
 - **MarketPilot / SellerPulse / Insight:** scaffold or placeholder; not positioned as primary workflows.
 - **FarmTrackr maps:** no dedicated map UI; `/farm-trackr/farms`, `/lists`, `/performance` remain **stubs** (intentional; not in sidebar).
 - **Calendar:** not a top-level module; home widget + `/api/v1/calendar/events` — no full calendar app surface.
@@ -44,7 +46,7 @@
 | **Deals** | Partial but usable | `/deals`, `/deals/[id]`; pathname maps to **transactions** module in `getModuleFromPath`. |
 | **Transactions + commissions** | Complete / usable | List (property + deal/contact affordances), detail (**Record links** + link/unlink deal), pipeline, commissions, **create modal** (manual + import) with optional deal picker. |
 | **FarmTrackr** | Partial but usable | **`/farm-trackr`** is the real surface: territories/areas, import, members bulk panel, mailing CSV + print labels. Subroutes **stub only** (see §5). |
-| **TaskPilot** | Placeholder / not really live | `/task-pilot` copy-only; `available: false`. |
+| **TaskPilot** | Partial but usable | `/task-pilot` — task workspace + `/api/v1/tasks`; **`available: true`** in `lib/modules.ts` when module access allows; not yet a full “task OS” across every surface. |
 | **MarketPilot** | Scaffold only | Pages exist; `available: false`. |
 | **SellerPulse** | Scaffold only | Overview page; `available: false`. |
 | **Insight** | Scaffold only | `/insight`, `/insight/performance`; `available: false`. |
@@ -58,7 +60,7 @@
 
 ### Complete on `main` (shipped)
 
-- Navigation integrity: sidebar matches routes; FarmTrackr enabled in module config; TaskPilot/SellerPulse dead child links removed.
+- Navigation integrity: sidebar matches routes; FarmTrackr enabled in module config; misleading nested sidebar links removed for modules that are scaffold or gated.
 - FarmTrackr: territories, areas, CSV/Sheets import, bulk membership (add / remove from area / move), mailing list + Avery 5160 HTML export (CRM tier on API).
 - Contact mailing address fields + validation (supports mailing exports).
 - Transactions: deal linking model surfaced consistently (list, detail, create manual + import).
@@ -123,7 +125,7 @@ Branches verified with: `git merge-base --is-ancestor origin/<branch> main` → 
 | `/client-keep/activity`, `/tags`, `/communications`, `/segments`, `/follow-ups` | Live pages; **not** all in `MODULES.client-keep.sidebar` | **Keep** routes; **improve discoverability** via overview links or sidebar when prioritized. |
 | `/showing-hq/open-houses` vs `/open-houses` | Both exist | **Acceptable** dual entry; document mentally as “OH hub” vs global OH list — consider future consolidation (pinned cleanup). |
 | `/deals` | Live; module routing under “transactions” | **By design**; ensure **New → Deal** and transaction copy stay aligned. |
-| **TaskPilot / SellerPulse / Insight** | Scaffold or gated | **No false sidebar children** on `main` today — good. |
+| **SellerPulse / Insight** | Scaffold or gated | **No false sidebar children** on `main` today — good. **TaskPilot** is promoted as a real overview route when enabled. |
 | **Insight** | No top-nav when `available: false` | **Acceptable** until product promotes module. |
 
 ---
@@ -137,7 +139,7 @@ These are **not** committed as the immediate roadmap unless explicitly promoted:
 - **FarmTrackr maps** — geographic visualization; replaces stub narrative.
 - **Dedicated FarmTrackr sub-apps** — farms/lists/performance as real pages, not stubs.
 - **Full Calendar module** — beyond API + home widget.
-- **TaskPilot** real task queue + calendar integration.
+- **TaskPilot** deeper calendar integration and cross-module task surfaces (beyond current `/task-pilot` + tasks API).
 - **MarketPilot / SellerPulse / Insight** MVPs.
 
 ---
@@ -167,5 +169,6 @@ These are **not** committed as the immediate roadmap unless explicitly promoted:
 
 ## 9. Maintenance
 
-- Refresh this document after **material merges** (new module, major nav change, or branch landscape shift).
+- Refresh this document after **material merges** (new module, major nav change, or branch landscape shift). **Re-stamp** the callout at the top of this file when the executive summary or module table changes materially.
 - Prefer **one** app-state audit path: **`docs/APP_STATE_AUDIT.md`** (avoid parallel stale copies on long-lived branches).
+- Pair with **[`docs/ai-context/CURRENT_STATE.md`](ai-context/CURRENT_STATE.md)** for a lighter “stack + tests” snapshot for onboarding.

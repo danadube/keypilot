@@ -3,6 +3,8 @@
 **Status:** Architecture / product spec — not an implementation or migration guide.  
 **Owner:** ClientKeep (canonical CRM for person records in KeyPilot).
 
+**Folder note:** This file lives under **`docs/clientkeep/`** (legacy directory spelling). New **release / playbook** docs belong in **[`docs/client-keep/`](../client-keep/)** — see [`../client-keep/README.md`](../client-keep/README.md).
+
 ---
 
 ## System of record

@@ -1,5 +1,9 @@
 # KeyPilot Development Roadmap
 
+> **April 2026 — archive / historical context:** This file keeps a **legacy phased outline** (Phase 1–5) useful for **long-running AI sessions** and old prompts. **Do not** treat phase numbers or legacy module names (e.g. DealForge, InsightDeck) as the live build plan. For priorities use **[`docs/product/KEYPILOT_MASTER_ROADMAP.md`](../product/KEYPILOT_MASTER_ROADMAP.md)**; for OS-level sequencing use **[`docs/platform/keypilot-roadmap-v2.md`](../platform/keypilot-roadmap-v2.md)**; for product rules use **[`docs/project-context.md`](../project-context.md)**.
+
+---
+
 ## Strategic roadmap (v2)
 
 For the **post–RealOffice360 phased plan** (Client HQ, Command Center, tiers, OS-layer horizons), see **[`docs/platform/keypilot-roadmap-v2.md`](../platform/keypilot-roadmap-v2.md)**. The sections below remain a concise **historical phase outline** for AI context and long-running codebase references; v2 is the primary **operating-system** sequencing doc for new work.

@@ -1,5 +1,14 @@
 
-# KeyPilot Project Context
+# KeyPilot Project Context (historical)
+
+> **April 2026 — superseded:** Canonical **product rules and module intent** are in **[`docs/project-context.md`](../project-context.md)**.  
+> **Priorities:** **[`docs/product/KEYPILOT_MASTER_ROADMAP.md`](../product/KEYPILOT_MASTER_ROADMAP.md)** · **OS sequencing:** **[`docs/platform/keypilot-roadmap-v2.md`](../platform/keypilot-roadmap-v2.md)**.
+
+The content below is **preserved for diff archaeology** only. It described an early “open house first” framing and legacy codenames (e.g. DealForge, InsightDeck). **Do not** use it as current product truth.
+
+---
+
+## Archived body (pre-April 2026)
 
 KeyPilot is a modular SaaS platform designed for real estate professionals.
 
@@ -15,7 +24,7 @@ The platform will eventually support:
 
 The first product module being built is:
 
-## Open House Lead Capture & Showing Management
+### Open House Lead Capture & Showing Management
 
 This module allows real estate agents to:
 
