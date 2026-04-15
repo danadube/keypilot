@@ -11,7 +11,10 @@ import {
   fetchGoogleCalendarKeyPilotEvents,
   listGoogleAccountCalendars,
 } from "@/lib/adapters/google-calendar";
-import { getGoogleCalendarSelectedIds } from "@/lib/google-calendar-sync-preferences";
+import {
+  getGoogleCalendarOutboundPreferences,
+  getGoogleCalendarSelectedIds,
+} from "@/lib/google-calendar-sync-preferences";
 import { loadOutboundMirroredGoogleEventKeys } from "@/lib/google-calendar/outbound-sync";
 import { buildUSHolidayEventsForRange } from "@/lib/calendar/built-in-calendars/us-federal-holidays";
 import { getGoogleCalendarListUserFacingError } from "@/lib/calendar/google-calendar-user-messages";
@@ -30,6 +33,41 @@ const DEFAULT_BLOCK_MS = 30 * 60 * 1000;
 
 function dateKeyUtc(d: Date): string {
   return d.toISOString().slice(0, 10);
+}
+
+function labelForGoogleCalendarId(calendarId: string): string {
+  return calendarId === "primary" ? "Primary calendar" : calendarId;
+}
+
+function buildGoogleOutboundMetadata(
+  row: {
+    connectionId: string;
+    googleCalendarId: string;
+    status: string;
+    lastSyncedAt: Date | null;
+    lastError: string | null;
+    googleEventHtmlLink: string | null;
+  },
+  connById: Map<
+    string,
+    { syncPreferences: unknown; accountEmail: string | null }
+  >
+) {
+  const conn = connById.get(row.connectionId);
+  const prefs = getGoogleCalendarOutboundPreferences(conn?.syncPreferences);
+  const targetCalendarSummary =
+    row.googleCalendarId === prefs.writeCalendarId && prefs.writeCalendarSummary
+      ? prefs.writeCalendarSummary
+      : labelForGoogleCalendarId(row.googleCalendarId);
+  return {
+    status: row.status,
+    lastSyncedAt: row.lastSyncedAt?.toISOString() ?? null,
+    lastError: row.lastError,
+    googleCalendarId: row.googleCalendarId,
+    targetCalendarSummary,
+    openInGoogleUrl: row.googleEventHtmlLink,
+    googleAccountEmail: conn?.accountEmail ?? null,
+  };
 }
 
 function outboundKeyFromCalendarEvent(ev: CalendarEvent): string | null {
@@ -280,6 +318,16 @@ export async function GET(req: NextRequest) {
     });
     const outboundLookup = new Map(outboundRows.map((r) => [`${r.sourceType}:${r.sourceId}`, r]));
 
+    const outboundConnIds = Array.from(new Set(outboundRows.map((r) => r.connectionId)));
+    const outboundConnections =
+      outboundConnIds.length > 0
+        ? await prismaAdmin.connection.findMany({
+            where: { userId: user.id, id: { in: outboundConnIds } },
+            select: { id: true, syncPreferences: true, accountEmail: true },
+          })
+        : [];
+    const outboundConnById = new Map(outboundConnections.map((c) => [c.id, c]));
+
     const events: CalendarEvent[] = nativeEvents.map((ev) => {
       const key = outboundKeyFromCalendarEvent(ev);
       if (!key) return ev;
@@ -289,11 +337,7 @@ export async function GET(req: NextRequest) {
         ...ev,
         metadata: {
           ...(ev.metadata ?? {}),
-          googleOutbound: {
-            status: row.status,
-            lastSyncedAt: row.lastSyncedAt?.toISOString() ?? null,
-            lastError: row.lastError,
-          },
+          googleOutbound: buildGoogleOutboundMetadata(row, outboundConnById),
         },
       };
     });

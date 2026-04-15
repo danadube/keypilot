@@ -1172,6 +1172,8 @@ model GoogleCalendarOutboundSync {
   sourceId         String
   googleCalendarId String
   googleEventId    String
+  /** Google Calendar event web URL when sync succeeded (for Open in Google). */
+  googleEventHtmlLink String? @db.Text
   status           GoogleCalendarOutboundSyncStatus @default(PENDING)
   lastSyncedAt     DateTime?
   lastError        String?                          @db.Text

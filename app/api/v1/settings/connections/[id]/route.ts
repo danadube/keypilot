@@ -30,6 +30,8 @@ const PATCH_BODY = z.object({
     .object({
       enabled: z.boolean(),
       writeCalendarId: z.string().min(1),
+      /** Display name for the writable target (from calendar list). */
+      writeCalendarSummary: z.string().nullable().optional(),
     })
     .optional(),
 });
@@ -94,10 +96,11 @@ export async function PATCH(
         const prev = (nextSync !== undefined
           ? { ...(nextSync as Record<string, unknown>) }
           : { ...((conn.syncPreferences as Record<string, unknown> | null) ?? {}) });
-        const { enabled, writeCalendarId } = data.googleCalendarOutboundSync;
+        const { enabled, writeCalendarId, writeCalendarSummary } = data.googleCalendarOutboundSync;
         nextSync = mergeGoogleCalendarOutboundIntoSyncPreferences(prev, {
           enabled,
           writeCalendarId,
+          writeCalendarSummary,
         }) as Prisma.InputJsonValue;
 
         if (enabled) {
@@ -115,6 +118,7 @@ export async function PATCH(
             const merged = mergeGoogleCalendarOutboundIntoSyncPreferences(oPrev, {
               enabled: false,
               writeCalendarId: oPref.writeCalendarId ?? writeCalendarId,
+              writeCalendarSummary: oPref.writeCalendarSummary,
             });
             await tx.connection.update({
               where: { id: o.id },

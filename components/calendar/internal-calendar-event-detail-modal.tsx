@@ -28,6 +28,10 @@ type InternalMeta = {
     status: string;
     lastSyncedAt: string | null;
     lastError: string | null;
+    googleCalendarId?: string;
+    targetCalendarSummary?: string | null;
+    openInGoogleUrl?: string | null;
+    googleAccountEmail?: string | null;
   };
 };
 
@@ -215,6 +219,17 @@ export function InternalCalendarEventDetailModal({
       footer={footer}
     >
       <dl className="space-y-4 text-sm">
+        <div className={CALLOUT}>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-muted">Source</p>
+          <p className="mt-1 text-[13px] leading-snug text-kp-on-surface">
+            <span className="font-medium">KeyPilot</span>
+            <span className="text-kp-on-surface-muted">
+              {" "}
+              — scheduled here. Edit dates and details in the linked workspace so your calendar stays accurate.
+            </span>
+          </p>
+        </div>
+
         <div>
           <dt className="text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-muted">When</dt>
           <dd className="mt-1 text-[13px] leading-snug text-kp-on-surface">{whenLine}</dd>
@@ -223,24 +238,59 @@ export function InternalCalendarEventDetailModal({
         {meta?.googleOutbound ? (
           <div>
             <dt className="text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-muted">
-              Google Calendar
+              Google Calendar (outbound)
             </dt>
-            <dd className="mt-1 text-[13px] leading-snug text-kp-on-surface-muted">
+            <dd className="mt-1 space-y-2 text-[13px] leading-snug text-kp-on-surface-muted">
               {meta.googleOutbound.status === "SYNCED" ? (
                 <>
-                  Mirrored from KeyPilot to your selected Google calendar
-                  {meta.googleOutbound.lastSyncedAt
-                    ? ` · last updated ${new Date(meta.googleOutbound.lastSyncedAt).toLocaleString()}`
-                    : ""}
-                  .
+                  <p>
+                    <span className="text-kp-on-surface">Synced to Google.</span> Copy lives on{" "}
+                    <span className="font-medium text-kp-on-surface">
+                      {meta.googleOutbound.targetCalendarSummary?.trim() ||
+                        meta.googleOutbound.googleCalendarId ||
+                        "your selected calendar"}
+                    </span>
+                    {meta.googleOutbound.googleAccountEmail ? (
+                      <span className="text-kp-on-surface-muted/90">
+                        {" "}
+                        · {meta.googleOutbound.googleAccountEmail}
+                      </span>
+                    ) : null}
+                    .
+                  </p>
+                  {meta.googleOutbound.lastSyncedAt ? (
+                    <p className="text-[12px] text-kp-on-surface-muted">
+                      Last mirrored {new Date(meta.googleOutbound.lastSyncedAt).toLocaleString()}.
+                    </p>
+                  ) : null}
+                  {meta.googleOutbound.openInGoogleUrl ? (
+                    <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "gap-1.5")} asChild>
+                      <a href={meta.googleOutbound.openInGoogleUrl} target="_blank" rel="noopener noreferrer">
+                        Open in Google Calendar
+                        <ExternalLink className="h-3.5 w-3.5 opacity-80" aria-hidden />
+                      </a>
+                    </Button>
+                  ) : (
+                    <p className="text-[12px] text-kp-on-surface-muted">
+                      Open in Google becomes available after the event is mirrored (refresh if you just connected).
+                    </p>
+                  )}
                 </>
               ) : meta.googleOutbound.status === "ERROR" ? (
                 <span className="text-amber-800 dark:text-amber-200">
-                  Google sync error
+                  Could not update Google Calendar
                   {meta.googleOutbound.lastError ? ` — ${meta.googleOutbound.lastError}` : ""}
                 </span>
               ) : (
-                <>Sync pending…</>
+                <p>
+                  Sync to Google is pending for{" "}
+                  <span className="font-medium text-kp-on-surface">
+                    {meta.googleOutbound.targetCalendarSummary?.trim() ||
+                      meta.googleOutbound.googleCalendarId ||
+                      "your selected calendar"}
+                  </span>
+                  .
+                </p>
               )}
             </dd>
           </div>

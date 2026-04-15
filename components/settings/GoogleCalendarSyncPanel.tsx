@@ -41,7 +41,11 @@ export function GoogleCalendarSyncPanel({ connectionId }: { connectionId: string
         setRows(data.calendars);
         setSelected(new Set<string>(data.selectedIds ?? []));
         setWritableRows(data.writableCalendars ?? []);
-        const ob = data.outbound as { enabled?: boolean; writeCalendarId?: string | null } | undefined;
+        const ob = data.outbound as {
+          enabled?: boolean;
+          writeCalendarId?: string | null;
+          writeCalendarSummary?: string | null;
+        } | undefined;
         setOutboundEnabled(Boolean(ob?.enabled));
         const wid = typeof ob?.writeCalendarId === "string" && ob.writeCalendarId.trim() ? ob.writeCalendarId.trim() : "primary";
         setWriteCalendarId(wid);
@@ -74,11 +78,19 @@ export function GoogleCalendarSyncPanel({ connectionId }: { connectionId: string
     });
   };
 
+  const outboundTargetLabel =
+    writeCalendarId === "primary"
+      ? "Primary calendar"
+      : writableRows.find((w) => w.id === writeCalendarId)?.summary ?? writeCalendarId;
+
   const saveOutbound = async () => {
     if (outboundEnabled && !writeCalendarId.trim()) {
       toast.error("Choose a calendar for KeyPilot to write to.");
       return;
     }
+    const wid = writeCalendarId.trim() || "primary";
+    const writeCalendarSummary =
+      wid === "primary" ? "Primary calendar" : writableRows.find((w) => w.id === wid)?.summary ?? wid;
     setSavingOutbound(true);
     try {
       const r = await fetch(`/api/v1/settings/connections/${connectionId}`, {
@@ -87,7 +99,8 @@ export function GoogleCalendarSyncPanel({ connectionId }: { connectionId: string
         body: JSON.stringify({
           googleCalendarOutboundSync: {
             enabled: outboundEnabled,
-            writeCalendarId: outboundEnabled ? writeCalendarId.trim() : writeCalendarId.trim() || "primary",
+            writeCalendarId: wid,
+            writeCalendarSummary,
           },
         }),
       });
@@ -158,9 +171,18 @@ export function GoogleCalendarSyncPanel({ connectionId }: { connectionId: string
       <div className="mt-4 border-t border-[var(--brand-border)] pt-3">
         <p className="text-xs font-semibold text-[var(--brand-text)]">Sync KeyPilot to Google</p>
         <p className="mt-0.5 text-[11px] leading-snug text-[var(--brand-text-muted)]">
-          Mirror showings, tasks, follow-ups, and transaction milestones to one writable Google calendar. Requires
-          reconnect if Google access predates outbound sync (calendar write permission).
+          Mirror showings, tasks, follow-ups, and transaction milestones to one writable Google calendar on this
+          connection. Requires reconnect if Google access predates outbound sync (calendar write permission).
         </p>
+        {outboundEnabled ? (
+          <p className="mt-2 rounded-md border border-[var(--brand-border)] bg-[var(--brand-surface-alt)] px-2.5 py-2 text-[11px] leading-snug text-[var(--brand-text)]">
+            <span className="font-semibold text-[var(--brand-text)]">Writes to: </span>
+            {outboundTargetLabel}
+            <span className="block mt-0.5 text-[var(--brand-text-muted)]">
+              KeyPilot remains the source of truth; Google receives a copy for visibility.
+            </span>
+          </p>
+        ) : null}
         <label className="mt-2 flex cursor-pointer items-start gap-2 text-xs">
           <input
             type="checkbox"

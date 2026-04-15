@@ -95,10 +95,15 @@ async function upsertMappingRow(params: {
   sourceId: string;
   googleCalendarId: string;
   googleEventId: string;
+  googleEventHtmlLink?: string | null;
   status: "SYNCED" | "ERROR" | "PENDING";
   lastError: string | null;
 }): Promise<void> {
   const now = new Date();
+  const htmlLink =
+    params.googleEventHtmlLink !== undefined
+      ? params.googleEventHtmlLink
+      : undefined;
   await prismaAdmin.googleCalendarOutboundSync.upsert({
     where: {
       userId_sourceType_sourceId: {
@@ -114,6 +119,7 @@ async function upsertMappingRow(params: {
       sourceId: params.sourceId,
       googleCalendarId: params.googleCalendarId,
       googleEventId: params.googleEventId,
+      googleEventHtmlLink: htmlLink ?? null,
       status: params.status,
       lastSyncedAt: params.status === "SYNCED" ? now : null,
       lastError: params.lastError,
@@ -122,6 +128,7 @@ async function upsertMappingRow(params: {
       connectionId: params.connectionId,
       googleCalendarId: params.googleCalendarId,
       googleEventId: params.googleEventId,
+      ...(htmlLink !== undefined ? { googleEventHtmlLink: htmlLink } : {}),
       status: params.status,
       lastSyncedAt: params.status === "SYNCED" ? now : null,
       lastError: params.lastError,
@@ -231,7 +238,12 @@ async function pushToGoogle(params: {
       !existing.googleEventId.startsWith("__kp_")
     ) {
       try {
-        await patchGoogleCalendarEvent(conn, calId, existing.googleEventId, params.body);
+        const patched = await patchGoogleCalendarEvent(
+          conn,
+          calId,
+          existing.googleEventId,
+          params.body
+        );
         await upsertMappingRow({
           userId: params.userId,
           connectionId: ctx.connection.id,
@@ -239,6 +251,7 @@ async function pushToGoogle(params: {
           sourceId: params.sourceId,
           googleCalendarId: calId,
           googleEventId: existing.googleEventId,
+          googleEventHtmlLink: patched.htmlLink ?? null,
           status: "SYNCED",
           lastError: null,
         });
@@ -258,6 +271,7 @@ async function pushToGoogle(params: {
       sourceId: params.sourceId,
       googleCalendarId: calId,
       googleEventId: created.id,
+      googleEventHtmlLink: created.htmlLink ?? null,
       status: "SYNCED",
       lastError: null,
     });
@@ -266,7 +280,12 @@ async function pushToGoogle(params: {
     if (existing && !existing.googleEventId.startsWith("__kp_")) {
       await prismaAdmin.googleCalendarOutboundSync.update({
         where: { id: existing.id },
-        data: { status: "ERROR", lastError: trimError(e), lastSyncedAt: null },
+        data: {
+          status: "ERROR",
+          lastError: trimError(e),
+          lastSyncedAt: null,
+          googleEventHtmlLink: null,
+        },
       });
     } else {
       await prismaAdmin.googleCalendarOutboundSync.upsert({
@@ -286,6 +305,7 @@ async function pushToGoogle(params: {
           googleEventId: "__kp_error__",
           status: "ERROR",
           lastError: trimError(e),
+          googleEventHtmlLink: null,
         },
         update: {
           connectionId: ctx.connection.id,
@@ -293,6 +313,7 @@ async function pushToGoogle(params: {
           status: "ERROR",
           lastError: trimError(e),
           lastSyncedAt: null,
+          googleEventHtmlLink: null,
         },
       });
     }

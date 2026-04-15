@@ -9,6 +9,8 @@ export type GoogleCalendarOutboundPreferences = {
   enabled?: boolean;
   /** Google Calendar API `calendarId` receiving outbound KeyPilot events. */
   writeCalendarId?: string | null;
+  /** Human-readable name for `writeCalendarId` (saved when the user picks a target). */
+  writeCalendarSummary?: string | null;
 };
 
 export type GoogleCalendarsSyncPreferences = {
@@ -48,24 +50,34 @@ export function buildGoogleCalendarsSyncPatch(
 export function getGoogleCalendarOutboundPreferences(syncPreferences: unknown): {
   enabled: boolean;
   writeCalendarId: string | null;
+  writeCalendarSummary: string | null;
 } {
   if (!syncPreferences || typeof syncPreferences !== "object") {
-    return { enabled: false, writeCalendarId: null };
+    return { enabled: false, writeCalendarId: null, writeCalendarSummary: null };
   }
   const root = syncPreferences as ConnectionSyncPreferencesShape;
   const o = root.googleCalendars?.outbound;
-  if (!o || typeof o !== "object") return { enabled: false, writeCalendarId: null };
+  if (!o || typeof o !== "object")
+    return { enabled: false, writeCalendarId: null, writeCalendarSummary: null };
   const enabled = Boolean((o as { enabled?: boolean }).enabled);
   const raw = (o as { writeCalendarId?: string | null }).writeCalendarId;
   const writeCalendarId =
     typeof raw === "string" && raw.trim().length > 0 ? raw.trim() : null;
-  return { enabled, writeCalendarId };
+  const rawSum = (o as { writeCalendarSummary?: string | null }).writeCalendarSummary;
+  const writeCalendarSummary =
+    typeof rawSum === "string" && rawSum.trim().length > 0 ? rawSum.trim() : null;
+  return { enabled, writeCalendarId, writeCalendarSummary };
 }
 
 /** Merge outbound settings without dropping existing `selectedIds`. */
 export function mergeGoogleCalendarOutboundIntoSyncPreferences(
   prev: Record<string, unknown> | null | undefined,
-  outbound: { enabled: boolean; writeCalendarId: string }
+  outbound: {
+    enabled: boolean;
+    writeCalendarId: string;
+    /** Omit to keep the previous saved label when only toggling enabled or changing id via other flows. */
+    writeCalendarSummary?: string | null;
+  }
 ): Record<string, unknown> {
   const base = prev && typeof prev === "object" ? { ...prev } : {};
   const prevGc = base.googleCalendars;
@@ -76,9 +88,17 @@ export function mergeGoogleCalendarOutboundIntoSyncPreferences(
   if (!gc.selectedIds?.length) {
     gc.selectedIds = [...DEFAULT_SELECTED];
   }
+  const prevOb = gc.outbound;
+  const nextSummary =
+    outbound.writeCalendarSummary !== undefined
+      ? typeof outbound.writeCalendarSummary === "string" && outbound.writeCalendarSummary.trim().length > 0
+        ? outbound.writeCalendarSummary.trim()
+        : null
+      : (prevOb?.writeCalendarSummary ?? null);
   gc.outbound = {
     enabled: outbound.enabled,
     writeCalendarId: outbound.writeCalendarId,
+    ...(nextSummary ? { writeCalendarSummary: nextSummary } : {}),
   };
   base.googleCalendars = gc as unknown as Record<string, unknown>;
   return base;
