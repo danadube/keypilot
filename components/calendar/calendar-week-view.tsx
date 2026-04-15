@@ -11,8 +11,8 @@ import { layoutOverlappingIntervals } from "@/lib/calendar/overlap-layout";
 const GRID_START_HOUR = 0;
 const GRID_END_HOUR = 24;
 const GRID_MINUTES = (GRID_END_HOUR - GRID_START_HOUR) * 60;
-/** Per-hour row height; full day scrolls vertically (24 rows) */
-const HOUR_ROW_PX = 40;
+/** Per-hour row height; full day scrolls vertically (24 rows). Taller rows = clearer 30-min slots + room for two-line titles. */
+const HOUR_ROW_PX = 48;
 const HOUR_ROW_REM = `${HOUR_ROW_PX / 16}rem`;
 /** Room for 11px time labels without clipping */
 const TIME_GUTTER_REM = "3.375rem";
@@ -386,18 +386,12 @@ function EventPill({
   onInternalOpen?: (ev: CalendarEvent) => void;
 }) {
   const ring = SOURCE_RING[ev.sourceType] ?? SOURCE_RING.external;
-  const start = new Date(ev.start);
-  const timeStr = ev.allDay
-    ? "All day"
-    : Number.isNaN(start.getTime())
-      ? ""
-      : start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   const displayTitle = monthCellStrippedTitle(ev);
   const meta = ev.metadata as { calendarName?: string; subline?: string; location?: string; htmlLink?: string } | undefined;
   const sub = meta?.calendarName ?? meta?.subline;
   const googleUrl = ev.sourceType === "external" ? meta?.htmlLink?.trim() : undefined;
   const shellClass = cn(
-    "relative z-10 block w-full rounded-md border border-kp-outline/50 border-l-[3px] px-1.5 py-1 text-left shadow-sm transition-colors hover:brightness-[1.02]",
+    "relative z-10 block w-full rounded-md border border-kp-outline/50 border-l-[3px] px-1.5 py-1.5 text-left shadow-sm transition-colors hover:brightness-[1.02]",
     googleUrl && ev.sourceType === "external" ? "pr-7 pb-7" : "",
     ring,
     compact ? "text-[10px] leading-snug" : "text-[11px] leading-snug"
@@ -405,12 +399,9 @@ function EventPill({
   const inner = (
     <>
       <div className="flex items-start justify-between gap-1">
-        <p className={cn("min-w-0 flex-1 truncate font-semibold leading-snug text-kp-on-surface", compact ? "text-[10px]" : "text-[11px]")}>
+        <p className={cn("line-clamp-2 min-w-0 flex-1 font-semibold leading-snug text-kp-on-surface", compact ? "text-[10px]" : "text-[11px]")}>
           {displayTitle}
         </p>
-        {!ev.allDay ? (
-          <span className="shrink-0 text-[9px] tabular-nums text-kp-on-surface-muted">{timeStr}</span>
-        ) : null}
       </div>
       {ev.sourceType === "external" && sub ? (
         <p className="mt-0.5 truncate text-[9px] text-kp-on-surface-muted">{sub}</p>
@@ -559,7 +550,7 @@ function DayColumn({
           const leftPct = col * widthPct;
           const ring = SOURCE_RING[ev.sourceType] ?? SOURCE_RING.external;
           const blockClass = cn(
-            "absolute z-[5] overflow-hidden rounded-md border border-kp-outline/45 border-l-[3px] px-1 py-px text-left text-[10px] shadow-sm transition-colors hover:z-[6] hover:brightness-[1.03]",
+            "absolute z-[5] overflow-hidden rounded-md border border-kp-outline/45 border-l-[3px] px-1.5 py-1 text-left text-[11px] shadow-sm transition-colors hover:z-[6] hover:brightness-[1.03]",
             ring
           );
           /** Narrow gutter between side-by-side overlapping columns for separation */
@@ -569,24 +560,13 @@ function DayColumn({
             height: `${clip.heightFrac * 100}%`,
             left: `calc(${leftPct}% + ${gapPct / 2}%)`,
             width: `calc(${widthPct}% - ${gapPct}%)`,
-            minHeight: "1.35rem",
+            minHeight: "2rem",
           } as const;
-          const extMeta = ev.sourceType === "external" ? (ev.metadata as { htmlLink?: string; location?: string }) : undefined;
+          const extMeta = ev.sourceType === "external" ? (ev.metadata as { htmlLink?: string }) : undefined;
           const extGoogleUrl = extMeta?.htmlLink?.trim();
-          const extLoc = extMeta?.location?.trim();
           const displayTitle = monthCellStrippedTitle(ev);
           const blockBody = (
-            <>
-              <p className="line-clamp-2 pr-6 font-semibold leading-[1.15] text-kp-on-surface">{displayTitle}</p>
-              <p className="mt-0.5 text-[9px] tabular-nums leading-tight text-kp-on-surface-muted">
-                {Number.isNaN(start.getTime())
-                  ? ""
-                  : `${start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} – ${end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`}
-              </p>
-              {ev.sourceType === "external" && extLoc ? (
-                <p className="mt-0.5 line-clamp-1 text-[8px] leading-tight text-kp-on-surface-muted">{extLoc}</p>
-              ) : null}
-            </>
+            <p className="line-clamp-2 pr-6 text-left font-semibold leading-snug text-kp-on-surface">{displayTitle}</p>
           );
           if (ev.sourceType === "external") {
             return (
