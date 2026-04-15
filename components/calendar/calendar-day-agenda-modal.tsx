@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { ExternalLink, Plus } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -169,7 +169,7 @@ export function CalendarDayAgendaModal({
       open={open}
       onOpenChange={onOpenChange}
       title={title || "Day"}
-      description="All-day first, then by start time. Google events are view-only; use Open in Google for the full event."
+      description={undefined}
       size="md"
       bodyClassName="max-h-[min(70vh,28rem)] space-y-3 overflow-y-auto pt-1"
       footer={
@@ -177,9 +177,8 @@ export function CalendarDayAgendaModal({
           <Button type="button" variant="outline" size="sm" className={kpBtnSecondary} onClick={() => onOpenChange(false)}>
             Close
           </Button>
-          <Button type="button" size="sm" className={cn(kpBtnPrimary, "gap-1.5")} onClick={handleAdd}>
-            <Plus className="h-3.5 w-3.5" aria-hidden />
-            Add event
+          <Button type="button" size="sm" className={kpBtnPrimary} onClick={handleAdd}>
+            + Add
           </Button>
         </div>
       }
@@ -189,15 +188,6 @@ export function CalendarDayAgendaModal({
           <p className="text-sm font-semibold text-kp-on-surface">
             {allLayersVisible ? "Nothing scheduled this day" : "No events match your current layers"}
           </p>
-          <p className="mt-2 text-xs leading-relaxed text-kp-on-surface-muted">
-            {allLayersVisible
-              ? "Add something with Quick add in the header, or click a time slot in week view to prefill a time."
-              : "Turn calendars back on in the left sidebar, or add a new KeyPilot item to this day."}
-          </p>
-          <Button type="button" size="sm" className={cn(kpBtnPrimary, "mt-4 gap-1.5")} onClick={handleAdd}>
-            <Plus className="h-3.5 w-3.5" aria-hidden />
-            Add event
-          </Button>
         </div>
       ) : (
         <div className="space-y-4">

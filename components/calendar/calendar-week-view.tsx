@@ -11,8 +11,8 @@ import { layoutOverlappingIntervals } from "@/lib/calendar/overlap-layout";
 const GRID_START_HOUR = 0;
 const GRID_END_HOUR = 24;
 const GRID_MINUTES = (GRID_END_HOUR - GRID_START_HOUR) * 60;
-/** Per-hour row height; full day scrolls vertically (24 rows). Taller rows = clearer 30-min slots + room for two-line titles. */
-const HOUR_ROW_PX = 48;
+/** Per-hour row height; full day scrolls vertically (24 rows). Scales 30-minute slot height and timed block geometry. */
+const HOUR_ROW_PX = 44;
 const HOUR_ROW_REM = `${HOUR_ROW_PX / 16}rem`;
 /** Room for 11px time labels without clipping */
 const TIME_GUTTER_REM = "3.375rem";
@@ -391,7 +391,7 @@ function EventPill({
   const sub = meta?.calendarName ?? meta?.subline;
   const googleUrl = ev.sourceType === "external" ? meta?.htmlLink?.trim() : undefined;
   const shellClass = cn(
-    "relative z-10 block w-full rounded-md border border-kp-outline/50 border-l-[3px] px-1.5 py-1.5 text-left shadow-sm transition-colors hover:brightness-[1.02]",
+    "relative z-10 block w-full rounded-md border border-kp-outline/50 border-l-[3px] px-1.5 py-1 text-left shadow-sm transition-colors hover:brightness-[1.02]",
     googleUrl && ev.sourceType === "external" ? "pr-7 pb-7" : "",
     ring,
     compact ? "text-[10px] leading-snug" : "text-[11px] leading-snug"
@@ -550,7 +550,7 @@ function DayColumn({
           const leftPct = col * widthPct;
           const ring = SOURCE_RING[ev.sourceType] ?? SOURCE_RING.external;
           const blockClass = cn(
-            "absolute z-[5] overflow-hidden rounded-md border border-kp-outline/45 border-l-[3px] px-1.5 py-1 text-left text-[11px] shadow-sm transition-colors hover:z-[6] hover:brightness-[1.03]",
+            "absolute z-[5] overflow-hidden rounded-md border border-kp-outline/45 border-l-[3px] px-1.5 py-0.5 text-left text-[11px] shadow-sm transition-colors hover:z-[6] hover:brightness-[1.03]",
             ring
           );
           /** Narrow gutter between side-by-side overlapping columns for separation */
