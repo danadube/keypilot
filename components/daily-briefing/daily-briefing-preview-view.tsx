@@ -47,7 +47,7 @@ export function DailyBriefingPreviewView() {
     <div className="min-w-0 pb-10">
       <PageHeader
         title="Daily briefing preview"
-        subtitle="Same HTML and plain text as the delivery layer — for product review, QA, and copy checks. Nothing is sent."
+        subtitle="Same renderer as real email delivery. Nothing is sent from this page."
       />
 
       <div className="mt-2 flex flex-col gap-6">
@@ -64,6 +64,11 @@ export function DailyBriefingPreviewView() {
               active={source}
               onChange={(v) => setSource(v as "sample" | "live")}
             />
+            <p className="max-w-md text-xs text-kp-on-surface-variant">
+              {source === "sample"
+                ? "Static demo content for layout and copy review."
+                : "Your real briefing for today, using the same calendar day and time zone as scheduled email delivery."}
+            </p>
           </fieldset>
           <fieldset className="min-w-0 space-y-1.5">
             <legend className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">

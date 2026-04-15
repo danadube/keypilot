@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getCurrentUser } from "@/lib/auth";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { zonedDayBoundsContaining } from "@/lib/datetime/zoned-day-bounds";
+import { withRLSContext } from "@/lib/db-context";
 import { fetchDailyBriefing } from "@/lib/daily-briefing/fetch-daily-briefing";
 import {
   buildDailyBriefingEmailSubject,
@@ -31,7 +33,8 @@ const QuerySchema = z
  * Auth required — does not send email.
  *
  * - `?source=sample` — static fixture (`SAMPLE_DAILY_BRIEFING`)
- * - `?source=live` — same aggregation as `GET /api/v1/daily-briefing`
+ * - `?source=live` — live aggregation; default day bounds use the user’s briefing time zone (same as scheduled send),
+ *   or pass both `dayStartIso` and `dayEndIso` to override.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -49,12 +52,28 @@ export async function GET(req: NextRequest) {
 
     const { source, format, dayStartIso, dayEndIso } = parsed.data;
 
+    let liveDayStartIso = dayStartIso;
+    let liveDayEndIso = dayEndIso;
+    if (source === "live" && (!liveDayStartIso || !liveDayEndIso)) {
+      const delivery = await withRLSContext(user.id, (tx) =>
+        tx.userDailyBriefingDelivery.findUnique({
+          where: { userId: user.id },
+          select: { timeZone: true },
+        })
+      );
+      const tz = delivery?.timeZone?.trim() || "America/Los_Angeles";
+      const now = new Date();
+      const { start, end } = zonedDayBoundsContaining(now, tz);
+      liveDayStartIso = start.toISOString();
+      liveDayEndIso = end.toISOString();
+    }
+
     const briefing =
       source === "sample"
         ? SAMPLE_DAILY_BRIEFING
         : await fetchDailyBriefing(user, {
-            dayStartIso,
-            dayEndIso,
+            dayStartIso: liveDayStartIso,
+            dayEndIso: liveDayEndIso,
           });
 
     const html = renderDailyBriefingEmailHtml(briefing);

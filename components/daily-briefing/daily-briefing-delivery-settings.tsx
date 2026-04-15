@@ -38,7 +38,7 @@ export function DailyBriefingDeliverySettings() {
   const [data, setData] = useState<DeliveryPayload | null>(null);
   const [timeValue, setTimeValue] = useState("08:00");
   const [testSending, setTestSending] = useState(false);
-  const [testMessage, setTestMessage] = useState<string | null>(null);
+  const [testFeedback, setTestFeedback] = useState<{ kind: "success" | "error"; text: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,7 +87,7 @@ export function DailyBriefingDeliverySettings() {
         setTimeValue(minutesToTime(json.data.sendLocalMinuteOfDay));
       }
       setSaved(true);
-      setTestMessage(null);
+      setTestFeedback(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -106,7 +106,9 @@ export function DailyBriefingDeliverySettings() {
       <div>
         <h2 className="text-lg font-semibold text-kp-on-surface">Email delivery</h2>
         <p className="mt-1 text-sm text-kp-on-surface-variant">
-          Scheduled sends use the same content as the preview. Delivery is off by default and may be limited during rollout.
+          Scheduled sends use the same content as the preview. Email is off by default. When it is on, the job runs about
+          every 15 minutes and sends at most once per local day after your send time. Whether a message actually goes out
+          also depends on rollout and server switches your team controls.
         </p>
       </div>
 
@@ -133,8 +135,8 @@ export function DailyBriefingDeliverySettings() {
           <span>
             <span className="text-sm font-medium text-kp-on-surface">Send daily briefing by email</span>
             <span className="mt-0.5 block text-xs text-kp-on-surface-variant">
-              When enabled, you may receive one message per local day after your chosen send time (subject to team rollout
-              settings).
+              When enabled, you can get one email per calendar day in your briefing time zone, after the send time, when the
+              scheduler and rollout allow it. You can still use the preview while email is off.
             </span>
           </span>
         </label>
@@ -142,7 +144,7 @@ export function DailyBriefingDeliverySettings() {
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <label htmlFor="db-send-time" className="mb-1 block text-xs font-medium text-kp-on-surface-variant">
-              Local send time
+              Send time (local)
             </label>
             <input
               id="db-send-time"
@@ -170,6 +172,9 @@ export function DailyBriefingDeliverySettings() {
               onBlur={() => void save({ timeZone: data.timeZone.trim() || "America/Los_Angeles" })}
               placeholder="America/Los_Angeles"
             />
+            <p className="mt-1 text-xs text-kp-on-surface-variant">
+              Interpreted in the time zone on the right (same day boundary as scheduled delivery).
+            </p>
           </div>
         </div>
 
@@ -192,53 +197,87 @@ export function DailyBriefingDeliverySettings() {
             }
           />
           <p className="mt-1 text-xs text-kp-on-surface-variant">
-            Defaults to your account email ({data.accountEmail}).
+            Leave blank to use your account email ({data.accountEmail}). Use an override only if you want this briefing
+            delivered somewhere else.
           </p>
         </div>
 
         {data.lastSentLocalDate ? (
           <p className="text-xs text-kp-on-surface-variant">
-            Last sent for local day: <span className="font-mono">{data.lastSentLocalDate}</span>
+            Last successful send was counted for local day{" "}
+            <span className="font-mono">{data.lastSentLocalDate}</span> in your briefing time zone.
           </p>
         ) : (
-          <p className="text-xs text-kp-on-surface-variant">No recorded send yet for your timezone.</p>
+          <p className="text-xs text-kp-on-surface-variant">
+            No successful scheduled send recorded yet for your briefing time zone.
+          </p>
         )}
 
-        {data.testSendAllowed ? (
-          <div className="border-t border-kp-outline pt-4">
-            <button
-              type="button"
-              className="rounded-lg border border-kp-outline bg-kp-surface px-3 py-2 text-sm font-medium text-kp-on-surface hover:bg-kp-surface-variant/30 disabled:opacity-50"
-              disabled={saving || testSending || !data.isProvisioned}
-              onClick={async () => {
-                setTestSending(true);
-                setTestMessage(null);
-                try {
-                  const res = await fetch("/api/v1/daily-briefing/send-test", { method: "POST" });
-                  const json = (await res.json().catch(() => ({}))) as {
-                    data?: { to?: string };
-                    error?: { message?: string; code?: string };
-                  };
-                  if (!res.ok) {
-                    throw new Error(json.error?.message || "Test send failed");
-                  }
-                  setTestMessage(`Test email sent to ${json.data?.to ?? "your address"}.`);
-                } catch (e) {
-                  setTestMessage(e instanceof Error ? e.message : "Test send failed");
-                } finally {
-                  setTestSending(false);
-                }
-              }}
-            >
-              {testSending ? "Sending test…" : "Send test email now"}
-            </button>
-            <p className="mt-2 text-xs text-kp-on-surface-variant">
-              Uses the same renderer as scheduled delivery; does not change the “last sent” date. Requires server flag{" "}
-              <span className="font-mono">DAILY_BRIEFING_TEST_SEND_ENABLED</span>.
+        <div className="border-t border-kp-outline pt-4">
+          <p className="text-xs font-medium text-kp-on-surface">Test email</p>
+          {!data.testSendAllowed ? (
+            <p className="mt-1 text-xs text-kp-on-surface-variant">
+              Test sends are turned off in this environment. Scheduled delivery and preview still work; ask your admin if
+              you need a test message here.
             </p>
-            {testMessage ? <p className="mt-2 text-sm text-kp-on-surface">{testMessage}</p> : null}
-          </div>
-        ) : null}
+          ) : (
+            <>
+              <button
+                type="button"
+                className="mt-2 rounded-lg border border-kp-outline bg-kp-surface px-3 py-2 text-sm font-medium text-kp-on-surface hover:bg-kp-surface-variant/30 disabled:opacity-50"
+                disabled={saving || testSending || !data.isProvisioned}
+                onClick={async () => {
+                  setTestSending(true);
+                  setTestFeedback(null);
+                  try {
+                    const res = await fetch("/api/v1/daily-briefing/send-test", { method: "POST" });
+                    const json = (await res.json().catch(() => ({}))) as {
+                      data?: { to?: string };
+                      error?: { message?: string; code?: string };
+                    };
+                    if (!res.ok) {
+                      throw new Error(json.error?.message || "Test send failed");
+                    }
+                    setTestFeedback({
+                      kind: "success",
+                      text: `Test email sent to ${json.data?.to ?? "your delivery address"}. It does not change the “last sent” date used for scheduling.`,
+                    });
+                  } catch (e) {
+                    setTestFeedback({
+                      kind: "error",
+                      text: e instanceof Error ? e.message : "Test send failed",
+                    });
+                  } finally {
+                    setTestSending(false);
+                  }
+                }}
+              >
+                {testSending ? "Sending test…" : "Send test email now"}
+              </button>
+              {!data.isProvisioned ? (
+                <p className="mt-2 text-xs text-kp-on-surface-variant">
+                  Save this page once (for example adjust time or time zone) to enable test sends.
+                </p>
+              ) : (
+                <p className="mt-2 text-xs text-kp-on-surface-variant">
+                  Uses the same renderer as scheduled delivery, sent to your delivery address above.
+                </p>
+              )}
+              {testFeedback ? (
+                <p
+                  className={
+                    testFeedback.kind === "success"
+                      ? "mt-2 text-sm text-kp-teal"
+                      : "mt-2 text-sm text-red-800"
+                  }
+                  role={testFeedback.kind === "success" ? "status" : "alert"}
+                >
+                  {testFeedback.text}
+                </p>
+              ) : null}
+            </>
+          )}
+        </div>
       </div>
 
       <div className="rounded-xl border border-kp-outline bg-kp-surface p-5">
