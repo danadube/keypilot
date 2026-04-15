@@ -25,7 +25,12 @@ import { CommandCenterLiveTitle } from "@/components/dashboard/command-center-li
 import { CommandCenterPriorityTaskRow } from "@/components/dashboard/command-center-priority-task-row";
 import { CommandCenterSchedulePanel } from "@/components/dashboard/command-center-schedule-panel";
 import { commandCenterSourceChipClass, listingStageChipClass } from "@/lib/dashboard/command-center-visual";
-import { NewTaskModal } from "@/components/tasks/new-task-modal";
+import type { CalendarQuickAddPrefill } from "@/components/calendar/add-event-modal";
+import {
+  CalendarAddFlowCoordinator,
+  type CalendarAddFlowType,
+} from "@/components/calendar/calendar-add-flow-coordinator";
+import { localDateKey } from "@/lib/calendar/calendar-event-day-utils";
 import type { TaskPilotPayload } from "@/lib/tasks/task-pilot-payload-mutate";
 import { apiFetcher } from "@/lib/fetcher";
 import type { SerializedAgentFollowUp } from "@/lib/follow-ups/agent-follow-up-buckets";
@@ -113,7 +118,20 @@ export function OperationalDashboardView() {
     }[]
   >("/api/v1/showing-hq/showings", apiFetcher);
 
-  const [newTaskModalOpen, setNewTaskModalOpen] = useState(false);
+  const [addFlowOpen, setAddFlowOpen] = useState(false);
+  const [addFlowPrefill, setAddFlowPrefill] = useState<CalendarQuickAddPrefill | null>(null);
+  const [addFlowDefaultType, setAddFlowDefaultType] = useState<CalendarAddFlowType>("task");
+
+  const openAddFlow = useCallback((prefill: CalendarQuickAddPrefill, type: CalendarAddFlowType = "task") => {
+    setAddFlowPrefill(prefill);
+    setAddFlowDefaultType(type);
+    setAddFlowOpen(true);
+  }, []);
+
+  const onAddFlowOpenChange = useCallback((open: boolean) => {
+    setAddFlowOpen(open);
+    if (!open) setAddFlowPrefill(null);
+  }, []);
 
   const completePriorityTask = useCallback(
     async (taskId: string) => {
@@ -209,7 +227,10 @@ export function OperationalDashboardView() {
           <PageHeaderPrimaryAddMenu summaryLabel="Quick add">
             <PageHeaderActionItem href="/showing-hq/showings/new">New showing</PageHeaderActionItem>
             <PageHeaderActionItem href="/open-houses/new">New open house</PageHeaderActionItem>
-            <PageHeaderActionButton type="button" onClick={() => setNewTaskModalOpen(true)}>
+            <PageHeaderActionButton
+              type="button"
+              onClick={() => openAddFlow({ date: localDateKey(new Date()), time: "" }, "task")}
+            >
               New task
             </PageHeaderActionButton>
             <PageHeaderActionItem href="/transactions?new=1">New transaction</PageHeaderActionItem>
@@ -365,7 +386,7 @@ export function OperationalDashboardView() {
               followUpsAll={followUpsAll}
               openTasks={openTasks}
               loading={loading}
-              onNewTask={() => setNewTaskModalOpen(true)}
+              onNewTask={() => openAddFlow({ date: localDateKey(new Date()), time: "" }, "task")}
               fillHeight
               className="h-full min-h-0"
             />
@@ -524,13 +545,11 @@ export function OperationalDashboardView() {
         </div>
       </section>
 
-      <NewTaskModal
-        open={newTaskModalOpen}
-        onOpenChange={setNewTaskModalOpen}
-        defaultContactId={null}
-        defaultPropertyId={null}
-        initialTitle=""
-        initialDescription=""
+      <CalendarAddFlowCoordinator
+        open={addFlowOpen}
+        onOpenChange={onAddFlowOpenChange}
+        prefill={addFlowPrefill}
+        defaultType={addFlowDefaultType}
         onCreated={() => {
           void mutateTasks();
           void mutateCc();
