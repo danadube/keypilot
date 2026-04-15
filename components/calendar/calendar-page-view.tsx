@@ -338,7 +338,10 @@ export function CalendarPageView() {
 
   const onAddFlowOpenChange = useCallback((open: boolean) => {
     setAddFlowOpen(open);
-    if (!open) setAddFlowPrefill(null);
+    if (!open) {
+      setAddFlowPrefill(null);
+      setAddFlowDefaultType("task");
+    }
   }, []);
 
   const onMonthDayOpenAgenda = useCallback((d: Date) => {
