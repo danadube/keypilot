@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -21,13 +20,11 @@ import {
   CalendarWeekView,
   type CalendarWeekEmptyHint,
 } from "@/components/calendar/calendar-week-view";
-import { NewTaskModal } from "@/components/tasks/new-task-modal";
+import type { CalendarQuickAddPrefill } from "@/components/calendar/add-event-modal";
 import {
-  AddEventModal,
-  FollowUpCalendarHintModal,
-  formatCalendarQuickAddSummary,
-  type CalendarQuickAddPrefill,
-} from "@/components/calendar/add-event-modal";
+  CalendarAddFlowCoordinator,
+  type CalendarAddFlowType,
+} from "@/components/calendar/calendar-add-flow-coordinator";
 import { CalendarDayAgendaModal } from "@/components/calendar/calendar-day-agenda-modal";
 import { ExternalCalendarEventDetailModal } from "@/components/calendar/external-calendar-event-detail-modal";
 import { HolidayEventDetailModal } from "@/components/calendar/holiday-event-detail-modal";
@@ -231,23 +228,17 @@ function CalendarMonthOverview({
 }
 
 export function CalendarPageView() {
-  const router = useRouter();
   const [view, setView] = useState<ViewMode>("week");
   const [weekStart, setWeekStart] = useState(() => startOfWeekSunday(new Date()));
   const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(new Date()));
   const [layerVisibility, setLayerVisibility] = useState<CalendarLayerVisibility>(DEFAULT_LAYER_VISIBILITY);
-  const [addEventOpen, setAddEventOpen] = useState(false);
-  const [quickAddPrefill, setQuickAddPrefill] = useState<CalendarQuickAddPrefill | null>(null);
-  const [followUpHintOpen, setFollowUpHintOpen] = useState(false);
-  const [followUpHintSummary, setFollowUpHintSummary] = useState("");
+  const [addFlowOpen, setAddFlowOpen] = useState(false);
+  const [addFlowPrefill, setAddFlowPrefill] = useState<CalendarQuickAddPrefill | null>(null);
+  const [addFlowDefaultType, setAddFlowDefaultType] = useState<CalendarAddFlowType>("task");
   const [agendaDay, setAgendaDay] = useState<Date | null>(null);
   const [externalDetail, setExternalDetail] = useState<CalendarEvent | null>(null);
   const [holidayDetail, setHolidayDetail] = useState<CalendarEvent | null>(null);
   const [internalDetail, setInternalDetail] = useState<CalendarEvent | null>(null);
-  const [newTaskOpen, setNewTaskOpen] = useState(false);
-  /** When opening New task from the calendar (or after choosing Task in Add to Calendar), set due date/time. Cleared when the modal closes. */
-  const [taskDuePrefill, setTaskDuePrefill] = useState<{ date: string; time: string } | null>(null);
-
   const range = useMemo(() => {
     if (view === "week") {
       const start = startOfLocalDay(weekStart);
@@ -339,53 +330,16 @@ export function CalendarPageView() {
     setWeekStart((w) => addDays(w, 7));
   }, []);
 
-  const openNewTaskWithPrefill = useCallback((prefill: { date: string; time: string } | null) => {
-    setTaskDuePrefill(prefill);
-    setNewTaskOpen(true);
+  const openAddFlow = useCallback((prefill: CalendarQuickAddPrefill, type: CalendarAddFlowType = "task") => {
+    setAddFlowPrefill(prefill);
+    setAddFlowDefaultType(type);
+    setAddFlowOpen(true);
   }, []);
 
-  const onNewTaskOpenChange = useCallback((open: boolean) => {
-    setNewTaskOpen(open);
-    if (!open) setTaskDuePrefill(null);
+  const onAddFlowOpenChange = useCallback((open: boolean) => {
+    setAddFlowOpen(open);
+    if (!open) setAddFlowPrefill(null);
   }, []);
-
-  const openAddEventModal = useCallback((prefill: CalendarQuickAddPrefill) => {
-    setQuickAddPrefill(prefill);
-    setAddEventOpen(true);
-  }, []);
-
-  const onAddEventOpenChange = useCallback((open: boolean) => {
-    setAddEventOpen(open);
-    if (!open) setQuickAddPrefill(null);
-  }, []);
-
-  const onChooseShowingFromQuickAdd = useCallback(
-    (prefill: CalendarQuickAddPrefill) => {
-      onAddEventOpenChange(false);
-      const qs = new URLSearchParams();
-      qs.set("scheduledDate", prefill.date);
-      if (prefill.time.trim()) qs.set("scheduledTime", prefill.time.trim());
-      router.push(`/showing-hq/showings/new?${qs.toString()}`);
-    },
-    [onAddEventOpenChange, router]
-  );
-
-  const onChooseTaskFromQuickAdd = useCallback(
-    (prefill: CalendarQuickAddPrefill) => {
-      onAddEventOpenChange(false);
-      openNewTaskWithPrefill(prefill);
-    },
-    [onAddEventOpenChange, openNewTaskWithPrefill]
-  );
-
-  const onChooseFollowUpFromQuickAdd = useCallback(
-    (prefill: CalendarQuickAddPrefill) => {
-      onAddEventOpenChange(false);
-      setFollowUpHintSummary(formatCalendarQuickAddSummary(prefill));
-      setFollowUpHintOpen(true);
-    },
-    [onAddEventOpenChange]
-  );
 
   const onMonthDayOpenAgenda = useCallback((d: Date) => {
     setWeekStart(startOfWeekSunday(d));
@@ -484,7 +438,10 @@ export function CalendarPageView() {
           <PageHeaderPrimaryAddMenu summaryLabel="Quick add">
             <PageHeaderActionItem href="/showing-hq/showings/new">New showing</PageHeaderActionItem>
             <PageHeaderActionItem href="/open-houses/new">New open house</PageHeaderActionItem>
-            <PageHeaderActionButton type="button" onClick={() => openNewTaskWithPrefill(null)}>
+            <PageHeaderActionButton
+              type="button"
+              onClick={() => openAddFlow({ date: localDateKey(new Date()), time: "" }, "task")}
+            >
               New task
             </PageHeaderActionButton>
             <PageHeaderActionItem href="/showing-hq/follow-ups">Follow-up</PageHeaderActionItem>
@@ -536,9 +493,7 @@ export function CalendarPageView() {
                 weekStart={weekStart}
                 events={filtered}
                 emptyHint={weekEmptyHint}
-                onTimeGridCreate={({ dateKey, timeLocal }) =>
-                  openAddEventModal({ date: dateKey, time: timeLocal })
-                }
+                onTimeGridCreate={({ dateKey, timeLocal }) => openAddFlow({ date: dateKey, time: timeLocal })}
                 onAllDayBackgroundClick={onWeekAllDayOpenAgenda}
                 onExternalEventOpen={setExternalDetail}
                 onHolidayEventOpen={setHolidayDetail}
@@ -565,7 +520,7 @@ export function CalendarPageView() {
         day={agendaDay}
         events={agendaEventsForModal}
         allLayersVisible={allLayersVisible}
-        onAdd={(prefill) => openAddEventModal(prefill)}
+        onAdd={(prefill) => openAddFlow(prefill)}
         onExternalSelect={(ev) => {
           setAgendaDay(null);
           setExternalDetail(ev);
@@ -605,30 +560,11 @@ export function CalendarPageView() {
         onTaskCompleted={() => void mutate()}
       />
 
-      <AddEventModal
-        open={addEventOpen}
-        onOpenChange={onAddEventOpenChange}
-        prefill={quickAddPrefill}
-        onChooseShowing={onChooseShowingFromQuickAdd}
-        onChooseTask={onChooseTaskFromQuickAdd}
-        onChooseFollowUp={onChooseFollowUpFromQuickAdd}
-      />
-
-      <FollowUpCalendarHintModal
-        open={followUpHintOpen}
-        onOpenChange={(o) => {
-          setFollowUpHintOpen(o);
-          if (!o) setFollowUpHintSummary("");
-        }}
-        prefillSummary={followUpHintSummary}
-      />
-
-      <NewTaskModal
-        open={newTaskOpen}
-        onOpenChange={onNewTaskOpenChange}
-        initialDueDate={taskDuePrefill?.date ?? null}
-        initialDueTime={taskDuePrefill?.time ?? null}
-        onCreated={() => void mutate()}
+      <CalendarAddFlowCoordinator
+        open={addFlowOpen}
+        onOpenChange={onAddFlowOpenChange}
+        prefill={addFlowPrefill}
+        defaultType={addFlowDefaultType}
       />
     </div>
   );
