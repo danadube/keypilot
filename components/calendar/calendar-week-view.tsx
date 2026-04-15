@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CalendarEvent, CalendarSourceType } from "@/lib/calendar/calendar-event-types";
+import { monthCellStrippedTitle } from "@/lib/calendar/calendar-month-cell-display";
 import { layoutOverlappingIntervals } from "@/lib/calendar/overlap-layout";
 
 const GRID_START_HOUR = 0;
@@ -216,8 +217,8 @@ function CalendarWeekViewContent({
     >
       <div className="relative w-full min-w-0 max-lg:inline-block max-lg:min-w-[28rem]">
         {emptyOverlay}
-        {/* Weekday + all-day: fixed above the scrollable timed grid (no horizontal compression) */}
-        <div className="border-b border-kp-outline/50 bg-kp-surface">
+        {/* overflow-y:auto + stable gutter: header column width matches timed grid (same reserved scrollbar track) */}
+        <div className="overflow-y-auto border-b border-kp-outline/50 bg-kp-surface [scrollbar-gutter:stable]">
           <div
             className="grid border-b border-kp-outline/70 bg-kp-surface-high/[0.1]"
             style={{
@@ -307,7 +308,7 @@ function CalendarWeekViewContent({
 
         {/* Full 24-hour timed grid — scrolls inside the calendar canvas */}
         <div
-          className="overflow-y-auto overscroll-y-contain border-b border-kp-outline/60 bg-kp-bg/25"
+          className="overflow-y-auto overscroll-y-contain border-b border-kp-outline/60 bg-kp-bg/25 [scrollbar-gutter:stable]"
           style={{ maxHeight: TIME_GRID_MAX_HEIGHT }}
           aria-label="Week time grid"
         >
@@ -391,6 +392,7 @@ function EventPill({
     : Number.isNaN(start.getTime())
       ? ""
       : start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const displayTitle = monthCellStrippedTitle(ev);
   const meta = ev.metadata as { calendarName?: string; subline?: string; location?: string; htmlLink?: string } | undefined;
   const sub = meta?.calendarName ?? meta?.subline;
   const googleUrl = ev.sourceType === "external" ? meta?.htmlLink?.trim() : undefined;
@@ -402,15 +404,14 @@ function EventPill({
   );
   const inner = (
     <>
-      <div className="flex items-center justify-between gap-1">
-        <span className="truncate text-[9px] font-semibold uppercase tracking-wide text-kp-on-surface/70">
-          {ev.sourceLabel}
-        </span>
-        <span className="shrink-0 text-[9px] tabular-nums text-kp-on-surface-muted">{timeStr}</span>
+      <div className="flex items-start justify-between gap-1">
+        <p className={cn("min-w-0 flex-1 truncate font-semibold leading-snug text-kp-on-surface", compact ? "text-[10px]" : "text-[11px]")}>
+          {displayTitle}
+        </p>
+        {!ev.allDay ? (
+          <span className="shrink-0 text-[9px] tabular-nums text-kp-on-surface-muted">{timeStr}</span>
+        ) : null}
       </div>
-      <p className={cn("mt-0.5 truncate font-semibold leading-snug text-kp-on-surface", compact ? "text-[10px]" : "text-[11px]")}>
-        {ev.title}
-      </p>
       {ev.sourceType === "external" && sub ? (
         <p className="mt-0.5 truncate text-[9px] text-kp-on-surface-muted">{sub}</p>
       ) : null}
@@ -573,14 +574,10 @@ function DayColumn({
           const extMeta = ev.sourceType === "external" ? (ev.metadata as { htmlLink?: string; location?: string }) : undefined;
           const extGoogleUrl = extMeta?.htmlLink?.trim();
           const extLoc = extMeta?.location?.trim();
+          const displayTitle = monthCellStrippedTitle(ev);
           const blockBody = (
             <>
-              <div className="flex items-start justify-between gap-0.5">
-                <span className="line-clamp-1 shrink min-w-0 text-[8px] font-semibold uppercase tracking-wide text-kp-on-surface/65">
-                  {ev.sourceLabel}
-                </span>
-              </div>
-              <p className="line-clamp-2 font-semibold leading-[1.15] text-kp-on-surface">{ev.title}</p>
+              <p className="line-clamp-2 pr-6 font-semibold leading-[1.15] text-kp-on-surface">{displayTitle}</p>
               <p className="mt-0.5 text-[9px] tabular-nums leading-tight text-kp-on-surface-muted">
                 {Number.isNaN(start.getTime())
                   ? ""
