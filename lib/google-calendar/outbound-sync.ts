@@ -16,6 +16,12 @@ import {
 import { getGoogleCalendarOutboundPreferences } from "@/lib/google-calendar-sync-preferences";
 import { prismaAdmin } from "@/lib/db";
 import { resolveAppOrigin } from "@/lib/daily-briefing/email/app-origin";
+import {
+  addOneGregorianDayYmd,
+  formatDateKeyInTimeZone,
+  formatInstantForGoogleCalendarDateTime,
+  resolveUserIanaTimeZoneForGoogleOutbound,
+} from "@/lib/google-calendar/outbound-event-datetime";
 
 const SHOWING_DURATION_MS = 60 * 60 * 1000;
 const DEFAULT_BLOCK_MS = 30 * 60 * 1000;
@@ -334,6 +340,7 @@ function kpLink(path: string): string {
 }
 
 export async function syncShowingOutbound(userId: string, showingId: string): Promise<void> {
+  const tz = await resolveUserIanaTimeZoneForGoogleOutbound(userId);
   const row = await prismaAdmin.showing.findFirst({
     where: { id: showingId, hostUserId: userId },
     include: { property: { select: { address1: true, city: true, state: true } } },
@@ -363,8 +370,14 @@ export async function syncShowingOutbound(userId: string, showingId: string): Pr
     body: {
       summary: title,
       description,
-      start: { dateTime: start.toISOString(), timeZone: "UTC" },
-      end: { dateTime: end.toISOString(), timeZone: "UTC" },
+      start: {
+        dateTime: formatInstantForGoogleCalendarDateTime(start, tz),
+        timeZone: tz,
+      },
+      end: {
+        dateTime: formatInstantForGoogleCalendarDateTime(end, tz),
+        timeZone: tz,
+      },
       extendedProperties: {
         private: {
           keypilotOutbound: "1",
@@ -377,6 +390,7 @@ export async function syncShowingOutbound(userId: string, showingId: string): Pr
 }
 
 export async function syncTaskOutbound(userId: string, taskId: string): Promise<void> {
+  const tz = await resolveUserIanaTimeZoneForGoogleOutbound(userId);
   const row = await prismaAdmin.task.findFirst({
     where: { id: taskId, userId },
     include: {
@@ -412,8 +426,14 @@ export async function syncTaskOutbound(userId: string, taskId: string): Promise<
       ]
         .filter(Boolean)
         .join("\n"),
-      start: { dateTime: due.toISOString(), timeZone: "UTC" },
-      end: { dateTime: end.toISOString(), timeZone: "UTC" },
+      start: {
+        dateTime: formatInstantForGoogleCalendarDateTime(due, tz),
+        timeZone: tz,
+      },
+      end: {
+        dateTime: formatInstantForGoogleCalendarDateTime(end, tz),
+        timeZone: tz,
+      },
       extendedProperties: {
         private: {
           keypilotOutbound: "1",
@@ -426,6 +446,7 @@ export async function syncTaskOutbound(userId: string, taskId: string): Promise<
 }
 
 export async function syncFollowUpOutbound(userId: string, followUpId: string): Promise<void> {
+  const tz = await resolveUserIanaTimeZoneForGoogleOutbound(userId);
   const row = await prismaAdmin.followUp.findFirst({
     where: { id: followUpId, createdByUserId: userId, deletedAt: null },
     include: { contact: { select: { firstName: true, lastName: true } } },
@@ -451,8 +472,14 @@ export async function syncFollowUpOutbound(userId: string, followUpId: string): 
         `Contact: ${name}`,
         kpLink(`/contacts/${row.contactId}`),
       ].join("\n"),
-      start: { dateTime: due.toISOString(), timeZone: "UTC" },
-      end: { dateTime: end.toISOString(), timeZone: "UTC" },
+      start: {
+        dateTime: formatInstantForGoogleCalendarDateTime(due, tz),
+        timeZone: tz,
+      },
+      end: {
+        dateTime: formatInstantForGoogleCalendarDateTime(end, tz),
+        timeZone: tz,
+      },
       extendedProperties: {
         private: {
           keypilotOutbound: "1",
@@ -468,6 +495,7 @@ export async function syncTransactionChecklistOutbound(
   userId: string,
   itemId: string
 ): Promise<void> {
+  const tz = await resolveUserIanaTimeZoneForGoogleOutbound(userId);
   const row = await prismaAdmin.transactionChecklistItem.findFirst({
     where: { id: itemId },
     include: {
@@ -506,8 +534,14 @@ export async function syncTransactionChecklistOutbound(
         `Property: ${line}`,
         kpLink(`/transactions/${row.transactionId}#txn-pipeline-workspace`),
       ].join("\n"),
-      start: { dateTime: due.toISOString(), timeZone: "UTC" },
-      end: { dateTime: end.toISOString(), timeZone: "UTC" },
+      start: {
+        dateTime: formatInstantForGoogleCalendarDateTime(due, tz),
+        timeZone: tz,
+      },
+      end: {
+        dateTime: formatInstantForGoogleCalendarDateTime(end, tz),
+        timeZone: tz,
+      },
       extendedProperties: {
         private: {
           keypilotOutbound: "1",
@@ -547,6 +581,7 @@ export async function syncTransactionClosingOutbound(
   userId: string,
   transactionId: string
 ): Promise<void> {
+  const tz = await resolveUserIanaTimeZoneForGoogleOutbound(userId);
   const txn = await prismaAdmin.transaction.findFirst({
     where: { id: transactionId, userId },
     include: { property: { select: { address1: true, city: true } } },
@@ -562,11 +597,8 @@ export async function syncTransactionClosingOutbound(
   }
 
   const cd = txn.closingDate;
-  const dk = cd.toISOString().slice(0, 10);
-  const [y, mo, da] = dk.split("-").map((x) => Number.parseInt(x, 10));
-  const nextDay = new Date(Date.UTC(y, mo - 1, da) + 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
+  const dk = formatDateKeyInTimeZone(cd, tz);
+  const nextDay = addOneGregorianDayYmd(dk);
 
   const line = `${txn.property.address1}, ${txn.property.city}`;
   const title = `Closing — ${txn.property.address1}`;
@@ -582,8 +614,8 @@ export async function syncTransactionClosingOutbound(
         `Property: ${line}`,
         kpLink(`/transactions/${txn.id}`),
       ].join("\n"),
-      start: { date: dk, timeZone: "UTC" },
-      end: { date: nextDay, timeZone: "UTC" },
+      start: { date: dk, timeZone: tz },
+      end: { date: nextDay, timeZone: tz },
       extendedProperties: {
         private: {
           keypilotOutbound: "1",
