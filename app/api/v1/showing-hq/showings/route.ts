@@ -11,6 +11,8 @@ import { apiErrorFromCaught } from "@/lib/api-response";
 import { scheduleOutboundSync, syncShowingOutbound } from "@/lib/google-calendar/outbound-sync";
 import { generateId } from "@/lib/id";
 import { normalizeShowingHqListSearchQ } from "@/lib/showing-hq/list-search-q";
+import { withRLSContext } from "@/lib/db-context";
+import { recordShowingScheduledUserActivity } from "@/lib/showing-hq/record-showing-user-activity";
 
 export const dynamic = "force-dynamic";
 
@@ -128,6 +130,15 @@ export async function POST(req: NextRequest) {
         },
       });
     }
+
+    await withRLSContext(user.id, async (tx) => {
+      await recordShowingScheduledUserActivity(tx, {
+        userId: user.id,
+        propertyId: showing.propertyId,
+        scheduledAt: showing.scheduledAt,
+        buyerAgentName: showing.buyerAgentName,
+      });
+    });
 
     scheduleOutboundSync(() => syncShowingOutbound(user.id, showing.id));
 

@@ -24,6 +24,25 @@ jest.mock("@/lib/auth", () => ({
   getCurrentUser: jest.fn().mockResolvedValue({ id: "user-1" }),
 }));
 
+jest.mock("@/lib/db-context", () => ({
+  withRLSContext: async (_userId: string, fn: (tx: unknown) => Promise<unknown>) => {
+    const tx = {
+      property: {
+        findFirst: jest.fn().mockResolvedValue({
+          address1: "123 Main St",
+          city: "Austin",
+          state: "TX",
+          zip: "78701",
+        }),
+      },
+      contact: { findFirst: jest.fn() },
+      userActivity: { create: jest.fn().mockResolvedValue({ id: "ua-feed-1" }) },
+      activityLog: { create: jest.fn().mockResolvedValue({}) },
+    };
+    return fn(tx);
+  },
+}));
+
 const PROP_ID = "550e8400-e29b-41d4-a716-446655440000";
 
 beforeEach(() => {

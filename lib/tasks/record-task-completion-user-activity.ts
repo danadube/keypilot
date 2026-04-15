@@ -37,3 +37,59 @@ export async function recordTaskPilotCompletionUserActivity(
     contactId: args.contactId ?? undefined,
   });
 }
+
+const TASK_CREATED_PREFIX = "Task created — ";
+
+export function buildTaskCreatedActivityTitle(taskTitle: string): string {
+  const raw = taskTitle.trim() || "Task";
+  const maxRest = MAX_USER_ACTIVITY_TITLE_LEN - TASK_CREATED_PREFIX.length;
+  const body = raw.length <= maxRest ? raw : raw.slice(0, Math.max(0, maxRest));
+  return `${TASK_CREATED_PREFIX}${body}`;
+}
+
+export async function recordTaskPilotCreatedUserActivity(
+  tx: ActivityTx,
+  args: {
+    userId: string;
+    taskTitle: string;
+    propertyId: string | null;
+    contactId: string | null;
+  }
+): Promise<void> {
+  await createUserActivity(tx, {
+    userId: args.userId,
+    type: "TASK",
+    title: buildTaskCreatedActivityTitle(args.taskTitle),
+    description: null,
+    propertyId: args.propertyId ?? undefined,
+    contactId: args.contactId ?? undefined,
+  });
+}
+
+const TASK_REOPENED_PREFIX = "Task reopened — ";
+
+export function buildTaskReopenedActivityTitle(taskTitle: string): string {
+  const raw = taskTitle.trim() || "Task";
+  const maxRest = MAX_USER_ACTIVITY_TITLE_LEN - TASK_REOPENED_PREFIX.length;
+  const body = raw.length <= maxRest ? raw : raw.slice(0, Math.max(0, maxRest));
+  return `${TASK_REOPENED_PREFIX}${body}`;
+}
+
+export async function recordTaskPilotReopenedUserActivity(
+  tx: ActivityTx,
+  args: {
+    userId: string;
+    taskTitle: string;
+    propertyId: string | null;
+    contactId: string | null;
+  }
+): Promise<void> {
+  await createUserActivity(tx, {
+    userId: args.userId,
+    type: "TASK",
+    title: buildTaskReopenedActivityTitle(args.taskTitle),
+    description: null,
+    propertyId: args.propertyId ?? undefined,
+    contactId: args.contactId ?? undefined,
+  });
+}

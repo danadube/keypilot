@@ -14,6 +14,12 @@ import {
 } from "@/lib/validations/showing";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import { scheduleOutboundSync, syncShowingOutbound } from "@/lib/google-calendar/outbound-sync";
+import { withRLSContext } from "@/lib/db-context";
+import {
+  recordShowingCanceledUserActivity,
+  recordShowingMovedToPropertyUserActivity,
+  recordShowingRescheduledUserActivity,
+} from "@/lib/showing-hq/record-showing-user-activity";
 
 async function showingWithUsage<
   T extends {
@@ -75,6 +81,7 @@ export async function PATCH(
     if (ArchiveShowingBodySchema.safeParse(body).success) {
       const existing = await prismaAdmin.showing.findFirst({
         where: { id, hostUserId: user.id, deletedAt: null },
+        select: { id: true, propertyId: true, scheduledAt: true },
       });
       if (!existing) {
         return NextResponse.json(
@@ -85,6 +92,13 @@ export async function PATCH(
       await prismaAdmin.showing.update({
         where: { id },
         data: { deletedAt: new Date() },
+      });
+      await withRLSContext(user.id, async (tx) => {
+        await recordShowingCanceledUserActivity(tx, {
+          userId: user.id,
+          propertyId: existing.propertyId,
+          scheduledAt: existing.scheduledAt,
+        });
       });
       scheduleOutboundSync(() => syncShowingOutbound(user.id, id));
       return NextResponse.json({ data: { archived: true, id } });
@@ -131,6 +145,13 @@ export async function PATCH(
 
     const existing = await prismaAdmin.showing.findFirst({
       where: { id, hostUserId: user.id, deletedAt: null },
+      select: {
+        id: true,
+        scheduledAt: true,
+        propertyId: true,
+        buyerAgentName: true,
+        property: { select: { address1: true } },
+      },
     });
     if (!existing) {
       return NextResponse.json(
@@ -182,6 +203,12 @@ export async function PATCH(
       return NextResponse.json({ data: await showingWithUsage(showing, id) });
     }
 
+    const scheduleChanged =
+      parsed.data.scheduledAt !== undefined &&
+      new Date(parsed.data.scheduledAt).getTime() !== existing.scheduledAt.getTime();
+    const propertyChanged =
+      parsed.data.propertyId !== undefined && parsed.data.propertyId !== existing.propertyId;
+
     const showing = await prismaAdmin.showing.update({
       where: { id },
       data: updateData,
@@ -190,6 +217,40 @@ export async function PATCH(
         feedbackRequests: { orderBy: { requestedAt: "desc" }, take: 1 },
       },
     });
+
+    if (scheduleChanged || propertyChanged) {
+      const buyerForLog =
+        parsed.data.buyerAgentName !== undefined
+          ? parsed.data.buyerAgentName?.trim() || null
+          : existing.buyerAgentName;
+      const oldAddr = existing.property?.address1?.trim() || "Previous listing";
+      await withRLSContext(user.id, async (tx) => {
+        if (scheduleChanged && propertyChanged) {
+          await recordShowingRescheduledUserActivity(tx, {
+            userId: user.id,
+            propertyId: showing.propertyId,
+            previousScheduledAt: existing.scheduledAt,
+            newScheduledAt: showing.scheduledAt,
+            buyerAgentName: buyerForLog,
+            extraLine: `Moved from ${oldAddr}`,
+          });
+        } else if (scheduleChanged) {
+          await recordShowingRescheduledUserActivity(tx, {
+            userId: user.id,
+            propertyId: showing.propertyId,
+            previousScheduledAt: existing.scheduledAt,
+            newScheduledAt: showing.scheduledAt,
+            buyerAgentName: buyerForLog,
+          });
+        } else if (propertyChanged) {
+          await recordShowingMovedToPropertyUserActivity(tx, {
+            userId: user.id,
+            propertyId: showing.propertyId,
+            scheduledAt: showing.scheduledAt,
+          });
+        }
+      });
+    }
 
     scheduleOutboundSync(() => syncShowingOutbound(user.id, id));
 
@@ -209,6 +270,7 @@ export async function DELETE(
     const force = req.nextUrl.searchParams.get("force") === "1";
     const row = await prismaAdmin.showing.findFirst({
       where: { id, hostUserId: user.id, deletedAt: null },
+      select: { id: true, propertyId: true, scheduledAt: true },
     });
     if (!row) {
       return NextResponse.json(
@@ -235,6 +297,13 @@ export async function DELETE(
     await prismaAdmin.showing.update({
       where: { id },
       data: { deletedAt: new Date() },
+    });
+    await withRLSContext(user.id, async (tx) => {
+      await recordShowingCanceledUserActivity(tx, {
+        userId: user.id,
+        propertyId: row.propertyId,
+        scheduledAt: row.scheduledAt,
+      });
     });
     scheduleOutboundSync(() => syncShowingOutbound(user.id, id));
     return NextResponse.json({ data: { deleted: true } });

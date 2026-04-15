@@ -8,6 +8,7 @@ import { serializeTask, type TaskRow } from "@/lib/tasks/task-serialize";
 import { bucketOpenTasksByDue } from "@/lib/tasks/task-buckets";
 import { parseOptionalTaskDueAt } from "@/lib/tasks/parse-task-due-at";
 import { scheduleOutboundSync, syncTaskOutbound } from "@/lib/google-calendar/outbound-sync";
+import { recordTaskPilotCreatedUserActivity } from "@/lib/tasks/record-task-completion-user-activity";
 
 export const dynamic = "force-dynamic";
 
@@ -144,6 +145,12 @@ export async function POST(req: NextRequest) {
           status: "OPEN",
         },
         select: { id: true },
+      });
+      await recordTaskPilotCreatedUserActivity(tx, {
+        userId: user.id,
+        taskTitle: title.trim(),
+        propertyId: propertyId ?? null,
+        contactId: contactId ?? null,
       });
       return row.id;
     });

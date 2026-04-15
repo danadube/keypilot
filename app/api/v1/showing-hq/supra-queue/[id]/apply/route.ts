@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { prismaAdmin } from "@/lib/db";
+import { withRLSContext } from "@/lib/db-context";
 import { ApplySupraQueueItemSchema } from "@/lib/validations/supra-queue";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { applyShowingEndedSupraQueueItem } from "@/lib/showing-hq/apply-showing-ended-supra-queue-item";
@@ -16,6 +17,10 @@ import {
   SupraQueueState,
   SupraShowingMatchStatus,
 } from "@prisma/client";
+import {
+  recordShowingRescheduledUserActivity,
+  recordShowingScheduledUserActivity,
+} from "@/lib/showing-hq/record-showing-user-activity";
 
 export const dynamic = "force-dynamic";
 
@@ -269,6 +274,9 @@ export async function POST(
             ? `${existingShowing.notes.trim()}\n\n${item.resolutionNotes.trim()}`
             : item.resolutionNotes?.trim() || existingShowing.notes?.trim() || null;
 
+        const showingScheduleChanged =
+          existingShowing.scheduledAt.getTime() !== scheduledAt.getTime();
+
         await tx.showing.update({
           where: { id: matchedShowingId },
           data: {
@@ -301,6 +309,8 @@ export async function POST(
           showingId: matchedShowingId,
           createdProperty: !matchedPropertyId,
           updatedShowing: true,
+          showingScheduleChanged,
+          previousShowingScheduledAt: existingShowing.scheduledAt,
         };
       }
 
@@ -362,6 +372,8 @@ export async function POST(
         showingId: showing.id,
         createdProperty: !matchedPropertyId,
         updatedShowing: false,
+        showingScheduleChanged: false,
+        previousShowingScheduledAt: null as Date | null,
       };
     });
 
@@ -375,6 +387,33 @@ export async function POST(
       buyerAgentFeedbackDraftReady = draftResult.saved;
     } catch (draftErr) {
       console.error("[supra-apply] feedback draft hook failed (non-fatal)", draftErr);
+    }
+
+    try {
+      await withRLSContext(user.id, async (tx) => {
+        if (!result.updatedShowing) {
+          await recordShowingScheduledUserActivity(tx, {
+            userId: user.id,
+            propertyId: result.propertyId,
+            scheduledAt,
+            buyerAgentName: item.parsedAgentName?.trim() ?? null,
+            sourceLine: "Imported from Supra",
+          });
+        } else if (
+          result.showingScheduleChanged &&
+          result.previousShowingScheduledAt != null
+        ) {
+          await recordShowingRescheduledUserActivity(tx, {
+            userId: user.id,
+            propertyId: result.propertyId,
+            previousScheduledAt: result.previousShowingScheduledAt,
+            newScheduledAt: scheduledAt,
+            buyerAgentName: item.parsedAgentName?.trim() ?? null,
+          });
+        }
+      });
+    } catch (feedErr) {
+      console.error("[supra-apply] user activity feed hook failed (non-fatal)", feedErr);
     }
 
     scheduleOutboundSync(() => syncShowingOutbound(user.id, result.showingId));

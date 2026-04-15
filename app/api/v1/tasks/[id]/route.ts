@@ -5,7 +5,10 @@ import { withRLSContext } from "@/lib/db-context";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { UpdateTaskSchema } from "@/lib/validations/task";
 import { parseOptionalTaskDueAt } from "@/lib/tasks/parse-task-due-at";
-import { recordTaskPilotCompletionUserActivity } from "@/lib/tasks/record-task-completion-user-activity";
+import {
+  recordTaskPilotCompletionUserActivity,
+  recordTaskPilotReopenedUserActivity,
+} from "@/lib/tasks/record-task-completion-user-activity";
 import { scheduleOutboundSync, syncTaskOutbound } from "@/lib/google-calendar/outbound-sync";
 
 export const dynamic = "force-dynamic";
@@ -62,11 +65,19 @@ export async function PATCH(
       const nextStatus = nextStatusFromBody ?? row.status;
       const becameCompleted =
         row.status !== "COMPLETED" && nextStatus === "COMPLETED";
+      const becameReopened = row.status === "COMPLETED" && nextStatus === "OPEN";
 
       await tx.task.update({ where: { id }, data });
 
       if (becameCompleted) {
         await recordTaskPilotCompletionUserActivity(tx, {
+          userId: user.id,
+          taskTitle: row.title,
+          propertyId: row.propertyId,
+          contactId: row.contactId,
+        });
+      } else if (becameReopened) {
+        await recordTaskPilotReopenedUserActivity(tx, {
           userId: user.id,
           taskTitle: row.title,
           propertyId: row.propertyId,
