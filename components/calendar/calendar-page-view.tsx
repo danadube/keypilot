@@ -205,7 +205,11 @@ function CalendarMonthOverview({
                           "truncate border-l-[3px] pl-2 text-[10px] font-medium leading-snug text-kp-on-surface sm:text-[11px] sm:leading-snug",
                           MONTH_CELL_SOURCE_ACCENT[ev.sourceType] ?? MONTH_CELL_SOURCE_ACCENT.external
                         )}
-                        title={ev.title}
+                        title={
+                          ev.sourceType === "external"
+                            ? `${ev.title} (Google · ${(ev.metadata as { calendarName?: string })?.calendarName ?? "Calendar"})`
+                            : ev.title
+                        }
                       >
                         {ev.title}
                       </div>

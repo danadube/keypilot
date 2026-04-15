@@ -56,6 +56,24 @@ export function parseLocalDateKeyToNoon(dateKey: string): Date {
   return new Date(y, mo - 1, d, 12, 0, 0, 0);
 }
 
+/**
+ * Subline for Google-sourced rows in agenda/lists: account email and calendar name when available.
+ */
+export function formatExternalGoogleAgendaSubline(ev: CalendarEvent): string {
+  const m = ev.metadata as {
+    calendarName?: string;
+    subline?: string;
+    googleAccountEmail?: string;
+  };
+  const cal = (m.calendarName ?? m.subline)?.trim();
+  const email = m.googleAccountEmail?.trim();
+  const parts: string[] = [];
+  if (email) parts.push(email);
+  if (cal) parts.push(cal);
+  if (parts.length === 0) return "Google Calendar";
+  return parts.join(" · ");
+}
+
 export function formatAgendaRowTime(ev: CalendarEvent): string {
   if (ev.allDay) return "All day";
   const start = new Date(ev.start);

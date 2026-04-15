@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Plus } from "lucide-react";
+import { ExternalLink, Plus } from "lucide-react";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -9,11 +9,15 @@ import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-butto
 import type { CalendarEvent } from "@/lib/calendar/calendar-event-types";
 import {
   formatAgendaRowTime,
+  formatExternalGoogleAgendaSubline,
   localDateKey,
 } from "@/lib/calendar/calendar-event-day-utils";
 import type { CalendarQuickAddPrefill } from "@/components/calendar/add-event-modal";
 
 function secondaryLine(ev: CalendarEvent): string | null {
+  if (ev.sourceType === "external") {
+    return formatExternalGoogleAgendaSubline(ev);
+  }
   const meta = ev.metadata as { subline?: string; calendarName?: string } | undefined;
   const s = meta?.subline ?? meta?.calendarName;
   return s?.trim() ? s.trim() : null;
@@ -30,8 +34,21 @@ function SourceChip({ label }: { label: string }) {
 const ROW_SHELL =
   "w-full rounded-lg border border-kp-outline/50 bg-kp-surface-high/[0.06] px-3 py-2.5 text-left transition-colors hover:border-kp-outline/70 hover:bg-kp-surface-high/14";
 
-function AgendaItemContent({ ev, timeColumn }: { ev: CalendarEvent; timeColumn: string }) {
+function AgendaItemContent({
+  ev,
+  timeColumn,
+  onOpenInGoogle,
+}: {
+  ev: CalendarEvent;
+  timeColumn: string;
+  /** Present for Google rows with an `htmlLink` — opens Google without closing the agenda first. */
+  onOpenInGoogle?: (url: string) => void;
+}) {
   const sub = secondaryLine(ev);
+  const googleUrl =
+    ev.sourceType === "external"
+      ? (ev.metadata as { htmlLink?: string } | undefined)?.htmlLink?.trim()
+      : undefined;
   return (
     <div className="flex gap-3 sm:gap-4">
       <div className="w-[6.25rem] shrink-0 sm:w-[6.75rem]">
@@ -40,7 +57,23 @@ function AgendaItemContent({ ev, timeColumn }: { ev: CalendarEvent; timeColumn: 
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <p className="min-w-0 flex-1 text-sm font-semibold leading-snug text-kp-on-surface">{ev.title}</p>
-          <SourceChip label={ev.sourceLabel} />
+          <div className="flex shrink-0 items-center gap-1">
+            {googleUrl && onOpenInGoogle ? (
+              <button
+                type="button"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-kp-outline/55 bg-kp-surface-high/30 text-kp-on-surface-muted transition-colors hover:border-kp-outline hover:bg-kp-surface-high/50 hover:text-kp-on-surface"
+                aria-label="Open in Google Calendar"
+                title="Open in Google Calendar"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenInGoogle(googleUrl);
+                }}
+              >
+                <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            ) : null}
+            <SourceChip label={ev.sourceLabel} />
+          </div>
         </div>
         {sub ? <p className="mt-1 line-clamp-2 text-xs leading-snug text-kp-on-surface-muted">{sub}</p> : null}
       </div>
@@ -95,8 +128,14 @@ export function CalendarDayAgendaModal({
     onAdd({ date: localDateKey(day), time: "09:00" });
   };
 
+  const openGoogleInTab = (url: string) => {
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   const renderEventButton = (ev: CalendarEvent, timeColumn: string) => {
-    const inner = <AgendaItemContent ev={ev} timeColumn={timeColumn} />;
+    const inner = (
+      <AgendaItemContent ev={ev} timeColumn={timeColumn} onOpenInGoogle={ev.sourceType === "external" ? openGoogleInTab : undefined} />
+    );
     if (ev.sourceType === "external") {
       return (
         <button type="button" className={ROW_SHELL} onClick={() => onExternalSelect(ev)}>
@@ -130,7 +169,7 @@ export function CalendarDayAgendaModal({
       open={open}
       onOpenChange={onOpenChange}
       title={title || "Day"}
-      description="All-day items first, then by start time."
+      description="All-day first, then by start time. Google events are view-only; use Open in Google for the full event."
       size="md"
       bodyClassName="max-h-[min(70vh,28rem)] space-y-3 overflow-y-auto pt-1"
       footer={

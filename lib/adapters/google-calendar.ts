@@ -179,7 +179,19 @@ export async function fetchGoogleCalendarEvents(
   return events;
 }
 
-const GCAL_LABEL = "GCAL";
+/** Shown on calendar chips — clearer than an abbreviation like "GCAL". */
+const EXTERNAL_GOOGLE_SOURCE_LABEL = "Google";
+
+/** Google may return a subset of HTML in `description`; keep notes readable in KeyPilot. */
+function normalizeGoogleEventDescription(raw: string | null | undefined): string | undefined {
+  if (raw == null) return undefined;
+  const t = raw.trim();
+  if (!t) return undefined;
+  const withBreaks = t.replace(/<br\s*\/?>/gi, "\n").replace(/<\/p>/gi, "\n");
+  const stripped = withBreaks.replace(/<[^>]+>/g, "").replace(/\r\n/g, "\n");
+  const collapsed = stripped.replace(/\n{3,}/g, "\n\n").trim();
+  return collapsed || undefined;
+}
 
 function mapItemsToKeyPilotEvents(
   items: calendar_v3.Schema$Event[],
@@ -195,6 +207,8 @@ function mapItemsToKeyPilotEvents(
     const title = (item.summary ?? "").trim() ? (item.summary as string).trim() : "(No title)";
     const location = (item.location ?? "").trim() || undefined;
     const htmlLink = item.htmlLink ?? undefined;
+    const description = normalizeGoogleEventDescription(item.description ?? undefined);
+    const googleAccountEmail = conn.accountEmail?.trim() || undefined;
 
     const startDay = item.start?.date;
     const endDay = item.end?.date;
@@ -213,7 +227,7 @@ function mapItemsToKeyPilotEvents(
           end,
           allDay: true,
           sourceType: "external",
-          sourceLabel: GCAL_LABEL,
+          sourceLabel: EXTERNAL_GOOGLE_SOURCE_LABEL,
           relatedRoute: "/calendar",
           relatedEntityId: googleEventId,
           metadata: {
@@ -225,6 +239,8 @@ function mapItemsToKeyPilotEvents(
             readOnly: true,
             location,
             htmlLink,
+            description,
+            googleAccountEmail,
             connectionId: conn.id,
           },
         });
@@ -244,7 +260,7 @@ function mapItemsToKeyPilotEvents(
         end: end.toISOString(),
         allDay: false,
         sourceType: "external",
-        sourceLabel: GCAL_LABEL,
+        sourceLabel: EXTERNAL_GOOGLE_SOURCE_LABEL,
         relatedRoute: "/calendar",
         relatedEntityId: googleEventId,
         metadata: {
@@ -255,6 +271,8 @@ function mapItemsToKeyPilotEvents(
           readOnly: true,
           location,
           htmlLink,
+          description,
+          googleAccountEmail,
           connectionId: conn.id,
         },
       });
