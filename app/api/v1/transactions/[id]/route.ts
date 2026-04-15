@@ -14,6 +14,7 @@ import { computeTransactionFinancials } from "@/lib/transactions/transaction-fin
 import { assertPrimaryContactAccessible } from "@/lib/transactions/assert-primary-contact";
 import { serializeTransactionDecimals } from "@/lib/transactions/serialize-transaction";
 import {
+  cleanupOrphanTransactionChecklistOutboundSyncs,
   deleteOutboundMirror,
   scheduleOutboundSync,
   syncTransactionClosingOutbound,
@@ -228,6 +229,8 @@ export async function DELETE(
      * - `SELECT … FOR UPDATE` on existing checklist rows locks those rows for the duration of
      *   this transaction so the id set is stable before `DELETE` / cascade.
      * Using `findMany` alone does not acquire row locks, which weakens that guarantee.
+     * After commit, `cleanupOrphanTransactionChecklistOutboundSyncs` removes any remaining
+     * TRANSACTION_CHECKLIST outbound rows whose checklist row is gone (belt-and-suspenders).
      */
     const checklistIds = await withRLSContext(user.id, async (tx) => {
       const locked = await tx.$queryRaw<Array<{ id: string }>>(
@@ -250,6 +253,7 @@ export async function DELETE(
       scheduleOutboundSync(() => deleteOutboundMirror(user.id, "TRANSACTION_CHECKLIST", row));
     }
     scheduleOutboundSync(() => deleteOutboundMirror(user.id, "TRANSACTION_CLOSING", id));
+    scheduleOutboundSync(() => cleanupOrphanTransactionChecklistOutboundSyncs(user.id));
 
     return NextResponse.json({ data: { deleted: true } });
   } catch (e) {

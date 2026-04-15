@@ -1,5 +1,6 @@
 import type { calendar_v3 } from "googleapis";
 import {
+  Prisma,
   TransactionStatus,
   type GoogleCalendarOutboundSourceType,
 } from "@prisma/client";
@@ -561,6 +562,27 @@ export async function syncTransactionClosingOutbound(
       },
     },
   });
+}
+
+/**
+ * Remove outbound rows (and remote Google events) for TRANSACTION_CHECKLIST sources whose
+ * checklist rows no longer exist. Catches edge cases where cascade delete removed a checklist
+ * row but the id was not included in a batched outbound cleanup list.
+ */
+export async function cleanupOrphanTransactionChecklistOutboundSyncs(userId: string): Promise<void> {
+  const orphans = await prismaAdmin.$queryRaw<Array<{ sourceId: string }>>(
+    Prisma.sql`
+      SELECT g."sourceId" FROM "google_calendar_outbound_syncs" g
+      WHERE g."userId" = ${userId}
+        AND g."sourceType" = 'TRANSACTION_CHECKLIST'::"GoogleCalendarOutboundSourceType"
+        AND NOT EXISTS (
+          SELECT 1 FROM "transaction_checklist_items" t WHERE t."id" = g."sourceId"
+        )
+    `
+  );
+  for (const row of orphans) {
+    await deleteOutboundMirror(userId, "TRANSACTION_CHECKLIST", row.sourceId);
+  }
 }
 
 /** For filtering read-sync: hide Google rows that are our own outbound mirrors. */
