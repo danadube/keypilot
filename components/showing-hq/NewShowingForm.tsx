@@ -54,10 +54,13 @@ type Property = {
 export function NewShowingForm({
   initialScheduledDate,
   initialScheduledTime,
+  initialPropertyId,
 }: {
   /** From calendar quick-add or shared links (`?scheduledDate=YYYY-MM-DD`). */
   initialScheduledDate?: string;
   initialScheduledTime?: string;
+  /** From calendar add flow (`?propertyId=…`). */
+  initialPropertyId?: string;
 } = {}) {
   const router = useRouter();
   const [properties, setProperties] = useState<Property[]>([]);
@@ -65,7 +68,7 @@ export function NewShowingForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [propertyId, setPropertyId] = useState("");
+  const [propertyId, setPropertyId] = useState(() => initialPropertyId?.trim() ?? "");
   const [scheduledDate, setScheduledDate] = useState(() => initialScheduledDate?.trim() ?? "");
   const [scheduledTime, setScheduledTime] = useState(() => initialScheduledTime?.trim() ?? "");
   const [buyerAgentName, setBuyerAgentName] = useState("");

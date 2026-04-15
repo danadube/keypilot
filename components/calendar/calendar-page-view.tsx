@@ -565,6 +565,7 @@ export function CalendarPageView() {
         onOpenChange={onAddFlowOpenChange}
         prefill={addFlowPrefill}
         defaultType={addFlowDefaultType}
+        onCreated={() => void mutate()}
       />
     </div>
   );

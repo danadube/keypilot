@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary } from "@/components/ui/kp-dashboard-button-tiers";
 import { buildDueAtIsoFromDateAndTimeLocal } from "@/lib/tasks/parse-task-due-at";
+import { createTaskClient } from "@/lib/tasks/create-task-client";
 
 type ContactOption = {
   id: string;
@@ -109,19 +110,13 @@ export function NewTaskModal({
     const dueAtIso = buildDueAtIsoFromDateAndTimeLocal(dueDatePart, dueTimePart);
     setSubmitting(true);
     try {
-      const res = await fetch("/api/v1/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: t,
-          description: description.trim() ? description.trim() : null,
-          dueAt: dueAtIso,
-          contactId: contactId || null,
-          propertyId: propertyId || null,
-        }),
+      await createTaskClient({
+        title: t,
+        description: description.trim() ? description.trim() : null,
+        dueAt: dueAtIso,
+        contactId: contactId || null,
+        propertyId: propertyId || null,
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error?.message ?? "Could not create task");
       toast.success("Task created");
       onOpenChange(false);
       onCreated?.();

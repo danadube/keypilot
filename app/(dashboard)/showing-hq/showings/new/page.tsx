@@ -7,10 +7,12 @@ export default function NewShowingPage({
 }) {
   const sd = searchParams.scheduledDate;
   const st = searchParams.scheduledTime;
+  const pid = searchParams.propertyId;
   return (
     <NewShowingForm
       initialScheduledDate={typeof sd === "string" ? sd : undefined}
       initialScheduledTime={typeof st === "string" ? st : undefined}
+      initialPropertyId={typeof pid === "string" ? pid : undefined}
     />
   );
 }
