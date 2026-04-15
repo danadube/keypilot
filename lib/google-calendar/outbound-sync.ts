@@ -18,7 +18,6 @@ import { prismaAdmin } from "@/lib/db";
 import { resolveAppOrigin } from "@/lib/daily-briefing/email/app-origin";
 import {
   addOneGregorianDayYmd,
-  formatDateKeyInTimeZone,
   formatInstantForGoogleCalendarDateTime,
   resolveUserIanaTimeZoneForGoogleOutbound,
 } from "@/lib/google-calendar/outbound-event-datetime";
@@ -581,7 +580,6 @@ export async function syncTransactionClosingOutbound(
   userId: string,
   transactionId: string
 ): Promise<void> {
-  const tz = await resolveUserIanaTimeZoneForGoogleOutbound(userId);
   const txn = await prismaAdmin.transaction.findFirst({
     where: { id: transactionId, userId },
     include: { property: { select: { address1: true, city: true } } },
@@ -597,7 +595,10 @@ export async function syncTransactionClosingOutbound(
   }
 
   const cd = txn.closingDate;
-  const dk = formatDateKeyInTimeZone(cd, tz);
+  // `closingDate` is stored as UTC midnight for a calendar day (e.g. April 1 → 2026-04-01T00:00:00.000Z).
+  // The calendar date must be taken from the UTC YMD, not from the user’s IANA zone — otherwise
+  // Pacific users see the prior local calendar day (UTC midnight is still “yesterday” evening in LA).
+  const dk = cd.toISOString().slice(0, 10);
   const nextDay = addOneGregorianDayYmd(dk);
 
   const line = `${txn.property.address1}, ${txn.property.city}`;
@@ -614,8 +615,8 @@ export async function syncTransactionClosingOutbound(
         `Property: ${line}`,
         kpLink(`/transactions/${txn.id}`),
       ].join("\n"),
-      start: { date: dk, timeZone: tz },
-      end: { date: nextDay, timeZone: tz },
+      start: { date: dk, timeZone: "UTC" },
+      end: { date: nextDay, timeZone: "UTC" },
       extendedProperties: {
         private: {
           keypilotOutbound: "1",

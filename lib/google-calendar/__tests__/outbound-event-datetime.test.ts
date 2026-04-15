@@ -30,6 +30,12 @@ describe("formatDateKeyInTimeZone", () => {
     const key = formatDateKeyInTimeZone(instant, "America/Los_Angeles");
     expect(key).toBe("2026-06-16");
   });
+
+  it("differs from UTC calendar date for UTC-midnight instants (transaction closingDate uses UTC YMD, not this)", () => {
+    const closingUtcMidnightApril1 = new Date("2026-04-01T00:00:00.000Z");
+    expect(closingUtcMidnightApril1.toISOString().slice(0, 10)).toBe("2026-04-01");
+    expect(formatDateKeyInTimeZone(closingUtcMidnightApril1, "America/Los_Angeles")).toBe("2026-03-31");
+  });
 });
 
 describe("addOneGregorianDayYmd", () => {
