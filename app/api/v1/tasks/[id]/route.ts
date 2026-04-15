@@ -5,6 +5,7 @@ import { withRLSContext } from "@/lib/db-context";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { UpdateTaskSchema } from "@/lib/validations/task";
 import { parseOptionalTaskDueAt } from "@/lib/tasks/parse-task-due-at";
+import { recordTaskPilotCompletionUserActivity } from "@/lib/tasks/record-task-completion-user-activity";
 import { scheduleOutboundSync, syncTaskOutbound } from "@/lib/google-calendar/outbound-sync";
 
 export const dynamic = "force-dynamic";
@@ -42,13 +43,37 @@ export async function PATCH(
       data.completedAt = null;
     }
 
+    const nextStatusFromBody =
+      parsed.data.status !== undefined ? parsed.data.status : undefined;
+
     const ok = await withRLSContext(user.id, async (tx) => {
       const row = await tx.task.findFirst({
         where: { id, userId: user.id },
-        select: { id: true },
+        select: {
+          id: true,
+          status: true,
+          title: true,
+          propertyId: true,
+          contactId: true,
+        },
       });
       if (!row) return false;
+
+      const nextStatus = nextStatusFromBody ?? row.status;
+      const becameCompleted =
+        row.status !== "COMPLETED" && nextStatus === "COMPLETED";
+
       await tx.task.update({ where: { id }, data });
+
+      if (becameCompleted) {
+        await recordTaskPilotCompletionUserActivity(tx, {
+          userId: user.id,
+          taskTitle: row.title,
+          propertyId: row.propertyId,
+          contactId: row.contactId,
+        });
+      }
+
       return true;
     });
 
