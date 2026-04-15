@@ -94,16 +94,16 @@ function EmptyState({ isFiltered, onReset }: { isFiltered: boolean; onReset: () 
       <div>
         {isFiltered ? (
           <>
-            <p className="text-sm font-medium text-kp-on-surface">No matching deals</p>
+            <p className="text-sm font-medium text-kp-on-surface">No matching transactions</p>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant">
               Adjust filters or search, or clear to see everything.
             </p>
           </>
         ) : (
           <>
-            <p className="text-sm font-medium text-kp-on-surface">No deals yet</p>
+            <p className="text-sm font-medium text-kp-on-surface">No transactions yet</p>
             <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-              Add a deal from the header to track commission and closing details.
+              Add a transaction from the header to track commission and closing details.
             </p>
           </>
         )}
@@ -168,7 +168,7 @@ export function TransactionsListView() {
         if (json.error) setError(json.error.message ?? "Failed to load");
         else setRows(json.data ?? []);
       })
-      .catch(() => setError("Failed to load deals"))
+      .catch(() => setError("Failed to load transactions"))
       .finally(() => setLoading(false));
   }, [statusFilter, kindFilter, brokerageFilter, debouncedQ, closingYear]);
 
@@ -233,7 +233,7 @@ export function TransactionsListView() {
       <div className="px-6 pt-1 sm:px-8">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div>
-            <h2 className="text-lg font-semibold tracking-tight text-kp-on-surface">Your deals</h2>
+            <h2 className="text-lg font-semibold tracking-tight text-kp-on-surface">Your transactions</h2>
             <p className="mt-0.5 max-w-xl text-sm text-kp-on-surface-variant">
               Filters run on the server. Search matches address, city, and linked contact name.
             </p>
@@ -253,7 +253,7 @@ export function TransactionsListView() {
                         maximumFractionDigits: 0,
                       })}
                     </span>{" "}
-                    on {summary.withNci} deal{summary.withNci === 1 ? "" : "s"}
+                    on {summary.withNci} transaction{summary.withNci === 1 ? "" : "s"}
                   </>
                 ) : null}
               </p>
@@ -274,7 +274,7 @@ export function TransactionsListView() {
               options={statusChipOptions}
               active={statusFilter}
               onChange={(v) => setStatusFilter(v as StatusTabValue)}
-              ariaLabel="Filter deals by status"
+              ariaLabel="Filter transactions by status"
             />
 
             <div className="space-y-3">

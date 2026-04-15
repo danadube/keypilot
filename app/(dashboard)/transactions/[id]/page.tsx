@@ -4,7 +4,7 @@ import { TransactionDetailView } from "@/components/modules/transactions/transac
 export const metadata: Metadata = {
   title: "Transaction | KeyPilot",
   description:
-    "Transaction workspace—property, deal context, milestones, commissions, and lifecycle.",
+    "Transaction workspace — property, milestones, commissions, optional CRM deal link, and lifecycle.",
 };
 
 export default async function TransactionDetailPage({

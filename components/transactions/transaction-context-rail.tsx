@@ -64,14 +64,14 @@ export function TransactionContextRail({
             <Briefcase className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" aria-hidden />
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                Deal
+                CRM deal
               </p>
               {deal ? (
                 <Link
                   href={`/deals/${deal.id}`}
                   className="font-medium text-kp-teal underline-offset-2 hover:underline"
                 >
-                  Open deal
+                  Open CRM deal
                 </Link>
               ) : (
                 <p className="text-kp-on-surface-variant">Not linked</p>
@@ -82,7 +82,7 @@ export function TransactionContextRail({
             <User className="mt-0.5 h-4 w-4 shrink-0 text-kp-teal" aria-hidden />
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-muted">
-                Client (via deal)
+                Client (via CRM deal)
               </p>
               {deal ? (
                 <Link
@@ -93,7 +93,7 @@ export function TransactionContextRail({
                 </Link>
               ) : (
                 <p className="text-xs text-kp-on-surface-variant">
-                  Link a deal to attach a contact to this closing.
+                  Link a CRM deal to attach a contact to this closing.
                 </p>
               )}
             </div>

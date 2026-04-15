@@ -184,7 +184,7 @@ function DealRowActionsMenu({
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label="Deal actions"
+        aria-label="Transaction actions"
         onClick={() => setOpen((v) => !v)}
         className={cn(
           "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-kp-outline/80",
@@ -204,7 +204,7 @@ function DealRowActionsMenu({
             className="flex items-center gap-2 px-3 py-2 text-sm text-kp-on-surface hover:bg-kp-surface-high"
             onClick={() => setOpen(false)}
           >
-            Open deal
+            Open transaction
             <ExternalLink className="h-3.5 w-3.5 opacity-60" />
           </Link>
           {onDelete ? (
@@ -217,7 +217,7 @@ function DealRowActionsMenu({
                 void onDelete();
               }}
             >
-              Delete deal…
+              Delete transaction…
             </button>
           ) : null}
         </div>
@@ -266,13 +266,13 @@ export function TransactionsProductionRow({
 
   async function handleDelete() {
     if (!onDeleted) return;
-    if (!window.confirm("Delete this deal permanently? This cannot be undone.")) {
+    if (!window.confirm("Delete this transaction permanently? This cannot be undone.")) {
       return;
     }
     const res = await fetch(`/api/v1/transactions/${t.id}`, { method: "DELETE" });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
-      window.alert(json?.error?.message ?? "Could not delete deal.");
+      window.alert(json?.error?.message ?? "Could not delete transaction.");
       return;
     }
     onDeleted();
@@ -335,7 +335,7 @@ export function TransactionsProductionRow({
           <p className="text-[11px] font-medium text-amber-700/95 dark:text-amber-400/90">
             ⚠ Missing setup
             {setupGaps.length > 0 ? ` · ${setupGaps.map(setupGapLabel).join(", ")}` : ""}
-            {money.type === "gci" ? " · Open deal to finalize net" : ""}
+            {money.type === "gci" ? " · Open transaction to finalize net" : ""}
           </p>
         ) : null}
 

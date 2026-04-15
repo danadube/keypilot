@@ -101,11 +101,11 @@ export function TransactionsPipelineView() {
             <GitBranch className="h-10 w-10 text-kp-on-surface-variant" />
             <p className="text-sm font-medium text-kp-on-surface">No active pipeline items</p>
             <p className="max-w-md text-kp-on-surface-variant">
-              When none of your deals are closed or fallen apart, they appear here by stage.
-              Add or update deals from the overview.
+              Active closings that are not closed or fallen apart appear here by stage.
+              Add or update transactions from the overview.
             </p>
             <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "mt-2 text-xs")} asChild>
-              <Link href="/transactions">Back to your deals</Link>
+              <Link href="/transactions">Back to overview</Link>
             </Button>
           </div>
         ) : (

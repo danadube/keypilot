@@ -298,8 +298,8 @@ function pipelinePositionHint(status: TxStatus, side: PipelineSide): string {
       : "Pipeline hint: likely Offer Submission → Escrow for buyer-side documents.";
   }
   return side === "SELL"
-    ? "Pipeline hint: often Pre-Listing → Active Listing early in the deal."
-    : "Pipeline hint: often Pre-Offer → Offer Submission early in the deal.";
+    ? "Pipeline hint: often Pre-Listing → Active Listing early in the transaction."
+    : "Pipeline hint: often Pre-Offer → Offer Submission early in the transaction.";
 }
 
 function DealProgressStrip({
@@ -318,7 +318,7 @@ function DealProgressStrip({
     <div className="mt-3 rounded-lg border border-kp-outline/40 bg-kp-bg/45 px-2.5 py-2" role="status">
       <div className="mb-1.5 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-kp-on-surface">
-          Deal progress
+          Checklist progress
         </span>
         <span className="text-xs tabular-nums text-kp-on-surface">
           {complete} of {total} complete · {safePct}%
@@ -895,7 +895,7 @@ export function TransactionProgressWorkspace({
             ) : null}
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-semibold uppercase tracking-wide text-kp-on-surface-variant">
-                Deal status
+                Pipeline status
               </span>
               <StatusBadge variant={statusBadgeVariant(stageStatus)}>
                 {STATUS_LABELS[stageStatus]}
@@ -991,7 +991,7 @@ export function TransactionProgressWorkspace({
                   <div className="border-t border-kp-outline/35 pt-3">
                     {useEnginePipeline && engineTry && engineTry.ok === false ? (
                       <p className="text-[11px] leading-snug text-kp-on-surface-variant">
-                        Forms catalog did not load for this deal. Add property state where needed, or load the
+                        Forms catalog did not load for this transaction. Add property state where needed, or load the
                         California checklist.
                       </p>
                     ) : !paperworkCtx ? (

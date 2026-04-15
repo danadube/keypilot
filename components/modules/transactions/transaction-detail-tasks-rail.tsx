@@ -31,7 +31,7 @@ export function TransactionDetailTasksRail({
             Tasks
           </h2>
           <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-            Capture follow-ups for this deal. Also use Actions to schedule contact reminders.
+            Capture follow-ups for this transaction. Also use Actions to schedule contact reminders.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button

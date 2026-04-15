@@ -672,7 +672,7 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
           href="/transactions"
           className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
         >
-          Back to your deals
+          Back to transactions
         </Link>
       </div>
     );
@@ -686,13 +686,13 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
           className="inline-flex items-center gap-1.5 text-sm font-medium text-kp-teal transition-colors hover:underline"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Back to deal
+          Back to transaction
         </Link>
         <Link
           href="/transactions"
           className="text-sm text-kp-on-surface-variant transition-colors hover:text-kp-teal"
         >
-          All deals
+          All transactions
         </Link>
       </div>
 
@@ -1086,7 +1086,7 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
             <h2 className="text-sm font-semibold text-kp-on-surface">CRM deal</h2>
           </div>
           <p className="mt-0.5 text-[11px] leading-snug text-kp-on-surface-variant">
-            Link an existing deal for this property. Only deals you own on this address appear here.
+            Link an existing CRM deal for this property. Only CRM deals you own on this address appear here.
           </p>
 
           {dealLinkError && (
@@ -1112,7 +1112,7 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
                   href={`/deals/${txn.deal.id}`}
                   className="inline-flex items-center gap-1 rounded-lg border border-kp-outline bg-kp-surface-high px-3 py-1.5 text-xs font-medium text-kp-teal hover:bg-kp-teal/10"
                 >
-                  View deal
+                  View CRM deal
                   <ExternalLink className="h-3 w-3" />
                 </Link>
                 <button
@@ -1137,11 +1137,11 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
               {dealCandidatesLoading ? (
                 <div className="flex items-center gap-2 text-sm text-kp-on-surface-variant">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading deals for this property…
+                  Loading CRM deals for this property…
                 </div>
               ) : selectableDeals.length === 0 ? (
                 <p className="text-sm text-kp-on-surface-variant">
-                  No linkable deals on this property yet. Create a deal from ClientKeep, then link it
+                  No linkable CRM deals on this property yet. Create a CRM deal from ClientKeep, then link it
                   here.
                 </p>
               ) : (
@@ -1151,7 +1151,7 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
                       htmlFor="txn-link-deal"
                       className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant"
                     >
-                      Deal to link
+                      CRM deal to link
                     </label>
                     <select
                       id="txn-link-deal"
@@ -1162,7 +1162,7 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
                         "focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
                       )}
                     >
-                      <option value="">Select a deal…</option>
+                      <option value="">Select a CRM deal…</option>
                       {selectableDeals.map((d) => (
                         <option key={d.id} value={d.id}>
                           {[d.contact.firstName, d.contact.lastName].filter(Boolean).join(" ") ||
@@ -1183,7 +1183,7 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
                         : "cursor-not-allowed bg-kp-surface-high text-kp-on-surface-variant"
                     )}
                   >
-                    {dealLinkBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Link deal"}
+                    {dealLinkBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Link CRM deal"}
                   </button>
                 </div>
               )}
@@ -1191,7 +1191,7 @@ export function TransactionFinancialWorkspace({ transactionId }: { transactionId
                 href="/deals"
                 className="inline-flex text-xs font-medium text-kp-teal underline-offset-2 hover:underline"
               >
-                Go to deals list
+                Browse CRM deals
               </Link>
             </div>
           )}

@@ -15,15 +15,15 @@ import { useState } from "react";
 import { useTransactionHqChromeOptional } from "@/components/modules/transactions/transaction-hq-chrome-context";
 
 const DEFAULT_SUBTITLE =
-  "Your closings and referrals — net commission and deal status at a glance.";
+  "Your closings and referrals — net commission and pipeline status at a glance.";
 
 function subtitleForPath(pathname: string): string {
   const base = pathname.split("?")[0] ?? "";
   if (base.startsWith("/transactions/pipeline")) {
-    return "Active pipeline by stage — closed deals stay on the overview.";
+    return "Active pipeline by stage — closed transactions stay on the overview.";
   }
   if (base.startsWith("/transactions/commissions")) {
-    return "Commission lines assigned to you — open a deal for full context.";
+    return "Commission lines assigned to you — open the transaction for full context.";
   }
   return DEFAULT_SUBTITLE;
 }
@@ -67,7 +67,7 @@ export function TransactionHqPageHeader({ className }: TransactionHqPageHeaderPr
             </Link>
           ) : (
             <PageHeaderPrimaryAddMenu>
-              <PageHeaderActionItem href="/transactions?new=1">New deal</PageHeaderActionItem>
+              <PageHeaderActionItem href="/transactions?new=1">New transaction</PageHeaderActionItem>
               <PageHeaderActionButton type="button" onClick={() => setNewTaskOpen(true)}>
                 New task
               </PageHeaderActionButton>

@@ -91,7 +91,7 @@ function modalDescription(ev: CalendarEvent, workspaceHint: string | undefined):
     case "follow_up":
       return w ? `${w} · Contact follow-up` : "ClientKeep · Contact follow-up";
     case "transaction":
-      return w ? `${w} · Deal milestone` : "TransactionHQ · Deal milestone";
+      return w ? `${w} · Transaction milestone` : "TransactionHQ · Transaction milestone";
     default:
       return ev.sourceLabel;
   }

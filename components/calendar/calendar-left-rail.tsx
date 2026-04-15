@@ -87,7 +87,7 @@ const INTERNAL: { id: InternalLayerId; label: string; dot: string }[] = [
   { id: "showing", label: "Showings", dot: "bg-[#14b8a6]" },
   { id: "task", label: "Tasks", dot: "bg-amber-500" },
   { id: "follow_up", label: "Follow-ups", dot: "bg-sky-500" },
-  { id: "transaction", label: "Deals", dot: "bg-amber-700" },
+  { id: "transaction", label: "Transactions", dot: "bg-amber-700" },
 ];
 
 type CalendarLeftRailProps = {

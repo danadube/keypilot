@@ -54,7 +54,7 @@ function getPageTitle(pathname: string): string {
   }
   if (pathname.startsWith("/market-pilot/campaigns")) return "Campaigns";
   if (pathname.startsWith("/market-pilot")) return "MarketPilot";
-  if (pathname.startsWith("/deals")) return "Deals";
+  if (pathname.startsWith("/deals")) return "CRM deals";
   if (pathname.startsWith("/settings/integrations")) return "Integrations";
   if (pathname.startsWith("/settings")) return "Settings";
   if (base === "/roadmap") return "Roadmap";

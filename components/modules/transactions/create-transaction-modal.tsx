@@ -377,7 +377,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
               CRM deal (optional)
             </label>
             <p className="text-xs text-kp-on-surface-variant">
-              Same property only. The deal&apos;s contact is how people tie to this closing; leave blank and link
+              Same property only. The CRM deal&apos;s contact is how people tie to this closing; leave blank and link
               later on the transaction if you prefer.
             </p>
             {dealsLoading ? (
@@ -387,7 +387,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
               </div>
             ) : unlinkedDeals.length === 0 ? (
               <p className="text-xs text-kp-on-surface-variant">
-                No unlinked deals on this property yet. You can link a deal from the transaction after it&apos;s
+                No unlinked CRM deals on this property yet. You can link a CRM deal from the transaction after it&apos;s
                 created.
               </p>
             ) : (
@@ -397,7 +397,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
                 onChange={(e) => setSelectedDealId(e.target.value)}
                 className="h-9 w-full rounded-lg border border-kp-outline bg-kp-surface px-3 text-sm text-kp-on-surface focus:border-kp-teal/60 focus:outline-none focus:ring-1 focus:ring-kp-teal/40"
               >
-                <option value="">None — link a deal later on the transaction</option>
+                <option value="">None — link a CRM deal later on the transaction</option>
                 {unlinkedDeals.map((d) => (
                   <option key={d.id} value={d.id}>
                     {[d.contact.firstName, d.contact.lastName].filter(Boolean).join(" ") || "Contact"} ·{" "}
@@ -516,7 +516,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
       onClose();
       router.push(`/transactions/${id}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create deal");
+      toast.error(err instanceof Error ? err.message : "Failed to create transaction");
       setSubmitting(false);
     }
   }
@@ -593,7 +593,7 @@ export function CreateTransactionModal({ open, onClose }: CreateTransactionModal
         <div className="flex items-start justify-between border-b border-kp-outline px-6 py-5">
           <div>
             <h2 id="create-transaction-title" className="font-headline text-lg font-semibold text-kp-on-surface">
-              New deal
+              New transaction
             </h2>
             <p className="mt-0.5 text-sm text-kp-on-surface-variant">
               Manual entry or statement import. Everything stays editable.

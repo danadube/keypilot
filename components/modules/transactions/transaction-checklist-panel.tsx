@@ -143,7 +143,7 @@ export function TransactionChecklistPanel({
             Checklist
           </h2>
           <p className="mt-0.5 text-xs text-kp-on-surface-variant">
-            Deal steps tracked on this transaction. Templates add a starting set of items — you can edit
+            Checklist steps tracked on this transaction. Templates add a starting set of items — you can edit
             by adding or checking items off.
           </p>
         </div>
@@ -193,7 +193,7 @@ export function TransactionChecklistPanel({
               <>
                 <p className="text-sm text-kp-on-surface">
                   No checklist items yet. Set buy or sell on this transaction for a one-tap default, or pick
-                  the template that matches this deal.
+                  the template that matches this transaction.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button
@@ -272,7 +272,7 @@ export function TransactionChecklistPanel({
               <input
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Next step on this deal…"
+                placeholder="Next step on this transaction…"
                 className={cn(
                   "h-9 min-w-0 flex-1 rounded-lg border border-kp-outline bg-kp-surface-high px-3 text-sm",
                   "text-kp-on-surface placeholder:text-kp-on-surface-placeholder",

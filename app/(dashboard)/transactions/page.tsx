@@ -6,7 +6,7 @@ import { TransactionsListView } from "@/components/modules/transactions/transact
 export const metadata: Metadata = {
   title: "TransactionHQ | KeyPilot",
   description:
-    "TransactionHQ — net commission, deal status, and closing context in one place.",
+    "TransactionHQ — net commission, pipeline status, and closing context in one place.",
 };
 
 function TransactionsListFallback() {

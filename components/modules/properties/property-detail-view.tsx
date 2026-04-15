@@ -526,7 +526,7 @@ export function PropertyDetailView({ id }: { id: string }) {
                 {hasCrmAccess ? (
                   <>
                     {" "}
-                    · {transactionsForProperty?.length ?? 0} linked deal
+                    · {transactionsForProperty?.length ?? 0} linked transaction
                     {(transactionsForProperty?.length ?? 0) === 1 ? "" : "s"}
                   </>
                 ) : null}
@@ -547,7 +547,8 @@ export function PropertyDetailView({ id }: { id: string }) {
                   </Link>
                   {extraDealContactCount > 0 ? (
                     <p className="text-[10px] text-kp-on-surface-variant">
-                      +{extraDealContactCount} more on linked deals
+                      +{extraDealContactCount} more contact{extraDealContactCount === 1 ? "" : "s"} on linked
+                      transactions
                     </p>
                   ) : null}
                 </div>

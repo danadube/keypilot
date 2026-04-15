@@ -247,7 +247,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           href="/transactions"
           className="text-sm font-medium text-kp-teal underline-offset-2 hover:underline"
         >
-          Back to your deals
+          Back to transactions
         </Link>
       </div>
     );
@@ -263,16 +263,16 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
           className="inline-flex items-center gap-1.5 text-sm text-kp-on-surface-variant transition-colors hover:text-kp-teal"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Your deals
+          All transactions
         </Link>
       </div>
 
       <div className={cn("px-6 pb-8 pt-4 sm:px-8", transactionDetailWorkspaceGridClassName)}>
-        {/* Identity — what deal, for whom, which property */}
+        {/* Identity — transaction, client, property */}
         <div className="order-2 flex min-w-0 flex-col gap-3 lg:order-none lg:sticky lg:top-4 lg:self-start">
           <section className="rounded-xl border border-kp-outline/50 bg-kp-surface/50 p-4">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-kp-on-surface-variant">
-              Deal
+              Transaction
             </p>
             <h1 className="font-headline mt-1 text-xl font-semibold leading-snug text-kp-on-surface">
               {txn.property.address1}
@@ -355,7 +355,7 @@ export function TransactionDetailView({ transactionId }: { transactionId: string
                   >
                     <Briefcase className="h-3.5 w-3.5" aria-hidden />
                     {[txn.deal.contact.firstName, txn.deal.contact.lastName].filter(Boolean).join(" ") ||
-                      "Deal"}
+                      "CRM deal"}
                   </Link>
                 ) : (
                   <span className="text-kp-on-surface-variant">Not linked</span>

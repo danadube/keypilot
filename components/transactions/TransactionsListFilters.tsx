@@ -117,7 +117,7 @@ export function TransactionsListFilters({ totalRowCount, className }: Transactio
               })
             );
           }}
-          ariaLabel="Filter deals by status"
+          ariaLabel="Filter transactions by status"
         />
       </div>
 
