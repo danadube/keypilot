@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import type { CalendarQuickAddPrefill } from "@/components/calendar/add-event-modal";
-import { formatCalendarQuickAddSummary } from "@/components/calendar/add-event-modal";
+import { formatCalendarQuickAddSummary, withDefaultQuickAddTime } from "@/components/calendar/add-event-modal";
 import { buildDueAtIsoFromDateAndTimeLocal } from "@/lib/tasks/parse-task-due-at";
 import { createTaskClient } from "@/lib/tasks/create-task-client";
 import { createManualFollowUpClient } from "@/lib/follow-ups/create-manual-follow-up-client";
@@ -64,6 +64,7 @@ export function CalendarAddFlowCoordinator({
   const router = useRouter();
   const taskTitleRef = useRef<HTMLInputElement>(null);
   const followUpTitleRef = useRef<HTMLInputElement>(null);
+  const followUpContactRef = useRef<HTMLInputElement>(null);
   const propertySearchRef = useRef<HTMLInputElement>(null);
 
   const [activeType, setActiveType] = useState<CalendarAddFlowType>(defaultType);
@@ -94,8 +95,9 @@ export function CalendarAddFlowCoordinator({
     if (!open) return;
     setActiveType(defaultType);
     setWhenEditing(false);
-    const d = prefill?.date?.trim() ?? "";
-    const t = prefill?.time?.trim() ?? "";
+    const normalized = prefill ? withDefaultQuickAddTime(prefill) : null;
+    const d = normalized?.date?.trim() ?? "";
+    const t = normalized?.time?.trim() ?? "";
     setDraftDate(d);
     setDraftTime(t);
     setTaskTitle("");
@@ -133,14 +135,16 @@ export function CalendarAddFlowCoordinator({
   }, [open, prefill, defaultType]);
 
   useEffect(() => {
-    if (!open) return;
-    const id = requestAnimationFrame(() => {
-      if (activeType === "task") taskTitleRef.current?.focus();
-      else if (activeType === "follow_up") followUpTitleRef.current?.focus();
-      else propertySearchRef.current?.focus();
-    });
-    return () => cancelAnimationFrame(id);
-  }, [open, activeType]);
+    if (!open || loadingRefs) return;
+    const t = window.setTimeout(() => {
+      requestAnimationFrame(() => {
+        if (activeType === "task") taskTitleRef.current?.focus();
+        else if (activeType === "follow_up") followUpContactRef.current?.focus();
+        else propertySearchRef.current?.focus();
+      });
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [open, activeType, loadingRefs]);
 
   const whenSummary = useMemo(() => {
     const d = draftDate.trim();
@@ -360,6 +364,11 @@ export function CalendarAddFlowCoordinator({
               id="calendar-add-task-title"
               value={taskTitle}
               onChange={(e) => setTaskTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter" || e.shiftKey) return;
+                e.preventDefault();
+                if (!taskSaveDisabled) void handleTaskSave();
+              }}
               placeholder="What needs to be done?"
               autoComplete="off"
               className={fieldClass}
@@ -369,19 +378,84 @@ export function CalendarAddFlowCoordinator({
         ) : null}
 
         {activeType === "follow_up" ? (
-          <div className="space-y-1">
-            <Label htmlFor="calendar-add-fu-title" className="text-[11px] font-medium text-kp-on-surface-muted">
-              Title
-            </Label>
-            <Input
-              ref={followUpTitleRef}
-              id="calendar-add-fu-title"
-              value={followUpTitle}
-              onChange={(e) => setFollowUpTitle(e.target.value)}
-              placeholder="Follow up"
-              className={fieldClass}
-              maxLength={500}
-            />
+          <div className="space-y-2">
+            <div className="space-y-1">
+              <Label className="text-[11px] font-medium text-kp-on-surface-muted" id="calendar-add-fu-contact-label">
+                Contact <span className="text-destructive">*</span>
+              </Label>
+              {!selectedContact ? (
+                <p id="calendar-add-fu-contact-hint" className="text-[10px] leading-snug text-kp-on-surface-muted">
+                  Search by name, then pick a contact from the list.
+                </p>
+              ) : null}
+              {selectedContact ? (
+                <div className="flex items-center justify-between gap-2 rounded-md border border-kp-outline/50 bg-kp-surface-high/15 px-2 py-1.5 text-xs">
+                  <span className="min-w-0 truncate font-medium text-kp-on-surface">{contactLabel(selectedContact)}</span>
+                  <Button type="button" variant="ghost" size="sm" className="h-6 shrink-0 px-1.5 text-[10px]" onClick={() => setSelectedContactId("")}>
+                    Change
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Input
+                    ref={followUpContactRef}
+                    value={contactQuery}
+                    onChange={(e) => setContactQuery(e.target.value)}
+                    placeholder="Search by name…"
+                    className={fieldClass}
+                    disabled={loadingRefs}
+                    autoComplete="off"
+                    aria-labelledby="calendar-add-fu-contact-label"
+                    aria-describedby={!selectedContact ? "calendar-add-fu-contact-hint" : undefined}
+                  />
+                  <div className={cn(listShell, "mt-1")} role="listbox" aria-label="Matching contacts">
+                    {loadingRefs ? (
+                      <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">Loading…</p>
+                    ) : contacts.length === 0 ? (
+                      <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">No contacts yet. Add contacts first.</p>
+                    ) : filteredContacts.length === 0 ? (
+                      <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">No matches.</p>
+                    ) : (
+                      filteredContacts.map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          role="option"
+                          aria-selected={selectedContactId === c.id}
+                          className={listBtn}
+                          onClick={() => {
+                            setSelectedContactId(c.id);
+                            setContactQuery("");
+                            requestAnimationFrame(() => followUpTitleRef.current?.focus());
+                          }}
+                        >
+                          {contactLabel(c)}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="calendar-add-fu-title" className="text-[11px] font-medium text-kp-on-surface-muted">
+                Title
+              </Label>
+              <Input
+                ref={followUpTitleRef}
+                id="calendar-add-fu-title"
+                value={followUpTitle}
+                onChange={(e) => setFollowUpTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter" || e.shiftKey) return;
+                  e.preventDefault();
+                  if (!followUpSaveDisabled) void handleFollowUpSave();
+                }}
+                placeholder="Follow up"
+                className={fieldClass}
+                maxLength={500}
+              />
+            </div>
           </div>
         ) : null}
 
@@ -436,7 +510,54 @@ export function CalendarAddFlowCoordinator({
           </div>
         ) : null}
 
-        {/* 2 — Type */}
+        {/* When — directly under the main field so context is visible before switching type */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-2 rounded-md border border-kp-outline/35 bg-kp-surface-high/[0.04] px-2 py-1">
+            <span className="min-w-0 truncate text-xs tabular-nums text-kp-on-surface-muted">{whenSummary}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 shrink-0 gap-1 px-2 text-[11px] text-kp-on-surface-muted hover:text-kp-on-surface"
+              onClick={() => setWhenEditing((v) => !v)}
+              aria-expanded={whenEditing}
+            >
+              <Pencil className="h-3 w-3" aria-hidden />
+              {whenEditing ? "Done" : "Edit"}
+            </Button>
+          </div>
+          {whenEditing ? (
+            <div className="grid grid-cols-2 gap-2 pt-0.5">
+              <div className="space-y-0.5">
+                <Label htmlFor="calendar-add-when-date" className="text-[10px] text-kp-on-surface-muted">
+                  Date
+                </Label>
+                <Input
+                  id="calendar-add-when-date"
+                  type="date"
+                  value={draftDate}
+                  onChange={(e) => setDraftDate(e.target.value)}
+                  className={cn(fieldClass, "py-1 text-xs")}
+                />
+              </div>
+              <div className="space-y-0.5">
+                <Label htmlFor="calendar-add-when-time" className="text-[10px] text-kp-on-surface-muted">
+                  Time
+                </Label>
+                <Input
+                  id="calendar-add-when-time"
+                  type="time"
+                  value={draftTime}
+                  onChange={(e) => setDraftTime(e.target.value)}
+                  disabled={!draftDate.trim()}
+                  className={cn(fieldClass, "py-1 text-xs", !draftDate.trim() && "cursor-not-allowed opacity-50")}
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Type */}
         <div>
           <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-muted">Type</p>
           <div
@@ -613,67 +734,10 @@ export function CalendarAddFlowCoordinator({
           </div>
         ) : null}
 
-        {/* 3 — Type-specific */}
+        {/* Follow-up — optional note / priority */}
         {activeType === "follow_up" ? (
-          <div className="space-y-2">
-            <div className="space-y-1">
-              <Label className="text-[11px] font-medium text-kp-on-surface-muted" id="calendar-add-fu-contact-label">
-                Contact <span className="text-destructive">*</span>
-              </Label>
-              {!selectedContact ? (
-                <p id="calendar-add-fu-contact-hint" className="text-[10px] leading-snug text-kp-on-surface-muted">
-                  Search by name, then pick a contact from the list.
-                </p>
-              ) : null}
-              {selectedContact ? (
-                <div className="flex items-center justify-between gap-2 rounded-md border border-kp-outline/50 bg-kp-surface-high/15 px-2 py-1.5 text-xs">
-                  <span className="min-w-0 truncate font-medium text-kp-on-surface">{contactLabel(selectedContact)}</span>
-                  <Button type="button" variant="ghost" size="sm" className="h-6 shrink-0 px-1.5 text-[10px]" onClick={() => setSelectedContactId("")}>
-                    Change
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <Input
-                    value={contactQuery}
-                    onChange={(e) => setContactQuery(e.target.value)}
-                    placeholder="Search by name…"
-                    className={fieldClass}
-                    disabled={loadingRefs}
-                    autoComplete="off"
-                    aria-labelledby="calendar-add-fu-contact-label"
-                    aria-describedby={!selectedContact ? "calendar-add-fu-contact-hint" : undefined}
-                  />
-                  <div className={cn(listShell, "mt-1")} role="listbox" aria-label="Matching contacts">
-                    {loadingRefs ? (
-                      <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">Loading…</p>
-                    ) : contacts.length === 0 ? (
-                      <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">No contacts yet. Add contacts first.</p>
-                    ) : filteredContacts.length === 0 ? (
-                      <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">No matches.</p>
-                    ) : (
-                      filteredContacts.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          role="option"
-                          aria-selected={selectedContactId === c.id}
-                          className={listBtn}
-                          onClick={() => {
-                            setSelectedContactId(c.id);
-                            setContactQuery("");
-                          }}
-                        >
-                          {contactLabel(c)}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <button
+          <div className="space-y-1.5">
+            <button
                 type="button"
                 disabled={submitting}
                 onClick={() => setFollowUpMoreOpen((v) => !v)}
@@ -727,56 +791,8 @@ export function CalendarAddFlowCoordinator({
                   </div>
                 </div>
               ) : null}
-            </div>
           </div>
         ) : null}
-
-        {/* 4 — When (compact) */}
-        <div className="space-y-1">
-          <div className="flex items-center justify-between gap-2 rounded-md border border-kp-outline/35 bg-kp-surface-high/[0.04] px-2 py-1">
-            <span className="min-w-0 truncate text-xs tabular-nums text-kp-on-surface-muted">{whenSummary}</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 shrink-0 gap-1 px-2 text-[11px] text-kp-on-surface-muted hover:text-kp-on-surface"
-              onClick={() => setWhenEditing((v) => !v)}
-              aria-expanded={whenEditing}
-            >
-              <Pencil className="h-3 w-3" aria-hidden />
-              {whenEditing ? "Done" : "Edit"}
-            </Button>
-          </div>
-          {whenEditing ? (
-            <div className="grid grid-cols-2 gap-2 pt-0.5">
-              <div className="space-y-0.5">
-                <Label htmlFor="calendar-add-when-date" className="text-[10px] text-kp-on-surface-muted">
-                  Date
-                </Label>
-                <Input
-                  id="calendar-add-when-date"
-                  type="date"
-                  value={draftDate}
-                  onChange={(e) => setDraftDate(e.target.value)}
-                  className={cn(fieldClass, "py-1 text-xs")}
-                />
-              </div>
-              <div className="space-y-0.5">
-                <Label htmlFor="calendar-add-when-time" className="text-[10px] text-kp-on-surface-muted">
-                  Time
-                </Label>
-                <Input
-                  id="calendar-add-when-time"
-                  type="time"
-                  value={draftTime}
-                  onChange={(e) => setDraftTime(e.target.value)}
-                  disabled={!draftDate.trim()}
-                  className={cn(fieldClass, "py-1 text-xs", !draftDate.trim() && "cursor-not-allowed opacity-50")}
-                />
-              </div>
-            </div>
-          ) : null}
-        </div>
       </div>
     </BrandModal>
   );
