@@ -16,8 +16,11 @@ const HOUR_ROW_PX = 44;
 const HOUR_ROW_REM = `${HOUR_ROW_PX / 16}rem`;
 /** Room for 11px time labels without clipping */
 const TIME_GUTTER_REM = "3.375rem";
-/** Max height of the timed grid scroll area (viewport-relative, cap for very tall screens) */
-const TIME_GRID_MAX_HEIGHT = "min(72vh,56rem)";
+/**
+ * Single scrollport for weekday header + all-day + timed grid (avoids nested scroll fighting
+ * on short viewports). Sticky band keeps orientation while scrolling the 24h grid.
+ */
+const WEEK_VIEW_BODY_MAX_HEIGHT = "min(56rem, max(22rem, min(72vh, 70dvh)))";
 
 function startOfLocalDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
@@ -190,7 +193,7 @@ function CalendarWeekViewContent({
   const emptyOverlay =
     emptyHint === "none" ? null : (
       <div
-        className="pointer-events-none absolute inset-0 z-[15] flex items-center justify-center px-6 py-10"
+        className="pointer-events-none absolute inset-0 z-[40] flex items-center justify-center px-6 py-10"
         role="status"
       >
         <div className="max-w-md rounded-lg border border-kp-outline/40 bg-kp-surface/85 px-4 py-3 text-center shadow-sm backdrop-blur-[2px]">
@@ -217,106 +220,106 @@ function CalendarWeekViewContent({
     >
       <div className="relative w-full min-w-0 max-lg:inline-block max-lg:min-w-[28rem]">
         {emptyOverlay}
-        {/* overflow-y:auto + stable gutter: header column width matches timed grid (same reserved scrollbar track) */}
-        <div className="overflow-y-auto border-b border-kp-outline/50 bg-kp-surface [scrollbar-gutter:stable]">
-          <div
-            className="grid border-b border-kp-outline/70 bg-kp-surface-high/[0.1]"
-            style={{
-              gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
-            }}
-          >
-            <div className="border-r border-kp-outline/50 p-1.5" aria-hidden />
-            {dayStarts.map((d, i) => {
-              const isToday = localDateKey(d) === localDateKey(now);
-              return (
-                <div
-                  key={i}
-                  className={cn(
-                    "border-l border-kp-outline/50 px-0.5 py-2 text-center",
-                    isToday && "bg-gradient-to-b from-kp-teal/14 to-kp-teal/[0.04] ring-1 ring-inset ring-kp-teal/25"
-                  )}
-                >
-                  <p
-                    className={cn(
-                      "text-[10px] font-bold uppercase tracking-wide",
-                      isToday ? "text-kp-teal" : "text-kp-on-surface-muted"
-                    )}
-                  >
-                    {d.toLocaleDateString("en-US", { weekday: "short" })}
-                  </p>
-                  <p
-                    className={cn(
-                      "mt-0.5 inline-flex min-w-[1.75rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[13px] font-bold tabular-nums leading-none",
-                      isToday
-                        ? "bg-kp-teal text-white shadow-md ring-2 ring-kp-teal/25"
-                        : "text-kp-on-surface"
-                    )}
-                  >
-                    {d.getDate()}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
-
-          <div
-            className="grid border-b border-kp-outline/70 bg-kp-bg/50"
-            style={{
-              gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
-            }}
-          >
-            <div className="flex items-start justify-end border-r border-kp-outline/50 bg-kp-surface-high/[0.08] px-1.5 py-2 text-right">
-              <span className="text-[11px] font-semibold leading-tight text-kp-on-surface/80">All day</span>
-            </div>
-            {dayStarts.map((d, col) => {
-              const isToday = localDateKey(d) === localDateKey(now);
-              const dk = localDateKey(d);
-              return (
-                <div
-                  key={`allday-${col}`}
-                  className={cn(
-                    "relative min-h-[2.5rem] border-l border-kp-outline/45 px-1 py-1",
-                    isToday && "bg-kp-teal/[0.05]"
-                  )}
-                >
-                  {onAllDayBackgroundClick ? (
-                    <button
-                      type="button"
-                      aria-label="View this day or add to calendar"
-                      className="absolute inset-0 z-[1] cursor-pointer rounded-sm bg-transparent transition-colors hover:bg-kp-teal/[0.06]"
-                      onClick={() => onAllDayBackgroundClick({ dateKey: dk })}
-                    />
-                  ) : null}
-                  <ul className="relative z-[10] flex flex-col gap-1">
-                    {allDayByCol[col]!.map((ev) => (
-                      <li key={ev.id}>
-                        <EventPill
-                          ev={ev}
-                          compact
-                          onExternalOpen={onExternalEventOpen}
-                          onHolidayOpen={onHolidayEventOpen}
-                          onInternalOpen={onInternalEventOpen}
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Full 24-hour timed grid — scrolls inside the calendar canvas */}
+        {/* One vertical scroll: sticky weekday + all-day, then 24h grid (no nested scroll). */}
         <div
-          className="overflow-y-auto overscroll-y-contain border-b border-kp-outline/60 bg-kp-bg/25 [scrollbar-gutter:stable]"
-          style={{ maxHeight: TIME_GRID_MAX_HEIGHT }}
-          aria-label="Week time grid"
+          className="overflow-y-auto overscroll-y-contain rounded-md bg-kp-bg/25 shadow-inner [scrollbar-gutter:stable]"
+          style={{ maxHeight: WEEK_VIEW_BODY_MAX_HEIGHT }}
+          aria-label="Week calendar"
         >
+          <div className="sticky top-0 z-[25] border-b border-kp-outline/70 bg-kp-surface shadow-[0_6px_16px_-8px_rgba(0,0,0,0.18)]">
+            <div
+              className="grid bg-kp-surface-high/[0.1]"
+              style={{
+                gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
+              }}
+            >
+              <div className="border-r border-kp-outline/50 p-1.5" aria-hidden />
+              {dayStarts.map((d, i) => {
+                const isToday = localDateKey(d) === localDateKey(now);
+                return (
+                  <div
+                    key={i}
+                    className={cn(
+                      "border-l border-kp-outline/50 px-0.5 py-2 text-center",
+                      isToday && "bg-gradient-to-b from-kp-teal/14 to-kp-teal/[0.04] ring-1 ring-inset ring-kp-teal/25"
+                    )}
+                  >
+                    <p
+                      className={cn(
+                        "text-[10px] font-bold uppercase tracking-wide",
+                        isToday ? "text-kp-teal" : "text-kp-on-surface-muted"
+                      )}
+                    >
+                      {d.toLocaleDateString("en-US", { weekday: "short" })}
+                    </p>
+                    <p
+                      className={cn(
+                        "mt-0.5 inline-flex min-w-[1.75rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[13px] font-bold tabular-nums leading-none",
+                        isToday
+                          ? "bg-kp-teal text-white shadow-md ring-2 ring-kp-teal/25"
+                          : "text-kp-on-surface"
+                      )}
+                    >
+                      {d.getDate()}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div
+              className="grid border-t border-kp-outline/40 bg-kp-bg/50"
+              style={{
+                gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
+              }}
+            >
+              <div className="flex items-start justify-end border-r border-kp-outline/50 bg-kp-surface-high/[0.08] px-1.5 py-2 text-right">
+                <span className="text-[11px] font-semibold leading-tight text-kp-on-surface/80">All day</span>
+              </div>
+              {dayStarts.map((d, col) => {
+                const isToday = localDateKey(d) === localDateKey(now);
+                const dk = localDateKey(d);
+                return (
+                  <div
+                    key={`allday-${col}`}
+                    className={cn(
+                      "relative min-h-[2.5rem] border-l border-kp-outline/45 px-1 py-1",
+                      isToday && "bg-kp-teal/[0.05]"
+                    )}
+                  >
+                    {onAllDayBackgroundClick ? (
+                      <button
+                        type="button"
+                        aria-label="View this day or add to calendar"
+                        className="absolute inset-0 z-[1] cursor-pointer rounded-sm bg-transparent transition-colors hover:bg-kp-teal/[0.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-kp-teal/45"
+                        onClick={() => onAllDayBackgroundClick({ dateKey: dk })}
+                      />
+                    ) : null}
+                    <ul className="relative z-[10] flex flex-col gap-1">
+                      {allDayByCol[col]!.map((ev) => (
+                        <li key={ev.id}>
+                          <EventPill
+                            ev={ev}
+                            compact
+                            onExternalOpen={onExternalEventOpen}
+                            onHolidayOpen={onHolidayEventOpen}
+                            onInternalOpen={onInternalEventOpen}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           <div
-            className="grid min-w-0"
+            className="grid min-w-0 border-t border-kp-outline/35 bg-kp-bg/25"
             style={{
               gridTemplateColumns: `${TIME_GUTTER_REM} repeat(7, minmax(0, 1fr))`,
             }}
+            aria-label="Week time grid"
           >
             <div className="relative border-r border-kp-outline/50 bg-kp-surface-high/[0.1]">
               {hourLabels.map(({ label, hour }) => (
@@ -527,7 +530,14 @@ function DayColumn({
           <button
             type="button"
             aria-label="Add to calendar at this time"
-            className="absolute inset-0 z-[2] cursor-pointer rounded-sm bg-transparent transition-colors hover:bg-kp-teal/[0.05]"
+            title="Click empty space to add at this time (30-minute slots)"
+            className={cn(
+              "absolute inset-0 z-[2] cursor-pointer rounded-sm border border-transparent bg-transparent touch-manipulation",
+              "transition-[background-color,box-shadow,border-color] duration-150",
+              "hover:bg-kp-teal/[0.07] hover:shadow-[inset_0_0_0_1px_rgba(45,180,170,0.22)]",
+              "active:bg-kp-teal/[0.1]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-kp-teal/50"
+            )}
             onClick={(e) => {
               const r = e.currentTarget.getBoundingClientRect();
               const { hour, minute } = snappedHourMinuteFromGridClick(e.clientY, r.top, r.height);

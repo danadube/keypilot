@@ -491,8 +491,9 @@ export function CalendarPageView() {
           {isLoading ? (
             <div className="h-64 animate-pulse rounded-xl bg-kp-surface-high/30" aria-busy aria-label="Loading calendar" />
           ) : view === "week" ? (
-            <div className="min-h-0 rounded-xl border border-kp-outline/90 bg-kp-surface p-0.5 shadow-md sm:p-1.5 md:p-2">
+            <div className="flex min-h-0 flex-col rounded-xl border border-kp-outline/90 bg-kp-surface p-0.5 shadow-md sm:p-1.5 md:p-2">
               <CalendarWeekView
+                className="min-h-0 shrink"
                 weekStart={weekStart}
                 events={filtered}
                 emptyHint={weekEmptyHint}
