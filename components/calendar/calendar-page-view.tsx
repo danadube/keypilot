@@ -362,7 +362,7 @@ export function CalendarPageView() {
     <div className="space-y-4 pb-8">
       <PageHeader
         title="Calendar"
-        subtitle="Toggle KeyPilot calendars, Google, and holidays on the left. Week and month views share the same layers."
+        subtitle="Week and month share the same layers from the left rail."
         secondaryActions={
           <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
             <Button

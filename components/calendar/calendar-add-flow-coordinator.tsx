@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,10 @@ function propertyLabel(p: PropertyRow) {
 }
 
 const fieldClass =
-  "w-full rounded-lg border border-kp-outline bg-kp-surface-high/25 px-3 py-2 text-sm text-kp-on-surface placeholder:text-kp-on-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal/50";
+  "w-full rounded-lg border border-kp-outline bg-kp-surface-high/25 px-2.5 py-1.5 text-sm text-kp-on-surface placeholder:text-kp-on-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kp-teal/50";
+
+const listShell = "max-h-28 overflow-y-auto rounded-md border border-kp-outline/45 bg-kp-bg/35";
+const listBtn = "flex w-full border-b border-kp-outline/25 px-2 py-1.5 text-left text-xs last:border-b-0 hover:bg-kp-surface-high/25";
 
 export function CalendarAddFlowCoordinator({
   open,
@@ -58,8 +61,12 @@ export function CalendarAddFlowCoordinator({
   onCreated,
 }: CalendarAddFlowCoordinatorProps) {
   const router = useRouter();
+  const taskTitleRef = useRef<HTMLInputElement>(null);
+  const followUpTitleRef = useRef<HTMLInputElement>(null);
+  const propertySearchRef = useRef<HTMLInputElement>(null);
+
   const [activeType, setActiveType] = useState<CalendarAddFlowType>(defaultType);
-  const [whenExpanded, setWhenExpanded] = useState(false);
+  const [whenEditing, setWhenEditing] = useState(false);
   const [draftDate, setDraftDate] = useState("");
   const [draftTime, setDraftTime] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
@@ -77,7 +84,7 @@ export function CalendarAddFlowCoordinator({
   useEffect(() => {
     if (!open) return;
     setActiveType(defaultType);
-    setWhenExpanded(false);
+    setWhenEditing(false);
     const d = prefill?.date?.trim() ?? "";
     const t = prefill?.time?.trim() ?? "";
     setDraftDate(d);
@@ -108,24 +115,34 @@ export function CalendarAddFlowCoordinator({
       .finally(() => setLoadingRefs(false));
   }, [open, prefill, defaultType]);
 
+  useEffect(() => {
+    if (!open) return;
+    const id = requestAnimationFrame(() => {
+      if (activeType === "task") taskTitleRef.current?.focus();
+      else if (activeType === "follow_up") followUpTitleRef.current?.focus();
+      else propertySearchRef.current?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open, activeType]);
+
   const whenSummary = useMemo(() => {
     const d = draftDate.trim();
     const t = draftTime.trim();
-    if (!d && !t) return "Pick a date";
+    if (!d && !t) return "Pick date & time";
     if (d) return formatCalendarQuickAddSummary({ date: d, time: t });
     return `Time · ${t}`;
   }, [draftDate, draftTime]);
 
   const filteredContacts = useMemo(() => {
     const q = contactQuery.trim().toLowerCase();
-    if (!q) return contacts.slice(0, 100);
-    return contacts.filter((c) => contactLabel(c).toLowerCase().includes(q)).slice(0, 100);
+    if (!q) return contacts.slice(0, 80);
+    return contacts.filter((c) => contactLabel(c).toLowerCase().includes(q)).slice(0, 80);
   }, [contacts, contactQuery]);
 
   const filteredProperties = useMemo(() => {
     const q = propertyQuery.trim().toLowerCase();
-    if (!q) return properties.slice(0, 100);
-    return properties.filter((p) => propertyLabel(p).toLowerCase().includes(q)).slice(0, 100);
+    if (!q) return properties.slice(0, 80);
+    return properties.filter((p) => propertyLabel(p).toLowerCase().includes(q)).slice(0, 80);
   }, [properties, propertyQuery]);
 
   const selectedContact = useMemo(
@@ -271,10 +288,10 @@ export function CalendarAddFlowCoordinator({
       onOpenChange={onOpenChange}
       title="Add to calendar"
       description={undefined}
-      size="md"
-      bodyClassName="space-y-4 pt-1"
+      size="sm"
+      bodyClassName="space-y-2.5 overflow-y-auto pt-0.5 max-h-[min(78vh,20rem)]"
       footer={
-        <div className="flex w-full flex-wrap items-center justify-end gap-2">
+        <div className="flex w-full flex-wrap items-center justify-end gap-2 py-0.5">
           <Button type="button" variant="outline" size="sm" className={kpBtnSecondary} onClick={handleClose} disabled={submitting}>
             Cancel
           </Button>
@@ -282,94 +299,15 @@ export function CalendarAddFlowCoordinator({
         </div>
       }
     >
-      <div className="space-y-4">
-        <div className="rounded-lg border border-kp-outline/60 bg-kp-surface-high/[0.06]">
-          <button
-            type="button"
-            className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-kp-surface-high/12"
-            onClick={() => setWhenExpanded((v) => !v)}
-            aria-expanded={whenExpanded}
-          >
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-muted">When</p>
-              <p className="mt-0.5 text-sm font-semibold text-kp-on-surface">{whenSummary}</p>
-            </div>
-            {whenExpanded ? (
-              <ChevronUp className="h-4 w-4 shrink-0 text-kp-on-surface-muted" aria-hidden />
-            ) : (
-              <ChevronDown className="h-4 w-4 shrink-0 text-kp-on-surface-muted" aria-hidden />
-            )}
-          </button>
-          {whenExpanded ? (
-            <div className="border-t border-kp-outline/50 px-3 py-3">
-              <p className="text-xs leading-relaxed text-kp-on-surface-muted">
-                Adjust the slot for this item. Time uses your local timezone.
-              </p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1">
-                  <Label htmlFor="calendar-add-when-date" className="text-[11px] text-kp-on-surface-muted">
-                    Date
-                  </Label>
-                  <Input
-                    id="calendar-add-when-date"
-                    type="date"
-                    value={draftDate}
-                    onChange={(e) => setDraftDate(e.target.value)}
-                    className={fieldClass}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor="calendar-add-when-time" className="text-[11px] text-kp-on-surface-muted">
-                    Time
-                  </Label>
-                  <Input
-                    id="calendar-add-when-time"
-                    type="time"
-                    value={draftTime}
-                    onChange={(e) => setDraftTime(e.target.value)}
-                    disabled={!draftDate.trim()}
-                    className={cn(fieldClass, !draftDate.trim() && "cursor-not-allowed opacity-50")}
-                  />
-                </div>
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        <div>
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-muted">Type</p>
-          <div
-            className="inline-flex w-full rounded-lg border border-kp-outline/70 bg-kp-bg/80 p-0.5 shadow-sm"
-            role="tablist"
-            aria-label="Item type"
-          >
-            {TYPE_OPTIONS.map(({ id, label }) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={activeType === id}
-                disabled={submitting}
-                className={cn(
-                  "min-w-0 flex-1 rounded-md px-2 py-1.5 text-center text-xs font-semibold transition-colors sm:px-3",
-                  activeType === id
-                    ? "bg-kp-teal/20 text-kp-on-surface shadow-sm"
-                    : "text-kp-on-surface-muted hover:text-kp-on-surface"
-                )}
-                onClick={() => setActiveType(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-
+      <div className="space-y-2.5">
+        {/* 1 — Primary input */}
         {activeType === "task" ? (
-          <div className="space-y-2">
-            <Label htmlFor="calendar-add-task-title" className="text-xs font-medium text-kp-on-surface">
+          <div className="space-y-1">
+            <Label htmlFor="calendar-add-task-title" className="text-[11px] font-medium text-kp-on-surface-muted">
               Title <span className="text-destructive">*</span>
             </Label>
             <Input
+              ref={taskTitleRef}
               id="calendar-add-task-title"
               value={taskTitle}
               onChange={(e) => setTaskTitle(e.target.value)}
@@ -382,15 +320,111 @@ export function CalendarAddFlowCoordinator({
         ) : null}
 
         {activeType === "follow_up" ? (
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label className="text-xs font-medium text-kp-on-surface">
+          <div className="space-y-1">
+            <Label htmlFor="calendar-add-fu-title" className="text-[11px] font-medium text-kp-on-surface-muted">
+              Title
+            </Label>
+            <Input
+              ref={followUpTitleRef}
+              id="calendar-add-fu-title"
+              value={followUpTitle}
+              onChange={(e) => setFollowUpTitle(e.target.value)}
+              placeholder="Follow up"
+              className={fieldClass}
+              maxLength={500}
+            />
+          </div>
+        ) : null}
+
+        {activeType === "showing" ? (
+          <div className="space-y-1">
+            <Label className="text-[11px] font-medium text-kp-on-surface-muted">
+              Property <span className="text-destructive">*</span>
+            </Label>
+            {selectedProperty ? (
+              <div className="flex items-center justify-between gap-2 rounded-md border border-kp-outline/50 bg-kp-surface-high/15 px-2 py-1.5 text-xs">
+                <span className="min-w-0 truncate font-medium text-kp-on-surface">{propertyLabel(selectedProperty)}</span>
+                <Button type="button" variant="ghost" size="sm" className="h-6 shrink-0 px-1.5 text-[10px]" onClick={() => setSelectedPropertyId("")}>
+                  Change
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Input
+                  ref={propertySearchRef}
+                  value={propertyQuery}
+                  onChange={(e) => setPropertyQuery(e.target.value)}
+                  placeholder="Search listings…"
+                  className={fieldClass}
+                  disabled={loadingRefs}
+                  autoComplete="off"
+                />
+                <div className={cn(listShell, "mt-1")} role="listbox" aria-label="Matching properties">
+                  {loadingRefs ? (
+                    <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">Loading…</p>
+                  ) : filteredProperties.length === 0 ? (
+                    <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">No matches.</p>
+                  ) : (
+                    filteredProperties.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        role="option"
+                        aria-selected={selectedPropertyId === p.id}
+                        className={listBtn}
+                        onClick={() => {
+                          setSelectedPropertyId(p.id);
+                          setPropertyQuery("");
+                        }}
+                      >
+                        {propertyLabel(p)}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        ) : null}
+
+        {/* 2 — Type */}
+        <div>
+          <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-kp-on-surface-muted">Type</p>
+          <div
+            className="inline-flex w-full rounded-lg border border-kp-outline/60 bg-kp-bg/70 p-0.5"
+            role="tablist"
+            aria-label="Item type"
+          >
+            {TYPE_OPTIONS.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={activeType === id}
+                disabled={submitting}
+                className={cn(
+                  "min-w-0 flex-1 rounded-md px-1.5 py-1 text-center text-[11px] font-semibold transition-colors sm:px-2",
+                  activeType === id ? "bg-kp-teal/20 text-kp-on-surface shadow-sm" : "text-kp-on-surface-muted hover:text-kp-on-surface"
+                )}
+                onClick={() => setActiveType(id)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 3 — Type-specific */}
+        {activeType === "follow_up" ? (
+          <div className="space-y-2">
+            <div className="space-y-1">
+              <Label className="text-[11px] font-medium text-kp-on-surface-muted">
                 Contact <span className="text-destructive">*</span>
               </Label>
               {selectedContact ? (
-                <div className="flex items-center justify-between gap-2 rounded-lg border border-kp-outline/60 bg-kp-surface-high/20 px-3 py-2 text-sm">
+                <div className="flex items-center justify-between gap-2 rounded-md border border-kp-outline/50 bg-kp-surface-high/15 px-2 py-1.5 text-xs">
                   <span className="min-w-0 truncate font-medium text-kp-on-surface">{contactLabel(selectedContact)}</span>
-                  <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs" onClick={() => setSelectedContactId("")}>
+                  <Button type="button" variant="ghost" size="sm" className="h-6 shrink-0 px-1.5 text-[10px]" onClick={() => setSelectedContactId("")}>
                     Change
                   </Button>
                 </div>
@@ -404,15 +438,11 @@ export function CalendarAddFlowCoordinator({
                     disabled={loadingRefs}
                     autoComplete="off"
                   />
-                  <div
-                    className="max-h-36 overflow-y-auto rounded-lg border border-kp-outline/50 bg-kp-bg/40"
-                    role="listbox"
-                    aria-label="Matching contacts"
-                  >
+                  <div className={cn(listShell, "mt-1")} role="listbox" aria-label="Matching contacts">
                     {loadingRefs ? (
-                      <p className="px-3 py-2 text-xs text-kp-on-surface-muted">Loading contacts…</p>
+                      <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">Loading…</p>
                     ) : filteredContacts.length === 0 ? (
-                      <p className="px-3 py-2 text-xs text-kp-on-surface-muted">No matches.</p>
+                      <p className="px-2 py-1.5 text-[11px] text-kp-on-surface-muted">No matches.</p>
                     ) : (
                       filteredContacts.map((c) => (
                         <button
@@ -420,7 +450,7 @@ export function CalendarAddFlowCoordinator({
                           type="button"
                           role="option"
                           aria-selected={selectedContactId === c.id}
-                          className="flex w-full border-b border-kp-outline/30 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-kp-surface-high/30"
+                          className={listBtn}
                           onClick={() => {
                             setSelectedContactId(c.id);
                             setContactQuery("");
@@ -434,29 +464,16 @@ export function CalendarAddFlowCoordinator({
                 </>
               )}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="calendar-add-fu-title" className="text-xs font-medium text-kp-on-surface">
-                Title
-              </Label>
-              <Input
-                id="calendar-add-fu-title"
-                value={followUpTitle}
-                onChange={(e) => setFollowUpTitle(e.target.value)}
-                placeholder="Follow up"
-                className={fieldClass}
-                maxLength={500}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="calendar-add-fu-notes" className="text-xs font-medium text-kp-on-surface">
+            <div className="space-y-1">
+              <Label htmlFor="calendar-add-fu-notes" className="text-[11px] font-medium text-kp-on-surface-muted">
                 Note (optional)
               </Label>
               <Textarea
                 id="calendar-add-fu-notes"
                 value={followUpNotes}
                 onChange={(e) => setFollowUpNotes(e.target.value)}
-                placeholder="Short context for this follow-up"
-                className={cn(fieldClass, "min-h-[4rem] resize-y")}
+                placeholder="Short context"
+                className={cn(fieldClass, "min-h-[2.75rem] resize-y py-1.5")}
                 rows={2}
                 maxLength={20000}
               />
@@ -464,64 +481,52 @@ export function CalendarAddFlowCoordinator({
           </div>
         ) : null}
 
-        {activeType === "showing" ? (
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <Label className="text-xs font-medium text-kp-on-surface">
-                Property <span className="text-destructive">*</span>
-              </Label>
-              {selectedProperty ? (
-                <div className="flex items-center justify-between gap-2 rounded-lg border border-kp-outline/60 bg-kp-surface-high/20 px-3 py-2 text-sm">
-                  <span className="min-w-0 truncate font-medium text-kp-on-surface">{propertyLabel(selectedProperty)}</span>
-                  <Button type="button" variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs" onClick={() => setSelectedPropertyId("")}>
-                    Change
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <Input
-                    value={propertyQuery}
-                    onChange={(e) => setPropertyQuery(e.target.value)}
-                    placeholder="Search listings…"
-                    className={fieldClass}
-                    disabled={loadingRefs}
-                    autoComplete="off"
-                  />
-                  <div
-                    className="max-h-36 overflow-y-auto rounded-lg border border-kp-outline/50 bg-kp-bg/40"
-                    role="listbox"
-                    aria-label="Matching properties"
-                  >
-                    {loadingRefs ? (
-                      <p className="px-3 py-2 text-xs text-kp-on-surface-muted">Loading properties…</p>
-                    ) : filteredProperties.length === 0 ? (
-                      <p className="px-3 py-2 text-xs text-kp-on-surface-muted">No matches.</p>
-                    ) : (
-                      filteredProperties.map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          role="option"
-                          aria-selected={selectedPropertyId === p.id}
-                          className="flex w-full border-b border-kp-outline/30 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-kp-surface-high/30"
-                          onClick={() => {
-                            setSelectedPropertyId(p.id);
-                            setPropertyQuery("");
-                          }}
-                        >
-                          {propertyLabel(p)}
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-            <p className="text-[11px] leading-snug text-kp-on-surface-muted">
-              Continue opens the full showing form with this property, date, and time prefilled.
-            </p>
+        {/* 4 — When (compact) */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-2 rounded-md border border-kp-outline/35 bg-kp-surface-high/[0.04] px-2 py-1">
+            <span className="min-w-0 truncate text-xs tabular-nums text-kp-on-surface-muted">{whenSummary}</span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 shrink-0 gap-1 px-2 text-[11px] text-kp-on-surface-muted hover:text-kp-on-surface"
+              onClick={() => setWhenEditing((v) => !v)}
+              aria-expanded={whenEditing}
+            >
+              <Pencil className="h-3 w-3" aria-hidden />
+              {whenEditing ? "Done" : "Edit"}
+            </Button>
           </div>
-        ) : null}
+          {whenEditing ? (
+            <div className="grid grid-cols-2 gap-2 pt-0.5">
+              <div className="space-y-0.5">
+                <Label htmlFor="calendar-add-when-date" className="text-[10px] text-kp-on-surface-muted">
+                  Date
+                </Label>
+                <Input
+                  id="calendar-add-when-date"
+                  type="date"
+                  value={draftDate}
+                  onChange={(e) => setDraftDate(e.target.value)}
+                  className={cn(fieldClass, "py-1 text-xs")}
+                />
+              </div>
+              <div className="space-y-0.5">
+                <Label htmlFor="calendar-add-when-time" className="text-[10px] text-kp-on-surface-muted">
+                  Time
+                </Label>
+                <Input
+                  id="calendar-add-when-time"
+                  type="time"
+                  value={draftTime}
+                  onChange={(e) => setDraftTime(e.target.value)}
+                  disabled={!draftDate.trim()}
+                  className={cn(fieldClass, "py-1 text-xs", !draftDate.trim() && "cursor-not-allowed opacity-50")}
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
     </BrandModal>
   );
