@@ -399,7 +399,7 @@ function EventPill({
   const inner = (
     <>
       <div className="flex items-start justify-between gap-1">
-        <p className={cn("line-clamp-2 min-w-0 flex-1 font-semibold leading-snug text-kp-on-surface", compact ? "text-[10px]" : "text-[11px]")}>
+        <p className={cn("min-w-0 truncate font-semibold leading-tight text-kp-on-surface", compact ? "text-[10px]" : "text-[11px]")}>
           {displayTitle}
         </p>
       </div>
@@ -549,10 +549,12 @@ function DayColumn({
           const widthPct = 100 / cols;
           const leftPct = col * widthPct;
           const ring = SOURCE_RING[ev.sourceType] ?? SOURCE_RING.external;
-          const blockClass = cn(
-            "absolute z-[5] overflow-hidden rounded-md border border-kp-outline/45 border-l-[3px] px-1.5 py-0.5 text-left text-[11px] shadow-sm transition-colors hover:z-[6] hover:brightness-[1.03]",
+          /** Shared card chrome (single-line title, vertically centered). Positioning is separate. */
+          const timedBlockSurface = cn(
+            "flex h-full min-h-0 w-full items-center overflow-hidden rounded-md border border-kp-outline/45 border-l-[3px] px-1.5 py-px text-left text-[11px] leading-tight shadow-sm transition-colors hover:z-[6] hover:brightness-[1.03]",
             ring
           );
+          const timedBlockPositioned = cn("absolute z-[5]", timedBlockSurface);
           /** Narrow gutter between side-by-side overlapping columns for separation */
           const gapPct = 0.9;
           const blockStyle = {
@@ -560,17 +562,18 @@ function DayColumn({
             height: `${clip.heightFrac * 100}%`,
             left: `calc(${leftPct}% + ${gapPct / 2}%)`,
             width: `calc(${widthPct}% - ${gapPct}%)`,
-            minHeight: "2rem",
+            /** ~one line of 11px type + padding; short slots stay compact without implying a second line */
+            minHeight: "1.25rem",
           } as const;
           const extMeta = ev.sourceType === "external" ? (ev.metadata as { htmlLink?: string }) : undefined;
           const extGoogleUrl = extMeta?.htmlLink?.trim();
           const displayTitle = monthCellStrippedTitle(ev);
           const blockBody = (
-            <p className="line-clamp-2 pr-6 text-left font-semibold leading-snug text-kp-on-surface">{displayTitle}</p>
+            <p className="min-w-0 flex-1 truncate pr-6 text-left font-semibold text-kp-on-surface">{displayTitle}</p>
           );
           if (ev.sourceType === "external") {
             return (
-              <div key={ev.id} className="absolute z-[5]" style={blockStyle}>
+              <div key={ev.id} className="absolute z-[5] flex min-h-0 flex-col" style={blockStyle}>
                 {extGoogleUrl ? (
                   <a
                     href={extGoogleUrl}
@@ -586,7 +589,7 @@ function DayColumn({
                 ) : null}
                 <button
                   type="button"
-                  className={cn(blockClass, "relative h-full min-h-0 w-full")}
+                  className={cn(timedBlockSurface, "relative box-border min-h-0 flex-1")}
                   onClick={(e) => {
                     e.stopPropagation();
                     onExternalOpen?.(ev);
@@ -602,7 +605,7 @@ function DayColumn({
               <button
                 key={ev.id}
                 type="button"
-                className={blockClass}
+                className={timedBlockPositioned}
                 style={blockStyle}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -618,7 +621,7 @@ function DayColumn({
               <button
                 key={ev.id}
                 type="button"
-                className={blockClass}
+                className={timedBlockPositioned}
                 style={blockStyle}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -634,7 +637,7 @@ function DayColumn({
               key={ev.id}
               href={ev.relatedRoute}
               onClick={(e) => e.stopPropagation()}
-              className={blockClass}
+              className={timedBlockPositioned}
               style={blockStyle}
             >
               {blockBody}
