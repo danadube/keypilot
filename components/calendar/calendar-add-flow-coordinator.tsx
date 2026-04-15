@@ -622,7 +622,7 @@ export function CalendarAddFlowCoordinator({
               </Label>
               {!selectedContact ? (
                 <p id="calendar-add-fu-contact-hint" className="text-[10px] leading-snug text-kp-on-surface-muted">
-                  Search by name, then tap a row to select. Type to narrow the list.
+                  Search by name, then pick a contact from the list.
                 </p>
               ) : null}
               {selectedContact ? (
