@@ -263,7 +263,7 @@ export function ContactDetailActionsMenu({
               onScrollToNote();
             }}
           >
-            Add note
+            Quick note
           </PageHeaderActionButton>
           {hasCrmAccess ? (
             <>

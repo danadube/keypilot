@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -39,25 +40,63 @@ export function ContactActivityTimeline({
     occurredAt: a.occurredAt,
   }));
 
-  const inlineNote = hasCrmAccess ? (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-      <Textarea
-        id="contact-activity-note"
-        placeholder="Quick note…"
-        value={noteBody}
-        onChange={(e) => onNoteBodyChange(e.target.value)}
-        rows={2}
-        className="min-h-0 flex-1 resize-none border-kp-outline/70 bg-kp-surface text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant focus-visible:ring-kp-teal"
-      />
-      <Button
-        variant="outline"
-        size="sm"
-        className={cn(kpBtnPrimary, "h-9 shrink-0 border-transparent px-4 text-xs sm:self-end")}
-        onClick={onAddNote}
-        disabled={!noteBody.trim() || addingNote}
-      >
-        {addingNote ? "Adding…" : "Add note"}
-      </Button>
+  const canSave = noteBody.trim().length > 0 && !addingNote;
+
+  const handleNoteKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key !== "Enter" || (!e.metaKey && !e.ctrlKey)) return;
+      if (!canSave) return;
+      e.preventDefault();
+      onAddNote();
+    },
+    [canSave, onAddNote]
+  );
+
+  const quickNote = hasCrmAccess ? (
+    <div
+      className={cn(
+        "rounded-lg border border-kp-outline/35 bg-kp-surface-high/[0.12] p-3",
+        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]"
+      )}
+    >
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5">
+        <span className="text-xs font-medium text-kp-on-surface">Quick note</span>
+        <span className="text-[10px] tabular-nums text-kp-on-surface-variant">
+          ⌘↵ or Ctrl+Enter to save
+        </span>
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+        <Textarea
+          id="contact-activity-note"
+          name="contact-quick-note"
+          placeholder="Type and save — no extra fields."
+          value={noteBody}
+          onChange={(e) => onNoteBodyChange(e.target.value)}
+          onKeyDown={handleNoteKeyDown}
+          rows={2}
+          className="min-h-0 flex-1 resize-y border-kp-outline/50 bg-kp-surface/80 text-sm text-kp-on-surface placeholder:text-kp-on-surface-variant/80 focus-visible:border-kp-teal/60 focus-visible:ring-kp-teal"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className={cn(
+            kpBtnPrimary,
+            "h-9 shrink-0 border-transparent px-4 text-xs sm:self-end",
+            !canSave && "opacity-60"
+          )}
+          onClick={onAddNote}
+          disabled={!canSave}
+        >
+          {addingNote ? "Saving…" : "Save"}
+        </Button>
+      </div>
+      <p className="mt-2.5 text-[11px] leading-snug text-kp-on-surface-variant">
+        <span className="text-kp-on-surface-variant/90">Structured touchpoints</span>
+        {" — "}
+        use <span className="font-medium text-kp-on-surface">Actions</span> for call, email, or a dated
+        follow-up.
+      </p>
     </div>
   ) : (
     <p className="text-sm text-kp-on-surface-variant">
@@ -69,27 +108,38 @@ export function ContactActivityTimeline({
   return (
     <ContactDetailSection
       id={sectionId}
-      title="Activity stream"
-      description="Newest first. Use Actions to log calls, email, tasks, and follow-ups."
+      title="Activity"
+      description="Jot a note below, or open Actions for calls, email, and follow-ups."
       icon={<GitBranch className="h-3.5 w-3.5" />}
       className={cn(
-        "min-h-[240px] border-kp-outline/50 bg-kp-surface/40",
-        workspace && "border-kp-outline/40"
+        "min-h-[200px] border-kp-outline/45 bg-kp-surface/35",
+        workspace && "border-kp-outline/35"
       )}
     >
-      <ActivityTimeline
-        items={items}
-        showTypeLabel
-        allowInlineNote
-        inlineNote={inlineNote}
-        emptyState={
-          <div className="rounded-lg border border-dashed border-kp-outline/60 py-10 text-center">
-            <p className="text-sm text-kp-on-surface-variant">
-              No timeline events yet. Notes appear here; use Actions to log calls, emails, and more.
-            </p>
-          </div>
-        }
-      />
+      {quickNote}
+
+      <div className={cn("mt-5", !hasCrmAccess && "mt-0")}>
+        <div className="mb-2 flex items-baseline justify-between gap-2">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-kp-on-surface-variant">
+            Timeline
+          </h3>
+          {items.length > 0 ? (
+            <span className="text-[10px] text-kp-on-surface-variant">Newest first</span>
+          ) : null}
+        </div>
+        <ActivityTimeline
+          items={items}
+          showTypeLabel
+          emptyState={
+            <div className="rounded-lg border border-dashed border-kp-outline/50 bg-kp-surface-high/[0.06] py-8 text-center px-3">
+              <p className="text-sm text-kp-on-surface-variant">
+                Nothing logged yet. Add a quick note above, or use{" "}
+                <span className="font-medium text-kp-on-surface">Actions</span> for calls and email.
+              </p>
+            </div>
+          }
+        />
+      </div>
     </ContactDetailSection>
   );
 }

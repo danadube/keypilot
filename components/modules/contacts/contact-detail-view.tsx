@@ -395,8 +395,11 @@ export function ContactDetailView({ id }: { id: string }) {
   const scrollToActivityNote = useCallback(() => {
     if (typeof document === "undefined") return;
     const el = document.getElementById("contact-activity-note");
-    el?.focus();
-    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => {
+      el.focus({ preventScroll: true });
+    }, 320);
   }, []);
 
   useEffect(() => {
