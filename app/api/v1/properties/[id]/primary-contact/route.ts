@@ -3,7 +3,10 @@ import { getCurrentUser } from "@/lib/auth";
 import { withRLSContext } from "@/lib/db-context";
 import { LinkPrimaryContactBodySchema } from "@/lib/validations/property";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
-import { canAccessContact } from "@/lib/contacts/contact-access";
+import {
+  canAccessContact,
+  getContactIfAccessible,
+} from "@/lib/contacts/contact-access";
 
 export async function POST(
   req: NextRequest,
@@ -35,22 +38,30 @@ export async function POST(
       return NextResponse.json({ error: { message: "Contact not found" } }, { status: 404 });
     }
 
-    const updated = await withRLSContext(user.id, (tx) =>
+    await withRLSContext(user.id, (tx) =>
       tx.property.update({
         where: { id: propertyId },
         data: { primaryLinkedContactId: contactId },
-        include: {
-          primaryLinkedContact: {
-            select: { id: true, firstName: true, lastName: true },
-          },
-        },
+        select: { id: true },
       })
     );
 
+    // Hydrate contact outside the RLS transaction: `contacts` RLS is narrower than
+    // {@link canAccessContact} / {@link contactAccessScope} (e.g. manual `createdByUserId`),
+    // so a nested `include` on `property.update` could yield null for a valid link.
+    const contactRow = await getContactIfAccessible(contactId, user.id);
+    if (!contactRow) {
+      return NextResponse.json({ error: { message: "Contact not found" } }, { status: 404 });
+    }
+
     return NextResponse.json({
       data: {
-        propertyId: updated.id,
-        primaryLinkedContact: updated.primaryLinkedContact,
+        propertyId,
+        primaryLinkedContact: {
+          id: contactRow.id,
+          firstName: contactRow.firstName,
+          lastName: contactRow.lastName,
+        },
       },
     });
   } catch (e) {
