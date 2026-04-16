@@ -56,10 +56,6 @@ const BYPASSRLS_ALLOWLIST = {
     // ── AI ─────────────────────────────────────────────────────────────────
     "app/api/v1/ai/home-briefing/route.ts",
     // ── Contacts ───────────────────────────────────────────────────────────
-    "app/api/v1/contacts/[id]/communications/route.ts",
-    "app/api/v1/contacts/[id]/farm-memberships/[membershipId]/route.ts",
-    "app/api/v1/contacts/[id]/farm-memberships/route.ts",
-    "app/api/v1/contacts/[id]/notes/route.ts",
     "app/api/v1/contacts/[id]/route.ts",
     "app/api/v1/contacts/route.ts",
     // ── Farm ───────────────────────────────────────────────────────────────

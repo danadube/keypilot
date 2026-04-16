@@ -8,7 +8,6 @@ import { POST } from "@/app/api/v1/contacts/[id]/notes/route";
 const mockGetCurrentUser = jest.fn();
 const mockActivityCreate = jest.fn();
 const mockContactFindFirst = jest.fn();
-const mockCanAccessContact = jest.fn();
 
 jest.mock("@/lib/auth", () => ({
   getCurrentUser: () => mockGetCurrentUser(),
@@ -26,8 +25,17 @@ jest.mock("@/lib/db", () => {
   return { prisma: db, prismaAdmin: db };
 });
 
-jest.mock("@/lib/contacts/contact-access", () => ({
-  canAccessContact: (...args: unknown[]) => mockCanAccessContact(...args),
+jest.mock("@/lib/db-context", () => ({
+  withRLSContextOrFallbackAdmin: async (
+    _userId: string,
+    _label: string,
+    fn: (tx: { contact: { findFirst: typeof mockContactFindFirst } }) => Promise<unknown>
+  ) => {
+    const tx = {
+      contact: { findFirst: mockContactFindFirst },
+    };
+    return fn(tx);
+  },
 }));
 
 const mockUser = { id: "user-1", name: "Agent", email: "a@x.com", productTier: "FULL_CRM" as const };
@@ -36,7 +44,6 @@ const mockContact = { id: "contact-1", firstName: "Jane", lastName: "Doe" };
 beforeEach(() => {
   jest.clearAllMocks();
   mockGetCurrentUser.mockResolvedValue(mockUser);
-  mockCanAccessContact.mockResolvedValue(true);
   mockContactFindFirst.mockResolvedValue(mockContact);
   mockActivityCreate.mockImplementation((args: { data: { body: string } }) =>
     Promise.resolve({
@@ -66,8 +73,8 @@ describe("POST /api/v1/contacts/[id]/notes", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 404 when contact not owned", async () => {
-    mockCanAccessContact.mockResolvedValue(false);
+  it("returns 404 when contact not accessible under RLS gate", async () => {
+    mockContactFindFirst.mockResolvedValue(null);
     const res = await POST(
       jsonRequest({ body: "My note" }),
       { params: Promise.resolve({ id: "contact-1" }) }

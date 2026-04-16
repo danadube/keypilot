@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prismaAdmin } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { LogCommunicationSchema } from "@/lib/validations/communication";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
-import { canAccessContact } from "@/lib/contacts/contact-access";
+import { withRLSContextOrFallbackAdmin } from "@/lib/db-context";
+import { appendContactOpenHouseTimelineActivity } from "@/lib/contacts/write-open-house-timeline-activity";
 
 export async function POST(
   req: NextRequest,
@@ -16,10 +16,6 @@ export async function POST(
       return apiError("CRM features require Full CRM tier", 403);
     }
     const { id: contactId } = await params;
-
-    if (!(await canAccessContact(contactId, user.id))) {
-      return apiError("Contact not found", 404);
-    }
 
     const body = await req.json();
     const parsed = LogCommunicationSchema.safeParse(body);
@@ -35,16 +31,32 @@ export async function POST(
     const prefix =
       parsed.data.channel === "CALL" ? "Call logged: " : "Email logged: ";
 
-    const activity = await prismaAdmin.activity.create({
-      data: {
-        contactId,
-        activityType,
-        body: prefix + parsed.data.body.trim(),
-        occurredAt: new Date(),
-      },
-    });
+    const activity = await withRLSContextOrFallbackAdmin(
+      user.id,
+      "POST /api/v1/contacts/[id]/communications",
+      async (tx) => {
+        const c = await tx.contact.findFirst({
+          where: { id: contactId, deletedAt: null },
+          select: { id: true },
+        });
+        if (!c) {
+          throw Object.assign(new Error("Contact not found or not accessible"), {
+            status: 404,
+          });
+        }
+        return appendContactOpenHouseTimelineActivity({
+          contactId,
+          activityType,
+          body: prefix + parsed.data.body.trim(),
+        });
+      }
+    );
     return NextResponse.json({ data: activity });
   } catch (err) {
+    const e = err as { status?: number; message?: string };
+    if (e.status === 404) {
+      return apiError(e.message ?? "Contact not found", 404);
+    }
     return apiErrorFromCaught(err);
   }
 }
