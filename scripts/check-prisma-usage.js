@@ -55,8 +55,6 @@ const BYPASSRLS_ALLOWLIST = {
   pendingMigration: new Set([
     // ── AI ─────────────────────────────────────────────────────────────────
     "app/api/v1/ai/home-briefing/route.ts",
-    // ── Calendar ───────────────────────────────────────────────────────────
-    "app/api/v1/calendar/events/route.ts",
     // ── Contacts ───────────────────────────────────────────────────────────
     "app/api/v1/contacts/[id]/communications/route.ts",
     "app/api/v1/contacts/[id]/farm-memberships/[membershipId]/route.ts",
@@ -76,16 +74,10 @@ const BYPASSRLS_ALLOWLIST = {
     "app/api/v1/farm-territories/route.ts",
     // ── Dashboard ──────────────────────────────────────────────────────────
     "app/api/v1/dashboard/stats/route.ts",
-    // ── Emails ─────────────────────────────────────────────────────────────
-    "app/api/v1/emails/priority/route.ts",
     // ── Follow-up drafts ───────────────────────────────────────────────────
     "app/api/v1/follow-up-drafts/[id]/route.ts",
     "app/api/v1/follow-up-drafts/[id]/send/route.ts",
     "app/api/v1/follow-up-drafts/[id]/status/route.ts",
-    // ── Profile ────────────────────────────────────────────────────────────
-    "app/api/v1/me/profile/headshot/route.ts",
-    "app/api/v1/me/profile/logo/route.ts",
-    "app/api/v1/me/profile/route.ts",
     // ── Open houses ────────────────────────────────────────────────────────
     "app/api/v1/open-houses/[id]/flyer/route.ts",
     "app/api/v1/open-houses/[id]/follow-ups/generate/route.ts",

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prismaAdmin } from "@/lib/db";
+import { withRLSContext } from "@/lib/db-context";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import { fetchGmailMessages } from "@/lib/adapters/gmail";
 import type { NormalizedPriorityEmail } from "@/lib/adapters/email-types";
@@ -12,17 +12,19 @@ export async function GET() {
   try {
     const user = await getCurrentUser();
 
-    const connections = await prismaAdmin.connection.findMany({
-      where: {
-        userId: user.id,
-        provider: "GOOGLE",
-        service: "GMAIL",
-        status: "CONNECTED",
-        isEnabled: true,
-        enabledForPriorityInbox: true,
-        accessToken: { not: null },
-      },
-    });
+    const connections = await withRLSContext(user.id, (tx) =>
+      tx.connection.findMany({
+        where: {
+          userId: user.id,
+          provider: "GOOGLE",
+          service: "GMAIL",
+          status: "CONNECTED",
+          isEnabled: true,
+          enabledForPriorityInbox: true,
+          accessToken: { not: null },
+        },
+      })
+    );
 
     const allEmails: NormalizedPriorityEmail[] = [];
 

@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prismaAdmin } from "@/lib/db";
+import { withRLSContext } from "@/lib/db-context";
 import { apiErrorFromCaught } from "@/lib/api-response";
 import { z } from "zod";
 
@@ -24,9 +24,11 @@ export async function GET() {
   try {
     const user = await getCurrentUser();
 
-    const profile = await prismaAdmin.userProfile.findUnique({
-      where: { userId: user.id },
-    });
+    const profile = await withRLSContext(user.id, (tx) =>
+      tx.userProfile.findUnique({
+        where: { userId: user.id },
+      })
+    );
 
     return NextResponse.json({
       data: profile
@@ -70,14 +72,16 @@ export async function PATCH(req: NextRequest) {
     if (data.brandPrimaryColor !== undefined) update.brandPrimaryColor = data.brandPrimaryColor || null;
     if (data.brandSecondaryColor !== undefined) update.brandSecondaryColor = data.brandSecondaryColor || null;
 
-    const profile = await prismaAdmin.userProfile.upsert({
-      where: { userId: user.id },
-      create: {
-        userId: user.id,
-        ...update,
-      },
-      update,
-    });
+    const profile = await withRLSContext(user.id, (tx) =>
+      tx.userProfile.upsert({
+        where: { userId: user.id },
+        create: {
+          userId: user.id,
+          ...update,
+        },
+        update,
+      })
+    );
 
     return NextResponse.json({
       data: {

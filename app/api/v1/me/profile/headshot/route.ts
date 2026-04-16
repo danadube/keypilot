@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prismaAdmin } from "@/lib/db";
+import { withRLSContext } from "@/lib/db-context";
 import { getSupabaseAdmin } from "@/lib/supabase";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { nanoid } from "nanoid";
@@ -56,11 +56,13 @@ export async function POST(req: NextRequest) {
     const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(path);
     const headshotUrl = urlData.publicUrl;
 
-    await prismaAdmin.userProfile.upsert({
-      where: { userId: user.id },
-      create: { userId: user.id, headshotUrl },
-      update: { headshotUrl },
-    });
+    await withRLSContext(user.id, (tx) =>
+      tx.userProfile.upsert({
+        where: { userId: user.id },
+        create: { userId: user.id, headshotUrl },
+        update: { headshotUrl },
+      })
+    );
 
     return NextResponse.json({ data: { headshotUrl } });
   } catch (e) {
