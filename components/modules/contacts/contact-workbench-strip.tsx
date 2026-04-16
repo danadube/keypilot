@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { kpBtnTertiary } from "@/components/ui/kp-dashboard-button-tiers";
@@ -18,7 +19,12 @@ import type {
   ContactDetailTransaction,
   Reminder,
 } from "./contact-detail-types";
-import { formatRelativeTouch, formatReminderDue } from "./contact-detail-utils";
+import {
+  classifyReminderDue,
+  formatRelativeTouch,
+  sortRemindersForContact,
+  summarizeReminderCounts,
+} from "./contact-detail-utils";
 
 function scrollToAnchor(anchorId: string) {
   if (typeof document === "undefined") return;
@@ -45,7 +51,13 @@ export function ContactWorkbenchStrip({
   onFocusQuickNote,
 }: ContactWorkbenchStripProps) {
   const lastTouch = activities[0]?.occurredAt ?? null;
-  const nextReminder = reminders[0] ?? null;
+  const sortedReminders = useMemo(() => sortRemindersForContact(reminders), [reminders]);
+  const nextReminder = sortedReminders[0] ?? null;
+  const reminderStats = useMemo(
+    () => summarizeReminderCounts(sortedReminders),
+    [sortedReminders]
+  );
+  const nextDue = nextReminder ? classifyReminderDue(nextReminder.dueAt) : null;
 
   const openTasks = taskPayload
     ? [...taskPayload.overdue, ...taskPayload.dueToday, ...taskPayload.upcoming]
@@ -56,7 +68,7 @@ export function ContactWorkbenchStrip({
 
   const showPipeline = pipelineCount > 0;
   const showTasksRow = hasCrmAccess;
-  const showFollowUpRow = hasCrmAccess && nextReminder;
+  const showFollowUpRow = hasCrmAccess && sortedReminders.length > 0;
 
   const pipelineSummary = [
     transactions.length > 0
@@ -70,7 +82,7 @@ export function ContactWorkbenchStrip({
   const showFreshWorkbenchHint =
     hasCrmAccess &&
     !lastTouch &&
-    !nextReminder &&
+    sortedReminders.length === 0 &&
     (!taskPayload || openTasks.length === 0) &&
     !showPipeline;
 
@@ -125,22 +137,47 @@ export function ContactWorkbenchStrip({
           </div>
         )}
 
-        {hasCrmAccess && showFollowUpRow && nextReminder ? (
+        {hasCrmAccess && showFollowUpRow && nextReminder && nextDue ? (
           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
-            <dt className="flex items-center gap-1.5 text-xs font-medium text-kp-on-surface-variant">
-              <Bell className="h-3.5 w-3.5 shrink-0 text-kp-gold/90" />
-              Next follow-up
+            <dt className="flex flex-wrap items-center gap-1.5 text-xs font-medium text-kp-on-surface-variant">
+              <Bell
+                className={cn(
+                  "h-3.5 w-3.5 shrink-0",
+                  nextDue.kind === "overdue" ? "text-amber-400" : "text-kp-gold/90"
+                )}
+              />
+              <span>Next follow-up</span>
+              {nextDue.kind === "overdue" ? (
+                <span className="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-100">
+                  Needs attention
+                </span>
+              ) : null}
             </dt>
             <dd className="min-w-0 sm:max-w-[min(100%,20rem)] sm:text-right">
               <button
                 type="button"
-                className="w-full rounded-lg border border-kp-outline/50 bg-kp-surface-high/40 px-2.5 py-1.5 text-left transition-colors hover:border-kp-teal/35 hover:bg-kp-surface-high/60 sm:w-auto"
+                className={cn(
+                  "w-full rounded-lg border px-2.5 py-1.5 text-left transition-colors sm:w-auto",
+                  nextDue.kind === "overdue"
+                    ? "border-amber-500/35 bg-amber-500/[0.08] hover:border-amber-400/50 hover:bg-amber-500/[0.12]"
+                    : "border-kp-outline/50 bg-kp-surface-high/40 hover:border-kp-teal/35 hover:bg-kp-surface-high/60"
+                )}
                 onClick={() => scrollToAnchor("contact-follow-ups-panel")}
               >
                 <p className="line-clamp-2 text-sm font-medium text-kp-on-surface">{nextReminder.body}</p>
                 <p className="mt-0.5 text-[11px] text-kp-on-surface-variant">
-                  {formatReminderDue(nextReminder.dueAt)}
+                  <span className="font-medium text-kp-on-surface">{nextDue.label}</span>
+                  <span className="text-kp-on-surface-variant"> · </span>
+                  <span>{nextDue.detail}</span>
                 </p>
+                {reminderStats.total > 1 ? (
+                  <p className="mt-1 text-[10px] text-kp-on-surface-variant">
+                    {reminderStats.total} open
+                    {reminderStats.overdue > 0 ? (
+                      <span className="text-amber-200/90"> · {reminderStats.overdue} overdue</span>
+                    ) : null}
+                  </p>
+                ) : null}
               </button>
             </dd>
           </div>
