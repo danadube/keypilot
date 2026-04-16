@@ -10,7 +10,6 @@ import {
   CalendarClock,
   CheckSquare,
   HandCoins,
-  Sparkles,
   TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,7 +23,12 @@ import {
 import { CommandCenterLiveTitle } from "@/components/dashboard/command-center-live-title";
 import { CommandCenterPriorityTaskRow } from "@/components/dashboard/command-center-priority-task-row";
 import { CommandCenterSchedulePanel } from "@/components/dashboard/command-center-schedule-panel";
-import { commandCenterSourceChipClass, listingStageChipClass } from "@/lib/dashboard/command-center-visual";
+import {
+  commandCenterSourceChipClass,
+  commandCenterSourceTagTitle,
+  listingStageChipClass,
+} from "@/lib/dashboard/command-center-visual";
+import { formatFeedActivityTimestamp } from "@/lib/activity/format-feed-activity-timestamp";
 import type { CalendarQuickAddPrefill } from "@/components/calendar/add-event-modal";
 import {
   CalendarAddFlowCoordinator,
@@ -481,7 +485,12 @@ export function OperationalDashboardView() {
               <h2 id="dash-activity-heading" className={dashSectionLabelClass}>
                 Recent activity
               </h2>
-              <Sparkles className="h-4 w-4 shrink-0 text-kp-gold/80" aria-hidden />
+              <Link
+                href="/showing-hq/activity"
+                className="shrink-0 text-[11px] font-semibold leading-none tracking-normal text-kp-teal hover:underline"
+              >
+                All activity
+              </Link>
             </div>
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-kp-outline bg-kp-surface shadow-sm">
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-3 sm:p-4 [-webkit-overflow-scrolling:touch]">
@@ -493,7 +502,8 @@ export function OperationalDashboardView() {
               </ul>
             ) : (cc?.recentActivity.length ?? 0) === 0 ? (
               <p className="text-sm text-kp-on-surface-muted">
-                Major milestones will log here as you work deals and contacts.
+                Transaction milestones and CRM tasks will show here as you work. Open Activity for the
+                full chronological list.
               </p>
             ) : (
               <ul className="space-y-2">
@@ -502,17 +512,17 @@ export function OperationalDashboardView() {
                     {a.href ? (
                       <Link href={a.href} className="group block">
                         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                          <span className={commandCenterSourceChipClass(a.visualTag)}>{a.visualTag}</span>
+                          <span
+                            className={commandCenterSourceChipClass(a.visualTag)}
+                            title={commandCenterSourceTagTitle(a.visualTag)}
+                          >
+                            {a.visualTag}
+                          </span>
                           <span className="min-w-0 flex-1 text-sm font-medium leading-snug text-kp-on-surface group-hover:text-kp-teal group-hover:underline">
                             {a.title}
                           </span>
                           <span className="shrink-0 text-[10px] tabular-nums text-kp-on-surface-muted">
-                            {new Date(a.occurredAt).toLocaleString(undefined, {
-                              month: "short",
-                              day: "numeric",
-                              hour: "numeric",
-                              minute: "2-digit",
-                            })}
+                            {formatFeedActivityTimestamp(a.occurredAt)}
                           </span>
                         </div>
                         {a.subline ? (
@@ -522,15 +532,15 @@ export function OperationalDashboardView() {
                     ) : (
                       <div>
                         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                          <span className={commandCenterSourceChipClass(a.visualTag)}>{a.visualTag}</span>
+                          <span
+                            className={commandCenterSourceChipClass(a.visualTag)}
+                            title={commandCenterSourceTagTitle(a.visualTag)}
+                          >
+                            {a.visualTag}
+                          </span>
                           <span className="min-w-0 flex-1 text-sm font-medium text-kp-on-surface">{a.title}</span>
                           <span className="shrink-0 text-[10px] tabular-nums text-kp-on-surface-muted">
-                            {new Date(a.occurredAt).toLocaleString(undefined, {
-                              month: "short",
-                              day: "numeric",
-                              hour: "numeric",
-                              minute: "2-digit",
-                            })}
+                            {formatFeedActivityTimestamp(a.occurredAt)}
                           </span>
                         </div>
                         {a.subline ? (

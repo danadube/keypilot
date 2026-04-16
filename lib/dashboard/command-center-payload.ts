@@ -27,6 +27,7 @@ import type {
   CommandCenterSnapshot,
 } from "@/lib/dashboard/command-center-types";
 import type { CommandCenterSourceTag, ListingStageChip } from "@/lib/dashboard/command-center-visual";
+import { formatUserActivityTypeLabel } from "@/lib/activity/user-activity-type-label";
 
 const ACTIVE_TX_STATUSES: TransactionStatus[] = [
   "LEAD",
@@ -495,14 +496,21 @@ export async function getCommandCenterPayload(user: User): Promise<CommandCenter
     const activityMerged: CommandCenterActivityRow[] = [];
 
     for (const a of userActivities) {
-      const name = `${a.type.replace(/_/g, " ")}`.toLowerCase();
-      const title = a.title?.trim() || name;
-      const sub =
+      const title = a.title?.trim() || formatUserActivityTypeLabel(a.type);
+      const linkSub =
         a.property?.address1 != null
           ? a.property.address1
           : a.contact
             ? `${a.contact.firstName} ${a.contact.lastName}`.trim()
             : null;
+      const desc = a.description?.trim();
+      const sub =
+        linkSub ??
+        (desc
+          ? desc.length > 140
+            ? `${desc.slice(0, 139)}…`
+            : desc
+          : null);
       activityMerged.push({
         id: `ua-${a.id}`,
         kind: "CRM",

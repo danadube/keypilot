@@ -21,6 +21,7 @@ import {
   substituteActivityTemplatePlaceholders,
   type ActivityTemplatePlaceholderContext,
 } from "@/lib/activity-template-placeholders";
+import { formatUserActivityTypeLabel } from "@/lib/activity/user-activity-type-label";
 import { kpBtnPrimary, kpBtnSecondary } from "@/components/ui/kp-dashboard-button-tiers";
 import { BrandModal } from "@/components/ui/BrandModal";
 import { CheckCircle2, LayoutTemplate, Link2, ListTodo, Plus } from "lucide-react";
@@ -616,7 +617,8 @@ export function UserActivitiesView() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="max-w-xl space-y-1 text-xs text-kp-on-surface/88">
           <p>
-            Personal tasks and follow-ups. (Open-house timeline items stay on the dashboard.)
+            Logged CRM work—calls, tasks, showings, and follow-ups. Open-house marketing timelines stay on
+            the home dashboard.
           </p>
           <p className="text-kp-on-surface-variant">
             <Link
@@ -691,7 +693,7 @@ export function UserActivitiesView() {
                 <SelectContent>
                   {ACTIVITY_TYPES.map((t) => (
                     <SelectItem key={t} value={t}>
-                      {t.replace(/_/g, " ")}
+                      {formatUserActivityTypeLabel(t)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -859,7 +861,7 @@ export function UserActivitiesView() {
                       <tr className="transition-colors hover:bg-kp-surface-high/80">
                         <td className="py-2.5">
                           <span className="rounded-md bg-kp-surface-high px-2 py-0.5 text-xs font-medium text-kp-on-surface">
-                            {r.type.replace(/_/g, " ")}
+                            {formatUserActivityTypeLabel(r.type)}
                           </span>
                         </td>
                         <td className="max-w-[240px] py-2.5">

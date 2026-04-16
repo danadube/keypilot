@@ -19,12 +19,15 @@ import {
   Loader2,
   X,
 } from "lucide-react";
+import { formatFeedActivityTimestamp } from "@/lib/activity/format-feed-activity-timestamp";
 
 type FeedItem = {
   id: string;
   entityId: string;
   type: "follow_up" | "activity";
   subkind: "draft" | "reminder" | "user_activity";
+  /** Short chip label from API (e.g. Follow-up draft, Reminder, Task). */
+  kindLabel: string;
   href: string;
   title: string;
   description?: string;
@@ -37,14 +40,6 @@ type FeedItem = {
   /** User activity row only */
   completedAt?: string | null;
 };
-
-const formatWhen = (iso: string) =>
-  new Date(iso).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 
 export default function ClientKeepRecentActivityPage() {
   const [items, setItems] = useState<FeedItem[]>([]);
@@ -181,12 +176,13 @@ export default function ClientKeepRecentActivityPage() {
   return (
     <ModuleGate moduleId="client-keep" moduleName="ClientKeep" backHref="/showing-hq">
       <div className="flex flex-col gap-4">
-        <DashboardContextStrip message="A chronological view of open-house follow-ups and CRM tasks. Use row actions to complete reminders and tasks; open drafts in Follow-ups or from the row link." />
+        <DashboardContextStrip message="Newest first: follow-up drafts, reminders, and logged CRM activity. Row actions mark reminders or tasks done; the row link opens the contact, property, or Activity hub." />
 
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold text-kp-on-surface">Recent activity</h1>
           <p className="max-w-2xl text-sm text-kp-on-surface-variant">
-            Newest first — up to 50 items from follow-up drafts, reminders, and activities.
+            Up to 50 items, newest first. Each row shows what changed, why it matters, and where the link
+            takes you.
           </p>
         </div>
 
@@ -207,7 +203,9 @@ export default function ClientKeepRecentActivityPage() {
         <div className="overflow-hidden rounded-xl border border-kp-outline bg-kp-surface">
           <div className="border-b border-kp-outline px-4 py-3">
             <p className="text-sm font-semibold text-kp-on-surface">Feed</p>
-            <p className="text-xs text-kp-on-surface-variant">ShowingHQ follow-ups and ClientKeep activities.</p>
+            <p className="text-xs text-kp-on-surface-variant">
+              Open-house follow-ups (drafts and reminders) plus your CRM activity stream.
+            </p>
           </div>
           {loading ? (
             <div className="flex min-h-[200px] items-center justify-center py-8">
@@ -218,7 +216,7 @@ export default function ClientKeepRecentActivityPage() {
               <History className="h-8 w-8 text-kp-on-surface-variant opacity-70" />
               <p className="text-sm font-medium text-kp-on-surface">No recent activity</p>
               <p className="max-w-sm text-xs text-kp-on-surface-variant">
-                Follow-up drafts, reminders, and logged activities will appear here as you use ShowingHQ and ClientKeep.
+                Drafts, reminders, and logged tasks will show here as you work in ShowingHQ and ClientKeep.
               </p>
             </div>
           ) : (
@@ -248,12 +246,14 @@ export default function ClientKeepRecentActivityPage() {
                         <span
                           className={cn(
                             "inline-block rounded-md px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide",
-                            row.type === "follow_up"
-                              ? "bg-kp-teal/15 text-kp-teal"
-                              : "bg-kp-surface-high text-kp-on-surface-variant"
+                            row.subkind === "reminder"
+                              ? "bg-amber-500/15 text-amber-100"
+                              : row.subkind === "draft"
+                                ? "bg-kp-teal/15 text-kp-teal"
+                                : "bg-kp-surface-high text-kp-on-surface-variant"
                           )}
                         >
-                          {row.type === "follow_up" ? "Follow-up" : "Activity"}
+                          {row.kindLabel}
                         </span>
                         <p className="font-medium text-kp-on-surface">{row.title}</p>
                         {row.description && (
@@ -262,7 +262,7 @@ export default function ClientKeepRecentActivityPage() {
                           </p>
                         )}
                         <p className="flex items-center gap-1 text-xs text-kp-on-surface-variant">
-                          {formatWhen(row.eventAt)}
+                          <span title="Last update on this item">Updated {formatFeedActivityTimestamp(row.eventAt)}</span>
                           <ExternalLink className="h-3 w-3 shrink-0 opacity-60" aria-hidden />
                         </p>
                       </Link>

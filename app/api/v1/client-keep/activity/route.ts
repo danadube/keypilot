@@ -13,6 +13,7 @@ import { prismaAdmin } from "@/lib/db";
 import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
+import { formatUserActivityTypeLabel } from "@/lib/activity/user-activity-type-label";
 
 export const dynamic = "force-dynamic";
 
@@ -29,15 +30,32 @@ function truncate(text: string, max: number): string {
   return `${text.slice(0, max - 1)}…`;
 }
 
-function formatFollowUpStatus(status: string): string {
-  return status.replace(/_/g, " ").toLowerCase();
+function formatFollowUpDraftStatus(status: string): string {
+  switch (status) {
+    case "DRAFT":
+      return "Draft";
+    case "REVIEWED":
+      return "Reviewed";
+    case "SENT_MANUAL":
+      return "Sent manually";
+    case "ARCHIVED":
+      return "Archived";
+    default:
+      return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  }
 }
 
-function formatUserActivityType(type: string): string {
-  return type
-    .split("_")
-    .map((w) => w.charAt(0) + w.slice(1).toLowerCase())
-    .join(" ");
+function reminderStatusLabel(status: string): string {
+  switch (status) {
+    case "PENDING":
+      return "Still due";
+    case "DONE":
+      return "Done";
+    case "DISMISSED":
+      return "Dismissed";
+    default:
+      return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  }
 }
 
 const ACTIVITY_HUB_HREF = "/showing-hq/activity";
@@ -122,6 +140,8 @@ export async function GET() {
       subkind: FeedSubkind;
       href: string;
       title: string;
+      /** Short label for the row chip (draft / reminder / activity type). */
+      kindLabel: string;
       description?: string;
       contactId?: string;
       propertyId?: string;
@@ -140,7 +160,8 @@ export async function GET() {
         subkind: "draft",
         href: `/showing-hq/follow-ups/draft/${d.id}`,
         title: d.subject,
-        description: `${formatFollowUpStatus(d.status)} · ${truncate(d.body, 200)}`,
+        kindLabel: "Follow-up draft",
+        description: `${formatFollowUpDraftStatus(d.status)} · ${truncate(d.body, 200)}`,
         contactId: d.contactId,
         eventAt: feedEventTime(d).toISOString(),
       });
@@ -157,7 +178,8 @@ export async function GET() {
         subkind: "reminder",
         href: contactHref(r.contactId),
         title: truncate(firstLine, 120),
-        description: `Reminder · ${r.status.toLowerCase()}`,
+        kindLabel: "Reminder",
+        description: reminderStatusLabel(r.status),
         contactId: r.contactId,
         status: r.status,
         eventAt: feedEventTime(r).toISOString(),
@@ -165,17 +187,23 @@ export async function GET() {
     }
 
     for (const a of userActivities) {
+      const title = a.title?.trim() ?? "";
+      const desc = a.description?.trim() ?? "";
       const secondary =
-        a.description?.trim() ?? formatUserActivityType(a.type);
+        desc && desc !== title
+          ? desc.length > 200
+            ? truncate(desc, 200)
+            : desc
+          : formatUserActivityTypeLabel(a.type);
       items.push({
         id: `activity:${a.id}`,
         entityId: a.id,
         type: "activity",
         subkind: "user_activity",
         href: userActivityHref(a),
-        title: a.title,
-        description:
-          secondary.length > 200 ? truncate(secondary, 200) : secondary,
+        title: title || formatUserActivityTypeLabel(a.type),
+        kindLabel: formatUserActivityTypeLabel(a.type),
+        description: secondary,
         contactId: a.contactId ?? undefined,
         propertyId: a.propertyId ?? undefined,
         completedAt: a.completedAt ? a.completedAt.toISOString() : null,

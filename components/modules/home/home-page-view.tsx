@@ -693,7 +693,7 @@ export function HomePageView() {
       {/* ── Recent Activity ──────────────────────────────────────────────── */}
       <SectionPanel
         title="Recent activity"
-        description="Latest open house events"
+        description="Latest open house workspaces"
         action={
           <Link href="/open-houses" className="text-xs text-kp-teal hover:underline">
             All open houses
@@ -704,7 +704,7 @@ export function HomePageView() {
           <div className="flex flex-col items-center gap-3 px-5 py-8 text-center">
             <p className="text-sm font-medium text-kp-on-surface">No recent activity</p>
             <p className="text-xs text-kp-on-surface-variant">
-              Activity from your showings will appear here.
+              Open houses you host will appear here. (Private showings and CRM tasks live on Command Center.)
             </p>
           </div>
         ) : (

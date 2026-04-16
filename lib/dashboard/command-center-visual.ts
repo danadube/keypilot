@@ -6,6 +6,24 @@ export type CommandCenterSourceTag = "TXN" | "CRM" | "MKT" | "SHQ" | "CAL";
 const SOURCE_BASE =
   "inline-flex shrink-0 items-center rounded border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide";
 
+/** Short labels for tooltips / `title` on abbreviated chips (TXN, CRM, …). */
+export function commandCenterSourceTagTitle(tag: CommandCenterSourceTag): string {
+  switch (tag) {
+    case "TXN":
+      return "Transaction";
+    case "CRM":
+      return "CRM";
+    case "MKT":
+      return "Marketing";
+    case "SHQ":
+      return "ShowingHQ";
+    case "CAL":
+      return "Calendar";
+    default:
+      return tag;
+  }
+}
+
 export function commandCenterSourceChipClass(tag: CommandCenterSourceTag): string {
   switch (tag) {
     case "TXN":
