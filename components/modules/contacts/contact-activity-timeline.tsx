@@ -10,6 +10,8 @@ import { ContactDetailSection } from "./contact-detail-section";
 import type { ContactDetailActivity } from "./contact-detail-types";
 
 type ContactActivityTimelineProps = {
+  /** Anchor for in-page navigation (e.g. workbench strip). */
+  sectionId?: string;
   activities: ContactDetailActivity[];
   hasCrmAccess: boolean;
   noteBody: string;
@@ -21,6 +23,7 @@ type ContactActivityTimelineProps = {
 };
 
 export function ContactActivityTimeline({
+  sectionId = "contact-activity-stream",
   activities,
   hasCrmAccess,
   noteBody,
@@ -65,8 +68,9 @@ export function ContactActivityTimeline({
 
   return (
     <ContactDetailSection
-      title="Activity"
-      description="Chronological timeline — newest first. Use Actions for calls, emails, tasks, and follow-ups."
+      id={sectionId}
+      title="Activity stream"
+      description="Newest first. Use Actions to log calls, email, tasks, and follow-ups."
       icon={<GitBranch className="h-3.5 w-3.5" />}
       className={cn(
         "min-h-[240px] border-kp-outline/50 bg-kp-surface/40",

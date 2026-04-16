@@ -14,6 +14,8 @@ import type { Reminder } from "./contact-detail-types";
 import { formatReminderDue } from "./contact-detail-utils";
 
 type ContactFollowUpsPanelProps = {
+  /** Anchor for in-page navigation (e.g. workbench strip). */
+  sectionId?: string;
   reminders: Reminder[];
   reminderDue: string;
   reminderBody: string;
@@ -29,6 +31,7 @@ type ContactFollowUpsPanelProps = {
 };
 
 export function ContactFollowUpsPanel({
+  sectionId = "contact-follow-ups-panel",
   reminders,
   reminderDue,
   reminderBody,
@@ -43,8 +46,9 @@ export function ContactFollowUpsPanel({
 }: ContactFollowUpsPanelProps) {
   return (
     <ContactDetailSection
+      id={sectionId}
       title="Follow-ups"
-      description="Scheduled reminders for this contact."
+      description="What’s due next for this contact."
       icon={<Bell className="h-3.5 w-3.5" />}
     >
       {reminders.length > 0 ? (

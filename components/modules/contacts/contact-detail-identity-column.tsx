@@ -76,6 +76,11 @@ export function ContactDetailIdentityColumn({
             {fullName || "—"}
           </h1>
           <p className="mt-0.5 text-[11px] text-kp-on-surface-variant/90">{contact.source}</p>
+          {contact.timeline?.trim() ? (
+            <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-kp-on-surface-variant">
+              {contact.timeline.trim()}
+            </p>
+          ) : null}
           {status && hasCrmAccess ? (
             <div className="mt-2">
               <StatusBadge variant={contactStatusBadgeVariant(status)}>

@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 
 type ContactDetailSectionProps = {
+  id?: string;
   title: string;
   description?: string;
   icon?: React.ReactNode;
@@ -9,6 +10,7 @@ type ContactDetailSectionProps = {
 };
 
 export function ContactDetailSection({
+  id,
   title,
   description,
   icon,
@@ -17,6 +19,7 @@ export function ContactDetailSection({
 }: ContactDetailSectionProps) {
   return (
     <section
+      id={id}
       className={cn(
         "rounded-xl border border-kp-outline bg-kp-surface p-5",
         className

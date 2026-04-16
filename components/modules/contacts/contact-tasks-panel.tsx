@@ -15,9 +15,15 @@ type ContactTasksPanelProps = {
   contactId: string;
   /** Hide add button when tasks are created only from the contact Actions menu. */
   hideAddButton?: boolean;
+  /** Anchor for in-page navigation (e.g. workbench strip). */
+  sectionId?: string;
 };
 
-export function ContactTasksPanel({ contactId, hideAddButton = false }: ContactTasksPanelProps) {
+export function ContactTasksPanel({
+  contactId,
+  hideAddButton = false,
+  sectionId = "contact-tasks-panel",
+}: ContactTasksPanelProps) {
   const { data: payload, mutate } = useSWR<TaskPilotPayload>(
     `/api/v1/tasks?contactId=${encodeURIComponent(contactId)}`,
     apiFetcher,
@@ -51,7 +57,7 @@ export function ContactTasksPanel({ contactId, hideAddButton = false }: ContactT
   const list = openTasks();
 
   return (
-    <div className="rounded-xl border border-kp-outline/70 bg-kp-surface p-4">
+    <div id={sectionId} className="rounded-xl border border-kp-outline/70 bg-kp-surface p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h3 className="font-headline text-sm font-semibold text-kp-on-surface">Tasks</h3>
         {!hideAddButton ? (

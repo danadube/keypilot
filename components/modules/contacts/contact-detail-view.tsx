@@ -19,6 +19,8 @@ import { ContactFarmMembershipsPanel } from "./contact-farm-memberships-panel";
 import { ContactTasksPanel } from "./contact-tasks-panel";
 import { entityDetailWorkspaceGridClassName } from "@/components/layout/entity-detail-workspace-grid";
 import { useClientKeepChrome } from "@/components/modules/client-keep/client-keep-chrome-context";
+import type { TaskPilotPayload } from "@/lib/tasks/task-pilot-payload-mutate";
+import { ContactWorkbenchStrip } from "./contact-workbench-strip";
 import type {
   ContactDetailActivity,
   ContactDetailContact,
@@ -67,6 +69,11 @@ export function ContactDetailView({ id }: { id: string }) {
   const { data: farmAreas = [] } = useSWR<FarmAreaOption[]>(
     hasCrmAccess ? "/api/v1/farm-areas" : null,
     apiFetcher
+  );
+  const { data: taskPayload } = useSWR<TaskPilotPayload>(
+    hasCrmAccess && id ? `/api/v1/tasks?contactId=${encodeURIComponent(id)}` : null,
+    apiFetcher,
+    { revalidateOnFocus: true }
   );
 
   const loading = contactLoading && !contact;
@@ -433,6 +440,8 @@ export function ContactDetailView({ id }: { id: string }) {
   const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(" ");
   const reminders = contact.followUpReminders ?? [];
   const isAssignedToMe = contact.assignedToUserId === currentUserId;
+  const deals = contact.deals ?? [];
+  const transactionsPrimary = contact.transactionsPrimary ?? [];
 
   return (
     <div className={entityDetailWorkspaceGridClassName}>
@@ -454,6 +463,15 @@ export function ContactDetailView({ id }: { id: string }) {
       />
 
       <div className="order-1 flex min-w-0 flex-col gap-4 lg:order-none">
+        <ContactWorkbenchStrip
+          hasCrmAccess={hasCrmAccess}
+          activities={activities}
+          reminders={reminders}
+          taskPayload={taskPayload}
+          deals={deals}
+          transactions={transactionsPrimary}
+          onFocusQuickNote={scrollToActivityNote}
+        />
         <ContactActivityTimeline
           activities={activities}
           hasCrmAccess={hasCrmAccess}
@@ -467,7 +485,6 @@ export function ContactDetailView({ id }: { id: string }) {
 
       <aside className="order-3 flex min-w-0 flex-col gap-3 lg:order-none">
         <div className="space-y-3 pl-0 lg:border-l lg:border-kp-outline/25 lg:pl-3">
-          <ContactBusinessContextRail contact={contact} />
           {hasCrmAccess ? (
             <ContactFollowUpsPanel
               reminders={reminders}
@@ -484,6 +501,7 @@ export function ContactDetailView({ id }: { id: string }) {
             />
           ) : null}
           <ContactTasksPanel contactId={id} hideAddButton />
+          <ContactBusinessContextRail contact={contact} />
         </div>
 
         <details className="group rounded-lg border border-kp-outline/35 bg-kp-surface-high/[0.04] [&_summary::-webkit-details-marker]:hidden">

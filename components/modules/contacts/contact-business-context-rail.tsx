@@ -37,25 +37,27 @@ export function ContactBusinessContextRail({ contact }: ContactBusinessContextRa
 
   if (!hasAny) {
     return (
-      <ContactDetailSection
-        title="Business context"
-        description="Deals and transactions linked to this client appear here."
-        icon={<Building2 className="h-3.5 w-3.5" />}
-        className="!p-3 border-kp-outline/55 bg-kp-surface-high/12 [&>div:first-child]:mb-2"
-      >
-        <p className="text-xs leading-relaxed text-kp-on-surface-variant">
-          No linked deals or transactions yet. Create a deal from ClientKeep or set this contact as primary on a transaction to surface it here.
-        </p>
-      </ContactDetailSection>
+      <div id="contact-business-context">
+        <ContactDetailSection
+          title="Pipeline"
+          description="Deals and transactions tied to this client."
+          icon={<Building2 className="h-3.5 w-3.5" />}
+          className="!p-3 border-kp-outline/55 bg-kp-surface-high/12 [&>div:first-child]:mb-2"
+        >
+          <p className="text-xs leading-relaxed text-kp-on-surface-variant">
+            Nothing linked yet. Create a deal from ClientKeep or set this contact as primary on a transaction to surface it here.
+          </p>
+        </ContactDetailSection>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-3">
+    <div id="contact-business-context" className="space-y-3">
       {transactions.length > 0 ? (
         <ContactDetailSection
           title="Transactions"
-          description="Pipeline context for this client."
+          description="Where this client sits in TransactionHQ."
           icon={<Landmark className="h-3.5 w-3.5" />}
           className="!p-3 border-kp-outline/55 bg-kp-surface-high/10 [&>div:first-child]:mb-2"
         >
@@ -82,7 +84,7 @@ export function ContactBusinessContextRail({ contact }: ContactBusinessContextRa
       {deals.length > 0 ? (
         <ContactDetailSection
           title="Deals"
-          description="CRM deals for this contact."
+          description="CRM deals on record for this contact."
           icon={<Handshake className="h-3.5 w-3.5" />}
           className="!p-3 border-kp-outline/55 bg-kp-surface-high/10 [&>div:first-child]:mb-2"
         >
