@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   PageHeader,
-  PageHeaderActionItem,
+  PageHeaderActionButton,
   PageHeaderActionsMenu,
   pageHeaderPrimaryCtaLinkClass,
 } from "@/components/layout/PageHeader";
@@ -27,20 +27,21 @@ export function ClientKeepPageHeader({ className }: ClientKeepPageHeaderProps) {
   const { contactDetailActions } = useClientKeepChrome();
   const onContactDetail = isClientKeepContactDetailPath(pathname);
 
-  const workspaceMenu = (
-    <PageHeaderActionsMenu summaryLabel="Workspace">
-      <PageHeaderActionItem href="/contacts">Contacts</PageHeaderActionItem>
-      <PageHeaderActionItem href="/client-keep/segments">Segments</PageHeaderActionItem>
-      <PageHeaderActionItem href="/client-keep/follow-ups">Follow-ups</PageHeaderActionItem>
-      <PageHeaderActionItem href="/client-keep/tags">Tags</PageHeaderActionItem>
-      <PageHeaderActionItem href="/client-keep/communications">Communications</PageHeaderActionItem>
-      <PageHeaderActionItem href="/client-keep/activity">Activity</PageHeaderActionItem>
+  /** List / hub: Actions stays visible; contact-specific commands live on a person’s page. */
+  const listHubActionsMenu = (
+    <PageHeaderActionsMenu>
+      <PageHeaderActionButton type="button" disabled className="cursor-not-allowed opacity-70">
+        Open a contact for actions
+      </PageHeaderActionButton>
     </PageHeaderActionsMenu>
   );
 
-  /** On contact detail, prefer injected client Actions; until ready, keep Workspace so the header never loses a left control. */
   const actionsMenu =
-    onContactDetail && contactDetailActions != null ? contactDetailActions : workspaceMenu;
+    onContactDetail && contactDetailActions != null
+      ? contactDetailActions
+      : !onContactDetail
+        ? listHubActionsMenu
+        : undefined;
 
   const primaryAction = (
     <Link href="/contacts?new=1" className={pageHeaderPrimaryCtaLinkClass}>

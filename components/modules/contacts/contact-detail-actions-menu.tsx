@@ -347,13 +347,6 @@ export function ContactDetailActionsMenu({
             </PageHeaderActionButton>
           ) : null}
           <PageHeaderActionsMenuSeparator />
-          <PageHeaderActionItem href="/deals" onClick={closeMenu}>
-            CRM pipeline
-          </PageHeaderActionItem>
-          <PageHeaderActionItem href="/transactions" onClick={closeMenu}>
-            Link transaction
-          </PageHeaderActionItem>
-          <PageHeaderActionsMenuSeparator />
           <PageHeaderActionButton
             type="button"
             className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
