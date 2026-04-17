@@ -9,7 +9,6 @@
 
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prismaAdmin } from "@/lib/db";
 import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
@@ -82,56 +81,58 @@ export async function GET() {
       return apiError("CRM features require Full CRM tier", 403);
     }
 
-    const [drafts, reminders, userActivities] = await Promise.all([
-      prismaAdmin.followUpDraft.findMany({
-        where: {
-          openHouse: { hostUserId: user.id, deletedAt: null },
-          deletedAt: null,
-        },
-        select: {
-          id: true,
-          subject: true,
-          body: true,
-          contactId: true,
-          status: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-        orderBy: { updatedAt: "desc" },
-        take: FETCH_CAP,
-      }),
-      prismaAdmin.followUpReminder.findMany({
-        where: { userId: user.id },
-        select: {
-          id: true,
-          body: true,
-          contactId: true,
-          status: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-        orderBy: { updatedAt: "desc" },
-        take: FETCH_CAP,
-      }),
-      withRLSContext(user.id, (tx) =>
-        tx.userActivity.findMany({
-          where: { userId: user.id },
-          select: {
-            id: true,
-            title: true,
-            description: true,
-            type: true,
-            contactId: true,
-            propertyId: true,
-            completedAt: true,
-            createdAt: true,
-            updatedAt: true,
-          },
-          orderBy: { updatedAt: "desc" },
-          take: FETCH_CAP,
-        })
-      ),
-    ]);
+    const [drafts, reminders, userActivities] = await withRLSContext(
+      user.id,
+      async (tx) =>
+        Promise.all([
+          tx.followUpDraft.findMany({
+            where: {
+              openHouse: { hostUserId: user.id, deletedAt: null },
+              deletedAt: null,
+            },
+            select: {
+              id: true,
+              subject: true,
+              body: true,
+              contactId: true,
+              status: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+            orderBy: { updatedAt: "desc" },
+            take: FETCH_CAP,
+          }),
+          tx.followUpReminder.findMany({
+            where: { userId: user.id },
+            select: {
+              id: true,
+              body: true,
+              contactId: true,
+              status: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+            orderBy: { updatedAt: "desc" },
+            take: FETCH_CAP,
+          }),
+          tx.userActivity.findMany({
+            where: { userId: user.id },
+            select: {
+              id: true,
+              title: true,
+              description: true,
+              type: true,
+              contactId: true,
+              propertyId: true,
+              completedAt: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+            orderBy: { updatedAt: "desc" },
+            take: FETCH_CAP,
+          }),
+        ])
+    );
 
     const items: {
       id: string;

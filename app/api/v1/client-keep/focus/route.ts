@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prismaAdmin } from "@/lib/db";
+import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
 import { getDashboardVisibleContactIds } from "@/lib/contacts/contact-access";
@@ -94,124 +94,126 @@ export async function GET() {
       deals,
       transactions,
       newUnworked,
-    ] = await Promise.all([
-      prismaAdmin.followUpReminder.findMany({
-        where: {
-          userId: user.id,
-          status: "PENDING",
-          dueAt: { lt: now },
-          contactId: { in: contactIds },
-        },
-        include: {
-          contact: {
-            select: { id: true, firstName: true, lastName: true, status: true },
+    ] = await withRLSContext(user.id, async (tx) =>
+      Promise.all([
+        tx.followUpReminder.findMany({
+          where: {
+            userId: user.id,
+            status: "PENDING",
+            dueAt: { lt: now },
+            contactId: { in: contactIds },
           },
-        },
-        orderBy: { dueAt: "asc" },
-        take: 12,
-      }),
-      prismaAdmin.followUp.findMany({
-        where: {
-          createdByUserId: user.id,
-          deletedAt: null,
-          dueAt: { lt: now },
-          status: { in: ["NEW", "PENDING", "CONTACTED", "NURTURE"] },
-          contactId: { in: contactIds },
-        },
-        include: {
-          contact: {
-            select: { id: true, firstName: true, lastName: true, status: true },
+          include: {
+            contact: {
+              select: { id: true, firstName: true, lastName: true, status: true },
+            },
           },
-        },
-        orderBy: { dueAt: "asc" },
-        take: 12,
-      }),
-      prismaAdmin.contact.findMany({
-        where: {
-          id: { in: contactIds },
-          deletedAt: null,
-          status: { not: "LOST" },
-          updatedAt: { lt: staleBefore },
-        },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          status: true,
-          updatedAt: true,
-        },
-        orderBy: { updatedAt: "asc" },
-        take: 8,
-      }),
-      prismaAdmin.followUpDraft.findMany({
-        where: {
-          openHouse: { hostUserId: user.id, deletedAt: null },
-          deletedAt: null,
-          status: { in: ["DRAFT", "REVIEWED"] },
-          contactId: { in: contactIds },
-        },
-        include: {
-          contact: {
-            select: { id: true, firstName: true, lastName: true },
+          orderBy: { dueAt: "asc" },
+          take: 12,
+        }),
+        tx.followUp.findMany({
+          where: {
+            createdByUserId: user.id,
+            deletedAt: null,
+            dueAt: { lt: now },
+            status: { in: ["NEW", "PENDING", "CONTACTED", "NURTURE"] },
+            contactId: { in: contactIds },
           },
-        },
-        orderBy: { updatedAt: "desc" },
-        take: 8,
-      }),
-      prismaAdmin.deal.findMany({
-        where: {
-          userId: user.id,
-          status: { in: [...DEAL_ACTIVE] },
-          contactId: { in: contactIds },
-        },
-        include: {
-          contact: {
-            select: { id: true, firstName: true, lastName: true },
+          include: {
+            contact: {
+              select: { id: true, firstName: true, lastName: true, status: true },
+            },
           },
-          property: {
-            select: { id: true, address1: true, city: true, state: true },
+          orderBy: { dueAt: "asc" },
+          take: 12,
+        }),
+        tx.contact.findMany({
+          where: {
+            id: { in: contactIds },
+            deletedAt: null,
+            status: { not: "LOST" },
+            updatedAt: { lt: staleBefore },
           },
-        },
-        orderBy: { updatedAt: "desc" },
-        take: 10,
-      }),
-      prismaAdmin.transaction.findMany({
-        where: {
-          userId: user.id,
-          deletedAt: null,
-          status: { in: [...TX_ACTIVE] },
-          primaryContactId: { not: null },
-        },
-        include: {
-          primaryContact: {
-            select: { id: true, firstName: true, lastName: true },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            status: true,
+            updatedAt: true,
           },
-          property: {
-            select: { id: true, address1: true, city: true, state: true },
+          orderBy: { updatedAt: "asc" },
+          take: 8,
+        }),
+        tx.followUpDraft.findMany({
+          where: {
+            openHouse: { hostUserId: user.id, deletedAt: null },
+            deletedAt: null,
+            status: { in: ["DRAFT", "REVIEWED"] },
+            contactId: { in: contactIds },
           },
-        },
-        orderBy: { updatedAt: "desc" },
-        take: 8,
-      }),
-      prismaAdmin.contact.findMany({
-        where: {
-          id: { in: contactIds },
-          deletedAt: null,
-          createdAt: { gte: newSince },
-          userActivities: { none: { userId: user.id } },
-        },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          status: true,
-          source: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: "desc" },
-        take: 10,
-      }),
-    ]);
+          include: {
+            contact: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 8,
+        }),
+        tx.deal.findMany({
+          where: {
+            userId: user.id,
+            status: { in: [...DEAL_ACTIVE] },
+            contactId: { in: contactIds },
+          },
+          include: {
+            contact: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+            property: {
+              select: { id: true, address1: true, city: true, state: true },
+            },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 10,
+        }),
+        tx.transaction.findMany({
+          where: {
+            userId: user.id,
+            deletedAt: null,
+            status: { in: [...TX_ACTIVE] },
+            primaryContactId: { not: null },
+          },
+          include: {
+            primaryContact: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+            property: {
+              select: { id: true, address1: true, city: true, state: true },
+            },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 8,
+        }),
+        tx.contact.findMany({
+          where: {
+            id: { in: contactIds },
+            deletedAt: null,
+            createdAt: { gte: newSince },
+            userActivities: { none: { userId: user.id } },
+          },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            status: true,
+            source: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        }),
+      ])
+    );
 
     type Attention = ClientKeepFocusResponse["needsAttention"][number];
     const raw: Attention[] = [];

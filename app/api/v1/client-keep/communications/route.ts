@@ -5,7 +5,6 @@
 
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
-import { prismaAdmin } from "@/lib/db";
 import { withRLSContext } from "@/lib/db-context";
 import { hasCrmAccess } from "@/lib/product-tier";
 import { apiError, apiErrorFromCaught } from "@/lib/api-response";
@@ -70,85 +69,85 @@ export async function GET() {
       upcomingFollowUps,
       scheduledUserActivities,
       recentUserActivities,
-    ] = await Promise.all([
-      prismaAdmin.followUpReminder.findMany({
-        where: {
-          userId: user.id,
-          status: "PENDING",
-          dueAt: { lt: now },
-          contactId: { in: contactIds },
-        },
-        include: {
-          contact: {
-            select: { id: true, firstName: true, lastName: true },
+    ] = await withRLSContext(user.id, async (tx) =>
+      Promise.all([
+        tx.followUpReminder.findMany({
+          where: {
+            userId: user.id,
+            status: "PENDING",
+            dueAt: { lt: now },
+            contactId: { in: contactIds },
           },
-        },
-        orderBy: { dueAt: "asc" },
-        take: 12,
-      }),
-      prismaAdmin.followUp.findMany({
-        where: {
-          createdByUserId: user.id,
-          deletedAt: null,
-          dueAt: { lt: now },
-          status: { in: ["NEW", "PENDING", "CONTACTED", "NURTURE"] },
-          contactId: { in: contactIds },
-        },
-        include: {
-          contact: {
-            select: { id: true, firstName: true, lastName: true },
+          include: {
+            contact: {
+              select: { id: true, firstName: true, lastName: true },
+            },
           },
-        },
-        orderBy: { dueAt: "asc" },
-        take: 12,
-      }),
-      prismaAdmin.followUpDraft.findMany({
-        where: {
-          openHouse: { hostUserId: user.id, deletedAt: null },
-          deletedAt: null,
-          status: { in: ["DRAFT", "REVIEWED"] },
-          contactId: { in: contactIds },
-        },
-        include: {
-          contact: {
-            select: { id: true, firstName: true, lastName: true },
+          orderBy: { dueAt: "asc" },
+          take: 12,
+        }),
+        tx.followUp.findMany({
+          where: {
+            createdByUserId: user.id,
+            deletedAt: null,
+            dueAt: { lt: now },
+            status: { in: ["NEW", "PENDING", "CONTACTED", "NURTURE"] },
+            contactId: { in: contactIds },
           },
-        },
-        orderBy: { updatedAt: "desc" },
-        take: 12,
-      }),
-      prismaAdmin.followUpReminder.findMany({
-        where: {
-          userId: user.id,
-          status: "PENDING",
-          dueAt: { gte: now },
-          contactId: { in: contactIds },
-        },
-        include: {
-          contact: {
-            select: { id: true, firstName: true, lastName: true },
+          include: {
+            contact: {
+              select: { id: true, firstName: true, lastName: true },
+            },
           },
-        },
-        orderBy: { dueAt: "asc" },
-        take: 20,
-      }),
-      prismaAdmin.followUp.findMany({
-        where: {
-          createdByUserId: user.id,
-          deletedAt: null,
-          dueAt: { gte: now },
-          status: { in: ["NEW", "PENDING", "CONTACTED", "NURTURE"] },
-          contactId: { in: contactIds },
-        },
-        include: {
-          contact: {
-            select: { id: true, firstName: true, lastName: true },
+          orderBy: { dueAt: "asc" },
+          take: 12,
+        }),
+        tx.followUpDraft.findMany({
+          where: {
+            openHouse: { hostUserId: user.id, deletedAt: null },
+            deletedAt: null,
+            status: { in: ["DRAFT", "REVIEWED"] },
+            contactId: { in: contactIds },
           },
-        },
-        orderBy: { dueAt: "asc" },
-        take: 20,
-      }),
-      withRLSContext(user.id, (tx) =>
+          include: {
+            contact: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+          },
+          orderBy: { updatedAt: "desc" },
+          take: 12,
+        }),
+        tx.followUpReminder.findMany({
+          where: {
+            userId: user.id,
+            status: "PENDING",
+            dueAt: { gte: now },
+            contactId: { in: contactIds },
+          },
+          include: {
+            contact: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+          },
+          orderBy: { dueAt: "asc" },
+          take: 20,
+        }),
+        tx.followUp.findMany({
+          where: {
+            createdByUserId: user.id,
+            deletedAt: null,
+            dueAt: { gte: now },
+            status: { in: ["NEW", "PENDING", "CONTACTED", "NURTURE"] },
+            contactId: { in: contactIds },
+          },
+          include: {
+            contact: {
+              select: { id: true, firstName: true, lastName: true },
+            },
+          },
+          orderBy: { dueAt: "asc" },
+          take: 20,
+        }),
         tx.userActivity.findMany({
           where: {
             userId: user.id,
@@ -163,9 +162,7 @@ export async function GET() {
           },
           orderBy: { dueAt: "asc" },
           take: 24,
-        })
-      ),
-      withRLSContext(user.id, (tx) =>
+        }),
         tx.userActivity.findMany({
           where: {
             userId: user.id,
@@ -178,9 +175,9 @@ export async function GET() {
           },
           orderBy: { updatedAt: "desc" },
           take: 12,
-        })
-      ),
-    ]);
+        }),
+      ])
+    );
 
     type DoFirst = ClientKeepCommunicationsResponse["doFirst"][number];
     const rawDo: DoFirst[] = [];

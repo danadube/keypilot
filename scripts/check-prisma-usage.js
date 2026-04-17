@@ -58,8 +58,6 @@ const BYPASSRLS_ALLOWLIST = {
     // ── Contacts ───────────────────────────────────────────────────────────
     "app/api/v1/contacts/[id]/route.ts",
     "app/api/v1/contacts/route.ts",
-    // ClientKeep Focus View aggregation — same prismaAdmin pattern as contacts list scope
-    "app/api/v1/client-keep/focus/route.ts",
     // ── Farm ───────────────────────────────────────────────────────────────
     "app/api/v1/farm-areas/[id]/route.ts",
     "app/api/v1/farm-areas/[id]/members/bulk/route.ts",
