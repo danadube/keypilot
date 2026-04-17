@@ -2,12 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  PageHeader,
-  PageHeaderActionButton,
-  PageHeaderActionsMenu,
-  pageHeaderPrimaryCtaLinkClass,
-} from "@/components/layout/PageHeader";
+import { PageHeader, pageHeaderPrimaryCtaLinkClass } from "@/components/layout/PageHeader";
 import { useClientKeepChrome } from "@/components/modules/client-keep/client-keep-chrome-context";
 
 const DEFAULT_SUBTITLE = "Contacts, segments, and relationship follow-ups in one workspace.";
@@ -27,21 +22,9 @@ export function ClientKeepPageHeader({ className }: ClientKeepPageHeaderProps) {
   const { contactDetailActions } = useClientKeepChrome();
   const onContactDetail = isClientKeepContactDetailPath(pathname);
 
-  /** List / hub: Actions stays visible; contact-specific commands live on a person’s page. */
-  const listHubActionsMenu = (
-    <PageHeaderActionsMenu>
-      <PageHeaderActionButton type="button" disabled className="cursor-not-allowed opacity-70">
-        Open a contact for actions
-      </PageHeaderActionButton>
-    </PageHeaderActionsMenu>
-  );
-
+  /** Hub routes: Add client only. Contact detail: Actions when the menu is injected. */
   const actionsMenu =
-    onContactDetail && contactDetailActions != null
-      ? contactDetailActions
-      : !onContactDetail
-        ? listHubActionsMenu
-        : undefined;
+    onContactDetail && contactDetailActions != null ? contactDetailActions : undefined;
 
   const primaryAction = (
     <Link href="/contacts?new=1" className={pageHeaderPrimaryCtaLinkClass}>
