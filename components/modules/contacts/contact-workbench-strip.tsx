@@ -71,10 +71,10 @@ export function ContactWorkbenchStrip({
   const showFollowUpRow = hasCrmAccess && sortedReminders.length > 0;
 
   const pipelineSummary = [
+    deals.length > 0 ? `${deals.length} CRM deal${deals.length === 1 ? "" : "s"}` : null,
     transactions.length > 0
       ? `${transactions.length} transaction${transactions.length === 1 ? "" : "s"}`
       : null,
-    deals.length > 0 ? `${deals.length} deal${deals.length === 1 ? "" : "s"}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -219,12 +219,13 @@ export function ContactWorkbenchStrip({
           <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <dt className="flex items-center gap-1.5 text-xs font-medium text-kp-on-surface-variant">
               <Building2 className="h-3.5 w-3.5 shrink-0" />
-              Pipeline
+              Business
             </dt>
             <dd>
               <button
                 type="button"
-                className="text-sm font-medium text-kp-teal hover:underline"
+                className="text-left text-sm font-medium text-kp-teal hover:underline sm:text-right"
+                aria-label={`View business context: ${pipelineSummary}`}
                 onClick={() => scrollToAnchor("contact-business-context")}
               >
                 {pipelineSummary}
