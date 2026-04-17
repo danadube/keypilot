@@ -39,14 +39,14 @@ export function ContactBusinessContextRail({ contact }: ContactBusinessContextRa
     return (
       <div id="contact-business-context">
         <ContactDetailSection
-          title="Deals & transactions"
-          description="CRM pipeline vs TransactionHQ — both can apply to the same person."
+          title="Pipeline & transactions"
+          description="Sales pipeline vs TransactionHQ — both can apply to the same person."
           icon={<Building2 className="h-3.5 w-3.5" />}
           className="!p-3 border-kp-outline/55 bg-kp-surface-high/12 [&>div:first-child]:mb-2"
         >
           <p className="text-xs leading-relaxed text-kp-on-surface-variant">
-            Nothing linked yet. Add a <span className="font-medium text-kp-on-surface">CRM deal</span> from a
-            property, or set this contact as{" "}
+            Nothing linked yet. From a property, add a <span className="font-medium text-kp-on-surface">deal</span>{" "}
+            to track them in your pipeline—or set this contact as{" "}
             <span className="font-medium text-kp-on-surface">primary client</span> on a transaction.
           </p>
           <div className="mt-3 flex flex-col gap-2 border-t border-kp-outline/30 pt-3">
@@ -56,7 +56,7 @@ export function ContactBusinessContextRail({ contact }: ContactBusinessContextRa
                 href="/deals"
                 className="inline-flex items-center gap-1 text-xs font-medium text-kp-teal hover:underline"
               >
-                CRM deals
+                CRM pipeline
                 <span aria-hidden>→</span>
               </Link>
               <Link
@@ -77,8 +77,8 @@ export function ContactBusinessContextRail({ contact }: ContactBusinessContextRa
     <div id="contact-business-context" className="space-y-3">
       {deals.length > 0 ? (
         <ContactDetailSection
-          title="CRM deals"
-          description="Pipeline stages on a property — before or alongside a formal transaction."
+          title="Pipeline"
+          description="CRM deal stages on a property—before or alongside TransactionHQ."
           icon={<Handshake className="h-3.5 w-3.5" />}
           className="!p-3 border-kp-outline/55 bg-kp-surface-high/10 [&>div:first-child]:mb-2"
         >

@@ -348,7 +348,7 @@ export function ContactDetailActionsMenu({
           ) : null}
           <PageHeaderActionsMenuSeparator />
           <PageHeaderActionItem href="/deals" onClick={closeMenu}>
-            Link deal (Deals)
+            CRM pipeline
           </PageHeaderActionItem>
           <PageHeaderActionItem href="/transactions" onClick={closeMenu}>
             Link transaction

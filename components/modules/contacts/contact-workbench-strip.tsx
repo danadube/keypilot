@@ -71,7 +71,9 @@ export function ContactWorkbenchStrip({
   const showFollowUpRow = hasCrmAccess && sortedReminders.length > 0;
 
   const pipelineSummary = [
-    deals.length > 0 ? `${deals.length} CRM deal${deals.length === 1 ? "" : "s"}` : null,
+    deals.length > 0
+      ? `${deals.length} in pipeline`
+      : null,
     transactions.length > 0
       ? `${transactions.length} transaction${transactions.length === 1 ? "" : "s"}`
       : null,

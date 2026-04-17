@@ -1,4 +1,4 @@
-/** Labels for CRM deal pipeline vs TransactionHQ — keep wording distinct on the contact surface. */
+/** Stage labels for CRM pipeline records vs TransactionHQ — deal/transaction enums stay in the API. */
 
 export function humanizeEnum(s: string): string {
   return s
