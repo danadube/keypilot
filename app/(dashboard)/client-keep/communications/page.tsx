@@ -24,7 +24,7 @@ const hubSections: {
   {
     title: "Contact communication log",
     description: "Log calls and emails on each contact’s timeline.",
-    href: "/contacts",
+    href: "/contacts/all",
     cta: "Open contacts",
     icon: Users,
   },

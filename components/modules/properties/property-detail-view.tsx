@@ -148,7 +148,7 @@ export function PropertyDetailView({ id }: { id: string }) {
 
   const hasPrimaryClient = primaryClientDisplay != null;
   /** ClientKeep — property context for future linking UX; not TransactionHQ. */
-  const linkClientHref = `/contacts?linkPropertyId=${encodeURIComponent(id)}`;
+  const linkClientHref = `/contacts/all?linkPropertyId=${encodeURIComponent(id)}`;
 
   const [photoUploading, setPhotoUploading] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);

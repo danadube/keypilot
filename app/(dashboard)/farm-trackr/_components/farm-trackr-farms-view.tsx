@@ -323,7 +323,7 @@ export function FarmTrackrFarmsView() {
                                   asChild
                                 >
                                   <Link
-                                    href={`/contacts?farmAreaId=${encodeURIComponent(area.id)}`}
+                                    href={`/contacts/all?farmAreaId=${encodeURIComponent(area.id)}`}
                                   >
                                     🔗 Open contacts
                                   </Link>

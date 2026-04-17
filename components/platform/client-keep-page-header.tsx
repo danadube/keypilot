@@ -11,9 +11,10 @@ export type ClientKeepPageHeaderProps = {
   className?: string;
 };
 
-/** True for `/contacts/[id]` (single contact), not `/contacts` or nested paths. */
+/** True for `/contacts/[id]` (single contact), not Focus, All contacts, or nested paths. */
 export function isClientKeepContactDetailPath(pathname: string | null): boolean {
   if (!pathname) return false;
+  if (pathname === "/contacts/all") return false;
   return /^\/contacts\/[^/]+$/.test(pathname);
 }
 

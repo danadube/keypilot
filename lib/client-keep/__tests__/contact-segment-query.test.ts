@@ -68,40 +68,40 @@ describe("contact-segment-query", () => {
   });
 
   describe("segmentToHref", () => {
-    it("returns /contacts when no filters", () => {
-      expect(segmentToHref("__all__", null)).toBe("/contacts");
+    it("returns /contacts/all when no filters", () => {
+      expect(segmentToHref("__all__", null)).toBe("/contacts/all");
     });
 
     it("builds query string for status only", () => {
-      expect(segmentToHref("FARM", null)).toBe("/contacts?status=FARM");
-      expect(segmentToHref("LEAD", null)).toBe("/contacts?status=LEAD");
+      expect(segmentToHref("FARM", null)).toBe("/contacts/all?status=FARM");
+      expect(segmentToHref("LEAD", null)).toBe("/contacts/all?status=LEAD");
     });
 
     it("builds query for tag only", () => {
-      expect(segmentToHref("__all__", "x")).toBe("/contacts?tagId=x");
+      expect(segmentToHref("__all__", "x")).toBe("/contacts/all?tagId=x");
     });
 
     it("orders params consistently", () => {
       expect(segmentToHref("LOST", "tid")).toBe(
-        "/contacts?status=LOST&tagId=tid"
+        "/contacts/all?status=LOST&tagId=tid"
       );
     });
 
     it("includes followUp=needs when requested", () => {
       expect(segmentToHref("__all__", null, true)).toBe(
-        "/contacts?followUp=needs"
+        "/contacts/all?followUp=needs"
       );
       expect(segmentToHref("LEAD", null, true)).toBe(
-        "/contacts?status=LEAD&followUp=needs"
+        "/contacts/all?status=LEAD&followUp=needs"
       );
     });
 
     it("includes sort=recent when sort mode is recent", () => {
       expect(segmentToHref("__all__", null, false, "recent")).toBe(
-        "/contacts?sort=recent"
+        "/contacts/all?sort=recent"
       );
       expect(segmentToHref("LEAD", "t1", true, "recent")).toBe(
-        "/contacts?status=LEAD&tagId=t1&followUp=needs&sort=recent"
+        "/contacts/all?status=LEAD&tagId=t1&followUp=needs&sort=recent"
       );
     });
 
@@ -111,7 +111,7 @@ describe("contact-segment-query", () => {
           farmAreaId: "a1",
           farmTerritoryId: "t9",
         })
-      ).toBe("/contacts?farmAreaId=a1");
+      ).toBe("/contacts/all?farmAreaId=a1");
     });
 
     it("includes farmTerritoryId when area absent", () => {
@@ -120,7 +120,7 @@ describe("contact-segment-query", () => {
           farmAreaId: null,
           farmTerritoryId: "terr-1",
         })
-      ).toBe("/contacts?status=LEAD&farmTerritoryId=terr-1");
+      ).toBe("/contacts/all?status=LEAD&farmTerritoryId=terr-1");
     });
 
     it("includes missing and readyToPromote when set", () => {
@@ -133,7 +133,7 @@ describe("contact-segment-query", () => {
           readyToPromote: false,
           farmHealthScope: null,
         })
-      ).toBe("/contacts?farmAreaId=a1&missing=email");
+      ).toBe("/contacts/all?farmAreaId=a1&missing=email");
       expect(
         segmentToHref("__all__", null, false, "followups", {
           farmAreaId: "a1",
@@ -143,7 +143,7 @@ describe("contact-segment-query", () => {
           readyToPromote: true,
           farmHealthScope: null,
         })
-      ).toBe("/contacts?farmAreaId=a1&readyToPromote=1");
+      ).toBe("/contacts/all?farmAreaId=a1&readyToPromote=1");
     });
 
     it("includes farmHealthScope only without farm area/territory", () => {
@@ -156,7 +156,7 @@ describe("contact-segment-query", () => {
           readyToPromote: false,
           farmHealthScope: "active",
         })
-      ).toBe("/contacts?missing=mailing&farmHealthScope=active");
+      ).toBe("/contacts/all?missing=mailing&farmHealthScope=active");
     });
   });
 
@@ -285,7 +285,7 @@ describe("contact-segment-query", () => {
   });
 
   describe("hasSegmentFiltersInSearchParams", () => {
-    it("is false for bare /contacts", () => {
+    it("is false for empty query params", () => {
       expect(hasSegmentFiltersInSearchParams(sp(""))).toBe(false);
     });
 

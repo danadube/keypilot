@@ -18,7 +18,7 @@ export function contactsCleanupHrefFromArea(
 ): string {
   const p = buildContactsCleanupSearchParams(q);
   p.set("farmAreaId", farmAreaId);
-  return `/contacts?${p.toString()}`;
+  return `/contacts/all?${p.toString()}`;
 }
 
 /** Contacts filtered to a territory’s farm areas + health slice. */
@@ -28,7 +28,7 @@ export function contactsCleanupHrefFromTerritory(
 ): string {
   const p = buildContactsCleanupSearchParams(q);
   p.set("farmTerritoryId", farmTerritoryId);
-  return `/contacts?${p.toString()}`;
+  return `/contacts/all?${p.toString()}`;
 }
 
 /**
@@ -41,5 +41,5 @@ export function contactsCleanupHrefAllFarmScope(
 ): string {
   const p = buildContactsCleanupSearchParams(q);
   p.set("farmHealthScope", visibility);
-  return `/contacts?${p.toString()}`;
+  return `/contacts/all?${p.toString()}`;
 }

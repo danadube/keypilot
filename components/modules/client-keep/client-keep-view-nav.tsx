@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 /** ClientKeep workspace views — routes unchanged; order matches product surface. */
 export const CLIENT_KEEP_VIEW_ITEMS = [
-  { id: "contacts", label: "Contacts", href: "/contacts" },
+  { id: "contacts", label: "Focus", href: "/contacts" },
   { id: "segments", label: "Segments", href: "/client-keep/segments" },
   { id: "follow-ups", label: "Follow-ups", href: "/client-keep/follow-ups" },
   { id: "tags", label: "Tags", href: "/client-keep/tags" },

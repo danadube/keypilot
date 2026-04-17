@@ -1,5 +1,5 @@
 /**
- * Canonical contact segment query grammar for /contacts and GET /api/v1/contacts.
+ * Canonical contact segment query grammar for /contacts/all (full list) and GET /api/v1/contacts.
  * Single source of truth for URL-driven filters (status, tagId, follow-up, sort, farm scope, health).
  */
 
@@ -198,7 +198,7 @@ export function segmentToHref(
   appendFarmScopeToSearchParams(params, farmScope);
   appendHealthQueryToSearchParams(params, health, farmScope);
   const q = params.toString();
-  return q ? `/contacts?${q}` : "/contacts";
+  return q ? `/contacts/all?${q}` : "/contacts/all";
 }
 
 export function buildContactsApiUrl(

@@ -603,7 +603,7 @@ export function ContactsListView() {
     const next = new URLSearchParams(searchParams.toString());
     next.delete("new");
     const q = next.toString();
-    router.replace(q ? `/contacts?${q}` : "/contacts", { scroll: false });
+    router.replace(q ? `/contacts/all?${q}` : "/contacts/all", { scroll: false });
   }, [searchParams, router]);
 
   // Client-side search on top of server-filtered results
@@ -627,7 +627,7 @@ export function ContactsListView() {
     setStatusFilter("__all__");
     setSearch("");
     setTagIdFilter(null);
-    router.replace("/contacts", { scroll: false });
+    router.replace("/contacts/all", { scroll: false });
   }
 
   const canSaveSegment = hasSegmentFiltersInSearchParams(searchParams);

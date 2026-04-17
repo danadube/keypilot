@@ -6,6 +6,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
+  LayoutList,
   Building2,
   Megaphone,
   BarChart3,
@@ -94,7 +95,8 @@ export const MODULES: Record<ModuleId, ModuleConfig> = {
     href: "/contacts",
     available: true,
     sidebar: [
-      { label: "Contacts", href: "/contacts", icon: Users, section: "OVERVIEW" },
+      { label: "Focus", href: "/contacts", icon: Users, section: "OVERVIEW" },
+      { label: "All contacts", href: "/contacts/all", icon: LayoutList, section: "OVERVIEW" },
       { label: "Settings", href: "/settings", icon: Settings, section: "SYSTEM" },
     ],
   },

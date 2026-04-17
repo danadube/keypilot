@@ -476,7 +476,7 @@ export function FarmTrackrListsView() {
                                   asChild
                                 >
                                   <Link
-                                    href={`/contacts?farmTerritoryId=${encodeURIComponent(t.id)}`}
+                                    href={`/contacts/all?farmTerritoryId=${encodeURIComponent(t.id)}`}
                                   >
                                     Open contacts
                                   </Link>
@@ -585,7 +585,7 @@ export function FarmTrackrListsView() {
                                   asChild
                                 >
                                   <Link
-                                    href={`/contacts?farmAreaId=${encodeURIComponent(a.id)}`}
+                                    href={`/contacts/all?farmAreaId=${encodeURIComponent(a.id)}`}
                                   >
                                     Open contacts
                                   </Link>
@@ -608,7 +608,7 @@ export function FarmTrackrListsView() {
                 className={cn(kpBtnPrimary, "h-9 text-xs")}
                 asChild
               >
-                <Link href="/contacts">All contacts</Link>
+                <Link href="/contacts/all">All contacts</Link>
               </Button>
             </div>
 

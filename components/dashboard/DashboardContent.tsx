@@ -126,7 +126,7 @@ export function DashboardContent({ stats }: { stats: Stats }) {
               )}
               asChild
             >
-              <Link href="/contacts">View all</Link>
+              <Link href="/contacts/all">View all</Link>
             </Button>
           </CardContent>
         </Card>

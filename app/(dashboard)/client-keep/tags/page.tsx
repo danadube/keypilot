@@ -210,7 +210,7 @@ export default function ClientKeepTagsPage() {
             )}
           </Button>
           <Button variant="outline" size="sm" className={cn(kpBtnSecondary, "h-9 gap-1.5")} asChild>
-            <Link href="/contacts">
+            <Link href="/contacts/all">
               <Users className="h-3.5 w-3.5" />
               All contacts
             </Link>
@@ -267,7 +267,7 @@ export default function ClientKeepTagsPage() {
                           className={cn(kpBtnSecondary, "h-8 gap-1 text-xs")}
                           asChild
                         >
-                          <Link href={`/contacts?tagId=${encodeURIComponent(t.id)}`}>
+                          <Link href={`/contacts/all?tagId=${encodeURIComponent(t.id)}`}>
                             Open contacts
                             <ArrowRight className="h-3 w-3" />
                           </Link>
@@ -307,7 +307,7 @@ export default function ClientKeepTagsPage() {
         <p className="text-xs text-kp-on-surface-variant">
           To assign or remove tags on someone, open their contact and use the Tags section on their profile.{" "}
           <Link
-            href="/contacts"
+            href="/contacts/all"
             className="inline-flex items-center gap-0.5 font-medium text-kp-teal underline-offset-2 hover:underline"
           >
             Open contacts

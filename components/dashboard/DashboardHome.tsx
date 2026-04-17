@@ -153,7 +153,7 @@ export function DashboardHome() {
             icon={<Users className="h-5 w-5" />}
           />
           <BrandButton variant="ghost" size="sm" className="text-[var(--brand-secondary)] hover:opacity-80" asChild>
-            <Link href="/contacts">View all</Link>
+            <Link href="/contacts/all">View all</Link>
           </BrandButton>
         </div>
       </div>
